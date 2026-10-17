@@ -1,0 +1,584 @@
+// A run through the Lattice Gate: branching map, incidents, shops, gardens, the boss.
+(function () {
+  const R = SD.run = {};
+  const U = SD.ui, S = SD.state, Q = SD.quiz;
+  const $ = U.$;
+  const rnd = a => a[Math.floor(Math.random() * a.length)];
+  let C = null; // current combat
+
+  // ---------- Run lifecycle ----------
+  R.start = function () {
+    const sv = S.save;
+    sv.run = {
+      deck: SD.starterDeck.map(id => ({ id, up: false })),
+      sla: S.maxSla(), bits: 20, floor: -1, pos: null, pending: null,
+      map: genMap(), mercy: false, startedAt: Date.now(), firstFight: !sv.stats.fights,
+      log: { fights: 0, concepts: {}, misses: 0, right: 0, xp: 0 }, boss: {}
+    };
+    sv.stats.runs++;
+    S.persist();
+    SD.main.show('run');
+    gateFx(() => R.showMap());
+  };
+  R.resume = function () {
+    SD.main.show('run');
+    const run = S.save.run;
+    if (run.pending) { const node = findNode(run.pending); if (node) return enterNode(node); }
+    R.showMap();
+  };
+  R.abandon = function () { endRun(false, 'You walked away from the Gate'); };
+
+  function gateFx(done) {
+    const fx = document.createElement('div');
+    fx.className = 'gatefx';
+    fx.innerHTML = '<div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="gate-t">ENTERING GATE</div>';
+    document.body.appendChild(fx);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(() => { fx.remove(); done(); }, reduce ? 50 : 1300);
+  }
+
+  // ---------- Map ----------
+  function genMap() {
+    const plan = [
+      ['fight', 'fight', 'fight'],
+      ['fight', 'board', 'event'],
+      ['fight', 'cafe', 'board'],
+      ['elite', 'fight', 'event'],
+      ['garden', 'fight', 'board'],
+      ['fight', 'event', 'cafe'],
+      ['garden', 'board', 'garden']
+    ];
+    const floors = plan.map((types, f) => Q.shuffle(types).map((type, lane) => ({ id: f + '-' + lane, f, lane, type, next: [] })));
+    floors.push([{ id: '7-1', f: 7, lane: 1, type: 'boss', next: [] }]);
+    for (let f = 0; f < 7; f++) {
+      floors[f].forEach(n => {
+        if (f === 6) { n.next = ['7-1']; return; }
+        n.next = floors[f + 1].filter(m => Math.abs(m.lane - n.lane) <= 1).map(m => m.id);
+      });
+    }
+    return { floors };
+  }
+  function findNode(id) { for (const fl of S.save.run.map.floors) for (const n of fl) if (n.id === id) return n; return null; }
+  const NODE = {
+    fight: { l: 'Incident', g: 'crossed-swords' }, elite: { l: 'Elite', g: 'horned-skull' }, board: { l: 'Whiteboard', g: 'notebook' },
+    cafe: { l: 'Café', g: 'coffee-cup' }, garden: { l: 'Garden', g: 'bonsai-tree' }, event: { l: 'Event', g: 'card-random' }, boss: { l: 'BOSS', g: 'crowned-skull' }
+  };
+
+  R.showMap = function () {
+    const run = S.save.run;
+    const floors = run.map.floors;
+    const cur = run.pos ? findNode(run.pos) : null;
+    const reach = cur ? cur.next : floors[0].map(n => n.id);
+    const visited = new Set(run.visited || []);
+    const rows = floors.length;
+    let svg = `<svg class="map-lines" viewBox="0 0 300 ${rows * 100}" preserveAspectRatio="none" aria-hidden="true">`;
+    const xy = n => [((n.lane + 0.5) / 3) * 300, (rows - 1 - n.f) * 100 + 50];
+    floors.forEach(fl => fl.forEach(n => n.next.forEach(id => {
+      const m = findNode(id); const [x1, y1] = xy(n), [x2, y2] = xy(m);
+      const on = visited.has(n.id) && (visited.has(m.id) || reach.includes(m.id) && run.pos === n.id);
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${on ? 'on' : ''}" vector-effect="non-scaling-stroke"/>`;
+    })));
+    svg += '</svg>';
+    let nodes = '';
+    floors.forEach(fl => fl.forEach(n => {
+      const [x, y] = xy(n);
+      const can = reach.includes(n.id);
+      const st = visited.has(n.id) ? 'done' : can ? 'can' : '';
+      nodes += `<button class="node t-${n.type} ${st}" style="left:${x / 3}%;top:${y / rows}%" data-n="${n.id}" ${can ? '' : 'disabled'} aria-label="${NODE[n.type].l}${can ? ', reachable' : ''}">
+        ${SD.art.glyph(NODE[n.type].g, 'currentColor')}<span>${NODE[n.type].l}</span></button>`;
+    }));
+    $('#run').innerHTML = `
+      <div class="run-hud">${hud()}</div>
+      <div class="map-wrap"><div class="map-title">LANTERN WARD GATE · E-RANK <span class="muted">Pick a path. The Ledger waits at the top.</span></div>
+      <div class="map" style="height:${rows * 78}px">${svg}${nodes}</div></div>
+      <div class="run-foot"><button class="ghost" id="deck-btn">Deck (${run.deck.length})</button><button class="ghost" id="codex-btn2">Notebook</button><button class="ghost danger" id="abandon">Abandon run</button></div>`;
+    $('#run').querySelectorAll('.node.can').forEach(b => b.onclick = () => enterNode(findNode(b.dataset.n)));
+    $('#deck-btn').onclick = showDeck;
+    $('#codex-btn2').onclick = () => U.codex();
+    $('#abandon').onclick = () => {
+      const b = U.panel('<p>Abandon this run? The Cascade will come and the loop resets. You keep XP, shards and everything you learned.</p><div class="row"><button class="danger" id="ab-y">Abandon</button><button class="ghost" id="ab-n">Keep going</button></div>', { title: 'CONFIRM' });
+      b.querySelector('#ab-y').onclick = () => { U.closePanel(); R.abandon(); };
+      b.querySelector('#ab-n').onclick = U.closePanel;
+    };
+    // Scroll so the reachable row is visible
+    const first = $('#run').querySelector('.node.can');
+    if (first) setTimeout(() => first.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
+  };
+  function hud() {
+    const run = S.save.run, sv = S.save;
+    const pct = Math.max(0, run.sla / S.maxSla() * 100);
+    return `<div class="hud-sla"><span>SLA</span><div class="bar sla"><i style="width:${pct}%"></i></div><b>${run.sla}/${S.maxSla()}</b></div>
+      <span class="hud-chip">Bits <b>${run.bits}</b></span><span class="hud-chip">Shards <b>${sv.shards}</b></span><span class="hud-chip">${S.rank()}-Rank · Lv ${sv.level}</span>`;
+  }
+  function showDeck() {
+    const run = S.save.run;
+    U.panel(`<div class="cardgrid">${run.deck.map(c => U.cardHtml(c)).join('')}</div>`, { title: 'YOUR DECK', cls: 'wide' });
+  }
+
+  function enterNode(n) {
+    const run = S.save.run;
+    run.pending = n.id; S.persist();
+    const done = () => {
+      run.pending = null; run.pos = n.id; run.floor = n.f;
+      run.visited = (run.visited || []).concat(n.id);
+      S.persist();
+      if (S.save.run) R.showMap();
+    };
+    if (n.type === 'fight') return fight(rnd(SD.enemyPools[n.f < 2 ? 1 : n.f < 5 ? 2 : 3]), { diagnose: Math.random() < 0.45 }, done);
+    if (n.type === 'elite') return fight(rnd(SD.enemyPools.elite), { diagnose: true, elite: true }, done);
+    if (n.type === 'boss') return boss(done);
+    if (n.type === 'board') return whiteboard(done);
+    if (n.type === 'cafe') return cafe(done);
+    if (n.type === 'garden') return garden(done);
+    if (n.type === 'event') return eventNode(done);
+  }
+
+  // ---------- Rewards ----------
+  R.gainXp = function (n) {
+    const before = S.rank();
+    const ups = S.addXp(n);
+    if (S.save.run) S.save.run.log.xp += n;
+    ups.forEach(l => {
+      U.system('LEVEL UP', `Architect level ${l}. Max SLA +4. New cards may appear in the Lattice.`, 'gold');
+      for (const k in SD.specs) if (SD.specs[k].rank === l) U.system('SPEC UNLOCKED', `${U.esc(SD.specs[k].name)} is available at the Workshop.`);
+    });
+    if (S.rank() !== before) U.system('RANK UP', `You are now a ${S.rank()}-Rank Architect.`, 'gold');
+    S.persist();
+  };
+  function cardChoices(n) {
+    const pool = S.unlockedCards();
+    const focus = new Set(S.pickConcepts(5));
+    const weighted = [];
+    pool.forEach(id => { const w = SD.cards[id].concept && focus.has(SD.cards[id].concept) ? 3 : 1; for (let i = 0; i < w; i++) weighted.push(id); });
+    const out = [];
+    let guard = 0;
+    while (out.length < n && guard++ < 200) { const id = rnd(weighted); if (!out.includes(id)) out.push(id); }
+    return out;
+  }
+  function rewards(opts, done) {
+    const run = S.save.run;
+    const bits = opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9);
+    const xp = opts.boss ? 120 : opts.elite ? 40 : 20;
+    const shards = opts.boss ? 5 : opts.elite ? 2 : 1;
+    run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
+    R.gainXp(xp);
+    if (opts.boss) return done();
+    const n = S.save.relics.includes('satchel') ? 4 : 3;
+    const picks = cardChoices(n);
+    const b = U.panel(`<div class="loot"><span>+${bits} bits</span><span>+${xp} XP</span><span>+${shards} shard${shards > 1 ? 's' : ''}</span></div>
+      <p class="muted">Choose a card to add to your deck.</p>
+      <div class="cardgrid pick">${picks.map((id, i) => U.cardHtml({ id }, { i })).join('')}</div>
+      <button class="ghost" id="skip">Skip</button>`, { title: '[SYSTEM] INCIDENT RESOLVED', noClose: true, cls: 'wide' });
+    b.querySelectorAll('.card').forEach(el => el.onclick = () => {
+      run.deck.push({ id: picks[+el.dataset.i], up: false });
+      S.seeConcept(SD.cards[picks[+el.dataset.i]].concept || 'delivery');
+      U.closePanel(); S.persist(); done();
+    });
+    b.querySelector('#skip').onclick = () => { U.closePanel(); done(); };
+  }
+
+  // ---------- Whiteboard, café, garden, events ----------
+  async function whiteboard(done) {
+    const res = await Q.session(2, { title: '[QUEST] WHITEBOARD' });
+    const run = S.save.run;
+    let bits = 0, xp = 0;
+    res.forEach(r => {
+      run.log.concepts[r.c] = (run.log.concepts[r.c] || 0) + 1;
+      if (r.ok) { bits += 6; xp += 10 + (r.conf === 2 ? 5 : 0); run.log.right++; } else run.log.misses++;
+    });
+    run.bits += bits; if (xp) R.gainXp(xp);
+    U.system('WHITEBOARD CLEARED', `+${bits} bits, +${xp} XP`);
+    done();
+  }
+  function cafe(done) {
+    const run = S.save.run;
+    const price = { basic: 20, common: 30, uncommon: 45, rare: 65 };
+    const stock = cardChoices(3);
+    const sold = new Set();
+    let removed = false, healed = false;
+    function render() {
+      const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Sit, dear. Everything here is fresh. Well. Fresh enough."</p></div>
+        <div class="loot"><span>You have <b>${run.bits}</b> bits</span></div>
+        <div class="cardgrid pick">${stock.map((id, i) => sold.has(i) ? '<div class="card sold">SOLD</div>' : `<div class="buy">${U.cardHtml({ id }, { i, dim: run.bits < price[SD.cards[id].rarity] })}<span class="price">${price[SD.cards[id].rarity]} bits</span></div>`).join('')}</div>
+        <div class="row">
+          <button id="rm" ${removed || run.bits < 35 ? 'disabled' : ''}>Remove a card · 35</button>
+          <button id="heal" ${healed || run.bits < 20 ? 'disabled' : ''}>Tea: +15 SLA · 20</button>
+          <button class="primary" id="leave">Leave</button>
+        </div>`, { title: 'CACHE CAFÉ', noClose: true, cls: 'wide' });
+      b.querySelectorAll('.buy .card').forEach(el => el.onclick = () => {
+        const i = +el.dataset.i, id = stock[i], p = price[SD.cards[id].rarity];
+        if (run.bits < p) return;
+        run.bits -= p; run.deck.push({ id, up: false }); sold.add(i); S.persist(); render();
+      });
+      b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + 15); healed = true; S.persist(); render(); };
+      b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed = true; S.persist(); render(); }, render);
+      b.querySelector('#leave').onclick = () => { U.closePanel(); done(); };
+    }
+    render();
+  }
+  function pickCard(title, onPick, onCancel, filter) {
+    const run = S.save.run;
+    const list = run.deck.filter(filter || (() => true));
+    const b = U.panel(`<p class="muted">${U.esc(title)}</p><div class="cardgrid pick">${list.map((c, i) => U.cardHtml(c, { i })).join('')}</div><button class="ghost" id="pc-x">Cancel</button>`, { title: 'SELECT A CARD', noClose: true, cls: 'wide' });
+    b.querySelectorAll('.card').forEach(el => el.onclick = () => { onPick(list[+el.dataset.i]); });
+    b.querySelector('#pc-x').onclick = onCancel;
+  }
+  function garden(done) {
+    const run = S.save.run;
+    const heal = Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0)));
+    const b = U.panel(`<p>A quiet garden between the cables. Fireflies drift. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
+      <p class="muted small">Diffuse mode: stepping back is part of learning. Choose one.</p>
+      <div class="opts">
+        <button class="opt" id="g-rest"><b>Rest</b> · Recover ${heal} SLA</button>
+        <button class="opt" id="g-forge"><b>Refactor</b> · Upgrade a card (+3 to its numbers)</button>
+        <button class="opt" id="g-reflect"><b>Reflect</b> · Connect two ideas for XP and a notebook link</button>
+      </div>`, { title: 'GARDEN', noClose: true });
+    b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); S.persist(); U.closePanel(); done(); };
+    b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => garden(done), c => !c.up && SD.cards[c.id].rarity);
+    b.querySelector('#g-reflect').onclick = () => reflect(done);
+  }
+  async function reflect(done) {
+    const sv = S.save;
+    const seen = id => S.concept(id).seen;
+    let cands = SD.links.filter(l => !sv.links.includes(l.id) && seen(l.a) && seen(l.b));
+    if (!cands.length) cands = SD.links.filter(l => !sv.links.includes(l.id));
+    if (!cands.length) cands = SD.links;
+    const link = rnd(cands);
+    const wrong = Q.shuffle(SD.links.filter(l => l.id !== link.id)).slice(0, 3).map(l => l.text);
+    const opts = Q.shuffle([link.text, ...wrong]);
+    const q = { c: link.a, type: 'mc', q: `How are ${SD.concepts[link.a].name} and ${SD.concepts[link.b].name} connected?`, opts, a: opts.indexOf(link.text), why: link.text };
+    S.seeConcept(link.a); S.seeConcept(link.b);
+    const r = await Q.ask(q, { title: 'REFLECT', context: 'Relate, compare, judge', noRecord: true });
+    if (r.ok) {
+      if (!sv.links.includes(link.id)) sv.links.push(link.id);
+      R.gainXp(25);
+      U.system('CONNECTION DRAWN', `${U.esc(SD.concepts[link.a].name)} ↔ ${U.esc(SD.concepts[link.b].name)} added to your mind map.`);
+    } else R.gainXp(8);
+    S.persist(); done();
+  }
+  function eventNode(done) {
+    const run = S.save.run;
+    const ev = rnd(SD.events);
+    S.seeConcept(ev.concept);
+    const order = Q.shuffle(ev.choices.map((c, i) => i));
+    const b = U.panel(`<p>${U.esc(ev.text)}</p><div class="opts">${order.map(i => `<button class="opt" data-c="${i}">${U.esc(ev.choices[i].label)}</button>`).join('')}</div>`, { title: ev.title.toUpperCase(), noClose: true });
+    b.querySelectorAll('[data-c]').forEach(el => el.onclick = () => {
+      const ch = ev.choices[+el.dataset.c], e = ch.effect;
+      S.recordAnswer(ev.concept, ch.good, 1, 15000);
+      if (e.sla) run.sla = Math.max(1, Math.min(S.maxSla(), run.sla + e.sla));
+      if (e.bits) run.bits += e.bits;
+      if (e.card) run.deck.push({ id: e.card, up: false });
+      if (e.xp) R.gainXp(e.xp);
+      S.persist();
+      const fx = [e.sla ? `${e.sla > 0 ? '+' : ''}${e.sla} SLA` : '', e.bits ? `+${e.bits} bits` : '', e.card ? `New card: ${SD.cards[e.card].name}` : '', e.xp ? `+${e.xp} XP` : ''].filter(Boolean).join(' · ');
+      const b2 = U.panel(`<div class="verdict ${ch.good ? 'ok' : 'bad'}">${ch.good ? 'GOOD CALL' : 'HMM'}</div><p>${U.esc(ch.out)}</p>${fx ? `<p class="muted">${U.esc(fx)}</p>` : ''}<p class="why">${U.esc(SD.concepts[ev.concept].gist)}</p><button class="primary" id="ev-ok">Continue</button>`, { title: ev.title.toUpperCase(), noClose: true });
+      b2.querySelector('#ev-ok').onclick = () => { U.closePanel(); done(); };
+    });
+  }
+
+  // ---------- Combat ----------
+  function fight(eid, opts, done) {
+    const run = S.save.run, e = SD.enemies[eid];
+    S.seeConcept(e.concept);
+    run.log.concepts[e.concept] = (run.log.concepts[e.concept] || 0) + 1;
+    const known = (S.save.flags.known = S.save.flags.known || {})[eid] || [];
+    C = {
+      eid, e, sev: e.sev, max: e.sev, ii: 0, rage: 0, turn: 0, energy: 0,
+      draw: Q.shuffle(run.deck.map((c, i) => ({ id: c.id, up: c.up, uid: i }))), hand: [], disc: [], exh: [], infra: [],
+      sh: zero(), stale: 0, jitter: false, choice: null, known: new Set(known), diagBonus: 0,
+      elite: !!opts.elite, boss: !!opts.boss, done, deepAsked: false, mercyScale: run.firstFight ? 0.75 : 1, log: ''
+    };
+    if (opts.sevScale) { C.sev = C.max = Math.round(e.sev * opts.sevScale); }
+    if (opts.bonusEnergy) C.diagBonus += opts.bonusEnergy;
+    if (opts.reveal) { Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t)); }
+    if (opts.startCard) C.draw.unshift({ id: opts.startCard, up: false, uid: 999 });
+    run.firstFight = false;
+    const go = () => { beginTurn(); };
+    if (opts.diagnose) diagnose(go); else go();
+  }
+  const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
+
+  async function diagnose(go) {
+    const e = C.e;
+    const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss)).slice(0, 3);
+    const optsIds = Q.shuffle([C.eid, ...others]);
+    const q = { c: e.concept, type: 'mc', q: `Symptoms: ${e.symptom} Which incident is this?`, opts: optsIds.map(k => SD.enemies[k].name), a: optsIds.indexOf(C.eid), why: Object.values(e.weak)[0] };
+    const r = await Q.ask(q, { title: '[SYSTEM] DIAGNOSE', context: 'Read the symptoms before the fight', hideOne: S.save.relics.includes('pipeye') });
+    if (r.ok) {
+      C.diagBonus += 1;
+      Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t));
+      saveKnown();
+      U.system('DIAGNOSIS CORRECT', '+1 Capacity this turn. Weaknesses revealed.');
+    }
+    go();
+  }
+  function saveKnown() { S.save.flags.known[C.eid] = Array.from(C.known); S.persist(); }
+
+  function costOf(c) {
+    const d = SD.cards[c.id];
+    let k = d.cost - (c.up && d.cost > 1 && !d.abs && !d.mit ? 1 : 0);
+    if (S.save.spec === 'shard' && d.kind === 'infra') k = Math.max(1, k - 1);
+    return k;
+  }
+  function drawN(n) {
+    for (let i = 0; i < n; i++) {
+      if (!C.draw.length) { if (!C.disc.length) return; C.draw = Q.shuffle(C.disc); C.disc = []; }
+      if (C.hand.length >= 10) return;
+      C.hand.push(C.draw.shift());
+    }
+  }
+  function hasInfra(tag) { return C.infra.some(c => (SD.cards[c.id].tags || []).includes(tag)); }
+
+  function beginTurn() {
+    C.turn++;
+    const sv = S.save;
+    C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0);
+    C.sh = zero(); C.choice = null;
+    C.infra.forEach(c => {
+      const d = SD.cards[c.id];
+      if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
+      if (d.eachStale) C.stale += d.eachStale;
+    });
+    drawN(C.turn === 1 && sv.spec === 'shard' ? 4 : 5);
+    renderCombat();
+  }
+
+  function mitigate(n, why, cls) {
+    n = Math.max(0, Math.round(n));
+    C.sev = Math.max(0, C.sev - n);
+    if (n > 0) U.float($('.foe'), '-' + n, cls || 'hit');
+    if (why) C.log = why;
+  }
+
+  async function playCard(i) {
+    if (C.over) return;
+    const c = C.hand[i]; if (!c) return;
+    const d = SD.cards[c.id], cost = costOf(c);
+    if (cost > C.energy) { C.log = 'Not enough Capacity.'; renderCombat(); return; }
+    C.energy -= cost;
+    C.hand.splice(i, 1);
+    const sv = S.save, up = c.up ? 3 : 0;
+    const cacheSpec = sv.spec === 'cache' && (d.tags || []).includes('cache');
+    let msg = '';
+    if (d.abs) for (const k in d.abs) {
+      let v = d.abs[k] + up + (cacheSpec ? 3 : 0);
+      if (c.id === 'addserver' && hasInfra('stateless')) v += 4;
+      C.sh[k] += v;
+    }
+    if (d.stale) C.stale = Math.max(0, C.stale + d.stale + (cacheSpec ? 1 : 0));
+    if (d.clearStale) C.stale = 0;
+    if (d.jitter) C.jitter = true;
+    if (d.choice) C.choice = d.choice;
+    if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
+    if (d.pow) {
+      const tags = d.tags || [];
+      const wk = tags.find(t => C.e.weak[t]), rs = tags.find(t => C.e.resist[t]);
+      if (wk) { mitigate(d.pow + up, 'EFFECTIVE: ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); }
+      else if (rs) { C.log = 'RESISTED: ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); }
+      else { mitigate(Math.floor((d.pow + up) / 2), 'Partial: it helps a little, but this incident is not about that.', 'hit'); }
+      saveKnown();
+    }
+    if (d.concept) S.seeConcept(d.concept);
+    if (d.kind === 'infra') {
+      if (C.infra.length >= 4) C.disc.push(C.infra.shift());
+      C.infra.push(c);
+      // Infra that absorbs each turn also helps on the turn it lands
+      if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
+    } else if (d.exhaust) C.exh.push(c); else C.disc.push(c);
+    if (d.draw) drawN(d.draw);
+    if (msg) C.log = msg;
+    if (C.sev <= 0) return win();
+    if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {
+      C.deepAsked = true;
+      renderCombat();
+      const q = SD.questions.find(x => x.id === rnd(['x1', 'i3', 'i1']));
+      const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."' });
+      if (r.ok) { mitigate(16, 'DEEP DIVE LANDED: the Ledger staggers.', 'crit'); U.shake('.foe'); }
+      else C.log = 'The deep dive slipped. The Ledger presses on.';
+      if (C.sev <= 0) return win();
+    }
+    renderCombat();
+  }
+
+  function absorb(n, order) {
+    // order: [[shieldKey, efficiency]]
+    let left = n;
+    for (const [k, eff] of order) {
+      if (left <= 0) break;
+      const cap = C.sh[k] * eff;
+      const used = Math.min(cap, left);
+      left -= used; C.sh[k] -= used / eff;
+    }
+    return Math.max(0, Math.round(left));
+  }
+  function resolveIntent(it) {
+    const r = C.rage, m = C.mercyScale, sv = S.save;
+    const sc = v => Math.round((v + r) * m);
+    const READ = [['cache', 1], ['replica', 1], ['read', 1], ['any', 1]];
+    let dmg = 0, note = '';
+    switch (it.t) {
+      case 'read': { const n = sc(it.n) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, READ); if (hasInfra('cdn')) note = 'CDN took the edge off. '; break; }
+      case 'write': { const n = sc(it.n) * (hasInfra('shard') ? 0.5 : 1); dmg = absorb(n, [['write', 1], ['any', 1]]); if (hasInfra('shard')) note = 'Shards split the writes. '; break; }
+      case 'mixed': {
+        const rn = sc(it.read) * (hasInfra('cdn') ? 0.6 : 1), wn = sc(it.write) * (hasInfra('shard') ? 0.5 : 1);
+        dmg = absorb(rn, READ) + absorb(wn, [['write', 1], ['any', 1]]); break;
+      }
+      case 'hot': { const n = sc(it.n) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1], ['replica', 0.5]]); note = 'A hot key: replicas only half as useful. '; break; }
+      case 'stampede': {
+        let n = sc(it.n);
+        if (hasInfra('coalesce')) { n *= 0.25; note = 'Coalescing: one request refilled the cache. '; }
+        if (C.jitter) { n *= 0.5; C.jitter = false; note += 'Jitter spread the expiries. '; }
+        dmg = absorb(n, [['replica', 1], ['read', 1], ['any', 1]]);
+        if (!note) note = 'Stampede: every request missed the cache at once. ';
+        break;
+      }
+      case 'crash': {
+        if (hasInfra('lb')) { dmg = 0; note = 'Health checks rerouted around the dead server. '; break; }
+        let n = sc(it.n) * (sv.spec === 'warden' ? 0.5 : 1);
+        dmg = absorb(n, [['any', 1]]); note = 'A server died and nothing routed around it. '; break;
+      }
+      case 'audit': dmg = C.stale * 3; note = C.stale ? `Audit found ${C.stale} stale reads. Capacity cannot fix wrong answers. ` : 'Audit found nothing stale. '; C.stale = Math.floor(C.stale / 2); break;
+      case 'partition': {
+        const n = sc(it.n);
+        if (C.choice === 'cp') { dmg = absorb(Math.ceil(n / 2), [['any', 1]]); note = 'You chose consistency: some requests refused, no conflicts. '; }
+        else if (C.choice === 'ap') { dmg = 0; C.stale += 3; note = 'You chose availability: everyone answered, +3 Stale to reconcile. '; }
+        else { dmg = absorb(n, [['any', 1]]); C.stale += 2; note = 'No choice made: you got the worst of both. '; }
+        break;
+      }
+      case 'collide': {
+        if (hasInfra('idgen')) { dmg = 0; note = 'Counter ranges: every code unique. '; break; }
+        dmg = absorb(sc(it.n), [['any', 1]]); note = 'Two links got the same short code. '; break;
+      }
+      case 'escalate': C.rage += 3; note = 'The incident escalates. All load +3. '; break;
+    }
+    return { dmg, note };
+  }
+
+  function endTurn() {
+    if (C.over) return;
+    const it = C.e.pattern[C.ii % C.e.pattern.length];
+    C.disc.push(...C.hand); C.hand = [];
+    const { dmg, note } = resolveIntent(it);
+    const run = S.save.run;
+    run.sla -= dmg;
+    C.log = note + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
+    if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); }
+    if (run.sla <= 0 && !run.mercy) {
+      run.sla = 1; run.mercy = true;
+      U.system('LAST UPTIME', 'Pip throws everything into the core. You hold at 1 SLA. This only works once a run.', 'red');
+    }
+    C.ii++;
+    S.persist();
+    if (run.sla <= 0) { C.over = true; renderCombat(); return setTimeout(() => endRun(false, C.e.name), 700); }
+    beginTurn();
+  }
+
+  function win() {
+    if (C.over) return;
+    C.over = true;
+    const run = S.save.run;
+    renderCombat();
+    $('#run').querySelector('.combat').classList.add('won');
+    U.float($('.foe'), 'RESOLVED', 'crit');
+    setTimeout(() => rewards({ elite: C.elite, boss: C.boss }, C.done), 650);
+    run.log.won = (run.log.won || 0) + 1;
+  }
+
+  function renderCombat() {
+    const run = S.save.run, e = C.e;
+    const it = C.e.pattern[C.ii % C.e.pattern.length];
+    const shown = Object.assign({}, it);
+    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale); });
+    const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
+    const res = Object.keys(e.resist).filter(t => C.known.has('r:' + t));
+    const foeCol = C.boss ? '#ffd65a' : C.elite ? '#c77dff' : '#ff5a6e';
+    const chips = [];
+    const SHN = { cache: 'Cache', replica: 'Replica', read: 'Read', write: 'Write', any: 'Any' };
+    for (const k in C.sh) if (C.sh[k] > 0) chips.push(`<span class="chip sh-${k}">${SHN[k]} ${Math.round(C.sh[k])}</span>`);
+    if (C.stale) chips.push(`<span class="chip stale" title="Stale reads. Audits deal 3 damage per stack.">Stale ${C.stale}</span>`);
+    if (C.choice) chips.push(`<span class="chip choice">${C.choice === 'cp' ? 'Consistency' : 'Availability'}</span>`);
+    if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
+    const pct = Math.max(0, run.sla / S.maxSla() * 100);
+    $('#run').innerHTML = `
+      <div class="combat${C.boss ? ' bossfight' : ''}">
+        <div class="foe-zone">
+          <div class="foe" style="--foe:${foeCol}">${SD.art.enemy(e.sprite)}</div>
+          <div class="foe-info">
+            <div class="foe-name">${U.esc(e.name)} ${C.boss ? '<span class="tier boss">BOSS</span>' : C.elite ? '<span class="tier elite">ELITE</span>' : '<span class="tier">INCIDENT</span>'}</div>
+            <div class="bar sev"><i style="width:${C.sev / C.max * 100}%"></i><span>Severity ${C.sev}/${C.max}</span></div>
+            <div class="intent"><span class="lbl">NEXT</span> ${U.esc(SD.intentText[it.t](shown))}</div>
+            <div class="tags">${weak.length ? `<span>Weak to: <b>${weak.map(U.esc).join(', ')}</b></span>` : ''}${res.length ? `<span>Resists: <b>${res.map(U.esc).join(', ')}</b></span>` : ''}${!weak.length && !res.length ? '<span class="muted">Weaknesses unknown. Diagnose or experiment.</span>' : ''}</div>
+          </div>
+        </div>
+        <div class="clog" aria-live="polite">${U.esc(C.log || 'Your turn. Play cards, then end the turn to face the next intent.')}</div>
+        <div class="me-zone">
+          <div class="hud-sla"><span>SLA</span><div class="bar sla"><i style="width:${pct}%"></i></div><b>${Math.max(0, run.sla)}/${S.maxSla()}</b></div>
+          <div class="chips">${chips.join('') || '<span class="muted small">No defences up.</span>'}</div>
+          <div class="infra">${[0, 1, 2, 3].map(i => C.infra[i] ? `<span class="slot on" title="${U.esc(SD.cards[C.infra[i].id].text)}">${U.esc(SD.cards[C.infra[i].id].name)}</span>` : '<span class="slot">Infra slot</span>').join('')}</div>
+        </div>
+        <div class="hand-zone">
+          <div class="hand-top"><div class="energy" aria-label="Capacity ${C.energy}"><b>${C.energy}</b><span>CAP</span></div>
+            <span class="muted small">Draw ${C.draw.length} · Discard ${C.disc.length}</span>
+            <button class="primary" id="end-turn">End turn</button></div>
+          <div class="hand">${C.hand.map((c, i) => U.cardHtml(c, { i, cost: costOf(c), dim: costOf(c) > C.energy })).join('')}</div>
+        </div>
+      </div>`;
+    $('#run').querySelectorAll('.hand .card').forEach(el => {
+      el.onclick = () => playCard(+el.dataset.i);
+      el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); playCard(+el.dataset.i); } };
+    });
+    $('#end-turn').onclick = endTurn;
+  }
+
+  // ---------- Boss: the Courier's Ledger (URL shortener) ----------
+  async function boss(done) {
+    await U.dialog(SD.story.bossIntro);
+    S.seeConcept('delivery'); S.seeConcept('idgen'); S.seeConcept('redirect');
+    const buffs = { sevScale: 1, bonusEnergy: 0, startCard: null };
+    const r1 = await Q.ask({
+      c: 'delivery', type: 'multi', q: 'Step 1, Requirements. Which belong in scope for the city\'s URL shortener?', hint: 'Pick the functional and non-functional requirements. Leave out what does not belong.',
+      items: [
+        { t: 'Create a short code from a long URL', ok: true }, { t: 'Redirect a short code to its long URL', ok: true },
+        { t: 'Redirects in under 100 ms', ok: true }, { t: 'High availability for redirects', ok: true }, { t: 'Scale to 100M+ links', ok: true },
+        { t: 'Full-text search over every stored URL', ok: false }, { t: 'Users upload video to the link page', ok: false }, { t: 'Real-time chat between link owners', ok: false }
+      ],
+      why: 'Two core features (create, redirect) and three qualities (latency, availability, scale). Optional extras like custom aliases and expiry are fine to mention; unrelated features are not.'
+    }, { title: '[BOSS] REQUIREMENTS', context: 'Delivery framework · 1 of 3' });
+    if (r1.ok) { buffs.sevScale = 0.85; U.system('SCOPE LOCKED', 'Clear requirements: the Ledger starts 15% weaker.'); }
+    const r2 = await Q.ask({ c: 'estimation', type: 'num', q: 'Step 2, Estimation. 1 billion redirects a day. Average redirect QPS?', unit: 'QPS', lo: 8000, hi: 15000, ans: '~11,600 (10^9 / 86,400)', why: 'About 10^4 QPS average, so peaks of 20-30k. That says: cache the hot codes, and run many stateless redirect servers.' }, { title: '[BOSS] ESTIMATION', context: 'Delivery framework · 2 of 3' });
+    if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND', '+1 Capacity on turn 1.'); }
+    const api = ['POST /urls {long_url} → {short_code}; GET /{code} → 302 to long_url', 'GET /create?url=…; POST /{code} to follow it', 'PUT /urls/{long_url} → returns the page', 'POST /redirect {code} → 200 with the long URL in JSON'];
+    const r3 = await Q.ask({ c: 'delivery', type: 'mc', q: 'Step 3, API. Which API fits?', opts: api, a: 0, why: 'Creating is a POST that returns the code. Following a link is a plain GET answered with a redirect, so browsers just work.' }, { title: '[BOSS] API', context: 'Delivery framework · 3 of 3' });
+    if (r3.ok) { buffs.startCard = 'counter'; U.system('DESIGN READY', 'Counter Ranges + Base62 starts in your hand.'); }
+    S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok };
+    S.persist();
+    U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now build it under load. At half severity, expect a deep dive.', 'gold');
+    fight('ledger', { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
+  }
+
+  // ---------- End of run: postmortem ----------
+  function endRun(won, incident) {
+    const sv = S.save, run = sv.run;
+    if (!run) return;
+    const mins = Math.round((Date.now() - run.startedAt) / 60000);
+    const concepts = Object.keys(run.log.concepts);
+    sv.lastRun = { won, mins, at: Date.now() };
+    if (won) { sv.stats.wins++; sv.flags.ch1 = true; }
+    sv.run = null;
+    U.lastIncident = incident || 'A cascade';
+    sv.loop++;
+    S.persist();
+    const rows = concepts.map(id => { const m = S.mastery(id); return `<li><b>${U.esc(SD.concepts[id].name)}</b> <span class="pill s${m.stage}">${m.label}</span></li>`; }).join('');
+    const b = U.panel(`<div class="verdict ${won ? 'ok' : 'bad'}">${won ? 'GATE CLEARED' : 'SLA BREACHED'}</div>
+      <div class="loot"><span>${run.log.fights} incidents resolved</span><span>${run.log.right} right · ${run.log.misses} missed</span><span>+${run.log.xp} XP</span></div>
+      ${rows ? `<p class="muted small">Concepts you worked with</p><ul class="links">${rows}</ul>` : ''}
+      <p class="muted small">You spent about ${mins} minute${mins === 1 ? '' : 's'} in focused mode. Take five away from the screen before the next run; your brain keeps working on it in diffuse mode.</p>
+      <button class="primary" id="pm-ok">Continue</button>`, { title: '[SYSTEM] POSTMORTEM', noClose: true });
+    b.querySelector('#pm-ok').onclick = async () => {
+      U.closePanel();
+      if (won) await U.dialog(SD.story.bossWin);
+      else await U.dialog(SD.story.cascade);
+      SD.main.toHub(true);
+    };
+  }
+})();
