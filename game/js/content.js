@@ -1,87 +1,88 @@
-// Last Uptime: game content. Concepts, cards, incidents, questions and story.
+// Isekai'd Into Prod: game content. Concepts, cards, incidents, questions and story.
 // Facts follow Alex Xu (System Design Interview vol. 1-2), Kleppmann (DDIA)
 // and Hello Interview's delivery framework and core concepts.
 window.SD = window.SD || {};
 
+// `page` is a line from Goddess Uptima's cheat sheet, restored when a concept is understood.
 SD.concepts = {
   delivery: {
     name: 'Delivery Framework', zone: 1,
     gist: 'Requirements, core entities, API, high-level design, then deep dives. Each step narrows the next.',
-    page: 'Requirements first. I once watched a brilliant engineer design a perfect system for the wrong problem. Perfect and useless are neighbours. — I.'
+    page: 'Requirements first! A hero once asked me for a "sword-shaped spoon" and I gave him a sword. He wanted a spoon. Clarify the ask. — U.'
   },
   estimation: {
     name: 'Back-of-Envelope Math', zone: 1,
     gist: 'A day is about 10^5 seconds. 1M requests a day is about 12 per second. Peak is often 2-3x average. Estimate only when the number changes a decision.',
-    page: 'Wen counts her teacups by the shelf, never one by one. Close enough to decide is close enough. — I.'
+    page: 'A day is about 100,000 seconds. I round everything. Divine privilege. Close enough to decide is close enough. — U.'
   },
   vscale: {
     name: 'Vertical vs Horizontal Scaling', zone: 1,
     gist: 'Vertical: a bigger machine. Simple, but it has a ceiling and is a single point of failure. Horizontal: more machines, which needs load balancing and stateless servers.',
-    page: 'A bigger lantern burns brighter until it burns out. A thousand small ones make a festival. — I.'
+    page: 'One giant hero is great until he needs a nap. A party of normal heroes takes shifts. — U.'
   },
   stateless: {
     name: 'Stateless Services', zone: 1,
     gist: 'Keep session state out of app servers (in Redis or signed tokens) so any server can handle any request and you can add or remove servers freely.',
-    page: 'The tram conductors never remember your face. That is why any of them can take your ticket. — I.'
+    page: 'Servers that forget you are a feature, not an insult. Any of them can take your request. My priests forget me constantly. That one IS an insult. — U.'
   },
   lb: {
     name: 'Load Balancing', zone: 1,
     gist: 'Spreads requests across servers. L4 routes by IP and port; L7 can route by path or header. Health checks pull dead servers out. Algorithms: round robin, least connections, hashing.',
-    page: 'Tomo sends each passenger to the shortest queue, and closes a platform the moment its lights flicker. That is all a load balancer is. Kindness with a stopwatch. — I.'
+    page: 'Send each customer to the shortest queue, and close any counter whose clerk has fainted. Kindness with a stopwatch. — U.'
   },
   cache: {
     name: 'Caching', zone: 1,
     gist: 'Keep hot data in memory. Cache-aside: read cache, on miss read DB and fill. Write-through: write both. Write-back: write cache, flush later (risk of loss). TTLs and invalidation trade freshness for speed.',
-    page: 'Wen remembers her regulars and forgets those who stop coming. Least recently used. It is also, I think, a kind of grief. — I.'
+    page: 'Grandma Wen keeps her regulars\' orders in her head and forgets everyone else. Least recently used. Rude. Efficient. — U.'
   },
   cdn: {
     name: 'CDN', zone: 1,
     gist: 'A cache near the user. Serves static and cacheable content (images, video, JS) from edge locations to cut latency. Poor fit for personalised or private responses.',
-    page: 'Put the bread where the hungry are. — I.'
+    page: 'Put the bread where the hungry people are. Not in my temple. Nobody visits my temple. — U.'
   },
   herd: {
     name: 'Cache Stampede', zone: 1,
     gist: 'When a hot key expires, many requests miss at once and hammer the database. Fixes: request coalescing (single-flight), jittered TTLs, refresh-ahead, serving stale while revalidating.',
-    page: 'When the festival bell rings, everyone rushes the same stall. Ring it at different times for different streets. — I.'
+    page: 'If every key expires at noon, the whole village stampedes the database at noon. In Pingsby this is also true of the cows. Add jitter. — U.'
   },
   hotkey: {
     name: 'Hot Keys', zone: 1,
     gist: 'One key gets a huge share of traffic and overloads the single shard that owns it. Adding shards does not help. Fixes: replicate the hot key, split it into salted copies, local in-process caches, CDN.',
-    page: 'Everyone wants to see the same lantern. Hang copies of it on every bridge. — I.'
+    page: 'Everyone wants to see the same cat. Hang copies of the cat on every street corner. — U.'
   },
   replication: {
     name: 'Replication', zone: 1,
     gist: 'Leader-follower copies data to replicas. Replicas scale reads and add availability, not write throughput. Async replication lags, so reads can be stale; read-your-writes routes a user to the leader after they write.',
-    page: 'Every copy of a letter is a little older than the original. Decide who needs the original. — I.'
+    page: 'Every copy of a letter is a little older than the original. Decide who needs the original. (Me. I always need the original.) — U.'
   },
   sharding: {
     name: 'Sharding', zone: 1,
     gist: 'Split data across nodes by a shard key. Hash partitioning spreads load; range partitioning keeps order but makes hot ranges. Pick a key that matches access patterns. Consistent hashing moves only ~1/N keys when nodes change.',
-    page: 'Sort the mail by street, not by the hour it arrived, or the night clerk drowns at dawn. — I.'
+    page: 'Sort the mail by street, not by the hour it arrived, or the night clerk drowns at dawn. — U.'
   },
   cap: {
     name: 'CAP & PACELC', zone: 1,
     gist: 'During a network partition you choose consistency (refuse or delay some requests) or availability (answer, possibly stale). PACELC: else, without a partition, you trade latency against consistency.',
-    page: 'When the bridges are down, the bank closes its doors and the gossip keeps talking. Both are right. — I.'
+    page: 'When the bridge is out, the bank shuts its doors and the gossip keeps talking. Both are correct. Choose on purpose. — U.'
   },
   sqlnosql: {
     name: 'SQL vs NoSQL', zone: 1,
     gist: 'Relational: joins, transactions, strong schema; scales far with replicas and sharding. NoSQL (key-value, wide-column, document): flexible schema, simple access patterns, easy horizontal scale. Choose by access pattern and consistency needs.',
-    page: 'A ledger and a postbox both hold paper. You would not keep your savings in the postbox. — I.'
+    page: 'A ledger and a postbox both hold paper. Do not keep your savings in the postbox. I am looking at you, Pip. — U.'
   },
   idgen: {
     name: 'Unique ID Generation', zone: 1,
     gist: 'Counter + base62 gives short, collision-free codes but is predictable and needs coordination (hand out ranges). Hashing needs collision checks. Snowflake-style IDs combine time, machine and sequence.',
-    page: 'Every tram ticket has a number no other ticket will ever have. Arranging that is harder than printing it. — I.'
+    page: 'Every quest ticket needs a number no other ticket will ever have. Arranging that is harder than printing it. — U.'
   },
   redirect: {
     name: '301 vs 302 Redirects', zone: 1,
     gist: '301 is permanent: browsers cache it, so later clicks skip your servers (less load, no analytics). 302 is temporary: every click comes back to you.',
-    page: 'A forwarding address you never check is cheap. One you check every time tells you who is writing. — I.'
+    page: 'A forwarding address you never check is cheap. One you check every time tells you who is writing. — U.'
   }
 };
 
-// Codex links: relational notes between concepts. Unlocked by Reflecting at the Garden.
+// Codex links: relational notes between concepts. Unlocked by Reflecting at a Campfire.
 SD.links = [
   { id: 'cache-replication', a: 'cache', b: 'replication', text: 'Both serve reads from copies, so both can return stale data.' },
   { id: 'cache-herd', a: 'cache', b: 'herd', text: 'A stampede is the cost of a hot cache entry expiring all at once.' },
@@ -141,10 +142,11 @@ SD.cardUnlocks = {
   4: ['redis', 'counter', 'redirect302']
 };
 
-// Incidents. weak/resist map a card tag to the reason shown on screen.
+// Incidents. weak/resist map a card tag to the reason shown on screen. `flavor` is the joke; `symptom` is the lesson.
 SD.enemies = {
   readsurge: {
-    name: 'Read Surge', sev: 34, concept: 'cache', tier: 1, sprite: 'swarm',
+    name: 'Read Surge', sev: 34, concept: 'cache', tier: 1, sprite: 'slime',
+    flavor: 'Ten thousand slimes refreshing the same cat picture.',
     symptom: 'DB CPU at 95%. 98% of queries are SELECTs on the same few product pages. Writes are normal.',
     weak: { cache: 'Reads repeat, so a cache answers most of them without touching the database.', replica: 'Replicas spread read traffic across copies.', cdn: 'Cacheable pages can be served from the edge.' },
     resist: { shard: 'Sharding splits writes and storage; it does not reduce repeated reads.' },
@@ -152,52 +154,68 @@ SD.enemies = {
   },
   writestorm: {
     name: 'Write Storm', sev: 38, concept: 'sharding', tier: 1, sprite: 'storm',
+    flavor: 'A thundercloud that only speaks in INSERT statements.',
     symptom: 'Primary DB disk I/O pegged. INSERT latency climbing. Read replicas are idle and fine.',
     weak: { shard: 'Sharding spreads writes across many primaries.', nosql: 'Wide-column stores are built for high write throughput.', sql: 'A well-indexed transactional write path keeps up for a while.' },
     resist: { cache: 'Caches serve reads. Every write still lands on the primary.', replica: 'Replicas copy writes. They add work, not write capacity.', cdn: 'The edge cannot accept writes for you.' },
     pattern: [{ t: 'write', n: 11 }, { t: 'write', n: 9 }, { t: 'write', n: 16 }, { t: 'mixed', read: 5, write: 8 }]
   },
   lonely: {
-    name: 'The Lone Server', sev: 30, concept: 'lb', tier: 1, sprite: 'tower',
+    name: 'The Lone Server', sev: 30, concept: 'lb', tier: 1, sprite: 'golem',
+    flavor: 'One very tired golem named Kevin. Kevin has never had a day off.',
     symptom: 'Everything runs on one big machine. Last night a kernel update rebooted it and the whole site was down for 6 minutes.',
     weak: { lb: 'A load balancer with health checks routes around a dead server.', hscale: 'More servers remove the single point of failure.', stateless: 'Stateless servers can be added and removed freely.' },
     resist: { vscale: 'A bigger single machine is still a single point of failure.' },
     pattern: [{ t: 'read', n: 7 }, { t: 'crash', n: 18 }, { t: 'mixed', read: 6, write: 4 }, { t: 'crash', n: 22 }]
   },
   stalewraith: {
-    name: 'Stale Wraith', sev: 32, concept: 'replication', tier: 1, sprite: 'wraith',
+    name: 'Stale Wraith', sev: 32, concept: 'replication', tier: 1, sprite: 'ghost',
+    flavor: 'A ghost who insists your profile picture is still the one from 2009.',
     symptom: 'Users update their profile, refresh, and see the old version. Support tickets say "my change disappeared".',
     weak: { invalidate: 'Invalidating on write removes stale entries.', sql: 'Reading from the leader gives read-your-writes.', cp: 'Choosing consistency refuses stale answers.' },
     resist: { replica: 'More async replicas mean more lag, not less.' },
     pattern: [{ t: 'read', n: 8 }, { t: 'audit' }, { t: 'read', n: 10 }, { t: 'audit' }]
   },
   herd: {
-    name: 'Thundering Herd', sev: 40, concept: 'herd', tier: 2, sprite: 'herd',
+    name: 'Thundering Herd', sev: 40, concept: 'herd', tier: 2, sprite: 'cow',
+    flavor: 'Cows. So many cows. Every hour, on the hour.',
     symptom: 'Every hour on the hour, DB load spikes 40x for a few seconds, then drops. The cache hit rate is 99% otherwise.',
     weak: { coalesce: 'Coalescing lets one request refill the cache while the rest wait.', ttl: 'Jittered TTLs stop keys from expiring together.', cache: 'A warm cache covers the quiet turns.' },
     resist: {},
     pattern: [{ t: 'read', n: 8 }, { t: 'read', n: 9 }, { t: 'stampede', n: 26 }]
   },
   celebrity: {
-    name: 'The Celebrity Post', sev: 42, concept: 'hotkey', tier: 2, sprite: 'star',
+    name: 'The Celebrity Post', sev: 42, concept: 'hotkey', tier: 2, sprite: 'cat',
+    flavor: 'A very famous cat posted a selfie. One cache node is crying.',
     symptom: 'One cache node is at 100% CPU while the other 11 idle. All its traffic is GET post:8812.',
     weak: { salting: 'Salted copies spread one key across many nodes.', cdn: 'Viral content can be served from the edge.', cache: 'Caching helps, if the key is copied.' },
     resist: { shard: 'More shards cannot split a single key.' },
     pattern: [{ t: 'hot', n: 12 }, { t: 'hot', n: 16 }, { t: 'escalate' }, { t: 'hot', n: 14 }]
   },
   splitbrain: {
-    name: 'Network Partition', sev: 46, concept: 'cap', tier: 3, elite: true, sprite: 'rift',
+    name: 'Network Partition', sev: 46, concept: 'cap', tier: 3, elite: true, sprite: 'imp',
+    flavor: 'Twin imps who stopped talking to each other and now both think they are in charge.',
     symptom: 'The link between the east and west data centres is down. Both sides are healthy and still taking writes.',
     weak: { cp: 'Consistency: refuse writes on the minority side so no conflicts appear.', ap: 'Availability: keep answering and reconcile later.', sql: 'A single leader makes the conflict visible instead of silent.' },
     resist: { cache: 'A cache cannot heal a split network.' },
     pattern: [{ t: 'partition', n: 16 }, { t: 'read', n: 9 }, { t: 'partition', n: 20 }, { t: 'audit' }]
   },
   ledger: {
-    name: "The Courier's Ledger", sev: 135, concept: 'idgen', tier: 9, boss: true, sprite: 'boss',
-    symptom: 'The city needs short codes for 100M tram routes, redirects in under 100 ms, and reads outnumber writes 100 to 1.',
+    name: 'The Goblin King of Links', sev: 135, concept: 'idgen', tier: 9, boss: true, sprite: 'goblin',
+    flavor: 'He hoards a hundred million long URLs and demands they all be short. Immediately.',
+    symptom: 'The kingdom needs short codes for 100M quest links, redirects in under 100 ms, and reads outnumber writes 100 to 1.',
     weak: { idgen: 'Counter ranges hand out unique codes with no collisions.', cache: 'Redirects are reads of the same codes, again and again.', cdn: 'Viral links can redirect from the edge.', '302': 'A 302 keeps every click countable.', lb: 'Many stateless redirect servers behind a balancer.' },
-    resist: { vscale: 'One bigger box cannot carry a city of redirects.' },
+    resist: { vscale: 'One bigger box cannot carry a kingdom of redirects.' },
     pattern: [{ t: 'write', n: 10 }, { t: 'read', n: 22 }, { t: 'collide', n: 18 }, { t: 'hot', n: 20 }, { t: 'crash', n: 18 }, { t: 'read', n: 28 }, { t: 'escalate' }]
+  },
+  // The cold-open tutorial: a small surge, then a stampede big enough that Gary has to step in.
+  tutorial: {
+    name: 'Read Surge', sev: 40, concept: 'cache', tier: 1, sprite: 'slime', tutorial: true,
+    flavor: 'Slimes. On the plaza. All refreshing the same cat picture.',
+    symptom: 'Everyone is asking the Cloud for the same picture.',
+    weak: { cache: 'Reads repeat, so a cache answers most of them without touching the database.', replica: 'Replicas spread read traffic across copies.' },
+    resist: { shard: 'Sharding splits writes and storage; it does not reduce repeated reads.' },
+    pattern: [{ t: 'read', n: 12 }, { t: 'stampede', n: 99 }]
   }
 };
 SD.enemyPools = { 1: ['readsurge', 'writestorm', 'lonely', 'stalewraith'], 2: ['herd', 'celebrity', 'readsurge', 'lonely'], 3: ['herd', 'celebrity', 'writestorm', 'stalewraith'], elite: ['splitbrain', 'celebrity', 'herd'] };
@@ -260,44 +278,62 @@ SD.questions = [
 // Run events: narrative choices where system design judgement picks the best outcome.
 SD.events = [
   {
-    id: 'junior', title: 'A Junior at the Console', concept: 'cache',
-    text: 'A trembling junior engineer stops you. "The bank wants the account balance page cached for an hour so it loads faster. Should I?"',
+    id: 'junior', title: 'The Panicking Intern', concept: 'cache',
+    text: 'A trembling intern from the Royal Bank grabs your sleeve. "The king wants the account balance page cached for an hour so it loads faster. Should I? He has a very big axe."',
     choices: [
-      { label: 'Yes, cache it for an hour', good: false, out: 'Balances go stale. A customer double-spends. The junior learns, painfully.', effect: { sla: -8 } },
-      { label: 'Cache the static parts; read the balance fresh', good: true, out: '"Oh. Cache the shell, not the money." They thank you with a spare card.', effect: { card: 'invalidate', xp: 15 } },
-      { label: 'Tell them to buy a bigger server', good: false, out: 'It works until it does not. They shrug.', effect: { bits: 5 } }
+      { label: 'Yes, cache it for an hour', good: false, out: 'Balances go stale. A knight spends his gold twice. The axe comes out.', effect: { sla: -8 } },
+      { label: 'Cache the static parts; read the balance fresh', good: true, out: '"Cache the shell, not the money!" The intern hugs you and hands you a spare card.', effect: { card: 'invalidate', xp: 15 } },
+      { label: 'Tell them to buy a bigger server', good: false, out: 'It works until it does not. The intern shrugs and goes back to panicking.', effect: { bits: 5 } }
     ]
   },
   {
-    id: 'tomo', title: "Tomo's Night Shift", concept: 'lb',
-    text: 'Tomo is wrestling a single ticket server. "If this box goes down, every tram in the Ward stops. Help me think."',
+    id: 'seymour', title: "Sir Seymour's Night Shift", concept: 'lb',
+    text: 'Sir Seymour is kneeling before the guild\'s only ticket server. "If this one box dies, every quest in the kingdom stops. I have prayed to it four hundred times. It is not enough."',
     choices: [
-      { label: 'Two servers behind a balancer, sessions in Redis', good: true, out: 'Tomo grins. "Any conductor can take any ticket." He hands you his spare.', effect: { card: 'stateless', xp: 15 } },
-      { label: 'Two servers, sessions stay in memory', good: false, out: 'Passengers keep losing their tickets mid-ride. Tomo sighs.', effect: { sla: -6 } },
-      { label: 'Pray', good: false, out: 'The box survives tonight. Tonight.', effect: {} }
+      { label: 'Two servers behind a balancer, sessions in Redis', good: true, out: '"Any server can take any ticket. PERFECTLY PREPARED." He hands you his spare. He has nine more.', effect: { card: 'stateless', xp: 15 } },
+      { label: 'Two servers, sessions stay in memory', good: false, out: 'Adventurers keep losing their quests halfway through. Seymour prepares a 50-page apology.', effect: { sla: -6 } },
+      { label: 'Pray a four hundred and first time', good: false, out: 'The box survives tonight. Tonight.', effect: {} }
     ]
   },
   {
-    id: 'wen', title: "Wen's Ledger", concept: 'sqlnosql',
-    text: 'Grandma Wen is moving her café tab book to the Lattice. "Customers pay, I subtract from stock, both must happen or neither. What do I use?"',
+    id: 'wen', title: "Grandma Wen's Tab Book", concept: 'sqlnosql',
+    text: 'Grandma Wen is moving her café tab book to the Cloud. "Customers pay, I take it off the stock. Both happen or neither does. What do I use, dear?"',
     choices: [
-      { label: 'A relational database with transactions', good: true, out: '"All or nothing. Like my late husband." She tucks a few bits into your pocket.', effect: { bits: 25, xp: 15 } },
-      { label: 'A cache, for speed', good: false, out: 'The power flickers. Half her tabs vanish.', effect: { sla: -6 } },
+      { label: 'A relational database with transactions', good: true, out: '"All or nothing. Like my late husband." She tucks some bits into your pocket.', effect: { bits: 25, xp: 15 } },
+      { label: 'A cache, for speed', good: false, out: 'The power flickers. Half her tabs vanish. Three regulars now drink for free forever.', effect: { sla: -6 } },
       { label: 'A CDN', good: false, out: 'She stares at you. "For a tab book?"', effect: {} }
     ]
   },
   {
-    id: 'clock', title: 'The Hour Bell', concept: 'herd',
-    text: 'Every key in the Lantern cache was set with a 60-minute TTL at the same moment. The hour bell is about to ring.',
+    id: 'clock', title: 'The Noon Bell', concept: 'herd',
+    text: 'Every key in the village cache was set with a 60-minute TTL at the same moment. The noon bell is about to ring. The cows are already looking at the database.',
     choices: [
-      { label: 'Add random jitter to the TTLs', good: true, out: 'The bell rings. The database barely notices.', effect: { card: 'jitter', xp: 15 } },
-      { label: 'Make the TTL 120 minutes', good: false, out: 'You moved the stampede, you did not stop it.', effect: { sla: -5 } },
-      { label: 'Flush the whole cache now', good: false, out: 'You caused the stampede yourself. Impressive.', effect: { sla: -10 } }
+      { label: 'Add random jitter to the TTLs', good: true, out: 'The bell rings. The database barely notices. The cows are confused but calm.', effect: { card: 'jitter', xp: 15 } },
+      { label: 'Make the TTL 120 minutes', good: false, out: 'You moved the stampede to 1 PM. The cows are patient.', effect: { sla: -5 } },
+      { label: 'Flush the whole cache now', good: false, out: 'You caused the stampede yourself. Impressive. The cows salute you.', effect: { sla: -10 } }
+    ]
+  },
+  {
+    id: 'chad', title: 'Chad the Consultant', concept: 'vscale',
+    text: 'Chad, a Certified Solutions Visionary, has a proposal for Grandma Wen\'s menu page (40 items, about 12 visitors a day): "Nine nodes. Three regions. Sharded. Blockchain, obviously. Only 900 bits."',
+    choices: [
+      { label: 'One small server and a Postgres table', good: true, out: 'Chad gasps like you insulted his mother. Wen\'s page loads instantly. She gives you a croissant and a card.', effect: { card: 'bigbox', xp: 15 } },
+      { label: 'Sign the contract', good: false, out: 'Chad leaves with your bits. The menu now takes 4 seconds to load, from three continents.', effect: { bits: -15 } },
+      { label: 'Let Seymour add 400 replicas instead', good: false, out: 'Seymour is thrilled. The menu now costs more to run than the café earns.', effect: { sla: -4 } }
+    ]
+  },
+  {
+    id: 'prophecy', title: 'The Prophecy', concept: 'delivery',
+    text: 'Uptima unrolls an ancient scroll. "The prophecy! It says: build the thing. Make it fast. It must scale. Also it should do... stuff." She looks at you expectantly.',
+    choices: [
+      { label: 'Ask who uses it, what it must do, and how big it gets', good: true, out: 'The scroll had a second page. It was a URL shortener all along. Uptima pretends she knew.', effect: { card: 'estimate', xp: 15 } },
+      { label: 'Start drawing boxes and arrows right away', good: false, out: 'You build a magnificent system for the wrong problem. Uptima frames it anyway.', effect: { sla: -5 } },
+      { label: 'Nod and pretend you understood', good: false, out: 'So does she. Neither of you understood.', effect: {} }
     ]
   }
 ];
 
-// Architect Specs: classes with a niche and a weakness. Unlocked by rank.
+// Specs: classes with a niche and a weakness. Unlocked by level, trained at Seymour's bunker.
 SD.specs = {
   none: { name: 'Generalist', rank: 1, text: 'No bonuses, no weaknesses.' },
   cache: { name: 'Cache Whisperer', rank: 2, text: 'Cache cards absorb +3. Weakness: every cache card adds +1 more Stale.' },
@@ -308,79 +344,116 @@ SD.specs = {
 // Meta shop (Grandma Wen, paid in Memory Shards that survive every loop).
 SD.metaShop = [
   { id: 'thermos', name: "Grandma's Thermos", cost: 6, text: '+1 Capacity on the first turn of every fight.' },
-  { id: 'lantern', name: 'Spare Lantern', cost: 5, text: '+10 max SLA.' },
-  { id: 'pipeye', name: "Pip's Third Eye", cost: 4, text: 'Diagnoses show one wrong answer crossed out.' },
-  { id: 'satchel', name: 'Courier Satchel', cost: 7, text: 'Card rewards offer 4 choices instead of 3.' },
-  { id: 'teapot', name: 'Bottomless Teapot', cost: 5, text: 'Gardens heal 15% more.' }
+  { id: 'lantern', name: 'Lucky Rubber Duck', cost: 5, text: '+10 max SLA. You explain your bugs to it.' },
+  { id: 'pipeye', name: "Pip's Monocle", cost: 4, text: 'Diagnoses show one wrong answer crossed out.' },
+  { id: 'satchel', name: 'Bag of Holding (Cards)', cost: 7, text: 'Card rewards offer 4 choices instead of 3.' },
+  { id: 'teapot', name: 'Bottomless Teapot', cost: 5, text: 'Campfires heal 15% more.' }
 ];
 
 SD.ranks = ['E', 'D', 'C', 'B', 'A', 'S'];
 
 // Characters for portraits and dialogue.
 SD.cast = {
-  ilse: { name: 'Ilse Varga', title: 'Chief Architect', hue: 38, hair: 'long', eye: '#ffc56b' },
-  pip: { name: 'Pip', title: 'Daemon of the Log', hue: 190, hair: 'pip', eye: '#7ff3ff' },
-  mio: { name: 'Mio', title: 'Lantern Hospital, Room 7', hue: 330, hair: 'bob', eye: '#ff9ccf' },
-  wen: { name: 'Grandma Wen', title: 'Cache Café', hue: 140, hair: 'bun', eye: '#9df0b4' },
-  tomo: { name: 'Tomo', title: 'Tram Engineer', hue: 215, hair: 'spiky', eye: '#8fb8ff' },
-  noor: { name: 'Noor', title: '???', hue: 0, hair: 'hood', eye: '#ff5a6e' },
-  system: { name: 'SYSTEM', title: '', hue: 200, hair: 'none', eye: '#5fd0ff' },
-  you: { name: 'You', title: 'Apprentice Architect', hue: 260, hair: 'short', eye: '#c9b6ff' }
+  uptima: { name: 'Uptima', title: 'Goddess of Five Nines (self-titled)', hue: 45, hair: 'goddess', eye: '#3b8bff' },
+  pip: { name: 'Pip', title: 'A Lost Packet', hue: 195, hair: 'pip', eye: '#2b2340' },
+  gary: { name: 'Gary', title: 'Principal Engineer (Hobbyist)', hue: 30, hair: 'bald', eye: '#2b2340' },
+  seymour: { name: 'Sir Seymour Backups', title: 'The Thrice-Replicated Knight', hue: 210, hair: 'knight', eye: '#3b8bff' },
+  mio: { name: 'Mio', title: 'Future Hero, Age 8', hue: 330, hair: 'bob', eye: '#ff5fa2' },
+  wen: { name: 'Grandma Wen', title: 'Cache Café', hue: 140, hair: 'bun', eye: '#2f9e5b' },
+  chad: { name: 'Chad', title: 'Certified Solutions Visionary', hue: 280, hair: 'slick', eye: '#2b2340' },
+  latency: { name: 'Lord Latency', title: 'Demon King of Lag', hue: 275, hair: 'hood', eye: '#ff4d6d' },
+  system: { name: 'SYSTEM', title: '', hue: 200, hair: 'none', eye: '#3b8bff' },
+  you: { name: 'You', title: "Junior Engineer, Isekai'd", hue: 200, hair: 'short', eye: '#5a4bd6' }
 };
 
 SD.story = {
-  prologue: [
-    { s: 'narr', t: 'Meridian floats because ten million messages a second hold it in the sky.' },
-    { s: 'narr', t: 'Tram signals. Heart monitors. Lantern lights. Love letters. The city calls the web of them the Lattice.' },
-    { s: 'narr', t: 'Tonight is the Festival of Lanterns. Tonight, the Lattice falls.' },
-    { s: 'ilse', t: 'Apprentice! You are late, and your tea is cold. Equivalent exchange: you owe me a warm one.' },
-    { s: 'ilse', t: 'The Tram Ledger groaned all night. Too many readers, one tired database. Everything breaks the same way, you know. Too much, too fast, in one place.' },
-    { s: 'narr', t: 'Sirens. The lanterns over the canal flicker, then go out one by one, like a wave.' },
-    { s: 'ilse', t: 'Read surge on the Ledger. The replicas are lagging. No. They are gone.' },
-    { s: 'ilse', t: 'Listen to me. Whatever happens, do not memorise my answers. Understand why I chose them.' },
-    { s: 'narr', t: 'She presses a battered notebook into your hands and pushes you into the light of the Rollback Core.' },
-    { s: 'narr', t: 'The city falls. Everything goes white.' },
-    { s: 'system', t: '[SYSTEM] Write-ahead log restored. Replaying from checkpoint: Festival Morning.' },
-    { s: 'system', t: '[SYSTEM] You have been granted the Rollback. You will remember. No one else will.' },
-    { s: 'pip', t: 'Oh good, you are awake. You were dead. Well, everyone was. I am Pip. I live in the log, and now so do you.' },
-    { s: 'pip', t: 'Here is the deal. Dive into the Lattice through the Gate at the tram station. Fight what is breaking it. If the city\'s SLA hits zero, we roll back to this morning.' },
-    { s: 'pip', t: 'You keep what you learn. Ilse does not. Her notebook is blank now, see? It fills in as you understand things. Not when you memorise them. When you understand.' }
+  // Cold open. `fx` lines trigger a sound or a screen effect; `tutorial` hands over to the first fight.
+  intro: [
+    { s: 'narr', t: 'Friday. 4:59 PM. A perfectly normal office.' },
+    { s: 'you', t: 'One tiny deploy to production before the weekend. What could possibly go wrong?' },
+    { s: 'narr', t: 'You press Enter.', fx: 'enter' },
+    { s: 'narr', t: 'HOOOOONK!', fx: 'truck' },
+    { s: 'narr', t: 'You are hit by a truck delivering servers. The irony is not lost on anyone.' },
+    { s: 'uptima', t: 'Oh! You\'re early. Hold on, I\'m mid-snack.', fx: 'sky' },
+    { s: 'uptima', t: '*ahem* WELCOME, CHOSEN ONE! I am Uptima, Goddess of Five Nines! You died. Very sad. Anyway!' },
+    { s: 'uptima', t: 'My kingdom runs on the Cloud. An actual cloud. It holds everything: quest logs, bakery orders, love letters, cat pictures.' },
+    { s: 'uptima', t: 'And it keeps breaking. My last hero tried to fix it with a sword. Please do not use a sword.' },
+    { s: 'system', t: '[SYSTEM] You have been isekai\'d. Class: Junior Engineer. Please rate your death from 1 to 5 stars.' }
   ],
-  ilseByLoop: [
-    ['Apprentice! You are late. Tea is cold. The Tram Ledger is groaning again. Go see Tomo at the Gate.'],
-    ['...Have we met? Of course we have, you are my apprentice. Ignore me. I dreamt of falling lanterns.'],
-    ['You keep looking at me like I am about to vanish. I am sturdier than I look. Mostly titanium and spite.'],
-    ['If I could repeat a day, I think I would spend it teaching. Over and over, until someone understood. Strange thought.'],
-    ['Whatever you are carrying, apprentice, you do not have to carry it alone. Tell me what you have learned. I will pretend I already knew.']
+  introAfterName: [
+    { s: 'pip', t: 'Ping! Hi! I\'m Pip! I\'m a packet. I got lost on my way somewhere in 2014 and nobody ever acknowledged me.' },
+    { s: 'pip', t: 'Wait. Oh no. OH NO. Look up! The Cloud is raining slimes on the plaza!', fx: 'alarm' }
   ],
-  ilseNotebook: 'That notebook. That is my handwriting. But I have not written those pages yet. Who are you?',
+  tutorialStart: 'Pip: "They all want the same cat picture! Play Cache-Aside: a cache answers repeat reads. Then press End turn."',
+  tutorialPanic: [
+    { s: 'pip', t: 'Okay that went great! Next turn is... a stampede of 99? That is a LOT of slimes.' },
+    { s: 'you', t: 'Is that number bad? It looks bad.' },
+    { s: 'gary', t: '...', fx: 'gary' },
+    { s: 'gary', t: 'Oh. Sorry. Is this the line for the croissant sale?' },
+    { s: 'narr', t: 'He sighs. He sets down his coffee. He presses one key.' }
+  ],
+  tutorialAfter: [
+    { s: 'gary', t: 'Added request coalescing. Now one slime asks the database and the rest wait for that answer.' },
+    { s: 'gary', t: 'OK. Bye.' },
+    { s: 'pip', t: 'WHO. WAS. THAT.' },
+    { s: 'uptima', t: 'Ugh. Gary. He is not in the prophecy. He just shows up, fixes things and leaves. It\'s very rude.' },
+    { s: 'uptima', t: 'You, on the other hand, ARE in the prophecy. Probably. Visit my temple first, then take the Dungeon gate down into Prod.' },
+    { s: 'uptima', t: 'And try not to die. It\'s paperwork for me.' }
+  ],
+  uptimaByLoop: [
+    ['Welcome to my temple! Ignore the dust. And the lack of worshippers. Read the gist board before you go down.'],
+    ['You again! Did you die? You have the look of someone who died. It\'s in the eyes. Read the board, hero.'],
+    ['I counted. You die a lot. That\'s fine! Each time you come back a little less bad at this.'],
+    ['Seymour asked me to bless his 400th backup. I blessed it. It is now a holy backup. He cried.'],
+    ['Between us? I\'m not great at the goddess thing. But you\'re getting good at the hero thing. Keep going.']
+  ],
+  uptimaNotebook: 'Wait. Is that my cheat sheet? That\'s MY handwriting. I haven\'t written those pages yet. Are you from a future loop?! I need to sit down. On a cloud.',
   mioByDrawing: [
-    ['Are you an Architect? My heart talks to the Lattice. The nurse says it is like a letter that has to arrive every second.', 'Here. I drew you. You look sad in it. I do not know why I drew you sad.'],
-    ['I dreamt the lanterns fell and you caught them. I drew that too.'],
-    ['You always come on festival day. ...It is always festival day, isn\'t it?'],
-    ['When I grow up I want to build a Lattice that never forgets anyone.'],
-    ['Promise me you will get to tomorrow. I want to see what tomorrow looks like.']
+    ['Hi! I\'m Mio and I\'m going to be a hero. I can hear what servers think! That one is thinking "why does everyone ask me the SAME question?"', 'Here. I drew you. I gave you bigger muscles. You\'re welcome.'],
+    ['I drew you fighting the cows! The cows are winning in the drawing. Sorry. It\'s more dramatic.'],
+    ['The Cloud told me it\'s tired of being yelled at. I told it you\'re nice. Be nice.'],
+    ['Gary bought me a croissant. He said "OK." He is my second favourite hero. You are first. Mostly.'],
+    ['When I grow up I want to build a Cloud that never forgets anybody. Not even lost packets. Don\'t tell Pip, it\'s a surprise.']
   ],
-  wen: ['Welcome, dear. I remember my regulars and forget the rest. Least recently used, my late husband called it. Rude man. Lovely man.', 'Memory Shards spend the same in every loop. Do not ask me how I know about loops.'],
-  tomo: ['Ledger\'s at 90% read load and it is not even noon. Grab your deck, Architect.', 'Pick a Spec if you have earned one. Every Architect is best at something and bad at something else.'],
+  wen: ['Welcome, dear! I remember my regulars and forget the rest. Least recently used, my late husband called it. Rude man. Lovely man.', 'Memory Shards spend the same in every loop. Don\'t ask me how I know about loops. Grandmas just know things.'],
+  seymour: ['HALT! Before you go further: have you prepared? I prepared. I prepared to prepare. I have backups of this sentence.', 'Choose a Spec. Every hero is excellent at one thing and terrible at another. I am excellent at preparing and terrible at stopping.'],
+  gary: [
+    ['...', 'Oh, hey. The bakery has croissants half off on Tuesdays. Every day is Tuesday here, I think.'],
+    ['I used to run big systems. Now I mostly do grocery runs.', 'Tip: if you know why a fix works, you don\'t need me.'],
+    ['Seymour asked me how many backups is enough. I said "two, and test them." He fainted.'],
+    ['People keep calling me a deus ex machina. I don\'t know what that is. I just read the logs.'],
+    ['You\'re getting better. I can tell because I\'ve had more time for croissants.']
+  ],
+  // Gary's random rescue in a run. {fix} is the incident's main weakness, so his one-liner is also the lesson.
+  garyIn: [
+    ['Oh. Is this an incident? I was just passing through.'],
+    ['Sorry. Wrong dungeon. I was looking for the bakery.'],
+    ['Hm. That looks annoying.'],
+    ['I have a sale to get to. Excuse me.']
+  ],
+  garyOut: ['{fix} OK.', '{fix} Bye.', 'It was DNS. ...No, it wasn\'t. {fix}', '{fix} Anyway, the croissants are getting cold.'],
   cascade: [
-    { s: 'narr', t: 'The lanterns rise. The Lattice shudders.' },
-    { s: 'narr', t: '{incident} tears through the city.' },
-    { s: 'ilse', t: 'Go. Understand why.' },
-    { s: 'narr', t: 'Everything goes white.' },
-    { s: 'system', t: '[SYSTEM] SLA breached. Rolling back to checkpoint: Festival Morning. Loop {loop}.' }
+    { s: 'narr', t: '{incident} flattens the village. Somewhere, a goat goes offline.' },
+    { s: 'uptima', t: 'Oh, you died. Again! That\'s respawn number {loop}. I\'m taking it out of your vacation days.' },
+    { s: 'uptima', t: 'Don\'t just remember WHAT killed you. Understand WHY. ...I read that on a mug.' },
+    { s: 'system', t: '[SYSTEM] Respawning at the last save point: Village Morning. Loop {loop}.' }
   ],
   bossIntro: [
-    { s: 'narr', t: 'At the heart of the Gate, the Tram Ledger itself wakes: a vast courier made of a hundred million addresses.' },
-    { s: 'system', t: '[SYSTEM] Boss Gate: The Courier\'s Ledger. Design a URL shortener for the whole city. Follow the framework.' }
+    { s: 'narr', t: 'At the bottom of the dungeon, on a throne of tangled hyperlinks, sits the Goblin King of Links.' },
+    { s: 'narr', t: '"LONG URLS!" he screams. "SO MANY LONG URLS! MAKE THEM SHORT! MAKE THEM FAST! MAKE THEM FOREVER!"' },
+    { s: 'uptima', t: 'Oh good. A client with clear requirements. ...That was sarcasm. Clarify everything.' },
+    { s: 'system', t: '[SYSTEM] Boss: the Goblin King of Links. Design a URL shortener for the whole kingdom. Follow the framework.' }
   ],
   bossWin: [
-    { s: 'narr', t: 'The Courier\'s Ledger holds. Short codes bloom across the city like lanterns.' },
-    { s: 'tomo', t: 'Trams are running. Every route, every platform. Mio\'s ward got power back.' },
-    { s: 'narr', t: 'For the first time, the lanterns rise and the Ward does not fall.' },
-    { s: 'narr', t: 'Across the canal, the Tidewater Archives go dark.' },
-    { s: 'noor', t: 'You fixed the trams. Cute.' },
-    { s: 'noor', t: 'Ask her why a city needs a Rollback Core at all. Ask her what she traded to build it.' },
-    { s: 'system', t: '[SYSTEM] Chapter 1 cleared. New Gate detected: Tidewater Archives. (Chapter 2: replication, partitions and the price of remembering.)' }
+    { s: 'narr', t: 'The Goblin King holds up a seven-character link. He weeps. "It\'s so... short."' },
+    { s: 'gary', t: 'Oh. You already fixed it? Cool. I brought croissants.' },
+    { s: 'pip', t: 'Hey. HEY. Something just arrived for me. It says... ACK.' },
+    { s: 'pip', t: 'Someone acknowledged me. After all these years. I\'m not crying, you\'re crying. I\'m a packet, I leak.' },
+    { s: 'uptima', t: 'I knew you could do it! I definitely did not bet against you with Seymour.' },
+    { s: 'latency', t: '...' },
+    { s: 'latency', t: '...' },
+    { s: 'latency', t: 'MUAHAHA! Tremble, hero! ...Wait, have you all gone home? My messages take a while to arrive.' },
+    { s: 'latency', t: 'Enjoy your little links. Next I shall THROTTLE EVERYTHING. Rate limits! Queues! Retries without backoff! Muahaha... ha... (buffering)' },
+    { s: 'system', t: '[SYSTEM] Chapter 1 cleared. New dungeon detected: Tidewater Archives. (Chapter 2: rate limiters, indexes and the Demon King of Lag.)' }
   ]
 };

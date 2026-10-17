@@ -1,108 +1,116 @@
-// Code-drawn art: portraits, card glyphs, incident sprites.
+// Code-drawn art: chibi portraits, card glyphs, googly-eyed incident sprites, Mio's crayon drawings.
 (function () {
   const A = SD.art = {};
+  const INK = '#2b2340';
   let uid = 0;
 
-  // Cel-shaded anime bust, drawn as SVG.
+  // Eyes in a few comic styles. Coordinates are for the 120x140 portrait box.
+  function eyes(style, col, Y) {
+    const L = 49, R = 71;
+    Y = Y || 68;
+    if (style === 'dot') return `<circle cx="${L}" cy="${Y}" r="2.2" fill="${INK}"/><circle cx="${R}" cy="${Y}" r="2.2" fill="${INK}"/>`;
+    if (style === 'closed') return `<path d="M${L - 5} ${Y + 1} Q${L} ${Y - 5} ${L + 5} ${Y + 1} M${R - 5} ${Y + 1} Q${R} ${Y - 5} ${R + 5} ${Y + 1}" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+    if (style === 'shades') return `<path d="M38 62 H82 V66 Q80 76 70 76 Q62 76 61 67 H59 Q58 76 50 76 Q40 76 38 66Z" fill="${INK}"/><path d="M42 65 L47 65" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
+    if (style === 'glow') return `<ellipse cx="${L}" cy="${Y}" rx="5" ry="3" fill="${col}"/><ellipse cx="${R}" cy="${Y}" rx="5" ry="3" fill="${col}"/>`;
+    const one = x => `<g class="blinky"><ellipse cx="${x}" cy="${Y}" rx="5" ry="6.6" fill="${col}" stroke="${INK}" stroke-width="1.6"/><ellipse cx="${x}" cy="${Y + 1}" rx="2.6" ry="3.6" fill="${INK}"/><circle cx="${x - 1.6}" cy="${Y - 2.6}" r="1.8" fill="#fff"/></g>`;
+    return one(L) + one(R) + `<path d="M${L - 6} ${Y - 7} Q${L} ${Y - 10} ${L + 5} ${Y - 8} M${R - 5} ${Y - 8} Q${R} ${Y - 10} ${R + 6} ${Y - 7}" stroke="${INK}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  }
+  const FACE = 'M37 60 Q37 99 60 104 Q83 99 83 60 Q83 32 60 32 Q37 32 37 60Z';
+  const stroke = `stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"`;
+
   A.portrait = function (who, size) {
     const c = SD.cast[who] || SD.cast.you;
     const id = 'p' + (uid++);
     const h = c.hue;
-    const hair = `hsl(${h},42%,20%)`, hairHi = `hsl(${h},70%,55%)`;
-    const cloth = `hsl(${h},38%,16%)`, clothHi = `hsl(${h},60%,45%)`;
-    const skin = '#f2d6c6', skinSh = '#d9ae9a';
-    const glow = c.eye;
-    let back = '', front = '', extra = '';
-    const face = 'M41 52 Q41 90 60 99 Q79 90 79 52 Q79 30 60 30 Q41 30 41 52Z';
+    const W = size, Hh = size * 140 / 120;
+    const open = `<svg viewBox="0 0 120 140" width="${W}" height="${Hh}" aria-hidden="true">`;
+    const bg = `<circle cx="60" cy="66" r="56" fill="hsl(${h},90%,88%)" stroke="${INK}" stroke-width="2.5"/>`;
     if (c.hair === 'pip') {
-      return `<svg viewBox="0 0 120 140" width="${size}" height="${size * 140 / 120}" aria-hidden="true">
-        <defs><radialGradient id="${id}g" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="#e8ffff"/><stop offset=".45" stop-color="${glow}"/><stop offset="1" stop-color="${glow}" stop-opacity="0"/></radialGradient></defs>
-        <circle cx="60" cy="70" r="58" fill="url(#${id}g)" opacity=".5"/>
-        <circle cx="60" cy="72" r="30" fill="url(#${id}g)"/>
-        <path d="M60 42 Q66 26 74 22" stroke="${glow}" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <circle cx="75" cy="21" r="4" fill="#fff"/>
-        <ellipse cx="51" cy="72" rx="4" ry="6" fill="#0a1830"/><ellipse cx="69" cy="72" rx="4" ry="6" fill="#0a1830"/>
-        <circle cx="52.5" cy="70" r="1.6" fill="#fff"/><circle cx="70.5" cy="70" r="1.6" fill="#fff"/>
-        <path d="M54 82 Q60 87 66 82" stroke="#0a1830" stroke-width="2" fill="none" stroke-linecap="round"/>
-      </svg>`;
+      return `${open}${bg}
+        <path d="M60 46 Q64 30 72 26" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="73" cy="25" r="5" fill="#ffe14d" ${stroke}/>
+        <path d="M26 112 Q22 62 60 50 Q98 62 94 112 Q60 122 26 112Z" fill="#6fd6ff" ${stroke}/>
+        <path d="M38 64 Q46 56 54 58" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".8"/>
+        <path d="M44 92 L60 104 L76 92 M44 92 H76 V112 H44Z" fill="#fff" ${stroke}/>
+        ${eyes('normal', '#1d6fd1', 76)}
+        <path d="M55 88 Q60 92 65 88" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="40" cy="86" rx="5" ry="3" fill="#ff8fb8" opacity=".6"/><ellipse cx="80" cy="86" rx="5" ry="3" fill="#ff8fb8" opacity=".6"/></svg>`;
     }
     if (c.hair === 'none') {
-      return `<svg viewBox="0 0 120 140" width="${size}" height="${size * 140 / 120}" aria-hidden="true">
-        <g fill="none" stroke="${glow}" stroke-width="2.5"><path d="M60 22 L98 44 L98 92 L60 114 L22 92 L22 44Z" opacity=".9"/><path d="M60 40 L82 53 L82 83 L60 96 L38 83 L38 53Z" opacity=".55"/></g>
-        <text x="60" y="76" text-anchor="middle" font-family="Chakra Petch, monospace" font-weight="700" font-size="18" fill="${glow}">SYS</text></svg>`;
+      return `${open}<rect x="18" y="30" width="84" height="76" rx="12" fill="#3d5bd8" ${stroke}/><rect x="18" y="30" width="84" height="16" rx="8" fill="#23318f" ${stroke}/>
+        <circle cx="30" cy="38" r="3" fill="#ff6b6b"/><circle cx="40" cy="38" r="3" fill="#ffd34d"/><circle cx="50" cy="38" r="3" fill="#55d68a"/>
+        <text x="60" y="84" text-anchor="middle" font-family="Fredoka, sans-serif" font-weight="700" font-size="22" fill="#fff">SYS</text></svg>`;
     }
-    if (c.hair === 'long') {
-      back = `<path d="M34 50 Q30 18 60 16 Q90 18 86 50 L92 128 L70 118 L60 100 L50 118 L28 128Z" fill="${hair}"/>`;
-      front = `<path d="M38 56 Q38 22 60 21 Q84 22 82 56 Q78 40 70 44 Q66 33 58 41 Q50 34 46 46 Q42 44 38 56Z" fill="${hair}"/><path d="M48 26 Q58 20 70 25" stroke="${hairHi}" stroke-width="2" fill="none" opacity=".8"/>`;
-      extra = `<rect x="64" y="58" width="12" height="6" rx="2" fill="none" stroke="#e8d7a8" stroke-width="1.4"/><rect x="45" y="58" width="12" height="6" rx="2" fill="none" stroke="#e8d7a8" stroke-width="1.4"/><path d="M57 61 L64 61" stroke="#e8d7a8" stroke-width="1.2"/>`;
+    const skin = '#ffe0cc', cloth = `hsl(${h},72%,62%)`, clothD = `hsl(${h},60%,45%)`;
+    let back = '', front = '', extra = '', eyeStyle = 'normal', mouth = `<path d="M54 87 Q60 92 66 87" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+    let body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="${cloth}" ${stroke}/><path d="M50 102 L60 116 L70 102" fill="none" stroke="${INK}" stroke-width="2.2"/>`;
+    let blush = `<ellipse cx="43" cy="81" rx="5" ry="3" fill="#ff8fb8" opacity=".55"/><ellipse cx="77" cy="81" rx="5" ry="3" fill="#ff8fb8" opacity=".55"/>`;
+    const hairCol = c.hair === 'goddess' ? '#ffd257' : c.hair === 'bob' ? '#ff86b8' : c.hair === 'bun' ? '#d9d4e4' : c.hair === 'slick' ? '#6b4a3a' : '#5a3b2e';
+    if (c.hair === 'goddess') {
+      back = `<ellipse cx="60" cy="18" rx="22" ry="6" fill="none" stroke="#ffcf33" stroke-width="5"/><ellipse cx="60" cy="18" rx="22" ry="6" fill="none" stroke="${INK}" stroke-width="1.5"/>
+        <path d="M30 56 Q26 22 60 22 Q94 22 90 56 L98 128 Q84 132 78 118 L60 104 L42 118 Q36 132 22 128Z" fill="${hairCol}" ${stroke}/>`;
+      front = `<path d="M36 62 Q34 28 60 27 Q86 28 84 62 Q80 46 72 44 Q68 36 60 42 Q52 34 46 46 Q40 46 36 62Z" fill="${hairCol}" ${stroke}/>
+        <path d="M50 34 L54 26 L60 33 L66 26 L70 34" fill="#7fd1ff" ${stroke}/>`;
+      mouth = `<path d="M54 86 Q61 92 67 85" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+      body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="#fff" ${stroke}/><path d="M38 112 Q60 126 82 112" stroke="#ffcf33" stroke-width="4" fill="none"/>`;
     } else if (c.hair === 'bob') {
-      back = `<path d="M36 52 Q32 20 60 18 Q88 20 84 52 L86 92 Q74 98 70 88 L50 88 Q46 98 34 92Z" fill="${hair}"/>`;
-      front = `<path d="M38 60 Q36 24 60 22 Q84 24 82 60 Q80 44 72 40 L48 40 Q40 44 38 60Z" fill="${hair}"/><circle cx="78" cy="38" r="5" fill="${hairHi}"/>`;
+      back = `<path d="M33 56 Q30 24 60 24 Q90 24 87 56 L88 94 Q76 100 72 90 L48 90 Q44 100 32 94Z" fill="${hairCol}" ${stroke}/>`;
+      front = `<path d="M36 64 Q34 28 60 28 Q86 28 84 64 Q82 46 74 42 L46 42 Q38 46 36 64Z" fill="${hairCol}" ${stroke}/>
+        <path d="M78 38 l3 -7 l3 7 l7 1 l-5 5 l1 7 l-6 -4 l-6 4 l1 -7 l-5 -5Z" fill="#ffe14d" ${stroke} stroke-width="1.6"/>
+        <rect x="86" y="54" width="5" height="22" rx="2" transform="rotate(18 88 64)" fill="#4fc3ff" ${stroke} stroke-width="1.6"/>`;
+      mouth = `<path d="M54 86 Q60 94 66 86Z" fill="#ff6b8a" stroke="${INK}" stroke-width="2"/>`;
     } else if (c.hair === 'bun') {
-      back = `<circle cx="60" cy="16" r="11" fill="${hair}"/>`;
-      front = `<path d="M38 54 Q38 22 60 22 Q82 22 82 54 Q74 34 60 34 Q46 34 38 54Z" fill="${hair}"/><path d="M50 26 Q60 22 70 26" stroke="#e9eef2" stroke-width="2" fill="none" opacity=".7"/>`;
-      extra = `<path d="M46 76 Q50 78 54 76 M66 76 Q70 78 74 76" stroke="${skinSh}" stroke-width="1" fill="none"/>`;
-    } else if (c.hair === 'spiky') {
-      front = `<path d="M36 56 L34 30 L44 36 L44 18 L54 30 L60 12 L66 30 L76 18 L76 36 L86 30 L84 56 Q78 40 70 42 L66 34 L60 42 L52 34 L48 42 Q40 42 36 56Z" fill="${hair}"/><path d="M60 14 L64 28" stroke="${hairHi}" stroke-width="2"/>`;
-      extra = `<path d="M36 46 Q60 38 84 46" stroke="#f0b13a" stroke-width="4" fill="none"/>`;
+      back = `<circle cx="60" cy="24" r="12" fill="${hairCol}" ${stroke}/>`;
+      front = `<path d="M36 60 Q36 30 60 30 Q84 30 84 60 Q76 40 60 40 Q44 40 36 60Z" fill="${hairCol}" ${stroke}/>`;
+      eyeStyle = 'closed';
+      extra = `<circle cx="49" cy="68" r="8" fill="none" stroke="${INK}" stroke-width="2"/><circle cx="71" cy="68" r="8" fill="none" stroke="${INK}" stroke-width="2"/><path d="M57 68 H63" stroke="${INK}" stroke-width="2"/>`;
+      body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="${cloth}" ${stroke}/><path d="M40 112 H80 V140 H40Z" fill="#fff" ${stroke}/>`;
+    } else if (c.hair === 'bald') {
+      // Gary is drawn in a deliberately plain style. That is the joke.
+      eyeStyle = 'dot'; blush = '';
+      front = `<path d="M44 40 Q52 34 58 36" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>`;
+      mouth = `<path d="M55 88 H65" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
+      back = `<path d="M14 140 Q10 104 36 98 L84 98 Q110 104 106 140Z" fill="#fff" ${stroke}/>`;
+      body = `<path d="M22 140 Q24 110 48 103 L72 103 Q96 110 98 140Z" fill="#9aa3b5" ${stroke}/><path d="M50 104 Q60 114 70 104" fill="none" stroke="${INK}" stroke-width="2"/>
+        <path d="M82 116 h14 v18 h-14Z M96 120 q8 0 8 6 q0 6 -8 6" fill="#fff" ${stroke} stroke-width="2"/><path d="M86 112 q2 -4 0 -7 M91 112 q2 -4 0 -7" stroke="${INK}" stroke-width="1.5" fill="none"/>`;
+    } else if (c.hair === 'knight') {
+      back = `<path d="M8 120 L18 92 L34 96 L30 126Z" fill="#9fc6ff" ${stroke}/><path d="M112 120 L102 92 L86 96 L90 126Z" fill="#9fc6ff" ${stroke}/><path d="M60 8 Q74 10 70 30" stroke="#3b8bff" stroke-width="8" fill="none" stroke-linecap="round"/>`;
+      front = `<path d="M34 72 Q32 30 60 28 Q88 30 86 72 L86 92 Q60 102 34 92Z" fill="#dfe6f2" ${stroke}/><path d="M38 60 H82 V74 H38Z" fill="${INK}"/><path d="M60 30 V58" stroke="${INK}" stroke-width="2"/>`;
+      eyeStyle = 'glow';
+      blush = ''; mouth = '';
+      body = `<path d="M16 140 Q20 108 46 100 L74 100 Q100 108 104 140Z" fill="#c7d3e6" ${stroke}/><path d="M48 112 h24 v22 q-12 8 -24 0Z" fill="#3b8bff" ${stroke} stroke-width="2"/>`;
+    } else if (c.hair === 'slick') {
+      front = `<path d="M36 58 Q34 26 62 26 Q88 28 86 54 Q80 38 66 38 Q50 38 42 46 Q38 50 36 58Z" fill="${hairCol}" ${stroke}/><path d="M48 32 Q64 28 80 38" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>`;
+      eyeStyle = 'shades';
+      mouth = `<path d="M50 85 Q60 96 70 85Z" fill="#fff" stroke="${INK}" stroke-width="2"/><path d="M53 87 H67" stroke="${INK}" stroke-width="1.2"/>`;
+      body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="#3a3550" ${stroke}/><path d="M54 104 L60 140 L66 104Z" fill="#ff5a5a" ${stroke} stroke-width="2"/><path d="M50 102 L60 112 L70 102" fill="#fff" ${stroke} stroke-width="2"/>`;
     } else if (c.hair === 'hood') {
-      back = `<path d="M24 120 Q22 40 60 18 Q98 40 96 120Z" fill="#14070d"/>`;
-      front = `<path d="M34 70 Q36 30 60 26 Q84 30 86 70 Q80 46 60 44 Q40 46 34 70Z" fill="#200a12"/>`;
+      back = `<path d="M20 130 Q18 40 60 20 Q102 40 100 130Z" fill="#4b2f78" ${stroke}/>`;
+      front = `<path d="M32 74 Q34 34 60 30 Q86 34 88 74 Q80 50 60 48 Q40 50 32 74Z" fill="#5d3b92" ${stroke}/>`;
+      eyeStyle = 'glow'; blush = '';
+      mouth = `<path d="M50 88 L54 92 L58 88 L62 92 L66 88 L70 92" stroke="${INK}" stroke-width="2" fill="none"/>`;
+      extra = `<g class="spin" style="transform-origin:60px 12px">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i / 8 * Math.PI * 2; return `<circle cx="${(60 + Math.cos(a) * 9).toFixed(1)}" cy="${(12 + Math.sin(a) * 9).toFixed(1)}" r="${1 + i * 0.35}" fill="#ff4d6d"/>`; }).join('')}</g>`;
     } else {
-      front = `<path d="M38 58 Q36 22 60 20 Q84 22 82 58 Q80 42 72 44 Q68 34 60 40 Q50 32 46 44 Q40 44 38 58Z" fill="${hair}"/><path d="M50 26 Q60 21 70 26" stroke="${hairHi}" stroke-width="2" fill="none" opacity=".8"/>`;
+      // You: messy hair, dev hoodie, lanyard.
+      front = `<path d="M35 62 Q30 26 60 24 Q92 26 85 62 L82 48 L76 54 L72 42 L64 50 L60 38 L54 50 L46 42 L44 54 L38 48Z" fill="${hairCol}" ${stroke}/>`;
+      body = `<path d="M16 140 Q20 106 48 100 L72 100 Q100 106 104 140Z" fill="${cloth}" ${stroke}/><path d="M50 100 Q60 112 70 100" fill="none" stroke="${INK}" stroke-width="2.2"/><path d="M54 106 V122 M66 106 V122" stroke="#fff" stroke-width="2.2"/><rect x="55" y="120" width="12" height="15" rx="2" fill="#fff" ${stroke} stroke-width="1.8"/>`;
     }
-    const hooded = c.hair === 'hood';
-    return `<svg viewBox="0 0 120 140" width="${size}" height="${size * 140 / 120}" aria-hidden="true">
-      <defs>
-        <radialGradient id="${id}bg" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="${glow}" stop-opacity=".35"/><stop offset="1" stop-color="${glow}" stop-opacity="0"/></radialGradient>
-        <linearGradient id="${id}sk" x1="0" x2="1"><stop offset="0" stop-color="${skin}"/><stop offset=".7" stop-color="${skin}"/><stop offset="1" stop-color="${skinSh}"/></linearGradient>
-      </defs>
-      <circle cx="60" cy="62" r="58" fill="url(#${id}bg)"/>
-      ${back}
-      <path d="M18 140 Q22 106 50 100 L70 100 Q98 106 102 140Z" fill="${cloth}"/>
-      <path d="M50 100 L60 116 L70 100" fill="none" stroke="${clothHi}" stroke-width="2.5"/>
-      <rect x="53" y="88" width="14" height="16" fill="${hooded ? '#1a0a10' : skinSh}"/>
-      <path d="${face}" fill="${hooded ? '#1d0d13' : `url(#${id}sk)`}"/>
-      <path d="${face}" fill="none" stroke="${glow}" stroke-opacity=".55" stroke-width="1.2"/>
-      <g>
-        <path d="M44 64 Q50 57 57 63 Q50 67 44 64Z" fill="${hooded ? glow : '#fff'}"/>
-        <path d="M63 63 Q70 57 76 64 Q70 67 63 63Z" fill="${hooded ? glow : '#fff'}"/>
-        ${hooded ? '' : `<circle cx="51" cy="63" r="3.2" fill="${glow}"/><circle cx="69" cy="63" r="3.2" fill="${glow}"/><circle cx="51" cy="63" r="1.4" fill="#120d1c"/><circle cx="69" cy="63" r="1.4" fill="#120d1c"/><circle cx="52" cy="61.8" r=".9" fill="#fff"/><circle cx="70" cy="61.8" r=".9" fill="#fff"/>`}
-        <path d="M43 57 Q50 53 57 56 M63 56 Q70 53 77 57" stroke="${hair}" stroke-width="1.8" fill="none"/>
-      </g>
-      ${hooded ? '' : `<path d="M58 78 L60 80" stroke="${skinSh}" stroke-width="1.2"/><path d="M55 87 Q60 89 65 87" stroke="#b2685c" stroke-width="1.6" fill="none" stroke-linecap="round"/>`}
+    const faceFill = c.hair === 'hood' ? '#2a1a40' : c.hair === 'knight' ? '#dfe6f2' : skin;
+    return `${open}${bg}${back}${body}
+      <rect x="53" y="92" width="14" height="13" fill="${skin}" stroke="${INK}" stroke-width="2"/>
+      ${c.hair === 'knight' ? '' : `<path d="${FACE}" fill="${faceFill}" ${stroke}/>`}
       ${front}
-      ${extra}
+      ${eyes(eyeStyle, c.eye || '#3b8bff')}
+      ${blush}${mouth}${extra}
     </svg>`;
   };
 
-  // Card glyphs: a few strokes each, drawn in the card's accent colour.
+  // Card glyphs: a few strokes each, used when the icon subset is missing.
   const G = {
     wrench: 'M30 70 L58 42 M54 30 a14 14 0 1 0 16 16 l-8-2 -4-8 2-8Z',
     box: 'M28 40 L50 28 L72 40 L72 66 L50 78 L28 66Z M28 40 L50 52 L72 40 M50 52 L50 78',
     copy: 'M30 34 h26 v32 h-26Z M44 26 h26 v32',
     bolt: 'M54 22 L34 54 L50 54 L44 80 L68 44 L52 44Z',
-    bolt2: 'M54 22 L34 54 L50 54 L44 80 L68 44 L52 44Z M26 30 h10 M64 70 h10',
-    server: 'M30 28 h40 v14 h-40Z M30 46 h40 v14 h-40Z M30 64 h40 v12 h-40Z M36 35 h4 M36 53 h4',
-    key: 'M40 52 a10 10 0 1 1 0.1 0 M50 52 L74 52 M66 52 L66 60 M72 52 L72 58',
-    split: 'M50 24 L50 46 M50 46 L30 70 M50 46 L50 74 M50 46 L70 70 M44 24 h12',
-    globe: 'M50 24 a26 26 0 1 0 0.1 0 M24 50 h52 M50 24 Q36 50 50 76 M50 24 Q64 50 50 76',
-    grid: 'M28 28 h44 v44 h-44Z M28 50 h44 M50 28 v44',
-    salt: 'M40 30 h20 l4 10 h-28Z M36 40 h28 v34 h-28Z M44 50 v2 M54 56 v2 M46 62 v2',
-    funnel: 'M26 28 h48 L56 52 v20 l-12 6 v-26Z',
-    dice: 'M30 30 h40 v40 h-40Z M40 40 h1 M60 40 h1 M50 50 h1 M40 60 h1 M60 60 h1',
-    eraser: 'M30 62 L54 38 L70 54 L52 72 L38 72Z M42 50 L58 66',
-    lock: 'M34 48 h32 v26 h-32Z M40 48 v-8 a10 10 0 0 1 20 0 v8',
-    open: 'M34 48 h32 v26 h-32Z M40 48 v-8 a10 10 0 0 1 19 -3',
-    note: 'M32 24 h28 l10 10 v42 h-38Z M40 44 h22 M40 54 h22 M40 64 h14',
-    eye: 'M22 50 Q50 24 78 50 Q50 76 22 50Z M50 42 a8 8 0 1 0 0.1 0',
-    undo: 'M36 40 L28 48 L36 56 M28 48 h28 a14 14 0 0 1 0 28 h-12',
-    tree: 'M50 26 v14 M50 40 L32 58 M50 40 L68 58 M32 58 v14 M68 58 v14 M44 22 h12',
-    cols: 'M28 30 h12 v44 h-12Z M44 30 h12 v44 h-12Z M60 30 h12 v44 h-12Z',
-    cyl: 'M30 32 a20 7 0 1 0 40 0 a20 7 0 1 0 -40 0 M30 32 v36 a20 7 0 0 0 40 0 v-36 M30 50 a20 7 0 0 0 40 0',
-    hash: 'M40 26 L34 74 M62 26 L56 74 M28 42 h46 M26 58 h46',
-    calc: 'M32 24 h36 v52 h-36Z M38 32 h24 v10 h-24Z M40 52 h2 M50 52 h2 M60 52 h2 M40 64 h2 M50 64 h2 M60 64 h2',
-    arrow: 'M26 50 h40 M54 36 L68 50 L54 64 M30 34 v32'
+    note: 'M32 24 h28 l10 10 v42 h-38Z M40 44 h22 M40 54 h22 M40 64 h14'
   };
   // Card art comes from Game-icons.net when the icon subset is loaded; the stroke glyphs are the fallback.
   const ICON = { wrench: 'spanner', box: 'cube', copy: 'files', bolt: 'lightning-helix', bolt2: 'lightning-frequency', server: 'server-rack', key: 'key', split: 'split-arrows', globe: 'globe', grid: 'cubes', salt: 'salt-shaker', funnel: 'funnel', dice: 'perspective-dice-six-faces-random', eraser: 'broom', lock: 'padlock', open: 'padlock-open', note: 'notebook', eye: 'magnifying-glass', undo: 'anticlockwise-rotation', tree: 'family-tree', cols: 'stack', cyl: 'database', hash: 'ticket', calc: 'abacus', arrow: 'return-arrow' };
@@ -117,81 +125,44 @@
     return `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${G[key] || G.note}" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   };
 
-  // Incident sprites. Animated with CSS classes in index.html.
-  const FOE_ICON = { swarm: 'wave-crest', storm: 'lightning-storm', tower: 'stone-tower', wraith: 'spectre', herd: 'charging-bull', star: 'star-formation', rift: 'magic-portal', boss: 'scroll-unfurled' };
-  A.enemy = function (sprite) {
-    const id = 'e' + (uid++);
-    const icon = SD.icons && SD.icons[FOE_ICON[sprite]];
-    if (icon) {
-      let ticks = '';
-      for (let i = 0; i < 36; i++) {
-        const a = i / 36 * Math.PI * 2, r1 = 50, r2 = i % 3 ? 53 : 57;
-        ticks += `<path d="M${(60 + Math.cos(a) * r1).toFixed(1)} ${(60 + Math.sin(a) * r1).toFixed(1)} L${(60 + Math.cos(a) * r2).toFixed(1)} ${(60 + Math.sin(a) * r2).toFixed(1)}"/>`;
-      }
-      const anim = { swarm: 'float', storm: 'flick', tower: 'pulse', wraith: 'float', herd: 'shake', star: 'pulse', rift: 'pulse', boss: 'float' }[sprite];
-      return `<svg viewBox="0 0 120 120" aria-hidden="true"><defs><radialGradient id="${id}r"><stop offset="0" stop-color="var(--foe)" stop-opacity=".55"/><stop offset=".6" stop-color="var(--foe)" stop-opacity=".12"/><stop offset="1" stop-color="var(--foe)" stop-opacity="0"/></radialGradient></defs>
-        <circle cx="60" cy="60" r="58" fill="url(#${id}r)"/>
-        <g class="spin" stroke="var(--foe)" stroke-width="1.6" opacity=".8">${ticks}</g>
-        <circle cx="60" cy="60" r="44" fill="#07040d" stroke="var(--foe)" stroke-opacity=".6" stroke-width="1.5"/>
-        <g class="${anim}"><g transform="translate(26 26) scale(0.1328)" style="color:var(--foe)">${icon}</g></g></svg>`;
-    }
-    const defs = `<defs><radialGradient id="${id}r"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="var(--foe)"/><stop offset="1" stop-color="var(--foe)" stop-opacity="0"/></radialGradient></defs>`;
-    let body = '';
-    switch (sprite) {
-      case 'swarm': {
-        let dots = '';
-        for (let i = 0; i < 18; i++) {
-          const a = i / 18 * Math.PI * 2, r = 22 + (i % 3) * 10;
-          dots += `<circle cx="${60 + Math.cos(a) * r}" cy="${60 + Math.sin(a) * r}" r="${3 + (i % 3)}" fill="var(--foe)"/>`;
-        }
-        body = `<circle cx="60" cy="60" r="30" fill="url(#${id}r)"/><g class="spin">${dots}</g>`;
-        break;
-      }
-      case 'storm':
-        body = `<path d="M24 58 a18 18 0 0 1 22-20 a22 22 0 0 1 40 6 a14 14 0 0 1 4 28 h-60 a14 14 0 0 1 -6-14Z" fill="#2a1a3a" stroke="var(--foe)" stroke-width="2"/><path class="flick" d="M54 74 L44 94 L56 92 L50 112 L70 84 L58 86 L64 74Z" fill="var(--foe)"/>`;
-        break;
-      case 'tower':
-        body = `<path d="M44 108 L48 22 L72 22 L76 108Z" fill="#1c1626" stroke="var(--foe)" stroke-width="2"/><circle class="pulse" cx="60" cy="46" r="8" fill="url(#${id}r)"/><path d="M50 70 h20 M50 82 h20 M50 94 h20" stroke="var(--foe)" stroke-opacity=".5" stroke-width="2"/>`;
-        break;
-      case 'wraith':
-        body = `<path class="float" d="M34 104 Q30 40 60 24 Q90 40 86 104 L78 94 L70 106 L60 94 L50 106 L42 94Z" fill="#cfd9ff" fill-opacity=".14" stroke="var(--foe)" stroke-width="2"/><ellipse cx="50" cy="58" rx="5" ry="8" fill="var(--foe)"/><ellipse cx="70" cy="58" rx="5" ry="8" fill="var(--foe)"/>`;
-        break;
-      case 'herd': {
-        let arrows = '';
-        for (let i = 0; i < 9; i++) {
-          const x = 20 + (i % 3) * 30, y = 30 + Math.floor(i / 3) * 26;
-          arrows += `<path d="M${x} ${y} l14 8 l-14 8 l4 -8Z" fill="var(--foe)"/>`;
-        }
-        body = `<circle cx="60" cy="60" r="44" fill="url(#${id}r)" opacity=".5"/><g class="shake">${arrows}</g>`;
-        break;
-      }
-      case 'star':
-        body = `<circle cx="60" cy="60" r="46" fill="url(#${id}r)" opacity=".6"/><path class="pulse" d="M60 16 L71 48 L104 48 L77 67 L88 100 L60 80 L32 100 L43 67 L16 48 L49 48Z" fill="#2b1f08" stroke="var(--foe)" stroke-width="3"/>`;
-        break;
-      case 'rift':
-        body = `<ellipse cx="60" cy="60" rx="34" ry="46" fill="#05030a" stroke="var(--foe)" stroke-width="3"/><path class="flick" d="M60 18 L52 44 L66 58 L50 78 L62 102" stroke="var(--foe)" stroke-width="3" fill="none"/><ellipse cx="60" cy="60" rx="44" ry="56" fill="none" stroke="var(--foe)" stroke-opacity=".3" stroke-width="8" class="pulse"/>`;
-        break;
-      default: {
-        let ticks = '';
-        for (let i = 0; i < 24; i++) {
-          const a = i / 24 * Math.PI * 2;
-          ticks += `<path d="M${60 + Math.cos(a) * 44} ${60 + Math.sin(a) * 44} L${60 + Math.cos(a) * 52} ${60 + Math.sin(a) * 52}" stroke="var(--foe)" stroke-width="${i % 6 ? 1.5 : 4}"/>`;
-        }
-        body = `<circle cx="60" cy="60" r="56" fill="url(#${id}r)" opacity=".35"/><g class="spin">${ticks}<circle cx="60" cy="60" r="40" fill="none" stroke="var(--foe)" stroke-width="2"/></g><path d="M60 34 L82 60 L60 86 L38 60Z" fill="#160b20" stroke="var(--foe)" stroke-width="3"/><circle class="pulse" cx="60" cy="60" r="7" fill="#fff"/>`;
-      }
-    }
-    return `<svg viewBox="0 0 120 120" aria-hidden="true">${defs}${body}</svg>`;
+  // Incidents: a bright blob with the incident's icon and a pair of googly eyes.
+  const FOE = {
+    slime: { icon: 'slime', col: '#7ee0a8', anim: 'squish' }, storm: { icon: 'lightning-storm', col: '#b4c2ff', anim: 'float' },
+    golem: { icon: 'robot-golem', col: '#e3c99a', anim: 'float' }, ghost: { icon: 'ghost', col: '#efeaff', anim: 'float' },
+    cow: { icon: 'cow', col: '#ffffff', anim: 'shake' }, cat: { icon: 'cat', col: '#ffd08f', anim: 'float' },
+    imp: { icon: 'imp', col: '#ffa9cb', anim: 'float' }, goblin: { icon: 'goblin-head', col: '#a6e070', anim: 'float' }
+  };
+  A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
+  A.enemy = function (sprite, boss) {
+    const f = FOE[sprite] || FOE.slime;
+    const icon = SD.icons && SD.icons[f.icon];
+    const crown = boss ? `<path d="M40 22 L46 6 L54 18 L60 2 L66 18 L74 6 L80 22Z" fill="#ffd23f" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '';
+    const eye = (x, d) => `<circle cx="${x}" cy="34" r="10" fill="#fff" stroke="${INK}" stroke-width="2.5"/><circle class="googly" style="animation-delay:${d}s" cx="${x + 2}" cy="36" r="4.5" fill="${INK}"/>`;
+    return `<svg viewBox="0 0 120 120" aria-hidden="true">
+      <ellipse cx="60" cy="112" rx="34" ry="6" fill="rgba(43,35,64,.18)"/>
+      <g class="${f.anim}">
+        <circle cx="60" cy="62" r="44" fill="${f.col}" stroke="${INK}" stroke-width="3"/>
+        ${icon ? `<g transform="translate(31 38) scale(0.113)" style="color:${INK}">${icon}</g>` : ''}
+        ${eye(46, 0)}${eye(74, -0.4)}
+        ${crown}
+      </g></svg>`;
   };
 
-  // Mio's drawings: small crayon scenes, one per loop.
+  // Mio's crayon drawings, one per loop.
   A.drawing = function (n) {
+    const cr = (d, c, w) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w || 3}" stroke-linecap="round" stroke-linejoin="round"/>`;
     const scenes = [
-      '<circle cx="50" cy="40" r="14" fill="none" stroke="#ff9ccf" stroke-width="3"/><path d="M50 54 v24 M36 62 h28 M50 78 l-10 14 M50 78 l10 14" stroke="#ff9ccf" stroke-width="3"/><path d="M44 44 q6 -4 12 0" stroke="#7fb6ff" stroke-width="2" fill="none"/>',
-      '<path d="M20 90 L50 20 L80 90" stroke="#ffc56b" stroke-width="3" fill="none"/><circle cx="30" cy="30" r="6" fill="#ffc56b"/><circle cx="70" cy="26" r="6" fill="#ffc56b"/><circle cx="50" cy="60" r="6" fill="#ffc56b"/>',
-      '<circle cx="50" cy="50" r="30" stroke="#7ff3ff" stroke-width="3" fill="none"/><path d="M50 20 v-10 M50 80 v10 M20 50 h-10 M80 50 h10" stroke="#7ff3ff" stroke-width="3"/>',
-      '<path d="M15 80 h70 M25 80 v-30 h20 v30 M55 80 v-44 h20 v44" stroke="#9df0b4" stroke-width="3" fill="none"/><path d="M10 40 Q50 10 90 40" stroke="#7ff3ff" stroke-width="2" fill="none"/>',
-      '<path d="M20 70 Q50 30 80 70" stroke="#ffc56b" stroke-width="3" fill="none"/><circle cx="50" cy="40" r="10" fill="#ffc56b"/><path d="M30 86 h40" stroke="#ff9ccf" stroke-width="3"/>'
+      // You, with very generous muscles
+      cr('M50 22 a10 10 0 1 0 0.1 0', '#5a3b2e') + cr('M50 42 v26 M50 68 l-10 18 M50 68 l10 18', '#3b8bff') + cr('M50 48 q-14 -6 -20 -18 q-4 -8 4 -8 q8 2 6 10 M50 48 q14 -6 20 -18 q4 -8 -4 -8 q-8 2 -6 10', '#ff6fa5', 4) + cr('M20 92 h60', '#2fbf7f') + '<text x="50" y="98" text-anchor="middle" font-family="Fredoka" font-size="9" fill="#ff9a3c">ME!!</text>',
+      // The cows are winning
+      cr('M20 60 q8 -10 18 0 q8 10 18 0 M22 60 v12 M36 60 v12 M16 56 l-4 -4', '#2b2340') + cr('M58 54 q8 -10 18 0 q8 10 18 0 M60 54 v12 M74 54 v12', '#2b2340') + cr('M30 30 a6 6 0 1 0 0.1 0 M30 36 v12', '#3b8bff') + cr('M10 84 h80', '#2fbf7f') + cr('M60 24 l4 8 l8 -2', '#ff5a5a'),
+      // A sad cloud and some hearts
+      cr('M24 56 a12 12 0 0 1 14 -14 a16 16 0 0 1 30 4 a10 10 0 0 1 8 18 h-48 a8 8 0 0 1 -4 -8Z', '#7cc8ff', 4) + cr('M42 52 h2 M58 52 h2 M44 62 q6 -4 12 0', '#2b2340') + cr('M30 82 q-4 -6 2 -8 q4 0 4 4 q0 -4 4 -4 q6 2 2 8 l-6 6Z', '#ff6fa5') + cr('M66 84 q-4 -6 2 -8 q4 0 4 4 q0 -4 4 -4 q6 2 2 8 l-6 6Z', '#ff6fa5'),
+      // Gary, with croissant
+      cr('M50 34 a14 14 0 1 0 0.1 0', '#e0a77a', 4) + '<circle cx="45" cy="34" r="1.6" fill="#2b2340"/><circle cx="55" cy="34" r="1.6" fill="#2b2340"/>' + cr('M46 41 h8', '#2b2340', 2) + cr('M34 54 h32 l-6 30 h-20Z', '#9aa3b5') + cr('M68 60 q8 -8 14 0 q-6 8 -14 0', '#ffb347', 4) + '<text x="50" y="96" text-anchor="middle" font-family="Fredoka" font-size="8" fill="#2b2340">GARY (OK)</text>',
+      // Pip gets a letter
+      cr('M30 76 q-4 -30 20 -36 q24 6 20 36 q-20 6 -40 0Z', '#6fd6ff', 4) + '<circle cx="44" cy="58" r="2" fill="#2b2340"/><circle cx="56" cy="58" r="2" fill="#2b2340"/>' + cr('M46 66 q4 4 8 0', '#2b2340', 2) + cr('M66 26 h20 v14 h-20Z M66 26 l10 8 l10 -8', '#ff9a3c') + '<text x="76" y="52" text-anchor="middle" font-family="Fredoka" font-size="9" fill="#ff6fa5">ACK!</text>'
     ];
-    return `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="6" fill="#f6efe2" opacity=".08"/>${scenes[n % scenes.length]}</svg>`;
+    return `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="2" y="2" width="96" height="96" fill="#fffdf6"/>${scenes[n % scenes.length]}</svg>`;
   };
 })();

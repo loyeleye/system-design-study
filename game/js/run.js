@@ -1,7 +1,8 @@
-// A run through the Lattice Gate: branching map, incidents, shops, gardens, the boss.
+// A run down into Prod: branching map, incidents, shops, campfires, Gary, the boss.
 (function () {
   const R = SD.run = {};
-  const U = SD.ui, S = SD.state, Q = SD.quiz;
+  const U = SD.ui, S = SD.state, Q = SD.quiz, AU = SD.audio;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
   const $ = U.$;
   const rnd = a => a[Math.floor(Math.random() * a.length)];
   let C = null; // current combat
@@ -26,13 +27,14 @@
     if (run.pending) { const node = findNode(run.pending); if (node) return enterNode(node); }
     R.showMap();
   };
-  R.abandon = function () { endRun(false, 'You walked away from the Gate'); };
+  R.abandon = function () { endRun(false, 'Your sudden decision to go home'); };
 
   function gateFx(done) {
     const fx = document.createElement('div');
     fx.className = 'gatefx';
-    fx.innerHTML = '<div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="gate-t">ENTERING GATE</div>';
+    fx.innerHTML = '<div class="gate-t">ENTERING PROD...</div>';
     document.body.appendChild(fx);
+    AU.sfx('gate');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     setTimeout(() => { fx.remove(); done(); }, reduce ? 50 : 1300);
   }
@@ -44,9 +46,9 @@
       ['fight', 'board', 'event'],
       ['fight', 'cafe', 'board'],
       ['elite', 'fight', 'event'],
-      ['garden', 'fight', 'board'],
+      ['camp', 'fight', 'board'],
       ['fight', 'event', 'cafe'],
-      ['garden', 'board', 'garden']
+      ['camp', 'board', 'camp']
     ];
     const floors = plan.map((types, f) => Q.shuffle(types).map((type, lane) => ({ id: f + '-' + lane, f, lane, type, next: [] })));
     floors.push([{ id: '7-1', f: 7, lane: 1, type: 'boss', next: [] }]);
@@ -61,11 +63,12 @@
   function findNode(id) { for (const fl of S.save.run.map.floors) for (const n of fl) if (n.id === id) return n; return null; }
   const NODE = {
     fight: { l: 'Incident', g: 'crossed-swords' }, elite: { l: 'Elite', g: 'horned-skull' }, board: { l: 'Whiteboard', g: 'notebook' },
-    cafe: { l: 'Café', g: 'coffee-cup' }, garden: { l: 'Garden', g: 'bonsai-tree' }, event: { l: 'Event', g: 'card-random' }, boss: { l: 'BOSS', g: 'crowned-skull' }
+    cafe: { l: 'Café', g: 'coffee-cup' }, camp: { l: 'Campfire', g: 'campfire' }, event: { l: 'Event', g: 'card-random' }, boss: { l: 'BOSS', g: 'crowned-skull' }
   };
 
   R.showMap = function () {
     const run = S.save.run;
+    AU.music('explore');
     const floors = run.map.floors;
     const cur = run.pos ? findNode(run.pos) : null;
     const reach = cur ? cur.next : floors[0].map(n => n.id);
@@ -89,14 +92,14 @@
     }));
     $('#run').innerHTML = `
       <div class="run-hud">${hud()}</div>
-      <div class="map-wrap"><div class="map-title">LANTERN WARD GATE · E-RANK <span class="muted">Pick a path. The Ledger waits at the top.</span></div>
+      <div class="map-wrap"><div class="map-title">PROD DUNGEON · E-RANK <span class="muted">Pick a path. The Goblin King of Links waits at the end.</span></div>
       <div class="map" style="height:${rows * 78}px">${svg}${nodes}</div></div>
-      <div class="run-foot"><button class="ghost" id="deck-btn">Deck (${run.deck.length})</button><button class="ghost" id="codex-btn2">Notebook</button><button class="ghost danger" id="abandon">Abandon run</button></div>`;
+      <div class="run-foot"><button class="ghost" id="deck-btn">Deck (${run.deck.length})</button><button class="ghost" id="codex-btn2">Cheat sheet</button><button class="ghost danger" id="abandon">Abandon run</button></div>`;
     $('#run').querySelectorAll('.node.can').forEach(b => b.onclick = () => enterNode(findNode(b.dataset.n)));
     $('#deck-btn').onclick = showDeck;
     $('#codex-btn2').onclick = () => U.codex();
     $('#abandon').onclick = () => {
-      const b = U.panel('<p>Abandon this run? The Cascade will come and the loop resets. You keep XP, shards and everything you learned.</p><div class="row"><button class="danger" id="ab-y">Abandon</button><button class="ghost" id="ab-n">Keep going</button></div>', { title: 'CONFIRM' });
+      const b = U.panel('<p>Abandon this run? You will respawn on the same morning. You keep XP, shards and everything you learned.</p><div class="row"><button class="danger" id="ab-y">Abandon</button><button class="ghost" id="ab-n">Keep going</button></div>', { title: 'CONFIRM' });
       b.querySelector('#ab-y').onclick = () => { U.closePanel(); R.abandon(); };
       b.querySelector('#ab-n').onclick = U.closePanel;
     };
@@ -129,7 +132,7 @@
     if (n.type === 'boss') return boss(done);
     if (n.type === 'board') return whiteboard(done);
     if (n.type === 'cafe') return cafe(done);
-    if (n.type === 'garden') return garden(done);
+    if (n.type === 'camp') return campfire(done);
     if (n.type === 'event') return eventNode(done);
   }
 
@@ -139,10 +142,11 @@
     const ups = S.addXp(n);
     if (S.save.run) S.save.run.log.xp += n;
     ups.forEach(l => {
-      U.system('LEVEL UP', `Architect level ${l}. Max SLA +4. New cards may appear in the Lattice.`, 'gold');
-      for (const k in SD.specs) if (SD.specs[k].rank === l) U.system('SPEC UNLOCKED', `${U.esc(SD.specs[k].name)} is available at the Workshop.`);
+      AU.sfx('levelup');
+      U.system('LEVEL UP!', `Hero level ${l}. Max SLA +4. New cards may turn up in Prod.`, 'gold');
+      for (const k in SD.specs) if (SD.specs[k].rank === l) U.system('SPEC UNLOCKED', `${U.esc(SD.specs[k].name)} is ready at Seymour's bunker.`);
     });
-    if (S.rank() !== before) U.system('RANK UP', `You are now a ${S.rank()}-Rank Architect.`, 'gold');
+    if (S.rank() !== before) U.system('RANK UP!', `The Adventurers' Guild now lists you as ${S.rank()}-Rank.`, 'gold');
     S.persist();
   };
   function cardChoices(n) {
@@ -168,8 +172,9 @@
     const b = U.panel(`<div class="loot"><span>+${bits} bits</span><span>+${xp} XP</span><span>+${shards} shard${shards > 1 ? 's' : ''}</span></div>
       <p class="muted">Choose a card to add to your deck.</p>
       <div class="cardgrid pick">${picks.map((id, i) => U.cardHtml({ id }, { i })).join('')}</div>
-      <button class="ghost" id="skip">Skip</button>`, { title: '[SYSTEM] INCIDENT RESOLVED', noClose: true, cls: 'wide' });
+      <button class="ghost" id="skip">Skip</button>`, { title: 'INCIDENT RESOLVED!', noClose: true, cls: 'wide' });
     b.querySelectorAll('.card').forEach(el => el.onclick = () => {
+      AU.sfx('card');
       run.deck.push({ id: picks[+el.dataset.i], up: false });
       S.seeConcept(SD.cards[picks[+el.dataset.i]].concept || 'delivery');
       U.closePanel(); S.persist(); done();
@@ -177,9 +182,9 @@
     b.querySelector('#skip').onclick = () => { U.closePanel(); done(); };
   }
 
-  // ---------- Whiteboard, café, garden, events ----------
+  // ---------- Whiteboard, café, campfire, events ----------
   async function whiteboard(done) {
-    const res = await Q.session(2, { title: '[QUEST] WHITEBOARD' });
+    const res = await Q.session(2, { title: 'WHITEBOARD' });
     const run = S.save.run;
     let bits = 0, xp = 0;
     res.forEach(r => {
@@ -197,7 +202,7 @@
     const sold = new Set();
     let removed = false, healed = false;
     function render() {
-      const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Sit, dear. Everything here is fresh. Well. Fresh enough."</p></div>
+      const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Grandma Wen runs a branch down here too, dear. Don't ask how. Everything is fresh. Well. Fresh enough."</p></div>
         <div class="loot"><span>You have <b>${run.bits}</b> bits</span></div>
         <div class="cardgrid pick">${stock.map((id, i) => sold.has(i) ? '<div class="card sold">SOLD</div>' : `<div class="buy">${U.cardHtml({ id }, { i, dim: run.bits < price[SD.cards[id].rarity] })}<span class="price">${price[SD.cards[id].rarity]} bits</span></div>`).join('')}</div>
         <div class="row">
@@ -208,9 +213,9 @@
       b.querySelectorAll('.buy .card').forEach(el => el.onclick = () => {
         const i = +el.dataset.i, id = stock[i], p = price[SD.cards[id].rarity];
         if (run.bits < p) return;
-        run.bits -= p; run.deck.push({ id, up: false }); sold.add(i); S.persist(); render();
+        run.bits -= p; run.deck.push({ id, up: false }); sold.add(i); AU.sfx('coin'); S.persist(); render();
       });
-      b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + 15); healed = true; S.persist(); render(); };
+      b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + 15); healed = true; AU.sfx('heal'); S.persist(); render(); };
       b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed = true; S.persist(); render(); }, render);
       b.querySelector('#leave').onclick = () => { U.closePanel(); done(); };
     }
@@ -223,18 +228,18 @@
     b.querySelectorAll('.card').forEach(el => el.onclick = () => { onPick(list[+el.dataset.i]); });
     b.querySelector('#pc-x').onclick = onCancel;
   }
-  function garden(done) {
+  function campfire(done) {
     const run = S.save.run;
     const heal = Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0)));
-    const b = U.panel(`<p>A quiet garden between the cables. Fireflies drift. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
+    const b = U.panel(`<p>A cosy campfire between floors. Pip roasts a marshmallow and drops it. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
       <p class="muted small">Diffuse mode: stepping back is part of learning. Choose one.</p>
       <div class="opts">
         <button class="opt" id="g-rest"><b>Rest</b> · Recover ${heal} SLA</button>
         <button class="opt" id="g-forge"><b>Refactor</b> · Upgrade a card (+3 to its numbers)</button>
         <button class="opt" id="g-reflect"><b>Reflect</b> · Connect two ideas for XP and a notebook link</button>
-      </div>`, { title: 'GARDEN', noClose: true });
-    b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); S.persist(); U.closePanel(); done(); };
-    b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => garden(done), c => !c.up && SD.cards[c.id].rarity);
+      </div>`, { title: 'CAMPFIRE', noClose: true });
+    b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); AU.sfx('heal'); S.persist(); U.closePanel(); done(); };
+    b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => campfire(done), c => !c.up && SD.cards[c.id].rarity);
     b.querySelector('#g-reflect').onclick = () => reflect(done);
   }
   async function reflect(done) {
@@ -266,12 +271,13 @@
       const ch = ev.choices[+el.dataset.c], e = ch.effect;
       S.recordAnswer(ev.concept, ch.good, 1, 15000);
       if (e.sla) run.sla = Math.max(1, Math.min(S.maxSla(), run.sla + e.sla));
-      if (e.bits) run.bits += e.bits;
+      if (e.bits) run.bits = Math.max(0, run.bits + e.bits);
       if (e.card) run.deck.push({ id: e.card, up: false });
       if (e.xp) R.gainXp(e.xp);
       S.persist();
-      const fx = [e.sla ? `${e.sla > 0 ? '+' : ''}${e.sla} SLA` : '', e.bits ? `+${e.bits} bits` : '', e.card ? `New card: ${SD.cards[e.card].name}` : '', e.xp ? `+${e.xp} XP` : ''].filter(Boolean).join(' · ');
-      const b2 = U.panel(`<div class="verdict ${ch.good ? 'ok' : 'bad'}">${ch.good ? 'GOOD CALL' : 'HMM'}</div><p>${U.esc(ch.out)}</p>${fx ? `<p class="muted">${U.esc(fx)}</p>` : ''}<p class="why">${U.esc(SD.concepts[ev.concept].gist)}</p><button class="primary" id="ev-ok">Continue</button>`, { title: ev.title.toUpperCase(), noClose: true });
+      AU.sfx(ch.good ? 'right' : 'wrong');
+      const fx = [e.sla ? `${e.sla > 0 ? '+' : ''}${e.sla} SLA` : '', e.bits ? `${e.bits > 0 ? '+' : ''}${e.bits} bits` : '', e.card ? `New card: ${SD.cards[e.card].name}` : '', e.xp ? `+${e.xp} XP` : ''].filter(Boolean).join(' · ');
+      const b2 = U.panel(`<div class="verdict ${ch.good ? 'ok' : 'bad'}">${ch.good ? 'GOOD CALL!' : 'HMM...'}</div><p>${U.esc(ch.out)}</p>${fx ? `<p class="muted">${U.esc(fx)}</p>` : ''}<p class="why">${U.esc(SD.concepts[ev.concept].gist)}</p><button class="primary" id="ev-ok">Continue</button>`, { title: ev.title.toUpperCase(), noClose: true });
       b2.querySelector('#ev-ok').onclick = () => { U.closePanel(); done(); };
     });
   }
@@ -282,9 +288,11 @@
     S.seeConcept(e.concept);
     run.log.concepts[e.concept] = (run.log.concepts[e.concept] || 0) + 1;
     const known = (S.save.flags.known = S.save.flags.known || {})[eid] || [];
+    const deck = run.deck.map((c, i) => ({ id: c.id, up: c.up, uid: i }));
+    AU.music(opts.boss ? 'boss' : 'battle');
     C = {
-      eid, e, sev: e.sev, max: e.sev, ii: 0, rage: 0, turn: 0, energy: 0,
-      draw: Q.shuffle(run.deck.map((c, i) => ({ id: c.id, up: c.up, uid: i }))), hand: [], disc: [], exh: [], infra: [],
+      eid, e, sev: e.sev, max: e.sev, ii: 0, rage: 0, turn: 0, energy: 0, tutorial: !!opts.tutorial,
+      draw: opts.tutorial ? deck : Q.shuffle(deck), hand: [], disc: [], exh: [], infra: [],
       sh: zero(), stale: 0, jitter: false, choice: null, known: new Set(known), diagBonus: 0,
       elite: !!opts.elite, boss: !!opts.boss, done, deepAsked: false, mercyScale: run.firstFight ? 0.75 : 1, log: ''
     };
@@ -300,10 +308,10 @@
 
   async function diagnose(go) {
     const e = C.e;
-    const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss)).slice(0, 3);
+    const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss && !SD.enemies[k].tutorial)).slice(0, 3);
     const optsIds = Q.shuffle([C.eid, ...others]);
     const q = { c: e.concept, type: 'mc', q: `Symptoms: ${e.symptom} Which incident is this?`, opts: optsIds.map(k => SD.enemies[k].name), a: optsIds.indexOf(C.eid), why: Object.values(e.weak)[0] };
-    const r = await Q.ask(q, { title: '[SYSTEM] DIAGNOSE', context: 'Read the symptoms before the fight', hideOne: S.save.relics.includes('pipeye') });
+    const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight', hideOne: S.save.relics.includes('pipeye') });
     if (r.ok) {
       C.diagBonus += 1;
       Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t));
@@ -341,6 +349,8 @@
     });
     drawN(C.turn === 1 && sv.spec === 'shard' ? 4 : 5);
     renderCombat();
+    if (C.tutorial && C.turn === 2) return tutorialGary();
+    if (garyShouldCome()) garyRescue();
   }
 
   function mitigate(n, why, cls) {
@@ -351,12 +361,13 @@
   }
 
   async function playCard(i) {
-    if (C.over) return;
+    if (C.over || C.busy) return;
     const c = C.hand[i]; if (!c) return;
     const d = SD.cards[c.id], cost = costOf(c);
     if (cost > C.energy) { C.log = 'Not enough Capacity.'; renderCombat(); return; }
     C.energy -= cost;
     C.hand.splice(i, 1);
+    AU.sfx(d.abs || d.each ? 'shield' : 'card');
     const sv = S.save, up = c.up ? 3 : 0;
     const cacheSpec = sv.spec === 'cache' && (d.tags || []).includes('cache');
     let msg = '';
@@ -373,9 +384,9 @@
     if (d.pow) {
       const tags = d.tags || [];
       const wk = tags.find(t => C.e.weak[t]), rs = tags.find(t => C.e.resist[t]);
-      if (wk) { mitigate(d.pow + up, 'EFFECTIVE: ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); }
-      else if (rs) { C.log = 'RESISTED: ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); }
-      else { mitigate(Math.floor((d.pow + up) / 2), 'Partial: it helps a little, but this incident is not about that.', 'hit'); }
+      if (wk) { mitigate(d.pow + up, 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); AU.sfx('crit'); }
+      else if (rs) { C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); AU.sfx('resist'); }
+      else { mitigate(Math.floor((d.pow + up) / 2), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
       saveKnown();
     }
     if (d.concept) S.seeConcept(d.concept);
@@ -393,8 +404,8 @@
       renderCombat();
       const q = SD.questions.find(x => x.id === rnd(['x1', 'i3', 'i1']));
       const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."' });
-      if (r.ok) { mitigate(16, 'DEEP DIVE LANDED: the Ledger staggers.', 'crit'); U.shake('.foe'); }
-      else C.log = 'The deep dive slipped. The Ledger presses on.';
+      if (r.ok) { mitigate(16, 'DEEP DIVE LANDED! The Goblin King staggers.', 'crit'); U.shake('.foe'); AU.sfx('crit'); }
+      else C.log = 'The deep dive slipped. The Goblin King cackles and presses on.';
       if (C.sev <= 0) return win();
     }
     renderCombat();
@@ -455,21 +466,21 @@
   }
 
   function endTurn() {
-    if (C.over) return;
+    if (C.over || C.busy) return;
     const it = C.e.pattern[C.ii % C.e.pattern.length];
     C.disc.push(...C.hand); C.hand = [];
     const { dmg, note } = resolveIntent(it);
     const run = S.save.run;
     run.sla -= dmg;
     C.log = note + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
-    if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); }
+    if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); } else AU.sfx('shield');
     if (run.sla <= 0 && !run.mercy) {
       run.sla = 1; run.mercy = true;
-      U.system('LAST UPTIME', 'Pip throws everything into the core. You hold at 1 SLA. This only works once a run.', 'red');
+      U.system('LAST UPTIME', 'Pip throws himself in front of the request. You hold at 1 SLA. He is fine. Probably. Once a run.', 'red');
     }
     C.ii++;
     S.persist();
-    if (run.sla <= 0) { C.over = true; renderCombat(); return setTimeout(() => endRun(false, C.e.name), 700); }
+    if (run.sla <= 0) { C.over = true; renderCombat(); return setTimeout(() => endRun(false, 'The ' + C.e.name), 700); }
     beginTurn();
   }
 
@@ -479,7 +490,8 @@
     const run = S.save.run;
     renderCombat();
     $('#run').querySelector('.combat').classList.add('won');
-    U.float($('.foe'), 'RESOLVED', 'crit');
+    U.float($('.foe'), 'RESOLVED!', 'crit');
+    if (!C.boss) AU.jingle('victory', 'explore');
     setTimeout(() => rewards({ elite: C.elite, boss: C.boss }, C.done), 650);
     run.log.won = (run.log.won || 0) + 1;
   }
@@ -491,7 +503,7 @@
     ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale); });
     const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
     const res = Object.keys(e.resist).filter(t => C.known.has('r:' + t));
-    const foeCol = C.boss ? '#ffd65a' : C.elite ? '#c77dff' : '#ff5a6e';
+    const foeCol = SD.art.enemyColor(e.sprite);
     const chips = [];
     const SHN = { cache: 'Cache', replica: 'Replica', read: 'Read', write: 'Write', any: 'Any' };
     for (const k in C.sh) if (C.sh[k] > 0) chips.push(`<span class="chip sh-${k}">${SHN[k]} ${Math.round(C.sh[k])}</span>`);
@@ -502,15 +514,16 @@
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
         <div class="foe-zone">
-          <div class="foe" style="--foe:${foeCol}">${SD.art.enemy(e.sprite)}</div>
+          <div class="foe" style="--foe:${foeCol}">${SD.art.enemy(e.sprite, C.boss)}</div>
           <div class="foe-info">
             <div class="foe-name">${U.esc(e.name)} ${C.boss ? '<span class="tier boss">BOSS</span>' : C.elite ? '<span class="tier elite">ELITE</span>' : '<span class="tier">INCIDENT</span>'}</div>
+            ${e.flavor ? `<div class="foe-flavor">${U.esc(e.flavor)}</div>` : ''}
             <div class="bar sev"><i style="width:${C.sev / C.max * 100}%"></i><span>Severity ${C.sev}/${C.max}</span></div>
             <div class="intent"><span class="lbl">NEXT</span> ${U.esc(SD.intentText[it.t](shown))}</div>
             <div class="tags">${weak.length ? `<span>Weak to: <b>${weak.map(U.esc).join(', ')}</b></span>` : ''}${res.length ? `<span>Resists: <b>${res.map(U.esc).join(', ')}</b></span>` : ''}${!weak.length && !res.length ? '<span class="muted">Weaknesses unknown. Diagnose or experiment.</span>' : ''}</div>
           </div>
         </div>
-        <div class="clog" aria-live="polite">${U.esc(C.log || 'Your turn. Play cards, then end the turn to face the next intent.')}</div>
+        <div class="clog${C.coach ? ' coach' : ''}" aria-live="polite">${U.esc(C.log || 'Your turn. Play cards, then end the turn to face the next intent.')}</div>
         <div class="me-zone">
           <div class="hud-sla"><span>SLA</span><div class="bar sla"><i style="width:${pct}%"></i></div><b>${Math.max(0, run.sla)}/${S.maxSla()}</b></div>
           <div class="chips">${chips.join('') || '<span class="muted small">No defences up.</span>'}</div>
@@ -530,13 +543,94 @@
     $('#end-turn').onclick = endTurn;
   }
 
-  // ---------- Boss: the Courier's Ledger (URL shortener) ----------
+  // ---------- Gary: the deus ex machina ----------
+  // He turns up once per run, always when things look grim and now and then for no reason at all.
+  function garyShouldCome() {
+    const run = S.save.run;
+    if (C.boss || C.tutorial || C.over || run.gary) return false;
+    return run.sla <= S.maxSla() * 0.3 || (C.turn >= 2 && Math.random() < 0.1);
+  }
+  function oneCommit() {
+    const fx = document.createElement('div');
+    fx.className = 'garyfx';
+    fx.innerHTML = '<b>ONE COMMIT.</b>';
+    document.body.appendChild(fx);
+    AU.sfx('punch'); U.shake('#run');
+    setTimeout(() => fx.remove(), 1600);
+  }
+  async function garyRescue() {
+    const run = S.save.run;
+    run.gary = true; S.save.flags.garyRescues = (S.save.flags.garyRescues || 0) + 1; S.persist();
+    C.busy = true;
+    await wait(400);
+    AU.jingle('gary', null);
+    await U.dialog(rnd(SD.story.garyIn).map(t => ({ s: 'gary', t })).concat([{ s: 'narr', t: 'He sets down his coffee. He presses one key.' }]));
+    oneCommit();
+    await wait(900);
+    mitigate(C.sev, 'Gary fixed it. Of course he did.', 'crit');
+    const healed = run.sla < S.maxSla() * 0.5;
+    if (healed) run.sla = Math.min(S.maxSla(), run.sla + 12);
+    renderCombat();
+    $('#run').querySelector('.combat').classList.add('won');
+    await wait(500);
+    const fix = Object.values(C.e.weak)[0];
+    await U.dialog([
+      { s: 'gary', t: rnd(SD.story.garyOut).replace('{fix}', fix) },
+      healed ? { s: 'gary', t: 'You look tired. Here, half a croissant. (+12 SLA)' } : null,
+      { s: 'pip', t: 'Wait wait wait. WHY did that work? Quick, explain it before you forget!' }
+    ].filter(Boolean));
+    AU.music('battle');
+    const q = S.pickQuestion(C.e.concept);
+    const r = await Q.ask(q, { title: 'WHY DID THAT WORK?', context: "Explain Gary's fix" });
+    if (r.ok) { R.gainXp(20); U.system('YOU GET IT!', "You understood Gary's fix. +20 XP. Uptima is furious she didn't.", 'gold'); }
+    C.busy = false;
+    win();
+  }
+
+  // ---------- The cold-open tutorial: one safe fight that Gary finishes ----------
+  R.tutorial = function (done) {
+    const sv = S.save;
+    sv.run = {
+      deck: ['cacheaside', 'replica', 'bigbox', 'hotfix', 'hotfix'].map(id => ({ id, up: false })),
+      sla: S.maxSla(), bits: 0, floor: -1, pos: null, pending: null, map: null, mercy: false, startedAt: Date.now(), firstFight: false,
+      log: { fights: 0, concepts: {}, misses: 0, right: 0, xp: 0 }, boss: {}, tutorial: true
+    };
+    SD.main.show('run');
+    fight('tutorial', { tutorial: true }, () => {});
+    C.log = SD.story.tutorialStart; C.coach = true;
+    C.finish = done;
+    renderCombat();
+  };
+  async function tutorialGary() {
+    C.busy = true;
+    C.log = 'Pip: "Uh oh."'; renderCombat();
+    await wait(500);
+    await U.dialog(SD.story.tutorialPanic);
+    oneCommit();
+    await wait(900);
+    mitigate(C.sev, 'Gary fixed it in one commit.', 'crit');
+    C.over = true; C.coach = false;
+    renderCombat();
+    $('#run').querySelector('.combat').classList.add('won');
+    AU.jingle('victory', null);
+    S.seeConcept('cache'); S.seeConcept('herd');
+    await wait(900);
+    await U.dialog(SD.story.tutorialAfter);
+    const sv = S.save;
+    sv.run = null; S.save.flags.garyRescues = 1; S.persist();
+    R.gainXp(15);
+    const done = C.finish; C = null;
+    if (done) done();
+  }
+
+  // ---------- Boss: the Goblin King of Links (URL shortener) ----------
   async function boss(done) {
+    AU.music('boss');
     await U.dialog(SD.story.bossIntro);
     S.seeConcept('delivery'); S.seeConcept('idgen'); S.seeConcept('redirect');
     const buffs = { sevScale: 1, bonusEnergy: 0, startCard: null };
     const r1 = await Q.ask({
-      c: 'delivery', type: 'multi', q: 'Step 1, Requirements. Which belong in scope for the city\'s URL shortener?', hint: 'Pick the functional and non-functional requirements. Leave out what does not belong.',
+      c: 'delivery', type: 'multi', q: 'Step 1, Requirements. Which belong in scope for the kingdom\'s URL shortener?', hint: 'Pick the functional and non-functional requirements. Leave out what does not belong.',
       items: [
         { t: 'Create a short code from a long URL', ok: true }, { t: 'Redirect a short code to its long URL', ok: true },
         { t: 'Redirects in under 100 ms', ok: true }, { t: 'High availability for redirects', ok: true }, { t: 'Scale to 100M+ links', ok: true },
@@ -544,12 +638,12 @@
       ],
       why: 'Two core features (create, redirect) and three qualities (latency, availability, scale). Optional extras like custom aliases and expiry are fine to mention; unrelated features are not.'
     }, { title: '[BOSS] REQUIREMENTS', context: 'Delivery framework · 1 of 3' });
-    if (r1.ok) { buffs.sevScale = 0.85; U.system('SCOPE LOCKED', 'Clear requirements: the Ledger starts 15% weaker.'); }
+    if (r1.ok) { buffs.sevScale = 0.85; U.system('SCOPE LOCKED!', 'Clear requirements: the Goblin King starts 15% weaker.', 'gold'); }
     const r2 = await Q.ask({ c: 'estimation', type: 'num', q: 'Step 2, Estimation. 1 billion redirects a day. Average redirect QPS?', unit: 'QPS', lo: 8000, hi: 15000, ans: '~11,600 (10^9 / 86,400)', why: 'About 10^4 QPS average, so peaks of 20-30k. That says: cache the hot codes, and run many stateless redirect servers.' }, { title: '[BOSS] ESTIMATION', context: 'Delivery framework · 2 of 3' });
-    if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND', '+1 Capacity on turn 1.'); }
+    if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND!', '+1 Capacity on turn 1.', 'gold'); }
     const api = ['POST /urls {long_url} → {short_code}; GET /{code} → 302 to long_url', 'GET /create?url=…; POST /{code} to follow it', 'PUT /urls/{long_url} → returns the page', 'POST /redirect {code} → 200 with the long URL in JSON'];
     const r3 = await Q.ask({ c: 'delivery', type: 'mc', q: 'Step 3, API. Which API fits?', opts: api, a: 0, why: 'Creating is a POST that returns the code. Following a link is a plain GET answered with a redirect, so browsers just work.' }, { title: '[BOSS] API', context: 'Delivery framework · 3 of 3' });
-    if (r3.ok) { buffs.startCard = 'counter'; U.system('DESIGN READY', 'Counter Ranges + Base62 starts in your hand.'); }
+    if (r3.ok) { buffs.startCard = 'counter'; U.system('DESIGN READY!', 'Counter Ranges + Base62 starts in your hand.', 'gold'); }
     S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok };
     S.persist();
     U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now build it under load. At half severity, expect a deep dive.', 'gold');
@@ -569,11 +663,12 @@
     sv.loop++;
     S.persist();
     const rows = concepts.map(id => { const m = S.mastery(id); return `<li><b>${U.esc(SD.concepts[id].name)}</b> <span class="pill s${m.stage}">${m.label}</span></li>`; }).join('');
-    const b = U.panel(`<div class="verdict ${won ? 'ok' : 'bad'}">${won ? 'GATE CLEARED' : 'SLA BREACHED'}</div>
+    AU.jingle(won ? 'victory' : 'defeat', null);
+    const b = U.panel(`<div class="verdict ${won ? 'ok' : 'bad'}">${won ? 'DUNGEON CLEARED!' : 'YOU DIED (AGAIN)'}</div>
       <div class="loot"><span>${run.log.fights} incidents resolved</span><span>${run.log.right} right · ${run.log.misses} missed</span><span>+${run.log.xp} XP</span></div>
       ${rows ? `<p class="muted small">Concepts you worked with</p><ul class="links">${rows}</ul>` : ''}
       <p class="muted small">You spent about ${mins} minute${mins === 1 ? '' : 's'} in focused mode. Take five away from the screen before the next run; your brain keeps working on it in diffuse mode.</p>
-      <button class="primary" id="pm-ok">Continue</button>`, { title: '[SYSTEM] POSTMORTEM', noClose: true });
+      <button class="primary" id="pm-ok">Continue</button>`, { title: 'POSTMORTEM', noClose: true });
     b.querySelector('#pm-ok').onclick = async () => {
       U.closePanel();
       if (won) await U.dialog(SD.story.bossWin);

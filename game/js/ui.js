@@ -1,4 +1,4 @@
-// Shared UI: dialogue, System windows, panels, the Codex.
+// Shared UI: dialogue with typewriter voices, toasts, panels, the cheat sheet (codex).
 (function () {
   const U = SD.ui = {};
   const $ = s => document.querySelector(s);
@@ -7,6 +7,8 @@
 
   // ---- Dialogue with typewriter text ----
   let dq = [], dDone = null, typing = null, full = '';
+  // Each speaker gets a typewriter blip pitch, the way classic JRPGs give characters a voice.
+  const VOICE = { uptima: 900, pip: 1250, gary: 210, seymour: 480, mio: 1100, wen: 720, chad: 430, latency: 150, system: 620, you: 660 };
   U.dialog = function (lines, done) {
     return new Promise(res => {
       dq = lines.slice(); dDone = () => { if (done) done(); res(); };
@@ -23,6 +25,16 @@
     const l = dq.shift();
     if (!l) { $('#dialog').hidden = true; const d = dDone; dDone = null; if (d) d(); return; }
     const who = l.s, c = SD.cast[who];
+    if (l.fx && U.onFx) U.onFx(l.fx);
+    // During cutscenes the speaker stands centre stage, visual-novel style.
+    const st = $('#stage');
+    if (!st.hidden) {
+      let a = st.querySelector('.actor');
+      if (!a) { a = document.createElement('div'); a.className = 'actor'; st.appendChild(a); }
+      if (who === 'narr' || who === 'system') { /* keep whoever is on stage */ }
+      else if (who === 'you') a.hidden = true;
+      else { if (a.dataset.who !== who) { a.dataset.who = who; a.innerHTML = SD.art.portrait(who, 280); } a.hidden = false; }
+    }
     const box = $('#dialog');
     box.dataset.who = who;
     $('#dlg-portrait').innerHTML = who === 'narr' ? '' : SD.art.portrait(who, 96);
@@ -33,12 +45,20 @@
     const el = $('#dlg-text'); el.textContent = '';
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) { el.textContent = full; return; }
+    // Lord Latency's lines arrive late. Of course they do.
+    const slow = who === 'latency';
+    let n = 0;
     typing = setInterval(() => {
-      i += 2; el.textContent = full.slice(0, i);
+      i += slow ? 1 : 2; el.textContent = full.slice(0, i);
+      if (who !== 'narr' && n++ % 3 === 0 && SD.audio) SD.audio.sfx('text', VOICE[who] || 600);
       if (i >= full.length) { clearInterval(typing); typing = null; }
-    }, 18);
+    }, slow ? 70 : 18);
   }
   U.initDialog = function () {
+    // Every button press clicks, like a menu cursor.
+    document.addEventListener('click', e => {
+      if (SD.audio && e.target.closest && e.target.closest('button, .opt, .node')) SD.audio.sfx('blip');
+    });
     $('#dialog').addEventListener('click', next);
     $('#dlg-skip').addEventListener('click', e => { e.stopPropagation(); if (typing) { clearInterval(typing); typing = null; } dq = []; next(); });
     window.addEventListener('keydown', e => {
@@ -47,10 +67,24 @@
     });
   };
 
-  // ---- System notifications (Solo Leveling style) ----
+  // ---- Cutscene stage and flashes ----
+  U.stage = function (scene) {
+    const st = $('#stage');
+    document.body.classList.toggle('cut', !!scene);
+    if (!scene) { st.hidden = true; st.innerHTML = ''; return; }
+    st.dataset.scene = scene; st.hidden = false;
+    st.innerHTML = scene === 'office' ? '' : Array.from({ length: 5 }, (_, i) => `<div class="cloud" style="top:${8 + i * 14}%;animation-delay:${-i * 6}s;transform:scale(${0.6 + (i % 3) * 0.3})"></div>`).join('');
+  };
+  U.flash = function () {
+    const f = document.createElement('div'); f.className = 'flash';
+    document.body.appendChild(f); setTimeout(() => f.remove(), 650);
+  };
+
+  // ---- Toasts ----
   const sq = []; let showing = false;
   U.system = function (title, body, kind) {
     sq.push({ title, body, kind }); if (!showing) pump();
+    if (SD.audio) SD.audio.sfx(kind === 'gold' ? 'coin' : kind === 'red' ? 'wrong' : 'blip');
   };
   function pump() {
     const n = sq.shift(); if (!n) { showing = false; return; }
@@ -97,12 +131,12 @@
     return `<div class="card ${d.kind} r-${d.rarity}${opts.dim ? ' dim' : ''}" style="--h:${hue}" data-i="${opts.i != null ? opts.i : ''}" tabindex="0" role="button" aria-label="${U.esc(d.name)}, cost ${cost}. ${U.esc(text)}">
       <div class="c-cost">${cost}</div>
       <div class="c-name">${U.esc(d.name)}${c.up ? '+' : ''}</div>
-      <div class="c-art">${SD.art.glyph(d.art, `hsl(${hue},90%,70%)`)}</div>
+      <div class="c-art">${SD.art.glyph(d.art, `hsl(${hue},70%,38%)`)}</div>
       <div class="c-kind">${d.kind === 'infra' ? 'INFRA' : 'ACTION'}${d.concept ? ' · ' + U.esc(SD.concepts[d.concept].name) : ''}</div>
       <div class="c-text">${U.esc(text)}</div></div>`;
   };
 
-  // ---- Codex: Ilse's notebook, rebuilt ----
+  // ---- Codex: Uptima's cheat sheet, restored page by page ----
   U.codex = function (tab) {
     tab = tab || 'concepts';
     const sv = SD.state.save;
@@ -116,14 +150,14 @@
         const due = st.seen && st.due <= Date.now();
         body += `<div class="cx ${st.seen ? '' : 'locked'}">
           <div class="cx-h"><b>${st.seen ? U.esc(c.name) : '??? Unknown concept'}</b>${due ? '<span class="pill due">Review due</span>' : ''}<span class="pill s${m.stage}">${m.label}</span></div>
-          ${st.seen ? `<div class="mbar">${[1, 2, 3, 4].map(i => `<i class="${m.stage >= i ? 'on' : ''}"></i>`).join('')}</div><p>${U.esc(c.gist)}</p>` : '<p class="muted">Meet it in the Lattice to record it.</p>'}
+          ${st.seen ? `<div class="mbar">${[1, 2, 3, 4].map(i => `<i class="${m.stage >= i ? 'on' : ''}"></i>`).join('')}</div><p>${U.esc(c.gist)}</p>` : '<p class="muted">Meet it in Prod to record it.</p>'}
           ${page ? `<blockquote class="page">${U.esc(c.page)}</blockquote>` : st.seen ? '<p class="muted small">Notebook page: answer this concept right twice in a row to restore it.</p>' : ''}
         </div>`;
       }
       body += '</div>';
     } else if (tab === 'map') {
       body += U.mindMap();
-      body += `<p class="muted small">Lines are connections you have reflected on at a Garden. Relating ideas, not repeating them, is what makes them stick.</p>`;
+      body += `<p class="muted small">Lines are connections you have reflected on at a Campfire. Relating ideas, not repeating them, is what makes them stick.</p>`;
       const known = SD.links.filter(l => sv.links.includes(l.id));
       body += known.length ? `<ul class="links">${known.map(l => `<li><b>${U.esc(SD.concepts[l.a].name)} ↔ ${U.esc(SD.concepts[l.b].name)}</b>: ${U.esc(l.text)}</li>`).join('')}</ul>` : '<p class="muted">No connections yet.</p>';
     } else if (tab === 'questions') {
@@ -131,9 +165,9 @@
       body += `<p class="muted small">When something confused you, you turned it into a question. Bring these to your study session or a mock interview.</p>`;
       body += qs.length ? `<ul class="links">${qs.slice().reverse().map(q => `<li>${U.esc(q)}</li>`).join('')}</ul>` : '<p class="muted">None yet.</p>';
     } else {
-      body += sv.drawings ? `<div class="drawings">${Array.from({ length: sv.drawings }, (_, i) => `<figure>${SD.art.drawing(i)}<figcaption>Loop ${i + 1}</figcaption></figure>`).join('')}</div>` : '<p class="muted">Visit Mio at the hospital.</p>';
+      body += sv.drawings ? `<div class="drawings">${Array.from({ length: sv.drawings }, (_, i) => `<figure>${SD.art.drawing(i)}<figcaption>Loop ${i + 1}</figcaption></figure>`).join('')}</div>` : '<p class="muted">Visit Mio at her treehouse.</p>';
     }
-    const b = U.panel(body, { title: "ILSE'S NOTEBOOK", cls: 'wide' });
+    const b = U.panel(body, { title: "UPTIMA'S CHEAT SHEET", cls: 'wide' });
     b.querySelectorAll('.tab').forEach(t => t.onclick = () => U.codex(t.dataset.tab));
   };
   U.mindMap = function () {
@@ -144,12 +178,12 @@
     let s = `<div class="mm"><svg viewBox="0 0 340 320" role="img" aria-label="Concept mind map">`;
     SD.links.forEach(l => {
       const [x1, y1] = pos[l.a], [x2, y2] = pos[l.b]; const on = sv.links.includes(l.id);
-      s += `<path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${on ? 'var(--sys)' : 'var(--line)'}" stroke-width="${on ? 2 : 1}" ${on ? '' : 'stroke-dasharray="3 4"'}/>`;
+      s += `<path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${on ? 'var(--blue)' : 'var(--line)'}" stroke-width="${on ? 2.5 : 1.2}" ${on ? '' : 'stroke-dasharray="3 4"'}/>`;
     });
     ids.forEach(id => {
       const [x, y] = pos[id]; const seen = SD.state.concept(id).seen; const m = SD.state.mastery(id).stage;
-      s += `<circle cx="${x}" cy="${y}" r="${seen ? 6 + m * 1.5 : 4}" fill="${seen ? 'var(--sys)' : 'var(--line)'}" opacity="${seen ? 0.4 + m * 0.15 : 0.6}"/>`;
-      s += `<text x="${x}" y="${y + (y > cy ? 18 : -10)}" text-anchor="middle" font-size="9" fill="${seen ? 'var(--fg)' : 'var(--muted)'}">${seen ? U.esc(SD.concepts[id].name.split(' ')[0]) : '?'}</text>`;
+      s += `<circle cx="${x}" cy="${y}" r="${seen ? 6 + m * 1.5 : 4}" fill="${seen ? 'var(--blue)' : 'var(--line)'}" stroke="var(--ink)" stroke-width="1.5" opacity="${seen ? 0.5 + m * 0.12 : 0.7}"/>`;
+      s += `<text x="${x}" y="${y + (y > cy ? 18 : -10)}" text-anchor="middle" font-size="9" font-weight="700" fill="${seen ? 'var(--ink)' : 'var(--muted)'}">${seen ? U.esc(SD.concepts[id].name.split(' ')[0]) : '?'}</text>`;
     });
     return s + '</svg></div>';
   };

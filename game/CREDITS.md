@@ -4,13 +4,17 @@
 
 | Asset | Source | License | Used for |
 | --- | --- | --- | --- |
-| Game-icons.net (40-icon subset in `assets/game-icons.js`) | https://game-icons.net, via the npm package `@iconify-json/game-icons` 1.2.4 | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Icons by Lorc, Delapouite and other contributors listed at https://game-icons.net/about.html | Card art, incident emblems, map nodes |
+| Game-icons.net (66-icon subset in `assets/game-icons.js`) | https://game-icons.net, via the npm package `@iconify-json/game-icons` 1.2.4 | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Icons by Lorc, Delapouite and other contributors listed at https://game-icons.net/about.html | Card art, monster faces, map nodes, story props (truck, croissant, duck...) |
 
-Everything else (the hub city, portraits, gate effects, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/hub.js` and `index.html`.
+Everything else (the village, chibi portraits, monsters, cutscene stages, the ONE COMMIT effect, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/hub.js` and `index.html`.
+
+## Audio
+
+All music and sound effects are synthesized at runtime with the Web Audio API in `js/audio.js` (original note sequences written for this game). No audio files are used.
 
 ## Fonts
 
-Loaded from Google Fonts under the SIL Open Font License: Chakra Petch (Cadson Demak) and Atkinson Hyperlegible (Braille Institute).
+Loaded from Google Fonts under the SIL Open Font License: Fredoka (Milena Brandão, Hafontia) and Nunito (Vernon Adams, Jacques Le Bailly).
 
 ## Learning sources
 

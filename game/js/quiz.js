@@ -33,7 +33,7 @@
         const ready = q.type === 'mc' ? pick != null : q.type === 'num' ? true : q.type === 'order' ? order.length === q.items.length : multi.size > 0;
         h += `<div class="conf"><span class="muted small">Commit your answer. How sure are you?</span><div class="conf-b">
           <button data-c="0" ${ready ? '' : 'disabled'}>Guess</button><button data-c="1" ${ready ? '' : 'disabled'}>Think so</button><button data-c="2" ${ready ? '' : 'disabled'}>Sure</button></div></div>`;
-        const b = U.panel(h, { title: opts.title || '[QUEST] WHITEBOARD', noClose: true, cls: 'quiz' });
+        const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
         b.querySelectorAll('[data-o]').forEach(el => el.onclick = () => { pick = +el.dataset.o; render(); });
         b.querySelectorAll('[data-ord]').forEach(el => el.onclick = () => { order.push(+el.dataset.ord); render(); });
         b.querySelectorAll('[data-m]').forEach(el => el.onclick = () => { const i = +el.dataset.m; multi.has(i) ? multi.delete(i) : multi.add(i); render(); });
@@ -68,7 +68,8 @@
         if (q.type === 'order') right = q.items.join(' → ');
         if (q.type === 'multi') right = q.items.filter(i => i.ok).map(i => i.t).join('; ');
         const over = !ok && conf === 2;
-        let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT, BUT A GUESS' : 'CORRECT') : 'NOT QUITE'}</div>`;
+        if (SD.audio) SD.audio.sfx(ok ? 'right' : 'wrong');
+        let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : 'NOT QUITE!'}</div>`;
         if (!ok || conf === 0) h += `<p><b>Answer:</b> ${U.esc(right)}</p>`;
         h += `<p class="why">${U.esc(q.why || '')}</p>`;
         if (over) h += `<p class="warn">You were sure and it was wrong. That gap is the most valuable thing you found today, so this comes back first.</p>`;
@@ -83,7 +84,7 @@
           h += `<div class="compass"><div class="q-ctx">Confusion compass</div><p class="small">Turn the confusion into a question. Pick the one closest to what tripped you up; it goes in your notebook.</p>
             <div class="opts">${prompts.map((p, i) => `<button class="opt" data-p="${i}">${U.esc(p)}</button>`).join('')}</div></div>`;
           h += `<button class="primary" id="q-next" disabled>Continue</button>`;
-          const b = U.panel(h, { title: opts.title || '[QUEST] WHITEBOARD', noClose: true, cls: 'quiz' });
+          const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           const nx = b.querySelector('#q-next');
           b.querySelectorAll('[data-p]').forEach(el => el.onclick = () => {
             const sv = SD.state.save; sv.openQs = sv.openQs || [];
@@ -97,11 +98,11 @@
           nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score }); };
         } else {
           h += `<button class="primary" id="q-next">Continue</button>`;
-          const b = U.panel(h, { title: opts.title || '[QUEST] WHITEBOARD', noClose: true, cls: 'quiz' });
+          const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score }); };
           b.querySelector('#q-next').focus();
         }
-        if (page) U.system('NOTEBOOK PAGE RESTORED', U.esc(SD.concepts[q.c].name) + ': a page of Ilse\'s handwriting fades back in.', 'gold');
+        if (page) U.system('CHEAT SHEET PAGE RESTORED!', U.esc(SD.concepts[q.c].name) + ': a page in Uptima\'s handwriting fades back in.', 'gold');
       }
       render();
     });
