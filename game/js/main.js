@@ -42,17 +42,28 @@
       <button class="opt" id="m-music">Music: <b>${p.music ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-sfx">Sound effects: <b>${p.sfx ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-name">Change name</button>
+      <button class="opt" id="m-credits">Credits</button>
       <button class="opt" id="m-reset">Erase save and start over</button></div>
       <p class="muted small">Progress saves automatically${S.db ? ' to your claude.ai account, so it follows you across devices' : ' in this browser'}.</p>`, { title: 'MENU' });
     b.querySelector('#m-help').onclick = help;
     b.querySelector('#m-music').onclick = () => { AU.set('music', !p.music); menu(); M.hud(); };
     b.querySelector('#m-sfx').onclick = () => { AU.set('sfx', !p.sfx); menu(); M.hud(); };
+    b.querySelector('#m-credits').onclick = credits;
     b.querySelector('#m-name').onclick = () => askName(() => { U.closePanel(); M.hud(); });
     b.querySelector('#m-reset').onclick = () => {
       const c = U.panel('<p>Erase everything: levels, cheat sheet pages, Mio\'s drawings? Uptima will pretend she never met you. This cannot be undone.</p><div class="row"><button class="danger" id="r-y">Erase</button><button class="ghost" id="r-n">Cancel</button></div>', { title: 'ARE YOU SURE?' });
       c.querySelector('#r-y').onclick = () => { S.reset(); U.closePanel(); M.title(); };
       c.querySelector('#r-n').onclick = U.closePanel;
     };
+  }
+  function credits() {
+    U.panel(`<p class="small">Free art and music, used with thanks. Full details are in CREDITS.md in the game's repository.</p>
+      <ul class="links small">
+        <li><b>Portraits:</b> "Character Portrait ~ Maid" by Jupiter's Daughter; "LPC Anime Portrait #2" by ZaPaper, commissioned through ZeNeRIA29; "Maid YOYO" and "boy" by Aeihu (all CC BY 3.0, OpenGameArt). "Business Man" by Grahhhhh (CC0).</li>
+        <li><b>Music:</b> "Monkeys Spinning Monkeys", "Local Forecast - Elevator", "Fluffing a Duck" and "Sneaky Snitch" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0. "Loop Town" by Fupi, "JRPG Epic Rock Battle Theme #1" by HydroGene, "Epic Boss Battle" by Juhani Junkala (CC0).</li>
+        <li><b>Village, monsters, intro hero, emotes, particles, jingles and sound effects:</b> Kenney (www.kenney.nl), CC0.</li>
+        <li><b>Icons:</b> Game-icons.net by Lorc, Delapouite and contributors (CC BY 3.0).</li>
+        <li><b>Fonts:</b> Fredoka and Nunito (SIL Open Font License).</li></ul>`, { title: 'CREDITS', cls: 'wide' });
   }
   function help() {
     U.panel(`<ul class="links">
@@ -98,22 +109,19 @@
 
   // The cold open: an office, a truck, a goddess, then straight into a fight that Gary finishes.
   U.onFx = function (fx) {
+    if (fx === 'office') AU.music('office');
     if (fx === 'enter') AU.sfx('enter');
-    if (fx === 'truck') {
-      AU.sfx('truck');
-      const tr = document.createElement('div'); tr.className = 'truck';
-      tr.innerHTML = SD.art.icon('truck', '#ff5a5a') || '';
-      setTimeout(() => document.body.appendChild(tr), 350);
-      setTimeout(() => { tr.remove(); U.flash(); U.shake('#dialog'); }, 1150);
-    }
-    if (fx === 'sky') { U.stage('sky'); U.flash(); AU.music('title'); }
+    if (fx === 'deployed') { AU.sfx('levelup'); }
+    if (fx === 'truck') { AU.stop(); AU.sfx('truck'); setTimeout(() => U.shake('#stage'), 700); }
+    if (fx === 'crash') { AU.sfx('punch'); U.flash(); U.shake('#stage'); }
+    if (fx === 'dead') AU.jingle('defeat', null);
+    if (fx === 'sky') { U.stage('sky'); U.flash(); AU.music('goddess'); }
     if (fx === 'alarm') { AU.sfx('alarm'); AU.music('battle'); }
     if (fx === 'gary') AU.jingle('gary', null);
   };
   async function coldOpen() {
     const sv = S.save;
     AU.stop();
-    U.stage('office');
     await U.dialog(SD.story.intro);
     await new Promise(res => askName(() => { U.closePanel(); res(); }));
     U.stage('plaza');

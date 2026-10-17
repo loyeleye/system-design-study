@@ -44,7 +44,7 @@ Gary is a bald, plain-looking Principal Engineer who is mostly interested in hal
 
 The old intro was a wall of text. The new one follows "show, don't tell" and gets you fighting in about a minute.
 
-1. **Office.** It is Friday at 4:59 pm and you are deploying to prod. Then a truck full of servers hits you, with a white flash and a screen shake.
+1. **A manga slideshow** (`game/js/intro.js`). Ladi asked for the intro to be "very visual", like a slideshow of the truck crashing in, rather than text. Seven framed panels, each with a caption: the office at 4:59 pm on a Friday (elevator music), a close-up of the Enter key with a CLICK, the deploy going green (WEEKEND!!), a stroll home as headlights grow, Truck-kun charging straight at the camera with a HOOOOONK, the KRA-KOOM with servers flying, and a Dark Souls-style YOU DIED. No image generator was reachable, so the panels combine Kenney's toon hero poses with scenes and a truck drawn in SVG and CSS.
 2. **The sky stage.** Uptima, the self-titled Goddess of Five Nines, admits she broke her Cloud and needs a hero. A SYSTEM window pops up, then the Hero Registration Form asks for your name.
 3. **The plaza.** Pip, a lost packet, introduces himself as an alarm goes off.
 4. **Tutorial fight.** A scripted Read Surge fight teaches one card (Cache-Aside) with coach text. On turn 2 the slime winds up a 99-damage stampede you cannot block. Gary walks in, does ONE COMMIT, and explains the fix in one line.
@@ -75,15 +75,11 @@ Respawns keep the time-loop learning frame from the first version, played for la
 
 ## Audio
 
-All audio is synthesized at runtime with the Web Audio API in `game/js/audio.js`, so there are no audio files to license.
+Recorded music and samples play when they load, with the original chiptune synth in `game/js/audio.js` as the fallback. Sources and licenses are in `game/CREDITS.md`.
 
-- **Music:** RPG Maker-style chiptune loops for the title, town, dungeon map, battle and boss, plus victory, defeat (a sad trombone) and Gary jingles.
-- **Sound effects:**
-  - Combat: card, hit, crit, resist, hurt, shield.
-  - Rewards: coin, level-up, heal.
-  - Answers: right and wrong.
-  - Story beats: door, gate, punch, truck, whoosh, alarm.
-- **Dialogue blips:** Each speaker types with their own pitch, and Lord Latency types slowly.
+- **Music** (`game/assets/audio/m-*.mp3`): comedic Kevin MacLeod tracks for the title ("Monkeys Spinning Monkeys"), the office (elevator music) and Uptima's entrance ("Fluffing a Duck") and the dungeon map ("Sneaky Snitch"); "Loop Town" for the village; a JRPG rock battle theme; an epic looping boss theme. Songs stream through `<audio>` elements routed into the Web Audio music bus, so mute and fades still work.
+- **Jingles:** Kenney's saxophone jingles for victory, defeat and Gary.
+- **Sound effects:** Kenney's interface and RPG sounds for clicks, confirms, errors, card flips, slashes, coins and doors. The synth still voices the typewriter blips (each speaker has a pitch; Lord Latency types slowly), the truck horn, the crash and the alarm.
 - **Controls:** Music and sound effects can each be toggled from the menu. The HUD has a mute button. Preferences are saved in the browser.
 - **Unlocking:** Browsers block audio until the player interacts, so the title screen's PRESS START button unlocks it.
 
@@ -134,10 +130,13 @@ All audio is synthesized at runtime with the Web Audio API in `game/js/audio.js`
 
 ## Visual style
 
-- **Look:** Light pastel colours with thick ink outlines (#2b2340) and chunky offset shadows, like a cheerful mobile RPG.
-- **Fonts:** Fredoka for headings and Nunito for body text.
-- **Drawn in code:** The village, the chibi portraits, the monsters and the cutscene stages, in `game/js/art.js`, `game/js/hub.js` and `game/index.html`.
-- **Icons:** Monster and card icons come from game-icons.net (CC BY 3.0, credited in `game/CREDITS.md`).
+The art refresh (Ladi asked for art and sound closer to top games and anime) follows the RPG Maker convention: a pixel-art overworld, painted anime portraits in dialogue, and bright cartoon enemies.
+
+- **Village:** Kenney's Tiny Town tiles and Tiny Dungeon people at 16 px, scaled by whole numbers so they stay crisp. Villagers stand by their doors (talking to one is the same as walking in), wanderers stroll about with emote bubbles, and paths lead from every door.
+- **Portraits:** Painted anime busts with expressions (happy, sad, angry, blush, confused...). A line can set its mood with `e:`, otherwise `SD.art.mood` guesses from the text. Gary stays drawn in a plain style on purpose, like Saitama. Uptima's portrait is a maid, which became a joke: goddessing doesn't pay, so she works part-time at the Cache Café. Grandma Wen looks twenty because she "cached her face in 1987 and never set an expiry".
+- **Monsters:** Each incident is a silly monster assembled from Kenney's Monster Builder Pack by `game/tools/monsters.py`.
+- **Juice:** Hit sparks and slashes from Kenney's Particle Pack, screen shake and floating numbers.
+- **Interface:** Light pastel colours with thick ink outlines (#2b2340) and chunky offset shadows. Fredoka for headings, Nunito for body text. Card and map icons come from game-icons.net.
 
 ## Curriculum map
 
@@ -156,17 +155,19 @@ Chapter 1 matches weeks 1 and 2 of the 10-week plan in `job-hunt-agent/interview
 - `game/index.html` — page, styles, screen markup and cutscene stage.
 - `game/js/content.js` — concepts, links, cards, incidents, questions, events, specs, cast and story. Most new content goes here.
 - `game/js/state.js` — save data, levels, spaced review and mastery.
-- `game/js/audio.js` — synthesized music and sound effects.
+- `game/js/audio.js` — recorded music and samples, with the synth as fallback.
+- `game/js/intro.js` — the manga slideshow panels and the truck.
 - `game/js/hub.js` — the canvas village.
 - `game/js/run.js` — run map, combat, Gary, the tutorial, rewards, café, campfire, events, boss.
 - `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass.
 - `game/js/ui.js`, `game/js/art.js`, `game/js/main.js` — UI helpers and dialogue, code-drawn art, boot, cold open and hub buildings.
-- `game/assets/game-icons.js` — icon subset; see `game/CREDITS.md`.
+- `game/assets/` — icon subset, images (`img/`) and audio (`audio/`); see `game/CREDITS.md`.
+- `game/tools/monsters.py`, `game/tools/portraits.py` — rebuild the monsters and portrait crops from the source packs.
 
 Saves go to localStorage. On claude.ai they also go to a private per-user document, so progress follows you across devices.
 
 ## Next steps
 
 - Chapter 2 content and Lord Latency's rate limiter boss.
-- Free CC0 and CC BY art packs (Kenney, OpenGameArt) if they make the visuals better.
+- Pixel-art dungeon scenes behind combat, and painted portraits for Pip and Lord Latency if good matches turn up.
 - A balance pass after real play: boss severity, card numbers, reward pacing, and how often Gary shows up.

@@ -1,5 +1,6 @@
-// Chiptune music and sound effects, synthesized live with Web Audio (no audio files).
-// Tracks are note strings: one token per step ("C5" a note, "-" hold, "." rest). Channels loop on their own length.
+// Music and sound effects. Recorded tracks and samples (assets/audio, credited in CREDITS.md) play when they load;
+// the chiptune synth below is the fallback, and still voices the typewriter blips and a few comic effects.
+// Synth tracks are note strings: one token per step ("C5" a note, "-" hold, "." rest). Channels loop on their own length.
 (function () {
   const A = SD.audio = {};
   const PREF = 'isekai-prod-audio';
@@ -26,6 +27,7 @@
     noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    Object.values(SAMPLE).concat(Object.values(JING)).forEach(loadBuf);
     if (want) { const w = want; want = null; A.music(w); }
   };
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, A.unlock, { passive: true }));
@@ -161,9 +163,50 @@
     const c = cur; cur = null;
     clearInterval(c.timer);
     c.gain.gain.setTargetAtTime(0, ctx.currentTime, fade || 0.12);
-    setTimeout(() => c.gain.disconnect(), 1200);
+    setTimeout(() => { c.gain.disconnect(); if (c.el) { c.el.pause(); c.el.removeAttribute('src'); c.el.load(); } }, 1200);
   }
+
+  // ---------- Recorded music and samples ----------
+  const BASE = 'assets/audio/';
+  const SONG = { title: 'm-title', office: 'm-office', goddess: 'm-goddess', town: 'm-town', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss' };
+  const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
+  const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door' };
+  const SONG_GAIN = 1.5;  // recorded tracks are mastered quieter than the synth
+  const bufs = {}, failed = new Set();
+  function loadBuf(file) {
+    if (bufs[file] || failed.has(file)) return;
+    bufs[file] = 'loading';
+    fetch(BASE + file + '.mp3').then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(b => new Promise((res, rej) => ctx.decodeAudioData(b, res, rej)))
+      .then(d => { bufs[file] = d; })
+      .catch(() => { failed.add(file); delete bufs[file]; });
+  }
+  function playBuf(file, bus, vol, onEnd) {
+    const b = bufs[file];
+    if (!b || b === 'loading') return false;
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = b; g.gain.value = vol || 1;
+    src.connect(g); g.connect(bus); src.start();
+    if (onEnd) src.onended = onEnd;
+    return true;
+  }
+  // Songs stream through an <audio> element routed into the music bus, so the mute toggle and fades still apply.
+  function playSong(name) {
+    const file = SONG[name];
+    const el = new Audio(BASE + file + '.mp3');
+    el.loop = true; el.preload = 'auto';
+    const gain = ctx.createGain(); gain.gain.value = 0;
+    ctx.createMediaElementSource(el).connect(gain); gain.connect(musicBus);
+    gain.gain.setTargetAtTime(SONG_GAIN, ctx.currentTime, 0.15);
+    const me = { name, gain, el, timer: 0 };
+    el.onerror = () => { failed.add(file); if (cur === me) { stopCur(0.05); play(name); } };
+    el.play().catch(() => { /* resumes on the next tap */ });
+    cur = me;
+  }
+
   function play(name, onEnd) {
+    if (SONG[name] && !failed.has(SONG[name]) && !onEnd) { playSong(name); return; }
+    if (!TRACKS[name]) return;
     const T = track(name);
     const gain = ctx.createGain(); gain.connect(musicBus);
     const stepDur = 60 / T.bpm / 2;
@@ -201,7 +244,9 @@
     const back = then !== undefined ? then : A.loopName;
     if (!ctx) { want = back; return; }
     stopCur(0.05);
-    play(name, () => { if (back) { A.loopName = null; A.music(back); } });
+    const resume = () => { if (back) { A.loopName = null; A.music(back); } };
+    if (JING[name] && playBuf(JING[name], musicBus, 1.6, () => setTimeout(resume, 250))) return;
+    play(name, resume);
   };
   A.stop = function () { A.loopName = null; want = null; if (ctx) stopCur(0.3); };
 
@@ -242,6 +287,11 @@
     if (!ctx || !prefs.sfx) return;
     const t = ctx.currentTime + 0.005;
     if (name === 'text') { tone({ wave: 'square', f: pitch || 600, t, dur: 0.025, vol: 0.035 }); return; }
+    if (SAMPLE[name] && playBuf(SAMPLE[name], sfxBus, 1.4)) {
+      // Crits keep the synth sparkle on top of the recorded slash.
+      if (name === 'crit') [1047, 1319, 1568, 2093].forEach((f, i) => tone({ wave: 'square', f, t: t + 0.04 + i * 0.045, dur: 0.07, vol: 0.05 }));
+      return;
+    }
     if (FX[name]) FX[name](t);
   };
 })();

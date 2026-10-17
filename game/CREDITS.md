@@ -2,15 +2,41 @@
 
 ## Art
 
-| Asset | Source | License | Used for |
+| Asset | Author and source | License | Used for |
 | --- | --- | --- | --- |
-| Game-icons.net (66-icon subset in `assets/game-icons.js`) | https://game-icons.net, via the npm package `@iconify-json/game-icons` 1.2.4 | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Icons by Lorc, Delapouite and other contributors listed at https://game-icons.net/about.html | Card art, monster faces, map nodes, story props (truck, croissant, duck...) |
+| "Character Portrait ~ Maid" | Jupiter's Daughter, https://opengameart.org/content/character-portrait-maid | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Uptima's portraits (cropped to busts) |
+| "LPC Anime Portrait #2" | ZaPaper, commissioned through ZeNeRIA29, https://opengameart.org/content/lpc-anime-portrait-2 | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Sir Seymour's and Grandma Wen's portraits (cropped) |
+| "Maid YOYO" | Aeihu, https://opengameart.org/content/maid-yoyo | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Mio's portrait (cropped) |
+| "boy" | Aeihu, https://opengameart.org/content/boy | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | The player's portrait (cropped) |
+| "Business Man" | Grahhhhh, https://opengameart.org/content/business-man-1 | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | Chad's portraits |
+| Tiny Town, Tiny Dungeon | Kenney (www.kenney.nl), via https://opengameart.org/content/tiny-town and /tiny-dungeon | CC0 | The village tiles, villagers and the player sprite |
+| Monster Builder Pack | Kenney, via https://opengameart.org/content/monster-builder-pack | CC0 | Incident monsters, assembled by `tools/monsters.py` |
+| Toon Characters 1 | Kenney, via OpenGameArt | CC0 | The hero in the intro slideshow |
+| Emotes Pack, Particle Pack | Kenney, via OpenGameArt | CC0 | Speech-bubble emotes in the village, hit sparks in combat |
+| Game-icons.net (66-icon subset in `assets/game-icons.js`) | https://game-icons.net, via the npm package `@iconify-json/game-icons` 1.2.4. Icons by Lorc, Delapouite and other contributors listed at https://game-icons.net/about.html | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Card art, map nodes, story props |
 
-Everything else (the village, chibi portraits, monsters, cutscene stages, the ONE COMMIT effect, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/hub.js` and `index.html`.
+Portraits are cut by `tools/portraits.py`. Everything else (Gary and Pip's portraits, the truck, the slideshow scenes, the ONE COMMIT effect, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/intro.js`, `js/hub.js` and `index.html`.
 
-## Audio
+## Music
 
-All music and sound effects are synthesized at runtime with the Web Audio API in `js/audio.js` (original note sequences written for this game). No audio files are used.
+| Track | Author and source | License | Plays |
+| --- | --- | --- | --- |
+| "Monkeys Spinning Monkeys" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Title |
+| "Local Forecast - Elevator" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The office (first 64 s, faded) |
+| "Fluffing a Duck" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Uptima's arrival |
+| "Sneaky Snitch" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The dungeon map |
+| "Loop Town" | Fupi, https://opengameart.org/content/loop-town | CC0 | The village |
+| "JRPG Epic Rock Battle Theme #1" | HydroGene, https://opengameart.org/content/jrpg-epic-rock-battle-theme-1 | CC0 | Battles |
+| "Epic Boss Battle [Seamlessly Looping]" | Juhani Junkala (SubspaceAudio), https://opengameart.org/content/boss-battle-music | CC0 | Boss |
+| Music Jingles (SAX set) | Kenney, via OpenGameArt | CC0 | Victory, defeat and Gary jingles |
+
+Kevin MacLeod credit line: "Monkeys Spinning Monkeys", "Local Forecast - Elevator", "Fluffing a Duck", "Sneaky Snitch" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
+
+Music was re-encoded to 80 kbps MP3 and loudness-normalised; nothing else was changed.
+
+## Sound effects
+
+Interface Sounds and RPG Audio by Kenney (CC0), via OpenGameArt: clicks, confirms, errors, card flips, slashes, coins and doors. The typewriter voices, the truck horn, the crash and a few other comic effects are synthesized at runtime in `js/audio.js`, which also stands in for any track that fails to load.
 
 ## Fonts
 

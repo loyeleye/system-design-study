@@ -1,6 +1,28 @@
-// Code-drawn art: chibi portraits, card glyphs, googly-eyed incident sprites, Mio's crayon drawings.
+// Art: painted anime busts and Kenney monsters (assets/img, see CREDITS.md), plus code-drawn chibis for the cast
+// without a painted portrait, card glyphs and Mio's crayon drawings.
 (function () {
   const A = SD.art = {};
+  const IMG = 'assets/img/';
+
+  // Painted busts with expressions. Gary stays code-drawn on purpose: like Saitama, he's drawn plainly. That is the joke.
+  const PAINTED = {
+    uptima: ['neutral', 'happy', 'sad', 'angry', 'blush', 'confused'], seymour: ['neutral', 'happy', 'smug', 'angry'],
+    wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral']
+  };
+  A.painted = who => !!PAINTED[who];
+  // Guess a mood from the line when the script doesn't give one.
+  A.mood = function (who, text, e) {
+    const m = PAINTED[who]; if (!m) return 'neutral';
+    const pick = (...c) => c.find(x => m.includes(x)) || 'neutral';
+    if (e) return pick(e);
+    const t = text || '';
+    if (/\?!|\bWHO\b|wait\.|huh|\bwhat\b/i.test(t)) return pick('confused', 'neutral');
+    if (/\bugh\b|rude|halt|no!|stop/i.test(t)) return pick('angry', 'neutral');
+    if (/sorry|sad|cried|\bdied\b|oh no/i.test(t)) return pick('sad', 'confused', 'neutral');
+    if (/blush|\bcute\b|between us/i.test(t)) return pick('blush', 'happy');
+    if (/!/.test(t)) return pick('happy', 'smug');
+    return 'neutral';
+  };
   const INK = '#2b2340';
   let uid = 0;
 
@@ -18,7 +40,11 @@
   const FACE = 'M37 60 Q37 99 60 104 Q83 99 83 60 Q83 32 60 32 Q37 32 37 60Z';
   const stroke = `stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"`;
 
-  A.portrait = function (who, size) {
+  A.portrait = function (who, size, mood) {
+    if (PAINTED[who]) {
+      const m = PAINTED[who].includes(mood) ? mood : 'neutral';
+      return `<span class="bust b-${who}" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="${IMG}portraits/${who}-${m}.webp" alt="" draggable="false"></span>`;
+    }
     const c = SD.cast[who] || SD.cast.you;
     const id = 'p' + (uid++);
     const h = c.hue;
@@ -125,25 +151,21 @@
     return `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${G[key] || G.note}" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   };
 
-  // Incidents: a bright blob with the incident's icon and a pair of googly eyes.
+  // Incidents: silly monsters assembled from Kenney's Monster Builder Pack (game/tools/monsters.py).
   const FOE = {
-    slime: { icon: 'slime', col: '#7ee0a8', anim: 'squish' }, storm: { icon: 'lightning-storm', col: '#b4c2ff', anim: 'float' },
-    golem: { icon: 'robot-golem', col: '#e3c99a', anim: 'float' }, ghost: { icon: 'ghost', col: '#efeaff', anim: 'float' },
-    cow: { icon: 'cow', col: '#ffffff', anim: 'shake' }, cat: { icon: 'cat', col: '#ffd08f', anim: 'float' },
-    imp: { icon: 'imp', col: '#ffa9cb', anim: 'float' }, goblin: { icon: 'goblin-head', col: '#a6e070', anim: 'float' }
+    slime: { col: '#7ee0a8', anim: 'squish' }, storm: { col: '#8fdcff', anim: 'float' },
+    golem: { col: '#c9b39a', anim: 'float' }, ghost: { col: '#efeaff', anim: 'float' },
+    cow: { col: '#ffffff', anim: 'shake' }, cat: { col: '#ffd08f', anim: 'float' },
+    imp: { col: '#ffa9cb', anim: 'float' }, goblin: { col: '#a6e070', anim: 'float' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   A.enemy = function (sprite, boss) {
-    const f = FOE[sprite] || FOE.slime;
-    const icon = SD.icons && SD.icons[f.icon];
-    const crown = boss ? `<path d="M40 22 L46 6 L54 18 L60 2 L66 18 L74 6 L80 22Z" fill="#ffd23f" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '';
-    const eye = (x, d) => `<circle cx="${x}" cy="34" r="10" fill="#fff" stroke="${INK}" stroke-width="2.5"/><circle class="googly" style="animation-delay:${d}s" cx="${x + 2}" cy="36" r="4.5" fill="${INK}"/>`;
+    const f = FOE[sprite] ? FOE[sprite] : FOE.slime;
+    const crown = boss ? `<path d="M42 16 L48 0 L56 12 L62 -4 L68 12 L76 0 L82 16Z" fill="#ffd23f" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '';
     return `<svg viewBox="0 0 120 120" aria-hidden="true">
-      <ellipse cx="60" cy="112" rx="34" ry="6" fill="rgba(43,35,64,.18)"/>
+      <ellipse cx="60" cy="113" rx="36" ry="6" fill="rgba(43,35,64,.18)"/>
       <g class="${f.anim}">
-        <circle cx="60" cy="62" r="44" fill="${f.col}" stroke="${INK}" stroke-width="3"/>
-        ${icon ? `<g transform="translate(31 38) scale(0.113)" style="color:${INK}">${icon}</g>` : ''}
-        ${eye(46, 0)}${eye(74, -0.4)}
+        <image href="${IMG}monsters/${FOE[sprite] ? sprite : 'slime'}.webp" x="8" y="4" width="104" height="110" preserveAspectRatio="xMidYMax meet"/>
         ${crown}
       </g></svg>`;
   };

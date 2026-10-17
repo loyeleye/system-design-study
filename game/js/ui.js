@@ -25,19 +25,26 @@
     const l = dq.shift();
     if (!l) { $('#dialog').hidden = true; const d = dDone; dDone = null; if (d) d(); return; }
     const who = l.s, c = SD.cast[who];
+    if (l.slide && U.slide) U.slide(l.slide);
     if (l.fx && U.onFx) U.onFx(l.fx);
     // During cutscenes the speaker stands centre stage, visual-novel style.
     const st = $('#stage');
-    if (!st.hidden) {
+    const mood = SD.art.mood(who, l.t, l.e);
+    if (!st.hidden && !st.dataset.slide) {
       let a = st.querySelector('.actor');
       if (!a) { a = document.createElement('div'); a.className = 'actor'; st.appendChild(a); }
       if (who === 'narr' || who === 'system') { /* keep whoever is on stage */ }
       else if (who === 'you') a.hidden = true;
-      else { if (a.dataset.who !== who) { a.dataset.who = who; a.innerHTML = SD.art.portrait(who, 280); } a.hidden = false; }
+      else {
+        const key = who + ':' + mood;
+        if (a.dataset.who !== key) { a.dataset.who = key; a.innerHTML = SD.art.portrait(who, 280, mood); }
+        a.hidden = false;
+      }
     }
     const box = $('#dialog');
     box.dataset.who = who;
-    $('#dlg-portrait').innerHTML = who === 'narr' ? '' : SD.art.portrait(who, 96);
+    box.classList.toggle('painted', SD.art.painted(who));
+    $('#dlg-portrait').innerHTML = who === 'narr' ? '' : SD.art.portrait(who, SD.art.painted(who) ? 150 : 96, mood);
     $('#dlg-portrait').hidden = who === 'narr';
     $('#dlg-name').textContent = who === 'narr' ? '' : who === 'you' ? SD.state.save.name : c.name;
     $('#dlg-title').textContent = who === 'narr' ? '' : (c.title || '');
@@ -71,6 +78,8 @@
   U.stage = function (scene) {
     const st = $('#stage');
     document.body.classList.toggle('cut', !!scene);
+    document.body.classList.remove('slides');
+    delete st.dataset.slide;
     if (!scene) { st.hidden = true; st.innerHTML = ''; return; }
     st.dataset.scene = scene; st.hidden = false;
     st.innerHTML = scene === 'office' ? '' : Array.from({ length: 5 }, (_, i) => `<div class="cloud" style="top:${8 + i * 14}%;animation-delay:${-i * 6}s;transform:scale(${0.6 + (i % 3) * 0.3})"></div>`).join('');
@@ -189,6 +198,21 @@
   };
 
   // Floating combat numbers
+  // Hit sparks from Kenney's Particle Pack: a slash plus stars that fly out and fade.
+  U.burst = function (el, big) {
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const parts = [['slash_02', 0]].concat(Array.from({ length: big ? 9 : 5 }, (_, i) => [i % 2 ? 'star_06' : 'spark_05', i]));
+    parts.forEach(([img, i]) => {
+      const p = document.createElement('img');
+      p.src = 'assets/img/fx/' + img + '.webp'; p.alt = ''; p.className = 'spark' + (i === 0 && img === 'slash_02' ? ' slash' : '');
+      const a = Math.random() * Math.PI * 2, d = (big ? 90 : 60) + Math.random() * 50;
+      p.style.left = cx + 'px'; p.style.top = cy + 'px';
+      p.style.setProperty('--dx', Math.cos(a) * d + 'px'); p.style.setProperty('--dy', Math.sin(a) * d + 'px');
+      p.style.setProperty('--tint', ['#ffd23f', '#ffffff', '#ff6fa5', '#7fd1ff'][Math.floor(Math.random() * 4)]);
+      document.body.appendChild(p); setTimeout(() => p.remove(), 750);
+    });
+  };
   U.float = function (el, text, cls) {
     if (!el) return;
     const r = el.getBoundingClientRect();

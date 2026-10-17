@@ -30,12 +30,24 @@
     H: { name: "MIO'S TREEHOUSE", roof: '#ff86b8', wall: '#f3d6a6' }, W: { name: "SEYMOUR'S BUNKER", roof: '#7c93c9', wall: '#e6ebf5' },
     G: { name: 'DUNGEON (PROD)', roof: '#8a7f99', wall: '#b9b0c6' }, B: { name: 'QUEST BOARD' }
   };
-  const NPCS = [{ id: 'gary', x: 20, y: 6 }];
+  // Dirt paths from each door to the plaza and the bridge (drawn as stepping stones, walkable).
+  const PATHS = [[5, 6], [26, 6], ...[5, 6, 7, 8, 9, 10, 11, 12].map(x => [x, 7]), ...[19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 7]),
+    ...[10, 11, 12, 13].map(y => [15, y]), ...[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 14]),
+    ...[15, 16, 17].map(y => [12, y]), [12, 18], [13, 18], [14, 18], [15, 18], [16, 18], [15, 14]];
+  PATHS.forEach(([x, y]) => { if (MAP[y][x] === '.') MAP[y] = MAP[y].slice(0, x) + 'p' + MAP[y].slice(x + 1); });
+  // Villagers stand by their doors; talking to one is the same as walking in. Sprites are Tiny Dungeon tiles.
+  const NPCS = [
+    { id: 'gary', name: 'GARY', x: 20, y: 6, spr: 109 },
+    { id: 'uptima', name: 'UPTIMA', x: 3, y: 6, spr: 99, door: 'A', emo: 'star' },
+    { id: 'wen', name: 'WEN', x: 28, y: 6, spr: 100, door: 'C', emo: 'heart' },
+    { id: 'mio', name: 'MIO', x: 3, y: 14, spr: 88, door: 'H', emo: 'idea' },
+    { id: 'seymour', name: 'SEYMOUR', x: 29, y: 14, spr: 96, door: 'W', emo: 'alert' }
+  ];
   const PAGE_SPOTS = [[9, 1], [20, 3], [28, 10], [3, 14], [12, 18], [22, 16], [30, 6], [10, 10]];
 
   const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
   const npcAt = (x, y) => NPCS.find(n => n.x === x && n.y === y);
-  const walkable = (x, y) => '.,=*ACHWG'.includes(tile(x, y)) && !npcAt(x, y);
+  const walkable = (x, y) => '.,=*pACHWG'.includes(tile(x, y)) && !npcAt(x, y);
   const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
   let cv, ctx, raf, dpr = 1, ts = 32, t0 = 0;
@@ -45,7 +57,8 @@
   let clouds = [], petals = [], active = false, onDoor = null;
 
   H.init = function (canvas, doorHandler) {
-    cv = canvas; ctx = cv.getContext('2d'); onDoor = doorHandler;
+    cv = canvas; ctx = cv.getContext('2d');
+    onDoor = id => { const n = NPCS.find(m => m.id === id); doorHandler(n && n.door ? n.door : id); };
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
       if (!active) return;
@@ -64,7 +77,8 @@
     dpr = Math.min(2, window.devicePixelRatio || 1);
     const r = cv.getBoundingClientRect();
     cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr);
-    ts = Math.max(26, Math.min(48, Math.floor(Math.max(r.width / 15, r.height / (HT - 1)))));
+    // Whole multiples of 16 keep the pixel art crisp.
+    ts = Math.max(r.width / 15, r.height / (HT - 1)) >= 44 ? 48 : 32;
   }
   H.resize = resize;
   H.start = function () { active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); };
@@ -187,7 +201,7 @@
   function loop(ts2) {
     if (!active) return;
     const dt = Math.min(0.05, (ts2 - (t0 || ts2)) / 1000); t0 = ts2;
-    update(dt);
+    update(dt); updateWanderers(dt);
     draw(ts2 / 1000, dt);
     raf = requestAnimationFrame(loop);
   }
@@ -195,13 +209,14 @@
   function draw(t, dt) {
     const vw = cv.width / dpr, vh = cv.height / dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#8fd16a'; ctx.fillRect(0, 0, vw, vh);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#5fbf5f'; ctx.fillRect(0, 0, vw, vh);
     const { cx, cy } = cam();
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     const x0 = Math.max(0, Math.floor(cx / ts) - 1), x1 = Math.min(W, Math.ceil((cx + vw) / ts) + 1);
     const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) drawGround(x, y, tile(x, y), t);
-    drawFountain(t);
+    drawWell(); drawBoard(t);
     const sv = SD.state.save;
     PAGE_SPOTS.forEach(([x, y], i) => {
       if (pageVisible(i) && !sv.pickups.includes('spot' + i + '-loop' + sv.loop)) drawSparkle(x * ts + ts / 2, y * ts + ts / 2 - 4 + Math.sin(t * 2) * 3, t);
@@ -209,15 +224,17 @@
     // Objects row by row so the player walks behind trees and walls
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) drawObject(x, y, tile(x, y), t);
-      NPCS.forEach(n => { if (n.y === y) drawGary(n.x, n.y, t); });
+      NPCS.forEach(n => { if (n.y === y) drawNpc(n, t); });
+      WANDER.forEach(w => { if (Math.round(w.py) === y) person(w.spr, w.px, w.py, t, Math.abs(w.px - w.x) + Math.abs(w.py - w.y) > 0.01, w.flip); });
       if (Math.round(P.py) === y) { drawPip(t); drawPlayer(t); }
     }
+    WANDER.forEach(w => { if (w.emoT > 0) emote(w.emo, w.px * ts + ts / 2, w.py * ts - ts * 0.05); });
     for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if (BUILD[c] && c !== 'B') label(x, y, BUILD[c].name, t, H.markers && H.markers[c]);
     }
     label(15.5, 5.6, 'QUEST BOARD', t, H.markers && H.markers.B);
-    NPCS.forEach(n => label(n.x, n.y - 0.15, 'GARY', t, false, true));
+    NPCS.forEach(n => label(n.x, n.y + 1.45, n.name, t, false, true));
     petals.forEach(f => {
       const fx = (f.x + Math.sin(t * 0.4 + f.p) * 0.8) * ts, fy = (f.y + Math.cos(t * 0.3 + f.p) * 0.6) * ts;
       const flap = Math.abs(Math.sin(t * 8 + f.p));
@@ -264,47 +281,63 @@
     ctx.restore();
   }
 
+  // ---------- Pixel art: Kenney Tiny Town (village) and Tiny Dungeon (people), 16px tiles ----------
+  const sheet = src => { const im = new Image(); im.src = 'assets/img/' + src; return im; };
+  const TOWN = sheet('tiles-town.png'), FOLK = sheet('tiles-dungeon.png'), EMOTE = sheet('emotes.png');
+  const ok = im => im.complete && im.naturalWidth > 0;
+  // Draw tile `i` of a 12-column sheet at tile coords (x, y), `s` tiles big, optionally mirrored.
+  function spr(im, i, x, y, s, flip) {
+    if (!ok(im)) return;
+    s = s || 1;
+    const X = x * ts, Y = y * ts, S = ts * s;
+    if (flip) { ctx.save(); ctx.translate(X + S, Y); ctx.scale(-1, 1); ctx.drawImage(im, (i % 12) * 16, Math.floor(i / 12) * 16, 16, 16, 0, 0, S, S); ctx.restore(); }
+    else ctx.drawImage(im, (i % 12) * 16, Math.floor(i / 12) * 16, 16, 16, X, Y, S, S);
+  }
+  const EMO = { alert: [32, 64], heart: [16, 80], music: [16, 0], dots: [48, 32], laugh: [16, 16], idea: [16, 32], sleep: [0, 64], star: [0, 32] };
+  function emote(name, px, py) {
+    if (!ok(EMOTE)) return;
+    const [sx, sy] = EMO[name]; const S = ts * 0.75;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    rr(px - S * 0.62, py - S * 1.1, S * 1.24, S * 1.12, 6); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px - 4, py); ctx.lineTo(px, py + 6); ctx.lineTo(px + 4, py); ctx.closePath(); ctx.fill();
+    ctx.drawImage(EMOTE, sx, sy, 16, 16, px - S / 2, py - S * 1.04, S, S);
+  }
+
   function drawGround(x, y, c, t) {
-    const X = x * ts, Y = y * ts;
+    const X = x * ts, Y = y * ts, h = hash(x, y);
     if (c === '~') {
-      ctx.fillStyle = '#5ec2f2'; ctx.fillRect(X, Y, ts, ts);
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2;
-      const o = Math.sin(t * 2 + x * 0.8 + y) * 3;
-      if ((x + y) % 2 === 0) { ctx.beginPath(); ctx.moveTo(X + 6, Y + ts * 0.45 + o); ctx.quadraticCurveTo(X + ts / 2, Y + ts * 0.3 + o, X + ts - 6, Y + ts * 0.45 + o); ctx.stroke(); }
-      if (tile(x, y - 1) !== '~' && tile(x, y - 1) !== '=') { ctx.fillStyle = '#e6c88b'; ctx.fillRect(X, Y, ts, 4); }
-      if (hash(x, y) % 9 === 0 && Math.sin(t * 3 + x) > 0.6) { ctx.fillStyle = '#fff'; ctx.fillRect(X + ts * 0.6, Y + ts * 0.6, 3, 3); }
+      ctx.fillStyle = '#4aa3df'; ctx.fillRect(X, Y, ts, ts);
+      const px = ts / 16;
+      // Pixel ripples that drift with time
+      ctx.fillStyle = '#8fd3ff';
+      for (let k = 0; k < 2; k++) {
+        const ox = ((h >> (k * 4)) % 12 + Math.floor(t * 2 + k * 3)) % 14, oy = 4 + k * 7 + (h >> 8) % 3;
+        ctx.fillRect(X + ox * px, Y + oy * px, 3 * px, px);
+      }
+      if (tile(x, y - 1) !== '~' && tile(x, y - 1) !== '=') { ctx.fillStyle = '#e9cf98'; ctx.fillRect(X, Y, ts, 3 * px); ctx.fillStyle = '#2f7fb8'; ctx.fillRect(X, Y + 3 * px, ts, px); }
+      if (tile(x, y + 1) !== '~' && tile(x, y + 1) !== '=') { ctx.fillStyle = '#2f7fb8'; ctx.fillRect(X, Y + ts - px, ts, px); }
       return;
     }
-    const plaza = c === ',' || c === 'B';
-    if (plaza) {
-      ctx.fillStyle = '#efdcb4'; ctx.fillRect(X, Y, ts, ts);
-      ctx.strokeStyle = 'rgba(160,120,70,0.35)'; ctx.lineWidth = 1.5;
-      ctx.strokeRect(X + 1, Y + 1, ts / 2 - 2, ts / 2 - 2); ctx.strokeRect(X + ts / 2 + 1, Y + ts / 2 + 1, ts / 2 - 2, ts / 2 - 2);
-    } else {
-      ctx.fillStyle = (x + y) % 2 ? '#8fd16a' : '#86cb62'; ctx.fillRect(X, Y, ts, ts);
-      const hsh = hash(x, y);
-      if (c === '.' && hsh % 5 === 0) { ctx.strokeStyle = '#5fae47'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X + ts * 0.3, Y + ts * 0.7); ctx.lineTo(X + ts * 0.34, Y + ts * 0.55); ctx.moveTo(X + ts * 0.4, Y + ts * 0.7); ctx.lineTo(X + ts * 0.44, Y + ts * 0.52); ctx.stroke(); }
-      if (c === '.' && hsh % 11 === 0) { ctx.fillStyle = ['#ff9ec4', '#ffe14d', '#fff'][hsh % 3]; ctx.beginPath(); ctx.arc(X + ts * 0.7, Y + ts * 0.35, 3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#ffb000'; ctx.beginPath(); ctx.arc(X + ts * 0.7, Y + ts * 0.35, 1.2, 0, Math.PI * 2); ctx.fill(); }
-    }
-    if (c === '=') {
-      ctx.fillStyle = '#c98b4f'; ctx.fillRect(X, Y, ts, ts);
-      ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
-      for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(X, Y + i * ts / 4); ctx.lineTo(X + ts, Y + i * ts / 4); ctx.stroke(); }
-      ctx.fillStyle = '#8a5a2b';
-      if (tile(x - 1, y) !== '=') ctx.fillRect(X, Y, 4, ts);
-      if (tile(x + 1, y) !== '=') ctx.fillRect(X + ts - 4, Y, 4, ts);
+    spr(TOWN, h % 9 === 0 ? 1 : h % 17 === 0 ? 2 : 0, x, y);
+    if (c === ',' || c === 'B') {
+      const P = (a, b) => ',B'.includes(tile(a, b));
+      const row = !P(x, y - 1) ? 12 : !P(x, y + 1) ? 36 : 24, col = !P(x - 1, y) ? 0 : !P(x + 1, y) ? 2 : 1;
+      spr(TOWN, row + col, x, y);
+    } else if (c === 'p') spr(TOWN, 43, x, y);
+    else if (c === '=') {
+      const px = ts / 16;
+      ctx.fillStyle = '#b8763c'; ctx.fillRect(X, Y, ts, ts);
+      ctx.fillStyle = '#7a4a22';
+      for (let i = 0; i < 4; i++) ctx.fillRect(X, Y + i * 4 * px, ts, px);
+      if (tile(x - 1, y) !== '=') spr(TOWN, 47, x - 0.45, y);
+      if (tile(x + 1, y) !== '=') spr(TOWN, 47, x + 0.45, y);
     }
   }
-  function drawFountain(t) {
-    const X = 16 * ts, Y = 4.4 * ts;
-    ctx.fillStyle = '#b9c3d6'; ctx.strokeStyle = INK; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.ellipse(X, Y, ts * 1.1, ts * 0.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#6fd0ff'; ctx.beginPath(); ctx.ellipse(X, Y - 2, ts * 0.85, ts * 0.33, 0, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 6; i++) {
-      const a = i / 6 * Math.PI * 2 + t, h = (Math.sin(t * 4 + i) * 0.5 + 0.5) * ts * 0.5;
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.beginPath(); ctx.arc(X + Math.cos(a) * ts * 0.25, Y - ts * 0.3 - h, 2.5, 0, Math.PI * 2); ctx.fill();
-    }
+  // The village well stands where the fountain was; the quest board is a signpost with notes pinned to it.
+  function drawWell() { spr(TOWN, 104, 15.25, 3.6, 1.5); }
+  function drawBoard(t) {
+    spr(TOWN, 83, 15.5, 5.7, 1.1);
+    ['#fff', '#fff3c4'].forEach((col, i) => { ctx.fillStyle = col; ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.fillRect((15.72 + i * 0.32) * ts, 5.92 * ts, ts * 0.22, ts * 0.24); ctx.strokeRect((15.72 + i * 0.32) * ts, 5.92 * ts, ts * 0.22, ts * 0.24); });
   }
   function drawSparkle(x, y, t) {
     const s = ts * 0.22 * (0.9 + Math.sin(t * 5) * 0.15);
@@ -315,64 +348,44 @@
     ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
   }
 
+  // Building looks: wall material, roof colour. G is the dungeon keep.
+  const STYLE = { A: { wall: 'stone', roof: 'red' }, C: { wall: 'wood', roof: 'red' }, H: { wall: 'wood', roof: 'grey' }, W: { wall: 'stone', roof: 'grey' } };
+  const ROOF = { grey: [48, 60, 63], red: [52, 64, 67] };          // top row start, lower row start, gable
+  const WALL = { wood: { l: 72, m: 73, r: 75, win: 84, door: 85 }, stone: { l: 76, m: 77, r: 79, win: 88, door: 89 } };
+  const DECO = [5, 29, 94, 17];
   function drawObject(x, y, c, t) {
-    const X = x * ts, Y = y * ts;
-    if (c === 'T') {
-      ctx.fillStyle = 'rgba(43,35,64,0.18)'; ctx.beginPath(); ctx.ellipse(X + ts / 2, Y + ts * 0.88, ts * 0.38, ts * 0.12, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#9a6a3a'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-      rr(X + ts * 0.42, Y + ts * 0.55, ts * 0.16, ts * 0.32, 3); ctx.fill(); ctx.stroke();
-      const sway = Math.sin(t * 1.5 + x) * 1.5;
-      ctx.fillStyle = hash(x, y) % 2 ? '#4cb05a' : '#3fa04f';
-      ctx.beginPath(); ctx.arc(X + ts / 2 + sway, Y + ts * 0.38, ts * 0.42, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(X + ts * 0.38 + sway, Y + ts * 0.26, ts * 0.12, 0, Math.PI * 2); ctx.fill();
-      if (hash(x, y) % 4 === 0) { ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.arc(X + ts * 0.62 + sway, Y + ts * 0.44, 3, 0, Math.PI * 2); ctx.fill(); }
-      return;
-    }
-    if (c === 'L') {
-      // Lamp post with a flower basket
-      ctx.fillStyle = INK; ctx.fillRect(X + ts * 0.46, Y + ts * 0.2, ts * 0.08, ts * 0.75);
-      ctx.fillStyle = '#fff6b0'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-      rr(X + ts * 0.36, Y + ts * 0.02, ts * 0.28, ts * 0.24, 4); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#c98b4f'; rr(X + ts * 0.3, Y + ts * 0.42, ts * 0.4, ts * 0.14, 3); ctx.fill(); ctx.stroke();
-      ['#ff6fa5', '#ffe14d', '#ff9a3c'].forEach((col, i) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X + ts * (0.36 + i * 0.14), Y + ts * 0.4, 3.5, 0, Math.PI * 2); ctx.fill(); });
-      return;
-    }
-    if (c === 'B') {
-      if (tile(x - 1, y) === 'B') return;
-      ctx.fillStyle = '#8a5a2b'; ctx.fillRect(X + ts * 0.2, Y + ts * 0.5, 4, ts * 0.5); ctx.fillRect(X + ts * 1.7, Y + ts * 0.5, 4, ts * 0.5);
-      ctx.fillStyle = '#d9a066'; ctx.strokeStyle = INK; ctx.lineWidth = 3;
-      rr(X + 2, Y + ts * 0.02, ts * 2 - 4, ts * 0.66, 6); ctx.fill(); ctx.stroke();
-      ['#fff', '#fff3c4', '#dcebff'].forEach((col, i) => { ctx.fillStyle = col; ctx.save(); ctx.translate(X + ts * (0.45 + i * 0.55), Y + ts * 0.34); ctx.rotate((i - 1) * 0.12); ctx.fillRect(-ts * 0.18, -ts * 0.2, ts * 0.36, ts * 0.4); ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.strokeRect(-ts * 0.18, -ts * 0.2, ts * 0.36, ts * 0.4); ctx.restore(); });
-      return;
-    }
-    if (c === '#' || 'ACHWG'.includes(c)) {
-      const owner = blockOwner(x, y);
-      const b = BUILD[owner] || { roof: '#c86b5a', wall: '#fffaf0' };
-      const bottom = tile(x, y + 1) !== '#' && !'ACHWG'.includes(tile(x, y + 1));
-      const top = tile(x, y - 1) !== '#' && !'ACHWG'.includes(tile(x, y - 1));
-      const left = tile(x - 1, y) !== '#' && !'ACHWG'.includes(tile(x - 1, y));
-      const right = tile(x + 1, y) !== '#' && !'ACHWG'.includes(tile(x + 1, y));
-      ctx.strokeStyle = INK; ctx.lineWidth = 3;
-      if (bottom) {
-        ctx.fillStyle = b.wall; ctx.fillRect(X, Y, ts, ts);
-        ctx.beginPath(); ctx.moveTo(X, Y + ts); ctx.lineTo(X + ts, Y + ts); if (left) { ctx.moveTo(X + 1.5, Y); ctx.lineTo(X + 1.5, Y + ts); } if (right) { ctx.moveTo(X + ts - 1.5, Y); ctx.lineTo(X + ts - 1.5, Y + ts); } ctx.stroke();
-        if (!'ACHWG'.includes(c)) {
-          ctx.fillStyle = '#9fdcff'; ctx.lineWidth = 2;
-          rr(X + ts * 0.25, Y + ts * 0.22, ts * 0.5, ts * 0.42, 4); ctx.fill(); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(X + ts * 0.5, Y + ts * 0.22); ctx.lineTo(X + ts * 0.5, Y + ts * 0.64); ctx.stroke();
-          if (hash(x, y) % 3 === 0) { ctx.fillStyle = '#ff6fa5'; ctx.fillRect(X + ts * 0.22, Y + ts * 0.66, ts * 0.56, 4); }
-        } else drawDoor(X, Y, c, b, t);
-      } else {
-        ctx.fillStyle = b.roof; ctx.fillRect(X, Y, ts, ts);
-        ctx.strokeStyle = 'rgba(43,35,64,0.25)'; ctx.lineWidth = 2;
-        for (let i = 1; i < 3; i++) { ctx.beginPath(); ctx.moveTo(X, Y + i * ts / 3); ctx.lineTo(X + ts, Y + i * ts / 3); ctx.stroke(); }
-        ctx.strokeStyle = INK; ctx.lineWidth = 3;
-        ctx.beginPath();
-        if (top) { ctx.moveTo(X, Y + 1.5); ctx.lineTo(X + ts, Y + 1.5); }
-        if (left) { ctx.moveTo(X + 1.5, Y); ctx.lineTo(X + 1.5, Y + ts); }
-        if (right) { ctx.moveTo(X + ts - 1.5, Y); ctx.lineTo(X + ts - 1.5, Y + ts); }
-        ctx.stroke();
+    if (c === 'T') { spr(TOWN, [28, 16, 28, 16, 3][hash(x, y) % 5], x, y); return; }
+    if (c === 'L') { spr(TOWN, DECO[hash(x, y) % DECO.length], x, y); return; }
+    if (c !== '#' && !'ACHWG'.includes(c)) return;
+    const o = blockOwner(x, y), b = bbox(o);
+    if (!b) return;
+    if (o === 'G') {
+      const col = x === b.x0 ? 0 : x === b.x1 ? 2 : 1;
+      spr(TOWN, (y === b.y0 ? 96 : y === b.y1 ? 120 : 108) + col, x, y);
+      if (c === 'G') {
+        spr(TOWN, 113, x - 0.5, y); spr(TOWN, 114, x + 0.5, y);
+        // A swirly portal down into Prod
+        const cxp = x * ts + ts / 2, cyp = y * ts + ts * 0.62;
+        ctx.save(); ctx.translate(cxp, cyp);
+        for (let i = 0; i < 3; i++) {
+          ctx.rotate(t * (1.2 + i * 0.5));
+          ctx.strokeStyle = ['#8b6cff', '#3b8bff', '#ff6fa5'][i]; ctx.lineWidth = Math.max(2, ts / 14);
+          ctx.beginPath(); ctx.ellipse(0, 0, ts * (0.3 - i * 0.07), ts * (0.3 - i * 0.07), 0, 0, Math.PI * 1.4); ctx.stroke();
+        }
+        ctx.restore();
       }
+      return;
+    }
+    const st = STYLE[o], R = ROOF[st.roof], Wl = WALL[st.wall];
+    const col = x === b.x0 ? 0 : x === b.x1 ? 2 : 1;
+    if (y === b.y1) {
+      const doorX = b.door[0];
+      const i = 'ACHW'.includes(c) ? Wl.door : x === b.x0 ? Wl.l : x === b.x1 ? Wl.r : (Math.abs(x - doorX) % 2 === 0 ? Wl.m : Wl.win);
+      spr(TOWN, i, x, y);
+    } else {
+      spr(TOWN, (y === b.y0 ? R[0] : R[1]) + col, x, y);
+      if (y === b.y1 - 1 && x === b.door[0]) spr(TOWN, R[2], x, y);   // gable over the door
+      if (y === b.y0 && x === b.x1 - 1 && o !== 'W') spr(TOWN, st.roof === 'red' ? 55 : 51, x, y); // chimney
     }
   }
   const blockCache = {};
@@ -391,61 +404,54 @@
     }
     blockCache[k] = found; return found;
   }
-  function drawDoor(X, Y, c, b, t) {
-    if (c === 'G') {
-      // The dungeon entrance: a swirly portal in a stone arch.
-      const cxp = X + ts / 2, cyp = Y + ts * 0.55;
-      ctx.fillStyle = '#1d1636'; ctx.strokeStyle = INK; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.ellipse(cxp, cyp, ts * 0.42, ts * 0.46, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.save(); ctx.translate(cxp, cyp);
-      for (let i = 0; i < 3; i++) {
-        ctx.rotate(t * (1.2 + i * 0.5));
-        ctx.strokeStyle = ['#8b6cff', '#3b8bff', '#ff6fa5'][i]; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.ellipse(0, 0, ts * (0.34 - i * 0.08), ts * (0.38 - i * 0.08), 0, 0, Math.PI * 1.4); ctx.stroke();
-      }
-      ctx.restore();
-      return;
+  const boxes = {};
+  function bbox(o) {
+    if (!o) return null;
+    if (boxes[o]) return boxes[o];
+    let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1, door = null;
+    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+      const c = tile(x, y);
+      if ((c === '#' || c === o) && blockOwner(x, y) === o) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      if (c === o) door = [x, y];
     }
-    ctx.fillStyle = '#a0612f'; ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
-    rr(X + ts * 0.24, Y + ts * 0.22, ts * 0.52, ts * 0.78, [ts * 0.26, ts * 0.26, 0, 0]); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ffe14d'; ctx.beginPath(); ctx.arc(X + ts * 0.66, Y + ts * 0.62, 2.5, 0, Math.PI * 2); ctx.fill();
+    return (boxes[o] = { x0, x1, y0, y1, door });
   }
 
-  function drawPlayer(t) {
-    const X = P.px * ts + ts / 2, Y = P.py * ts + ts / 2;
-    const bob = P.moving ? -Math.abs(Math.sin(t * 14)) * 3 : Math.sin(t * 2) * 0.6;
-    ctx.fillStyle = 'rgba(43,35,64,0.2)'; ctx.beginPath(); ctx.ellipse(X, Y + ts * 0.4, ts * 0.24, ts * 0.08, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    // Hoodie body
-    ctx.fillStyle = '#3b8bff';
-    rr(X - ts * 0.2, Y + ts * 0.02 + bob, ts * 0.4, ts * 0.36, 6); ctx.fill(); ctx.stroke();
-    // Head (big, chibi)
-    ctx.fillStyle = '#ffe0cc';
-    ctx.beginPath(); ctx.arc(X, Y - ts * 0.16 + bob, ts * 0.22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#5a3b2e';
-    ctx.beginPath(); ctx.arc(X, Y - ts * 0.2 + bob, ts * 0.23, Math.PI * 1.05, Math.PI * 1.95); ctx.lineTo(X + ts * 0.1 * P.dir, Y - ts * 0.12 + bob); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.beginPath(); ctx.arc(X + ts * 0.02 + ts * 0.07 * P.dir, Y - ts * 0.12 + bob, 2, 0, Math.PI * 2); ctx.arc(X - ts * 0.08 + ts * 0.07 * P.dir, Y - ts * 0.12 + bob, 2, 0, Math.PI * 2); ctx.fill();
+  // People: the player, Gary, villagers who stand by their doors, and wanderers who just like walking.
+  function person(i, px, py, t, moving, flip, hop) {
+    const bob = moving ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : (hop ? -Math.abs(Math.sin(t * 3)) * ts * 0.05 : 0);
+    ctx.fillStyle = 'rgba(43,35,64,0.22)';
+    ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    spr(FOLK, i, px, py - 0.08 + bob / ts, 1, flip);
   }
+  function drawPlayer(t) { person(85, P.px, P.py, t, P.moving, P.dir < 0); }
   function drawPip(t) {
-    const X = pip.x * ts + ts / 2, Y = pip.y * ts + ts / 2 + Math.sin(t * 3) * 3;
+    const X = pip.x * ts + ts / 2, Y = pip.y * ts + ts / 2 + Math.sin(t * 3) * 3, s = ts / 32;
     ctx.fillStyle = '#6fd6ff'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(X - ts * 0.14, Y + ts * 0.1); ctx.quadraticCurveTo(X - ts * 0.16, Y - ts * 0.14, X, Y - ts * 0.16); ctx.quadraticCurveTo(X + ts * 0.16, Y - ts * 0.14, X + ts * 0.14, Y + ts * 0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X - 3, Y - 2, 1.6, 0, Math.PI * 2); ctx.arc(X + 3, Y - 2, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(X - 5 * s, Y + 3 * s); ctx.quadraticCurveTo(X - 5 * s, Y - 5 * s, X, Y - 5 * s); ctx.quadraticCurveTo(X + 5 * s, Y - 5 * s, X + 5 * s, Y + 3 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = INK; ctx.fillRect(X - 3 * s, Y - 2 * s, 1.5 * s, 2 * s); ctx.fillRect(X + 1.5 * s, Y - 2 * s, 1.5 * s, 2 * s);
   }
-  // Gary, standing in the plaza, waiting for a croissant sale that may never come.
-  function drawGary(x, y, t) {
-    const X = x * ts + ts / 2, Y = y * ts + ts / 2;
-    ctx.fillStyle = 'rgba(43,35,64,0.2)'; ctx.beginPath(); ctx.ellipse(X, Y + ts * 0.4, ts * 0.24, ts * 0.08, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    const flap = Math.sin(t * 3) * 2;
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.moveTo(X - ts * 0.2, Y); ctx.lineTo(X - ts * 0.28 - flap, Y + ts * 0.38); ctx.lineTo(X + ts * 0.28 + flap, Y + ts * 0.38); ctx.lineTo(X + ts * 0.2, Y); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#9aa3b5'; rr(X - ts * 0.17, Y + ts * 0.02, ts * 0.34, ts * 0.34, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ffe0cc'; ctx.beginPath(); ctx.ellipse(X, Y - ts * 0.17, ts * 0.18, ts * 0.21, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X - ts * 0.06, Y - ts * 0.3, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(X - 4, Y - ts * 0.15, 1.5, 0, Math.PI * 2); ctx.arc(X + 4, Y - ts * 0.15, 1.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(X - 3, Y - ts * 0.06); ctx.lineTo(X + 3, Y - ts * 0.06); ctx.stroke();
+  function drawNpc(n, t) {
+    person(n.spr, n.x, n.y, t, false, n.x > P.x, true);
+    // Gary sips coffee. Everyone else occasionally has a feeling about something.
+    const phase = (t + n.x) % 9;
+    if (phase < 2.2) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', n.x * ts + ts / 2, n.y * ts - ts * 0.05);
+  }
+  const WANDER = [{ spr: 111, x: 9, y: 1 }, { spr: 112, x: 22, y: 18 }, { spr: 87, x: 10, y: 10 }, { spr: 110, x: 28, y: 10 }];
+  WANDER.forEach(w => { w.px = w.x; w.py = w.y; w.wait = Math.random() * 3; w.flip = false; w.emo = null; w.emoT = 0; });
+  function updateWanderers(dt) {
+    WANDER.forEach(w => {
+      const moving = Math.abs(w.px - w.x) + Math.abs(w.py - w.y) > 0.01;
+      w.px += Math.sign(w.x - w.px) * Math.min(Math.abs(w.x - w.px), dt * 2.5);
+      w.py += Math.sign(w.y - w.py) * Math.min(Math.abs(w.y - w.py), dt * 2.5);
+      w.emoT -= dt;
+      if (moving) return;
+      w.wait -= dt; if (w.wait > 0) return;
+      w.wait = 0.6 + Math.random() * 2.5;
+      const [dx, dy] = DIRS[Math.floor(Math.random() * 4)], nx = w.x + dx, ny = w.y + dy;
+      if ('.p,'.includes(tile(nx, ny)) && !npcAt(nx, ny) && !(nx === P.x && ny === P.y)) { if (dx) w.flip = dx < 0; w.x = nx; w.y = ny; }
+      if (Math.random() < 0.12) { w.emo = ['heart', 'music', 'laugh', 'idea', 'sleep'][Math.floor(Math.random() * 5)]; w.emoT = 1.8; }
+    });
   }
   function label(x, y, text, t, marker, small) {
     const X = x * ts + ts / 2, Y = y * ts - ts * 0.35;

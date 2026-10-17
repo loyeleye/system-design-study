@@ -356,7 +356,7 @@
   function mitigate(n, why, cls) {
     n = Math.max(0, Math.round(n));
     C.sev = Math.max(0, C.sev - n);
-    if (n > 0) U.float($('.foe'), '-' + n, cls || 'hit');
+    if (n > 0) { U.float($('.foe'), '-' + n, cls || 'hit'); U.burst($('.foe'), cls === 'crit'); }
     if (why) C.log = why;
   }
 

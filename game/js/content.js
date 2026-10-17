@@ -358,8 +358,8 @@ SD.cast = {
   pip: { name: 'Pip', title: 'A Lost Packet', hue: 195, hair: 'pip', eye: '#2b2340' },
   gary: { name: 'Gary', title: 'Principal Engineer (Hobbyist)', hue: 30, hair: 'bald', eye: '#2b2340' },
   seymour: { name: 'Sir Seymour Backups', title: 'The Thrice-Replicated Knight', hue: 210, hair: 'knight', eye: '#3b8bff' },
-  mio: { name: 'Mio', title: 'Future Hero, Age 8', hue: 330, hair: 'bob', eye: '#ff5fa2' },
-  wen: { name: 'Grandma Wen', title: 'Cache Café', hue: 140, hair: 'bun', eye: '#2f9e5b' },
+  mio: { name: 'Mio', title: 'Future Hero, Age 8 (helps at the café)', hue: 330, hair: 'bob', eye: '#ff5fa2' },
+  wen: { name: 'Grandma Wen', title: 'Cache Café · Age: cached', hue: 140, hair: 'bun', eye: '#2f9e5b' },
   chad: { name: 'Chad', title: 'Certified Solutions Visionary', hue: 280, hair: 'slick', eye: '#2b2340' },
   latency: { name: 'Lord Latency', title: 'Demon King of Lag', hue: 275, hair: 'hood', eye: '#ff4d6d' },
   system: { name: 'SYSTEM', title: '', hue: 200, hair: 'none', eye: '#3b8bff' },
@@ -369,15 +369,20 @@ SD.cast = {
 SD.story = {
   // Cold open. `fx` lines trigger a sound or a screen effect; `tutorial` hands over to the first fight.
   intro: [
-    { s: 'narr', t: 'Friday. 4:59 PM. A perfectly normal office.' },
-    { s: 'you', t: 'One tiny deploy to production before the weekend. What could possibly go wrong?' },
-    { s: 'narr', t: 'You press Enter.', fx: 'enter' },
-    { s: 'narr', t: 'HOOOOONK!', fx: 'truck' },
-    { s: 'narr', t: 'You are hit by a truck delivering servers. The irony is not lost on anyone.' },
-    { s: 'uptima', t: 'Oh! You\'re early. Hold on, I\'m mid-snack.', fx: 'sky' },
-    { s: 'uptima', t: '*ahem* WELCOME, CHOSEN ONE! I am Uptima, Goddess of Five Nines! You died. Very sad. Anyway!' },
-    { s: 'uptima', t: 'My kingdom runs on the Cloud. An actual cloud. It holds everything: quest logs, bakery orders, love letters, cat pictures.' },
-    { s: 'uptima', t: 'And it keeps breaking. My last hero tried to fix it with a sword. Please do not use a sword.' },
+    { slide: 'office', fx: 'office', s: 'narr', t: 'Friday. 4:59 PM. A perfectly normal office.' },
+    { slide: 'office', s: 'you', t: 'One tiny deploy to production before the weekend. What could possibly go wrong?' },
+    { slide: 'enter', fx: 'enter', s: 'narr', t: 'You press Enter.' },
+    { slide: 'deployed', fx: 'deployed', s: 'narr', t: 'Deploy successful. Zero alerts. You have never felt so alive.' },
+    { slide: 'street', s: 'narr', t: 'You stroll out into the evening, humming. Then you notice the headlights.' },
+    { slide: 'truck', fx: 'truck', s: 'narr', t: 'HOOOOONK!' },
+    { slide: 'crash', fx: 'crash', s: 'narr', t: 'You are hit by a truck delivering servers. The irony is not lost on anyone.' },
+    { slide: 'dead', fx: 'dead', s: 'narr', t: 'You died.' },
+    { slide: 'dead', s: 'narr', t: '...Or did you?' },
+    { s: 'uptima', e: 'confused', t: 'Oh! You\'re early. Hold on, I\'m mid-snack.', fx: 'sky' },
+    { s: 'uptima', e: 'happy', t: '*ahem* WELCOME, CHOSEN ONE! I am Uptima, Goddess of Five Nines! You died. Very sad. Anyway!' },
+    { s: 'uptima', e: 'blush', t: 'Yes, this is a maid outfit. Goddessing doesn\'t pay. I have a part-time job at the Cache Café. Don\'t look at me.' },
+    { s: 'uptima', e: 'neutral', t: 'My kingdom runs on the Cloud. An actual cloud. It holds everything: quest logs, bakery orders, love letters, cat pictures.' },
+    { s: 'uptima', e: 'sad', t: 'And it keeps breaking. My last hero tried to fix it with a sword. Please do not use a sword.' },
     { s: 'system', t: '[SYSTEM] You have been isekai\'d. Class: Junior Engineer. Please rate your death from 1 to 5 stars.' }
   ],
   introAfterName: [
@@ -396,7 +401,7 @@ SD.story = {
     { s: 'gary', t: 'Added request coalescing. Now one slime asks the database and the rest wait for that answer.' },
     { s: 'gary', t: 'OK. Bye.' },
     { s: 'pip', t: 'WHO. WAS. THAT.' },
-    { s: 'uptima', t: 'Ugh. Gary. He is not in the prophecy. He just shows up, fixes things and leaves. It\'s very rude.' },
+    { s: 'uptima', e: 'angry', t: 'Ugh. Gary. He is not in the prophecy. He just shows up, fixes things and leaves. It\'s very rude.' },
     { s: 'uptima', t: 'You, on the other hand, ARE in the prophecy. Probably. Visit my temple first, then take the Dungeon gate down into Prod.' },
     { s: 'uptima', t: 'And try not to die. It\'s paperwork for me.' }
   ],
@@ -415,7 +420,7 @@ SD.story = {
     ['Gary bought me a croissant. He said "OK." He is my second favourite hero. You are first. Mostly.'],
     ['When I grow up I want to build a Cloud that never forgets anybody. Not even lost packets. Don\'t tell Pip, it\'s a surprise.']
   ],
-  wen: ['Welcome, dear! I remember my regulars and forget the rest. Least recently used, my late husband called it. Rude man. Lovely man.', 'Memory Shards spend the same in every loop. Don\'t ask me how I know about loops. Grandmas just know things.'],
+  wen: ['Welcome, dear! I remember my regulars and forget the rest. Least recently used, my late husband called it. Rude man. Lovely man.', 'Why do I look twenty? I cached my face in 1987, dear, and never set an expiry.', 'Memory Shards spend the same in every loop. Don\'t ask me how I know about loops. Grandmas just know things.'],
   seymour: ['HALT! Before you go further: have you prepared? I prepared. I prepared to prepare. I have backups of this sentence.', 'Choose a Spec. Every hero is excellent at one thing and terrible at another. I am excellent at preparing and terrible at stopping.'],
   gary: [
     ['...', 'Oh, hey. The bakery has croissants half off on Tuesdays. Every day is Tuesday here, I think.'],
