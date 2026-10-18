@@ -16,7 +16,7 @@ Backstories, the relationship web, scene outlines and draft schedules for the 14
 - **Story windows.**
   - Gary is gone from the end of chapter 9 (`flags.garyGone`) until chapter 10 is cleared, so his scenes skip that window.
   - Aigerim roams Pingsby from chapter 3 and moves to the North Road once it opens.
-  - Valentin stands outside the Cache Café from chapter 5.
+  - Awa stands outside the Cache Café from chapter 5.
   - During chapter 10 the town is always a stormy night and the clock doesn't move, so only night scenes can play then (see the chapter 10 night table).
 
 ### Places
@@ -28,7 +28,7 @@ The schedule uses these spots. Tile positions are today's, from `game/js/hub.js`
 | `temple` | Goddess Temple door (A), far north-west | Uptima's usual spot (3, 6) |
 | `plaza` | The plaza with the well and the quest board | Benches go here (the bench to wait for the next block) |
 | `board` | The quest board (B) | Kaito's usual spot (18, 5) is just north of it |
-| `cafe` | Cache Café door (C) | Wen at (28, 6); Valentin's spot is the terrace at (31, 5) |
+| `cafe` | Cache Café door (C) | Wen at (28, 6); Awa's spot is the terrace at (31, 5) |
 | `cafe:in` | Inside the café, with Wen's flat upstairs | One of the first four interiors |
 | `guild` | Adventurers' Guild door (U) | Bru at (37, 6) |
 | `forge` | The Forge (F), north-east | Ayo at (46, 5) |
@@ -123,7 +123,7 @@ The schedule uses these spots. Tile positions are today's, from `game/js/hub.js`
 - **Backstory.** **(new)** Coo hatched in the Post's loft and took over from the old postmistress, who was also a pigeon and also called Coo, which makes the Post's records very confusing. He's dignified, a little pompous, and secretly sentimental. He never throws a dead letter away, because "someone meant it." He just doesn't read them. Reading other people's post is not done.
 - **Voice.** "Coo." "Coo-ah." Precise numbers. Speaks in delivery guarantees.
 - **At home.** Residential row **(new)**: a dovecote-sized flat full of pigeonholes, and the Dead Letter Box brought home on Sundays "to keep it company".
-- **Relationships.** Valentin (arc 9), Bru (end of arc 8).
+- **Relationships.** Awa (arc 9), Bru (end of arc 8).
 
 ### Lekha "Lexi"
 
@@ -165,12 +165,14 @@ The schedule uses these spots. Tile positions are today's, from `game/js/hub.js`
 - **At home.** **(new)** A small felt yurt pitched behind Cron's farm until she moves to the North Road. Lanterns, rugs, and diary volumes stacked like bricks.
 - **Relationships.** You (arc 10).
 
-### Valentin
+### Awa
 
-- **Canon.** Inspired by Sakamoto (*Haven't You Heard? I'm Sakamoto*). He stands outside the Cache Café from chapter 5. "One should never refuse an invitation, or a duel, or a well-made cup of tea." He comes second at Game Night and is delighted: "I've never lost before. I'd like to do it again sometime."
-- **Backstory.** **(new)** Nobody knows where Valentin came from, and he makes everything look effortless, so nobody has asked. In fact he's a man who decided long ago to do each small thing well, and to keep doing it for as long as it takes. Every morning at exactly seven he posts one letter: a thank-you note to a different villager. By now everyone in Pingsby has one, and nobody has mentioned it to anyone else. He rents the little room above the Pigeon Post.
-- **Voice.** Impeccable, unhurried, faintly amused. Never raises his voice.
-- **At home.** **(new)** The room above the Pigeon Post: one chair, one teacup, a writing desk, and a ledger of who has had a letter.
+- **Canon.** Inspired by Sakamoto (*Haven't You Heard? I'm Sakamoto*). She stands outside the Cache Café from chapter 5. "One should never refuse an invitation, or a duel, or a well-made cup of tea." She comes second at Game Night and is delighted: "I've never lost before. I'd like to do it again sometime." Ladi changed this character from Valentin, a French man, to a Senegalese woman on 2026-10-18. Wolof isn't used by anyone else in the cast: Ayo is Yoruba, Captain Kwame is Ghanaian, Meron is Ethiopian and Madame Farida is Egyptian. In the code her id stays `valentin`, so saves and art paths don't change.
+- **Backstory.** **(new)** Awa Ndiaye grew up in Saint-Louis, Senegal, in a house where *teranga*, hospitality, was the first rule. She learned *attaya* from her grandmother: three rounds of green tea with mint, poured from high so it foams, and never hurried. The first glass is bitter, like death. The second is sweet, like life. The third is sweet, like love. A round of attaya takes as long as it takes, and that is the point.
+
+  Nobody knows how she ended up in Pingsby, and she makes everything look effortless, so nobody has asked. In fact she decided long ago to do each small thing well, and to keep doing it for as long as it takes. Every morning at exactly seven she posts one letter: a thank-you note to a different villager. By now everyone in Pingsby has one, and nobody has mentioned it to anyone else. She rents the little room above the Pigeon Post.
+- **Voice.** Impeccable, unhurried, faintly amused. Never raises her voice. Offers you tea before anything else.
+- **At home.** **(new)** The room above the Pigeon Post: one chair, a small teapot and three glasses on a brass tray, a writing desk, and a ledger of who has had a letter.
 - **Relationships.** Coo (arc 9).
 
 ## The relationship web
@@ -187,7 +189,7 @@ Eleven arcs cover all 14 villagers. Gary is in three of them, which suits him: h
 | 6 | Backup No. 1 | Seymour and Uptima | The blessed 400th backup; "two, and test them" | A backup you've never restored is a hope, not a backup | `replication` |
 | 7 | Croissants on the Altar | Uptima and Gary | "Would Gary come if I put out croissants?" | Observability: the fix comes from reading the logs, not magic | `observe` |
 | 8 | Brújula's Own Entry | Bru and everyone | Bru always knows where everyone is | The service registry is a service too: replicate it | `failure` |
-| 9 | Return to Sender | Coo and Valentin | The Dead Letter Box nobody reads | A dead-letter queue is a to-do list, not a grave: inspect and redrive | `queue` |
+| 9 | Return to Sender | Coo and Awa | The Dead Letter Box nobody reads | A dead-letter queue is a to-do list, not a grave: inspect and redrive | `queue` |
 | 10 | Dear Diary, Again | Aigerim and you | Her append-only diary | A projection (CQRS read model): the log is the truth, the summary is fast | `eventsrc` |
 | 11 | Warm Standby | Kaito and Gary | "Kept Gary's spot warm" | A warm standby keeps the spot warm so it can take over | `multiregion` |
 
@@ -249,12 +251,12 @@ Each scene below gives its unlock, its place and time block, and what happens. L
 3. **Rounds.** *After chapter 8. Night, around town.* You follow her. She walks every door in Pingsby and checks each villager herself, because heartbeats lie. She stops at Gary's footbridge and stares into the dark. "Him, I never find."
 4. **Off Shift.** *After chapter 10 is cleared. Evening, `guild`.* Coo, Lexi and Seymour have each copied the board and drawn up a night rota. Two of them have to agree before anyone is marked missing. Bru tries to argue and loses. Her row finally reads **BRU — home. Off shift.** "The board was me. Just me. If I fell asleep, nobody knew where anybody was." *(Analogy: the service registry is a critical service too. Replicate it, and use a quorum so one tired node isn't a single point of failure. Optional review question on heartbeats, timeouts and false alarms.)*
 
-### Arc 9: Return to Sender (Coo and Valentin)
+### Arc 9: Return to Sender (Coo and Awa)
 
-1. **Seven O'Clock.** *After chapter 5. Morning, `post`.* Valentin posts one letter at exactly seven. Coo is impressed: never late, never a duplicate. "Coo. A *professional*."
-2. **The Box.** *Any later loop. Afternoon, `post`.* Valentin asks about the Dead Letter Box. Coo: "It's where letters go to rest. Nobody reads it. Reading other people's post is not *done*." Valentin: "Then who finds out why they died?"
-3. **Clues.** *One loop after scene 2. Evening, `cafe` terrace.* Valentin sits with the box and a cup of tea and works out each address from clues: "To the tall one with the anvil", a misspelt name, a smudged house number. Coo watches over his shoulder, appalled and fascinated.
-4. **Redrive.** *After chapter 7 (the North Road is open). Morning, `post`.* Coo sends them all out again. The last one is in crayon: *"To: Mum. On The Road."* It had nowhere to go until the road opened. Coo flies it north himself. Valentin: "A letter only dies when you stop asking why it didn't arrive." *(Analogy: a dead-letter queue is a to-do list, not a grave. Inspect it, fix the cause, then redrive. Optional review question on what to do with a DLQ.)*
+1. **Seven O'Clock.** *After chapter 5. Morning, `post`.* Awa posts one letter at exactly seven. Coo is impressed: never late, never a duplicate. "Coo. A *professional*."
+2. **The Box.** *Any later loop. Afternoon, `post`.* Awa asks about the Dead Letter Box. Coo: "It's where letters go to rest. Nobody reads it. Reading other people's post is not *done*." Awa: "Then who finds out why they died?"
+3. **Clues.** *One loop after scene 2. Evening, `cafe` terrace.* Awa sits with the box and a round of attaya and works out each address from clues: "To the tall one with the anvil", a misspelt name, a smudged house number. Coo watches over her shoulder, appalled and fascinated.
+4. **Redrive.** *After chapter 7 (the North Road is open). Morning, `post`.* Coo sends them all out again. The last one is in crayon: *"To: Mum. On The Road."* It had nowhere to go until the road opened. Coo flies it north himself. Awa: "A letter only dies when you stop asking why it didn't arrive." *(Analogy: a dead-letter queue is a to-do list, not a grave. Inspect it, fix the cause, then redrive. Optional review question on what to do with a DLQ.)*
 
 ### Arc 10: Dear Diary, Again (Aigerim and you)
 
@@ -396,14 +398,14 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 - **Variant:** before chapter 3 she isn't in Pingsby. Once the North Road opens, she's at her road shop in every block.
 - **Board:** "AIGERIM: {spot}. Also knows where YOU are. Better than I do."
 
-### Valentin
+### Awa
 
 | Morning | Afternoon | Evening | Night |
 | --- | --- | --- | --- |
-| `post` at seven, then the `cafe` terrace | `cafe` terrace (31, 5), tea | `cafe` terrace, or the `plaza` bench reading | The room over the Post, light on until late |
+| `post` at seven, then the `cafe` terrace | `cafe` terrace (31, 5), attaya | `cafe` terrace, or the `plaza` bench reading | The room over the Post, light on until late |
 
-- **Variant:** before chapter 5 he isn't in Pingsby.
-- **Board:** "VALENTIN: {spot}. Arrived exactly on time."
+- **Variant:** before chapter 5 she isn't in Pingsby.
+- **Board:** "AWA: {spot}. Arrived exactly on time."
 
 ### Chapter 10: the stormy night
 
@@ -424,12 +426,13 @@ From the end of chapter 9 until chapter 10 is cleared, Pingsby is always night, 
 | Kaito | Gary's spot | Keeping it warm (arc 11, scene 3) |
 | Doug | `post` (34, 10) | Kevin, un-retired, pinging everyone's door to check they're in |
 | Aigerim | North Road shop | The Rare Shelf |
-| Valentin | `cafe` terrace, under the awning | Tea for anyone out in the storm |
+| Awa | `cafe` terrace, under the awning | Attaya for anyone out in the storm |
 
-## Open questions for Ladi
+## Decisions (2026-10-18)
 
-Everything marked **(new)** can be cut. These are the ones that matter most for later threads:
+Ladi answered the open questions:
 
-1. **Mio's mum on the North Road.** Arc 9 ends with Coo carrying Mio's letter north. Should her mum be the North Road's ordinary courier (already in `roadfolk.js`), so you can actually meet her? Recommended: yes, as a quiet cameo with one line.
-2. **Gary and the oven.** Arc 1 explains Gary's half-price croissants with an old debt to Hiro. That makes the "every day is Tuesday" joke sweet rather than random. Recommended: keep it, and keep the lunch box mystery unexplained.
-3. **Uptima's first song.** Arc 6 ends with a recording of Uptima singing on the Cloud's first day. It leans on the chapter 9 and 10 story (Kyu, the early Cloud), which lives in the Chapters 7–10 Claude Doc. Recommended: check it against that doc before the scene is built.
+1. **Mio's mum is the North Road's courier.** Yes: a quiet cameo with one line, once arc 9's letter reaches her.
+2. **Gary and the oven.** Yes: keep the old debt to Hiro, and keep the lunch box mystery unexplained.
+3. **Uptima's first song.** Yes. Check it against the Chapters 7–10 Claude Doc before the scene is built.
+4. **Valentin is now Awa**, a Senegalese (Wolof) woman. See her entry above.
