@@ -935,9 +935,9 @@
   ];
   QUESTS.forEach(q => { if (!QS.list.some(x => x.id === q.id)) QS.list.push(q); });
   Object.assign(SD.eli5, {
-    'sq-sretoil': 'Like grinding the same daily quest by hand when the game has an auto-battle button you never turned on.',
-    'sq-srepager': 'Like a phone that buzzes for every like: you stop looking, and miss the one message that mattered.',
-    'sq-srecascade': 'Like a lag spike where everyone spams "reconnect" at once, so the server never gets back up.'
+    'sx-sretoil': 'Like grinding the same daily quest by hand when the game has an auto-battle button you never turned on.',
+    'sx-srepager': 'Like a phone that buzzes for every like: you stop looking, and miss the one message that mattered.',
+    'sx-srecascade': 'Like a lag spike where everyone spams "reconnect" at once, so the server never gets back up.'
   });
 
   // ---------- The prize: SCHEDULED BLAST! ----------
