@@ -265,6 +265,120 @@
     render(0);
   }
 
+  // ---------- Seat Rush: 120 fans, 40 seats. Run the on-sale with and without holds and a waiting room ----------
+  function seatRush(done) {
+    const SEATS = 40, FANS = 120, CAP = 25;
+    let holds = false, room = false, tick = null, guess = null;
+    const ran = new Set();
+    const b = U.panel(`<div class="lw-say">${SD.art.portrait('seymour', 56)}<p>Tickets for Uptima's concert go on sale. <b>40 seats, 120 fans</b>, and every fan reads the seat map from a cache that refreshes every couple of seconds. The booking server can handle <b>25 fans at once</b>.</p></div>
+      <div id="sr-pred"><p class="q-ctx">Predict first</p><p class="small">With no seat holds and no waiting room, how many tickets get sold?</p>
+        <div class="opts"><button class="opt" data-g="0">Exactly 40</button><button class="opt" data-g="1">More than 40: some seats sold twice</button><button class="opt" data-g="2">Fewer than 40</button></div></div>
+      <div id="sr-main" hidden>
+        <div class="sr-seats" id="sr-seats"></div>
+        <div class="tb-stats" id="sr-stats"></div>
+        <p class="small" id="sr-log">Choose your defences, then open sales.</p>
+        <div class="row"><button id="sr-hold" aria-pressed="false">Seat holds: off</button><button id="sr-room" aria-pressed="false">Waiting room: off</button><button class="primary" id="sr-go">Open sales</button></div>
+        <button class="primary" id="sr-ok" disabled>Done (run with nothing, then with both)</button>
+      </div>`, { title: "SEAT RUSH · SEYMOUR'S BUNKER", cls: 'wide', noClose: true });
+    const $b = q => b.querySelector(q);
+    b.querySelectorAll('[data-g]').forEach(el => el.onclick = () => { guess = +el.dataset.g; $b('#sr-pred').hidden = true; $b('#sr-main').hidden = false; drawSeats(new Array(SEATS).fill(0), new Set()); });
+    const drawSeats = (sold, held) => { $b('#sr-seats').innerHTML = sold.map((n, i) => `<i class="${n > 1 ? 'dbl' : n ? 'sold' : held.has(i) ? 'held' : ''}">${n > 1 ? '×' + n : ''}</i>`).join(''); };
+    const toggles = () => {
+      $b('#sr-hold').textContent = 'Seat holds: ' + (holds ? 'on' : 'off'); $b('#sr-hold').setAttribute('aria-pressed', holds); $b('#sr-hold').classList.toggle('on', holds);
+      $b('#sr-room').textContent = 'Waiting room: ' + (room ? 'on' : 'off'); $b('#sr-room').setAttribute('aria-pressed', room); $b('#sr-room').classList.toggle('on', room);
+    };
+    $b('#sr-hold').onclick = () => { if (tick) return; holds = !holds; toggles(); sfx('card'); };
+    $b('#sr-room').onclick = () => { if (tick) return; room = !room; toggles(); sfx('card'); };
+    $b('#sr-go').onclick = () => {
+      if (tick) return;
+      const sold = new Array(SEATS).fill(0), held = new Set();
+      let line = FANS, step = 0, errors = 0, tickets = 0, soldOut = 0, view = sold.map((_, i) => i);
+      const free = () => sold.map((n, i) => i).filter(i => !sold[i] && !held.has(i));
+      const stats = () => { $b('#sr-stats').innerHTML = `<span class="chip">Tickets sold ${tickets}</span><span class="chip stale">Seats sold twice ${sold.filter(n => n > 1).length}</span><span class="chip stale">Errors ${errors}</span><span class="chip">Sold out / gave up ${soldOut}</span>${room ? `<span class="chip">In line ${line}</span>` : ''}`; };
+      tick = setInterval(() => {
+        step++;
+        // Holds from last step turn into tickets (the fan paid).
+        held.forEach(i => { sold[i]++; tickets++; }); held.clear();
+        // Without holds the seat map is a cached copy, refreshed every other step.
+        if (step % 2 === 1) view = free();
+        const admit = Math.min(line, room ? 12 : 40);
+        line -= admit;
+        const served = Math.min(admit, CAP);
+        errors += admit - served;   // the booking server melts past its capacity
+        for (let f = 0; f < served; f++) {
+          if (holds) {
+            // An atomic claim: if the seat is taken, the fan is told so and picks another.
+            const left = free();
+            if (!left.length) { soldOut++; continue; }
+            held.add(left[rnd(left.length)]);
+          } else {
+            if (!view.length) { soldOut++; continue; }
+            const s = view[rnd(view.length)];
+            sold[s]++; tickets++;
+          }
+        }
+        drawSeats(sold, held); stats();
+        if (!line && !held.size) {
+          clearInterval(tick); tick = null;
+          const dbl = sold.filter(n => n > 1).length;
+          const key = (holds ? 'h' : '') + (room ? 'r' : '');
+          ran.add(key || 'none');
+          let say;
+          if (!holds && dbl) say = `<b>${tickets} tickets for ${SEATS} seats.</b> ${dbl} seats were sold more than once: fans picked seats from a stale copy of the map, and nothing stopped two of them buying the same one.${guess === 1 ? ' You called it.' : ''}`;
+          else if (!holds) say = `<b>${tickets} tickets.</b> Lucky: no clashes this time, but nothing prevented them. Run it again and watch.`;
+          else say = `<b>Exactly ${tickets} tickets, no seat sold twice.</b> Each click made one atomic <b>hold</b> with a timer; a fan who lost the race was told at once and picked another seat.`;
+          say += errors ? ` <b>${errors} fans got errors</b> because the booking server took more than ${CAP} at once.` : ' <b>No errors:</b> the waiting room let fans in a few at a time, so booking never went past its limit.';
+          if (holds && room) say += ' That is the Ticketmaster answer: a <b>waiting room</b> in front, atomic <b>holds with a TTL</b> on seats, and the seat map cached only for browsing.';
+          $b('#sr-log').innerHTML = say;
+          sfx(holds && room ? 'right' : 'wrong');
+          $b('#sr-ok').disabled = !(ran.has('none') && ran.has('hr'));
+        }
+      }, 260);
+      drawSeats(sold, held); stats();
+    };
+    $b('#sr-ok').onclick = () => { if (tick) clearInterval(tick); U.closePanel(); done(true); };
+  }
+
+  // ---------- Top 3 Pastries: keep a leaderboard by only ever comparing with its smallest entry ----------
+  function topK(done) {
+    const SEQ = [['Croissant', 5], ['Scone', 4], ['Pie', 3], ['Tart', 2], ['Bun', 6], ['Croissant', 8], ['Muffin', 3], ['Eclair', 7], ['Scone', 5], ['Mochi', 9], ['Bun', 10], ['Tart', 6], ['Eclair', 11], ['Pie', 4], ['Croissant', 10]];
+    let i = 0, right = 0, asked = 0, note = 'Grandma Wen: "I want the top 3 pastries on the board, always. But I have no time to re-sort every pastry I have ever sold."';
+    const board = {};
+    const minKey = () => Object.keys(board).reduce((a, k) => board[k] < board[a] ? k : a, Object.keys(board)[0]);
+    // Advance through updates that need no decision: pastries already on the board, or an empty slot.
+    const settle = () => {
+      while (i < SEQ.length) {
+        const [n, c] = SEQ[i];
+        if (n in board) { board[n] = c; i++; continue; }
+        if (Object.keys(board).length < 3) { board[n] = c; i++; continue; }
+        return;
+      }
+    };
+    const render = () => {
+      settle();
+      const keys = Object.keys(board).sort((a, b) => board[b] - board[a]), m = minKey();
+      const cur = SEQ[i];
+      const b = U.panel(`<div class="tk-board">${keys.map(k => `<div class="tk-row${k === m ? ' min' : ''}"><b>${esc(k)}</b><span>${board[k]} sold</span>${k === m ? '<small>smallest</small>' : ''}</div>`).join('')}</div>
+        ${cur ? `<p class="cr-order">New total: <b>${esc(cur[0])} · ${cur[1]} sold</b></p>
+          <div class="row"><button class="primary" id="tk-swap">Bump ${esc(m)} off the board</button><button id="tk-skip">Ignore</button></div>` : ''}
+        <p class="small">${note}</p>
+        ${cur ? '' : `<p class="small"><b>You kept a top-K list with a min-heap.</b> You only ever compared a new total with the <b>smallest</b> entry on the board, never with all the others: that is O(log K) per update instead of re-sorting everything. Big systems do the same for "trending this hour", sharded by item so each total lives in one place. When there are too many items to count exactly, a <b>count-min sketch</b> estimates the totals in a few kilobytes.</p>
+          <button class="primary" id="tk-ok">Got it!</button>`}`, { title: 'TOP 3 PASTRIES · CACHE CAFÉ', cls: 'wide', noClose: true });
+      const decide = swap => {
+        const [n, c] = SEQ[i], should = c > board[m];
+        asked++;
+        if (swap === should) { right++; sfx('right'); note = should ? `Right: ${esc(n)} (${c}) beats the smallest, ${esc(m)} (${board[m]}), so it takes that slot.` : `Right: ${esc(n)} (${c}) does not beat the smallest, ${esc(m)} (${board[m]}). If it can't beat the smallest, it can't beat anyone on the board.`; }
+        else { sfx('wrong'); note = should ? `${esc(n)} (${c}) beats ${esc(m)} (${board[m]}), the smallest on the board, so it belongs in the top 3.` : `${esc(n)} (${c}) is not bigger than ${esc(m)} (${board[m]}). Only a total that beats the smallest gets on the board.`; }
+        if (should) { delete board[m]; board[n] = c; }
+        i++; render();
+      };
+      const sw = b.querySelector('#tk-swap'); if (sw) sw.onclick = () => decide(true);
+      const sk = b.querySelector('#tk-skip'); if (sk) sk.onclick = () => decide(false);
+      const ok = b.querySelector('#tk-ok'); if (ok) ok.onclick = () => { U.closePanel(); done(true); };
+    };
+    render();
+  }
+
   // ---------- The catalogue ----------
   const JOURNEY = {
     title: 'The Journey of a Request', w: 700, h: 260, who: 'mio',
@@ -300,6 +414,24 @@
     ]
   };
 
+  const FEED = {
+    title: 'How a Post Reaches Your Feed', w: 700, h: 260, who: 'mio',
+    nodes: [['wen', 'Wen posts', 50, 110, 'croissant'], ['api', 'Post service', 185, 40, 'server-rack'], ['posts', 'Posts DB', 300, 185, 'database'],
+      ['queue', 'Fan-out queue', 365, 50, 'mailbox'], ['feeds', 'Feed cache', 520, 110, 'lightning-helix'], ['you', 'Your feed', 650, 40, 'notebook'], ['kaito', 'Kaito', 470, 210, 'megaphone']],
+    edges: [['wen', 'api'], ['api', 'posts'], ['api', 'queue'], ['queue', 'feeds'], ['feeds', 'you'], ['kaito', 'posts'], ['posts', 'you']],
+    steps: [
+      { on: ['wen'], t: 'Grandma Wen posts: "Croissants are out!" She has 200 followers, and you are one of them.' },
+      { on: ['wen', 'api'], hop: ['wen', 'api'], t: 'The <b>post service</b> takes her post...' },
+      { on: ['api', 'posts'], hop: ['api', 'posts'], t: '...saves it in the <b>posts database</b>, and tells Wen "posted!" straight away. She does not wait for 200 deliveries.' },
+      { on: ['api', 'queue'], hop: ['api', 'queue'], t: 'It drops a job on a <b>queue</b>: "deliver post #812 to Wen\'s followers". Workers pick it up in the background.' },
+      { on: ['queue', 'feeds'], hop: ['queue', 'feeds'], t: 'The workers add the post\'s ID to each follower\'s <b>precomputed feed</b> in the cache: 200 tiny writes. That is <b>fan-out on write</b>.' },
+      { on: ['feeds', 'you'], hop: ['feeds', 'you'], t: 'When you open the app, your feed is already built. One quick read from the cache and there it is!' },
+      { on: ['kaito'], t: 'But Kaito has <b>4 million</b> followers. Fan-out on write would mean 4 million writes for every post about his hair.' },
+      { on: ['kaito', 'posts'], hop: ['kaito', 'posts'], t: 'So Kaito\'s posts are only saved, never pushed. He counts as a <b>celebrity</b> account.' },
+      { on: ['posts', 'you', 'feeds'], hop: ['posts', 'you'], t: 'When you open your feed, the app takes your ready-made list and <b>merges in</b> the newest posts from the few celebrities you follow. That mix is the <b>hybrid feed</b> most big apps use.' }
+    ]
+  };
+
   const LESSONS = [
     { id: 'nines', b: 'A', ch: 1, kind: 'Mini-game', title: 'How Many Nines?', blurb: 'Uptima explains uptime, badly. Count nines, then wire up her prayer service.', concepts: ['nines', 'replication'], run: nines },
     { id: 'journey', b: 'H', ch: 1, kind: 'Illustrated', title: 'The Journey of a Request', blurb: 'Mio walks Pip through DNS, CDN, load balancer, servers, cache and database.', concepts: ['lb', 'cdn', 'cache', 'stateless'], run: d => walkthrough(JOURNEY, d) },
@@ -307,7 +439,10 @@
     { id: 'shards', b: 'W', ch: 1, kind: 'Mini-game', title: 'Shard Sorter', blurb: 'File a town full of Bobs across shelves, then add one more shelf.', concepts: ['sharding', 'hotkey'], run: shardSorter },
     { id: 'bucket', b: 'C', ch: 2, kind: 'Mini-game', title: 'Token Bucket', blurb: 'Order croissants faster than allowed, then unleash Doug\'s bot.', concepts: ['ratelimit', 'limiterdesign'], run: tokenBucket },
     { id: 'festival', b: 'W', ch: 2, kind: 'Simulation', title: 'Festival Queue', blurb: 'Twenty villagers, one goddess. Run the rush with and without a queue.', concepts: ['queue'], run: festival },
-    { id: 'upload', b: 'H', ch: 2, kind: 'Illustrated', title: 'How a Big File Travels', blurb: 'Chunks, presigned URLs, object storage and delta sync, drawn by Mio.', concepts: ['blob', 'chunking'], run: d => walkthrough(UPLOAD, d) }
+    { id: 'upload', b: 'H', ch: 2, kind: 'Illustrated', title: 'How a Big File Travels', blurb: 'Chunks, presigned URLs, object storage and delta sync, drawn by Mio.', concepts: ['blob', 'chunking'], run: d => walkthrough(UPLOAD, d) },
+    { id: 'feed', b: 'H', ch: 3, kind: 'Illustrated', title: 'How a Post Reaches Your Feed', blurb: 'Fan-out on write, the queue behind it, and why Kaito gets special treatment. Drawn by Mio.', concepts: ['fanout', 'queue', 'cache'], run: d => walkthrough(FEED, d) },
+    { id: 'seatrush', b: 'W', ch: 3, kind: 'Simulation', title: 'Seat Rush', blurb: '120 fans, 40 seats, one booking server. Run the on-sale with and without seat holds and a waiting room.', concepts: ['booking', 'backpressure'], run: seatRush },
+    { id: 'topk', b: 'C', ch: 3, kind: 'Mini-game', title: 'Top 3 Pastries', blurb: 'Keep Wen\'s leaderboard current by only ever checking the smallest entry.', concepts: ['topk'], run: topK }
   ];
 
   const avail = b => LESSONS.filter(l => l.b === b && l.ch <= (S.save.chapter || 1));

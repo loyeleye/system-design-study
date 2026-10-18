@@ -72,7 +72,8 @@
     onDoor = id => { const n = NPCS.find(m => m.id === id); doorHandler(n && n.door ? n.door : id); };
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
-      if (!active) return;
+      // The Enter that closes a conversation must not open the next one: the dialogue box already used it.
+      if (!active || e.defaultPrevented) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = talkTarget(); if (t) { e.preventDefault(); onDoor(t); } }
@@ -90,9 +91,9 @@
     cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr);
     // Whole multiples of 16 keep the pixel art crisp.
     ts = Math.max(r.width / 15, r.height / (HT - 1)) >= 44 ? 48 : 32;
-    // Resizing wipes the canvas. While a villager is talking the village is paused, so a phone's
-    // address bar sliding in or out would leave a blank blue screen behind the dialogue: repaint the still frame.
-    if (!active && t0 && r.width && r.height) { try { draw(t0 / 1000, 0); } catch (e) { /* images still loading */ } }
+    // Resizing wipes the canvas, and the village pauses while anyone talks, so a cleared canvas could sit behind
+    // a whole conversation as a blank blue screen. Repaint straight away instead of waiting for the next frame.
+    if (t0 && r.width && r.height) { try { draw(t0 / 1000, 0); } catch (e) { /* images still loading */ } }
   }
   H.resize = resize;
   H.start = function () { active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); };

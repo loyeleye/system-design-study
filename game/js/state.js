@@ -21,8 +21,8 @@
       const raw = localStorage.getItem(KEY);
       if (raw) S.save = Object.assign(fresh(), JSON.parse(raw));
     } catch (e) { /* storage blocked: play without a local save */ }
-    // Saves from before chapter 2 existed: a cleared chapter 1 opens chapter 2.
-    if (S.save.flags.ch1 && (S.save.chapter || 1) < 2) S.save.chapter = 2;
+    // Saves from before a chapter existed: clearing the chapter before it opens it.
+    for (let ch = 1; SD.chapters[ch + 1]; ch++) if (S.save.flags['ch' + ch] && (S.save.chapter || 1) < ch + 1) S.save.chapter = ch + 1;
     connectCloud();
   };
 

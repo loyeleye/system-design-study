@@ -100,7 +100,7 @@ Every quest still teaches. Each has a signature mini-game, one or two whiteboard
 | After clearing chapter 3 (Clockwork Spire) | 11–15 | 5 |
 | After clearing chapter 4 (Sky Harbour) | 16–20 | 5 |
 
-Quests 1–10 are built. Quests 11–20 are specified below and get built alongside chapters 3 and 4, since they teach those chapters' material and lift those dungeons' curses.
+Quests 1–10 are built. Chapter 3 is built, but quests 11–15 are not yet: they are specified below and are the next thing to build, followed by 16–20 with chapter 4, since they teach those chapters' material and lift those dungeons' curses.
 
 ### Built quests (1–10)
 
@@ -123,7 +123,7 @@ Quest data lives in `game/js/quests.js`. Each step names the villager it waits o
 
 Each dungeon after the first is harder in two ways:
 
-- A severity multiplier on every incident (`sevMult` in `SD.chapters`): 1.1 for chapter 2, planned at 1.2, 1.3 and 1.4 for chapters 3 to 5.
+- A severity multiplier on every incident (`sevMult` in `SD.chapters`): 1.1 for chapter 2, 1.2 for chapter 3, planned at 1.3 and 1.4 for chapters 4 and 5.
 - **Curses** (`SD.curses`, listed per chapter). Each one is lifted for good by one Plot Device, so town quests are the intended way through. The gate shows each dungeon's curses, the map shows them as chips, and the quest log has a Curses tab with a hint for each.
 
 | Chapter | Curse | Effect | Lifted by |
@@ -131,9 +131,9 @@ Each dungeon after the first is harder in two ways:
 | 2 (built) | Bot Swarm | Flood intents +40% | Kevin (quest 4) |
 | 2 (built) | Echoing Halls | Retry intents +40% and +1 Stale | Idempotent Wax Seal (quest 3) |
 | 2 (built) | Damp Archives | −12 max SLA | Hiro's Recipe Card (quest 5) |
-| 3 | Thundering Gears | Stampede and burst intents +40% | Cron's Straw Hat (quest 7) |
-| 3 | Clockwork Rifts | Partitions +40%, and doing nothing costs double | Seymour's Spare Shield (quest 9) |
-| 3 | Unindexed Stacks | A correct diagnosis gives no Capacity | Lexi's Bookmark (quest 6) |
+| 3 (built) | Thundering Gears | Stampede, burst and rush intents +40% | Cron's Straw Hat (quest 7) |
+| 3 (built) | Clockwork Rifts | Partitions +40%, and audits deal 4 per Stale | Seymour's Spare Shield (quest 9) |
+| 3 (built) | Unindexed Stacks | Scan intents +40%, and a correct diagnosis gives no Capacity | Lexi's Bookmark (quest 6) |
 | 4 | Dead Air | Turn 1 of every fight starts with 1 less Capacity | Mio's Walkie-Talkie (quest 11) |
 | 4 | Clock Drift | Race intents +40% and +1 Stale | Wen's Kitchen Timer (quest 12) |
 | 4 | Many Kings | Escalate adds +5 load instead of +3 | The Speaker's Gavel (quest 13) |
@@ -143,6 +143,15 @@ Each dungeon after the first is harder in two ways:
 | 5 | Viral Surge | Read intents +25% | Kaito's Ring Light (quest 18) |
 
 Every dungeon is still beatable without its Plot Devices; it is just meant to feel unfair, the way a JRPG boss does when you skipped the side quests.
+
+### Chapter 3: the Clockwork Spire (built)
+
+- **Concepts** (`zone: 3`): indexes, the consistency spectrum and quorums, fan-out on write vs read, stream aggregation, top-K, search and inverted indexes, booking with holds, backpressure. 35 questions with ELI5 help, and 21 new glossary terms.
+- **Cards** (`ch: 3`): B-tree, LSM tree, inverted index, fan-out on write, hybrid feed, seat hold, waiting room, stream aggregator, count-min sketch, top-K heap, quorum read/write, load shedding.
+- **Incidents**: the Table Scanner, the Comment Avalanche, the Infinite Scroll, the Seat Snatchers, the Click Storm, the Trending Oracle and the Backlog Kraken, with the Typeahead Wraith as an elite. New intents: scan, feed, celeb, rush, stream and overload.
+- **Two bosses**: the Scalper King (Ticketmaster) and the Feed Leviathan (news feed). Each run picks one you haven't beaten yet, and both open with the three-step design framework (requirements, estimate, design) before the fight.
+- **Lessons**: Mio's How a Post Reaches Your Feed, Seymour's Seat Rush (holds and a waiting room against 120 fans) and Wen's Top 3 Pastries (a min-heap).
+- **Oopsies**: three new ones for fan-out, booking and backpressure.
 
 ### Planned quests (11–20)
 
@@ -281,7 +290,7 @@ Topic coverage is cross-checked against the public outline of Educative's *Grokk
 - `game/js/run.js` — run map, combat, Gary, the tutorial, rewards, café, campfire, events, boss.
 - `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass, ELI5 and Huh???.
 - `game/js/goddess.js` — Uptima's Oopsies: once a loop she breaks something in town on your way to the gate; one question fixes it, and her reward is rolled from a mostly-junk loot table (rarely a shard).
-- `game/js/lessons.js` — building lessons that prime the next dungeon: Uptima's How Many Nines?, Mio's illustrated walkthroughs (a request's journey, how a big file travels), Wen's mini-games (Cache Rush, Token Bucket) and Seymour's (Shard Sorter, Festival Queue).
+- `game/js/lessons.js` — building lessons that prime the next dungeon: Uptima's How Many Nines?, Mio's illustrated walkthroughs (a request's journey, how a big file travels, how a post reaches a feed), Wen's mini-games (Cache Rush, Token Bucket, Top 3 Pastries) and Seymour's (Shard Sorter, Festival Queue, Seat Rush).
 - `game/js/minigames.js` — the quest mini-games (`SD.games`): Blueprint, What's Missing?, Requirements Sort, Napkin Math, Front Desk, Dedupe Desk, Rebuild the Recipe, Limiter Lab, Jitter Garden, The Forbidden Index, Quorum Dial, Performance Review and Declutter.
 - `game/js/quests.js` — town quests, the new villagers, Plot Devices (`SD.devices`), curses (`SD.curses`), the quest log and villagers' idle lines.
 - `game/js/eli5.js` — plain-language help: a game analogy per question, a game-terms summary per concept, and a jargon glossary.
@@ -293,7 +302,7 @@ Saves go to localStorage. On claude.ai they also go to a private per-user docume
 
 ## Next steps
 
-- Chapter 3 (Ticketmaster and news feed). `SD.chapters` in `content.js` takes a new dungeon: concepts with `zone: 3`, cards with `ch: 3`, enemies with `ch: 3`, pools, a boss and its story lines, plus `sevMult: 1.2` and its three curses.
-- Town quests 11–15 with chapter 3 and 16–20 with chapter 4, as specified above, each with its new mini-game.
+- Town quests 11–15, as specified above, each with its new mini-game and Plot Device (Walkie-Talkie, Kitchen Timer, Gavel, Fencing Token, Almanac), then chapter 4 with quests 16–20.
+- Redraw the village map and the cast with PixelLab (generated with the owner's account; credit it in `CREDITS.md`, since it is not CC0 or CC BY).
 - Pixel-art dungeon scenes behind combat, and painted portraits for Pip and Lord Latency if good matches turn up.
 - A balance pass after real play: boss severity, card numbers, reward pacing, and how often Gary shows up.

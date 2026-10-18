@@ -75,7 +75,43 @@ SD.eli5 = {
   n9b: 'If your hero needs both the sword and the shield to fight, and each breaks sometimes, the odds that something breaks add up.',
   n9c: 'Two healers in the party: you only wipe if both go down at the same time, which is very rare.',
   n9d: 'A faster respawn timer: you still die sometimes, but you are back in the fight almost instantly.',
-  k2: 'Make shadow clones of the popular NPC (key#1, key#2, ...) and send each player to a random clone.'
+  k2: 'Make shadow clones of the popular NPC (key#1, key#2, ...) and send each player to a random clone.',
+  // Chapter 3
+  ix1: 'Finding one player in a guild of 400 million by reading every name in order is a full scan. An index is the alphabetical roster: flip straight to the right page.',
+  ix2: 'Every index is another roster to update. Add a new player and you must write them into every roster too, so joining gets slower.',
+  ix3: 'An LSM tree is jotting new loot in a notebook and sorting it into the chest later. A B-tree files every item into the right drawer right away.',
+  ix4: 'A roster sorted by server, then by town, helps "server JP, town Osaka". It cannot help "town Osaka" alone, just as a phone book sorted by surname cannot find everyone called Ken.',
+  ix5: 'Each page of the roster points to 100 more pages. Four flips cover 100 x 100 x 100 x 100 = 100 million entries.',
+  cs1: 'Three save slots. Write to two of them and read from two of them, and at least one slot you read must have the newest save.',
+  cs2: 'You equipped a new outfit, but the mirror you looked in was lagging. For a while after you change, look in the main mirror.',
+  cs3: 'Seeing the reply "GG!" before the match it is about. Causal consistency makes sure causes always arrive before their effects.',
+  cs4: 'The last seat is like the last legendary drop: two players must never both get it. A like counter being one behind for a second hurts nobody.',
+  fo1: 'Fan-out on write is the mail carrier dropping every new post in each follower\'s mailbox right away, so reading your mail is instant.',
+  fo2: 'Fine for a normal player. But a streamer with 50 million followers would need 50 million mailbox drops for one post.',
+  fo3: 'Deliver normal players\' posts to mailboxes, but pin the superstar\'s posts on the town board and let followers glance at it when they check their mail.',
+  fo4: '500 million players checking their feed 10 times a day is 5 billion checks. Divide by about 100,000 seconds in a day: around 50,000 a second.',
+  fo5: 'Keep each player\'s feed as a short list of post numbers in fast memory, like a quest log that only keeps the last 500 entries.',
+  st1: 'A live kill counter on stream: it adds each kill as it happens, minute by minute, instead of rewatching the whole match at midnight.',
+  st2: 'A teammate on bad Wi-Fi reports a kill late. The scoreboard waits a little grace period for stragglers before locking the round.',
+  st3: 'If the replay system shows the same kill twice, check its kill ID so it only counts once.',
+  st4: 'The live scoreboard is fast but may be slightly off. The official match record is recounted from the full replay later.',
+  st5: '10 billion clicks over about 100,000 seconds is roughly 100,000 clicks every second.',
+  tk1: 'To keep a top-10 leaderboard, hold only 10 names. A new score only gets in if it beats the lowest one on the board.',
+  tk2: 'A count-min sketch is a tally sheet with a few rows of boxes. Every item ticks one box per row; to read a count, take the smallest tick. It can only guess too high, never too low.',
+  tk3: 'A video that is 11th on every server never makes any server\'s top 10, but added together it might be first. Keep each video\'s count on one server so its total is never split.',
+  tk4: 'Keep 60 little minute-buckets. Each minute the oldest one falls off, and the last-hour total is just the sum of what is left.',
+  se1: 'Searching for "%dragon%" is asking the roster for anyone with "dragon" anywhere in their name. The alphabetical order cannot help, so you read every name.',
+  se2: 'Like the index at the back of a strategy guide: each word lists the pages it appears on.',
+  se3: 'Follow the database\'s official change log and replay every change into the search index, like a spectator feed that never misses a move.',
+  se4: 'Like the game\'s search box suggesting "Excalibur" after you type "Exc": the suggestions for each start were worked out ahead of time.',
+  bk1: 'Clicking a seat puts your name on it with a 10-minute timer, like reserving a raid slot. Only the first click wins, and if you leave, the slot frees up.',
+  bk2: 'Optimistic: grab the item and check nobody changed it before you save. Pessimistic: lock the chest so nobody else can open it while you look.',
+  bk3: 'A held seat is like a reserved item in an auction cart: walk away and the timer runs out, and it goes back on sale.',
+  bk4: 'A login queue for a new MMO launch: "You are number 45,000 in line." Better than letting everyone in and crashing the server.',
+  bp1: 'When the kitchen is swamped, the waiter stops taking new orders for a bit instead of piling tickets up until the kitchen catches fire.',
+  bp2: 'Under lag, the game stops loading cosmetic effects so the actual combat keeps running.',
+  bp3: 'A mailbox with no size limit just keeps filling. You only notice when it bursts, and by then every letter is weeks old.',
+  bp4: '12,000 letters a second and each sorter does 500: you need at least 24 sorters, plus a few spare for busy moments.'
 };
 
 SD.huh = {
@@ -101,7 +137,15 @@ SD.huh = {
   queue: 'A message queue is a waiting line. Senders drop jobs in the line and move on; workers pick jobs up at their own pace, so a sudden crowd does not crash anything.',
   backoff: 'If a server is down, do not mash Retry. Wait 1 second, then 2, then 4, plus a little randomness. And tag each request with a receipt number so a repeat never charges twice.',
   blob: 'Store big files in a warehouse (object storage like S3) and keep only a small inventory list in the database. Give users a signed pass to go to the warehouse directly.',
-  chunking: 'Cut big files into small pieces with fingerprints, like a game patch. Only changed pieces get uploaded or downloaded, and identical pieces are stored once.'
+  chunking: 'Cut big files into small pieces with fingerprints, like a game patch. Only changed pieces get uploaded or downloaded, and identical pieces are stored once.',
+  indexes: 'An index is the alphabetical roster for a huge guild: instead of reading every name, you flip straight to the right page. Every roster you add must also be updated whenever someone joins.',
+  consistency: 'How up to date is what you see? Strong: always the latest, like one shared save file. Eventual: copies catch up later. In between: you always see your own changes, and replies never appear before the post.',
+  fanout: 'A feed shows posts from everyone you follow. Either drop each new post into every follower\'s mailbox when it is written (fast reading), or gather posts when someone opens their feed (fast posting). Big apps do both.',
+  streams: 'Stream processing is a live scoreboard: count events as they happen, minute by minute, instead of counting a giant pile at the end of the day.',
+  topk: 'Top-K is a leaderboard. Keep only the top few on the board, and when there are too many players to count exactly, use a clever tally sheet that estimates.',
+  search: 'Search uses an index like the back of a strategy guide: every word lists the pages it appears on, so you never read the whole book.',
+  booking: 'Booking is making sure only one player gets each seat or item. Put a short timed hold on it the moment someone picks it.',
+  backpressure: 'When work arrives faster than you can finish it, say "not now" early: make people wait in a queue, or drop the least important work, instead of collapsing.'
 };
 
 // [term, matcher, plain definition]
@@ -160,5 +204,25 @@ SD.glossary = [
   ['Requirements', /\brequirements?\b/i, 'What the system must do (features) and how well (speed, uptime, scale).'],
   ['Analytics', /\banalytics\b/i, 'Counting and studying what users do, like click counts.'],
   ['Nines / MTTR', /\b(nines?|MTTR|MTBF|99\.9)/i, 'Nines count the 9s in an uptime percentage. MTTR is mean time to recovery: how fast you get back up.'],
-  ['Autoscaling', /\bautoscal/i, 'Adding or removing servers automatically as traffic changes.']
+  ['Autoscaling', /\bautoscal/i, 'Adding or removing servers automatically as traffic changes.'],
+  ['Index', /\bindex(es|ed)?\b/i, 'A sorted lookup list, like a roster, so you can find rows without reading them all.'],
+  ['B-tree / LSM tree', /\b(B-tree|LSM)/i, 'Two ways to store an index on disk. B-trees are great for reads; LSM trees are great for heavy writes.'],
+  ['Full scan', /\b(sequential scan|full scan|scans?)\b/i, 'Reading every row of a table to find a few matches.'],
+  ['Quorum', /\bquorums?\b|W \+ R|W and R/i, 'A majority vote among copies. Write to W and read from R copies; if W + R is more than the number of copies, a read always sees the latest write.'],
+  ['Linearizable', /\blinearizab/i, 'The strongest consistency: everyone sees one up-to-date copy, as if there were only one.'],
+  ['Eventual consistency', /\beventual(ly)?\b/i, 'Copies may disagree for a while but catch up in the end.'],
+  ['Causal consistency', /\bcausal/i, 'Effects never show up before their causes: a reply never before its post.'],
+  ['Fan-out', /\bfan-out\b/i, 'Spreading one post to all the followers who should see it.'],
+  ['Feed', /\bfeeds?\b/i, 'The list of recent posts from people you follow.'],
+  ['Stream processing', /\bstream(s|ing)?\b|Flink/i, 'Handling events one by one as they arrive, keeping running totals.'],
+  ['Window', /\bwindows?\b/i, 'A slice of time (say, one minute) that events are grouped into for counting.'],
+  ['Watermark', /\bwatermark/i, 'A stream processor\'s estimate of how far event time has got, used to decide a window is complete.'],
+  ['Top-K / heap', /\btop[- ]?(K|10)\b|\bheap\b/i, 'The K biggest items. A heap is a structure that always knows its smallest (or biggest) item.'],
+  ['Count-min sketch', /\bsketch\b/i, 'A small table of counters that estimates how often things appear. It can overcount but never undercounts.'],
+  ['Inverted index', /\binverted index|Elasticsearch|Lucene/i, 'A map from each word to the documents that contain it; how search engines work.'],
+  ['Typeahead / trie', /\btypeahead|\btrie\b|prefix/i, 'Suggestions as you type. A trie stores words letter by letter so every prefix leads to its completions.'],
+  ['Change data capture', /\b(change data capture|CDC|Debezium)\b/i, 'Streaming every committed database change to other systems, like a search index.'],
+  ['Hold / lock', /\b(hold|holds|lock|locks|locking|SET NX)\b/i, 'A claim on something (a seat, a row) so nobody else can take it at the same time. Holds expire on their own.'],
+  ['Backpressure / load shedding', /\b(backpressure|load shedding|shed)\b/i, 'Pushing back on senders when overloaded, and dropping the least important work first.'],
+  ['Waiting room', /\bwaiting room\b/i, 'A queue in front of a busy site that lets people in a few at a time.']
 ];

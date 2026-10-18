@@ -163,6 +163,40 @@
       eli5: 'Keep the heavy loot in the warehouse and write "4,000 selfies, warehouse B" in your inventory list.',
       good: [{ s: 'wen', e: 'happy', t: 'The ledger opens in a blink! Shall we look at one selfie?' }, { s: 'uptima', e: 'happy', t: 'Only if we look at all of them.' }],
       bad: [{ s: 'narr', t: 'The ledger collapses under its own fabulousness.' }]
+    },
+    // Chapter 3
+    {
+      id: 'fanmail', concept: 'fanout', zone: 3, title: 'Fan Mail',
+      lines: [
+        { s: 'uptima', e: 'happy', t: 'I have a FOLLOWER! Well, Kaito has four million, but I have one. It\'s Pip. Pip, did you get my blessing post?' },
+        { s: 'pip', t: 'I did! Eleven hours later. The crier was still shouting Kaito\'s breakfast at four million doors.' }
+      ],
+      q: { id: 'o-fanmail', type: 'mc', q: "Kaito's posts are pushed to every follower's feed, and they jam the crier for everyone. Fix?", opts: ["Push ordinary posts to feeds, but let followers pull Kaito's posts when they read", 'A louder crier', 'Unfollow Kaito, all four million of you', 'Post less often, everyone'], a: 0, why: "The hybrid feed: fan-out on write for most accounts, fan-out on read for the few with huge followings, merged when a follower opens their feed." },
+      eli5: "Deliver normal mail door to door, but pin the superstar's posters on the town board for fans to come and read.",
+      good: [{ s: 'pip', t: 'Got it in a second! "Blessings upon thee." ...That\'s the whole post?' }, { s: 'uptima', e: 'happy', t: 'Content is king, Pip.' }],
+      bad: [{ s: 'narr', t: 'The crier is hoarse by noon. Uptima\'s blessing arrives on Thursday. Pip has already moved on.' }]
+    },
+    {
+      id: 'concert', concept: 'booking', zone: 3, title: 'The Sold-Out Temple',
+      lines: [
+        { s: 'uptima', e: 'happy', t: 'My first concert sold out in four seconds! Forty seats! A record!' },
+        { s: 'seymour', e: 'angry', t: 'Goddess, there are three of me in seat F12. And Doug. Doug is in all the seats.' }
+      ],
+      q: { id: 'o-concert', type: 'mc', q: 'Everyone checked a copy of the seat map, saw F12 free, and bought it. What stops this next time?', opts: ['Claim each seat with one atomic hold that expires after 10 minutes, then confirm on payment', 'A faster copy of the seat map', 'Ask buyers to be honest', 'Sell standing room only'], a: 0, why: 'Only one claim can win an atomic set, and the expiry frees seats people abandon. Copies of the seat map are fine for browsing, never for deciding who gets a seat.' },
+      eli5: 'Clicking a seat puts your name on it with a timer, like reserving a raid slot. First click wins; walk away and it frees up.',
+      good: [{ s: 'seymour', e: 'happy', t: 'One Seymour, one seat. The other two Seymours are watching from backup seats.' }],
+      bad: [{ s: 'narr', t: 'Doug sits on Seymour, who sits on Seymour, who sits on Seymour. The concert is described as "intimate".' }]
+    },
+    {
+      id: 'prayerpile', concept: 'backpressure', zone: 3, title: 'The Prayer Pile',
+      lines: [
+        { s: 'uptima', e: 'confused', t: 'I never say no to a prayer. I put every single one in the pile. The pile is very... tall now.' },
+        { s: 'pip', t: 'The pile has its own weather. Somebody\'s urgent prayer for rain is under four million prayers for ponies.' }
+      ],
+      q: { id: 'o-prayerpile', type: 'mc', q: 'Prayers arrive faster than she can answer them, and the pile only grows. What should the temple do?', opts: ['Cap the pile, tell new arrivals to come back later, and answer urgent prayers first', 'Make the pile taller', 'Answer prayers in random order', 'Stop reading the pile at all'], a: 0, why: 'Backpressure: a bounded queue says no early instead of hiding overload, and load shedding keeps the important work flowing.' },
+      eli5: 'When the kitchen is swamped, the waiter stops taking orders for a bit and cooks the main courses before the garnishes.',
+      good: [{ s: 'uptima', e: 'happy', t: 'It rained! On purpose! And Doug got a polite "please try again later". He knitted another pony.' }],
+      bad: [{ s: 'narr', t: 'The pile topples. Four million pony prayers are granted by accident. Pingsby is now mostly pony. Again.' }]
     }
   ];
 

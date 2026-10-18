@@ -120,6 +120,47 @@ SD.concepts = {
     name: 'Chunking & Delta Sync', zone: 2,
     gist: 'Split files into chunks (around 4-5 MB) identified by a content hash. Uploads resume chunk by chunk, unchanged chunks are never re-sent, and identical chunks dedupe across users. To sync, clients compare chunk lists and fetch only what changed, then learn of changes by polling or a push channel.',
     page: 'If one page of the scroll changes, copy one page. Not the whole scroll. The scribes unionised over this. — U.'
+  },
+  // Chapter 3: the Clockwork Spire. Ticketmaster, news feed, top-K and the ad click aggregator (Hello Interview weeks 4-5).
+  indexes: {
+    name: 'Database Indexes', zone: 3, tag: 'Indexes',
+    gist: 'An index is a sorted lookup structure, so a query reads a few pages instead of scanning every row. B-trees (Postgres, MySQL) update pages in place and give fast, predictable reads. LSM trees (Cassandra, RocksDB) buffer writes in memory and flush sorted files, so writes are fast and reads may check several files. Every index speeds reads and slows writes.',
+    page: 'Lexi says the library has 400,000 books and one index card per book. I asked why not one card per word. She said that is a different index, and to stop touching the cards. — U.'
+  },
+  consistency: {
+    name: 'Consistency Models & Quorums', zone: 3, tag: 'Consistency',
+    gist: 'Linearizable: every read sees the latest write, as if there were one copy. Read-your-writes: you always see your own changes. Causal: effects never appear before their causes (no reply before its post). Eventual: replicas agree some time later. With N replicas, writing to W and reading from R where W + R > N makes reads overlap the latest write.',
+    page: 'A reply arrived before the prayer it answered. Seymour says that breaks causality. I say it is efficient. — U.'
+  },
+  fanout: {
+    name: 'Feed Fan-out', zone: 3, tag: 'Fan-out',
+    gist: 'Fan-out on write (push): when someone posts, add the post ID to each follower\'s precomputed feed, so reading a feed is one cheap lookup. Fan-out on read (pull): build the feed at read time from the accounts you follow. Push is fast to read but a celebrity post means millions of writes; the usual answer is a hybrid that pushes for most accounts and pulls celebrity posts at read time.',
+    page: 'When I post a blessing, the town crier shouts it at every door. All four doors. Kaito posted once and the crier is still shouting. — U.'
+  },
+  streams: {
+    name: 'Stream Processing & Aggregation', zone: 3, tag: 'Streams',
+    gist: 'Events flow through a log like Kafka into a stream processor (Flink, Spark Streaming) that counts them in time windows as they arrive. Window by event time, not arrival time, and use watermarks plus a grace period for late events. Make counting idempotent (dedupe by event ID, checkpoint offsets) so replays do not double count, and keep raw events so a batch job can reconcile the numbers.',
+    page: 'Cron counts crows as they land, by the minute. Crows that land late still count. Crows that land twice do not. Crows are very litigious. — U.'
+  },
+  topk: {
+    name: 'Top-K & Sketches', zone: 3, tag: 'Top-K',
+    gist: 'To find the K biggest of N counts, keep a min-heap of size K: O(N log K) time, O(K) memory. When exact counts do not fit in memory, a count-min sketch estimates counts in a small fixed space (it can overcount, never undercount). Shard counts by item ID so each total lives in one place, merge the shards\' top-K, and precompute the leaderboard every minute instead of on every request.',
+    page: 'The top three goddesses this week: 1. Uptima. 2. Uptima (alt). 3. Uptima (sock puppet). The sketch overcounts. I allow it. — U.'
+  },
+  search: {
+    name: 'Search & Inverted Indexes', zone: 3, tag: 'Search',
+    gist: 'An inverted index maps each word to the documents containing it, so search looks up a few lists instead of scanning text. A leading-wildcard LIKE cannot use a B-tree and scans every row. Keep the database as the source of truth and feed a search engine (Elasticsearch) by change data capture. For typeahead, precompute top suggestions per prefix (a trie or prefix table), cache them, and debounce keystrokes.',
+    page: 'Every prayer with the word "pony" in it is on one list. Doug wrote most of the list. — U.'
+  },
+  booking: {
+    name: 'Reservations & Locking', zone: 3, tag: 'Booking',
+    gist: 'Two buyers must never get the same seat. Hold a seat atomically with an expiry (Redis SET NX with a TTL, or a row with status and expires_at) and confirm it on payment; the hold lapses if they walk away. Optimistic locking checks a version at write time and suits rare conflicts; pessimistic locking (SELECT ... FOR UPDATE) blocks others and suits hot rows. Bookings need strong consistency; browsing can be cached and eventually consistent.',
+    page: 'Rule one of the concert: one seat, one bottom. Rule two: if you leave your seat for ten minutes, it is somebody else\'s seat. Rule three: no Seymours in the front row. — U.'
+  },
+  backpressure: {
+    name: 'Backpressure & Load Shedding', zone: 3, tag: 'Backpressure',
+    gist: 'When work arrives faster than it can be done, buffering forever only delays the crash. Bound your queues and push back upstream (429s, blocking producers). Shed the least important work first (prefetch, analytics) to keep the critical path (login, checkout) alive. For a known stampede like a ticket on-sale, a virtual waiting room admits users at the rate the system can serve.',
+    page: 'My inbox has 40 million prayers in it. I have started answering only the ones marked URGENT. They are all marked URGENT. — U.'
   }
 };
 
@@ -149,7 +190,24 @@ SD.links = [
   { id: 'atomic-cap', a: 'atomic', b: 'cap', text: 'When the counter store is unreachable, failing open favours availability and failing closed favours correctness.' },
   { id: 'nines-replication', a: 'nines', b: 'replication', text: 'Replicas in parallel add nines: the service fails only if every copy fails at once.' },
   { id: 'nines-lb', a: 'nines', b: 'lb', text: 'Health checks and failover shrink recovery time, which is often the cheapest way to add a nine.' },
-  { id: 'queue-herd', a: 'queue', b: 'herd', text: 'Both tame a spike: a queue spreads work out over time, coalescing removes the duplicate work.' }
+  { id: 'queue-herd', a: 'queue', b: 'herd', text: 'Both tame a spike: a queue spreads work out over time, coalescing removes the duplicate work.' },
+  { id: 'indexes-sqlnosql', a: 'indexes', b: 'sqlnosql', text: 'B-trees underpin most relational databases; LSM trees underpin write-heavy stores like Cassandra.' },
+  { id: 'indexes-search', a: 'indexes', b: 'search', text: 'An inverted index is still an index: it trades write work and space for fast lookups, by word instead of by key.' },
+  { id: 'consistency-replication', a: 'consistency', b: 'replication', text: 'Async replicas give eventual consistency; read-your-writes and quorums are ways to claw back stronger guarantees.' },
+  { id: 'consistency-cap', a: 'consistency', b: 'cap', text: 'CAP\'s "C" is linearizability, the strongest point on the consistency spectrum.' },
+  { id: 'fanout-cache', a: 'fanout', b: 'cache', text: 'Precomputed feeds usually live in a cache as capped lists of post IDs.' },
+  { id: 'fanout-hotkey', a: 'fanout', b: 'hotkey', text: 'A celebrity post is a hot key in reverse: one write that must reach millions of feeds.' },
+  { id: 'fanout-queue', a: 'fanout', b: 'queue', text: 'Fan-out on write runs on queue workers, so posting returns at once and feeds fill in behind it.' },
+  { id: 'streams-queue', a: 'streams', b: 'queue', text: 'A stream processor reads from a durable log like Kafka, so a crashed job can replay from its last checkpoint.' },
+  { id: 'streams-backoff', a: 'streams', b: 'backoff', text: 'Replays deliver events again, so stream counts need the same idempotency as safe retries.' },
+  { id: 'topk-streams', a: 'topk', b: 'streams', text: 'A leaderboard is a top-K kept fresh by counting events in time windows.' },
+  { id: 'topk-sharding', a: 'topk', b: 'sharding', text: 'Shard counts by item ID so each item\'s full count lives on one node; then merging local top-K lists is exact.' },
+  { id: 'search-queue', a: 'search', b: 'queue', text: 'Change data capture streams database changes through a log to the search indexer.' },
+  { id: 'booking-atomic', a: 'booking', b: 'atomic', text: 'A seat hold is an atomic check-and-set with an expiry: the same idea as an atomic counter.' },
+  { id: 'booking-consistency', a: 'booking', b: 'consistency', text: 'Selling the last seat needs linearizable writes; showing the event page does not.' },
+  { id: 'backpressure-queue', a: 'backpressure', b: 'queue', text: 'A queue absorbs bursts, but an unbounded one hides overload until memory runs out; bound it and push back.' },
+  { id: 'backpressure-ratelimit', a: 'backpressure', b: 'ratelimit', text: 'Rate limiting and load shedding both say no early, so the work you accept still finishes.' },
+  { id: 'backpressure-booking', a: 'backpressure', b: 'booking', text: 'A virtual waiting room is backpressure for humans: it lets fans in at the rate booking can handle.' }
 ];
 
 // Card effects: abs = absorb load this turn {cache, replica, read, write, any}; mit = flat mitigation;
@@ -191,7 +249,20 @@ SD.cards = {
   backoff:  { name: 'Backoff + Jitter', cost: 0, kind: 'action', pow: 4, tags: ['backoff'], backoff: true, text: 'This turn a Retry Storm deals 60% less. Wait 1 s, 2 s, 4 s, plus a random nudge.', art: 'hourglass', rarity: 'common', concept: 'backoff', ch: 2 },
   idemkey:  { name: 'Idempotency Key', cost: 1, kind: 'infra', pow: 6, tags: ['idem'], each: {}, text: 'Infra. Retry Storms are not amplified and add no Stale. A retried payment is charged once.', art: 'key', rarity: 'uncommon', concept: 'backoff', ch: 2 },
   presign:  { name: 'Presigned URL', cost: 1, kind: 'infra', pow: 7, tags: ['blob'], each: {}, text: 'Infra. Upload intents -75%. Clients send files straight to object storage.', art: 'upload', rarity: 'uncommon', concept: 'blob', ch: 2 },
-  chunk:    { name: 'Chunk + Dedupe', cost: 1, kind: 'action', abs: { write: 8 }, pow: 7, tags: ['chunk'], chunk: true, text: 'Absorb {write} write load. The next Upload is halved: only changed chunks travel.', art: 'puzzle', rarity: 'common', concept: 'chunking', ch: 2 }
+  chunk:    { name: 'Chunk + Dedupe', cost: 1, kind: 'action', abs: { write: 8 }, pow: 7, tags: ['chunk'], chunk: true, text: 'Absorb {write} write load. The next Upload is halved: only changed chunks travel.', art: 'puzzle', rarity: 'common', concept: 'chunking', ch: 2 },
+  // Chapter 3 cards turn up only in the Clockwork Spire.
+  btree:    { name: 'B-Tree Index', cost: 1, kind: 'infra', pow: 7, tags: ['index'], each: {}, text: 'Infra. Scan intents -75%: a lookup reads a few pages, not every row. Useless against a leading-wildcard search.', art: 'btree', rarity: 'common', concept: 'indexes', ch: 3 },
+  lsm:      { name: 'LSM Tree', cost: 1, kind: 'action', abs: { write: 12 }, pow: 6, tags: ['lsm'], text: 'Absorb {write} write load. Writes land in memory and flush as sorted files; compaction tidies up later.', art: 'lsm', rarity: 'common', concept: 'indexes', ch: 3 },
+  invindex: { name: 'Inverted Index', cost: 2, kind: 'infra', pow: 7, tags: ['search'], each: { read: 3 }, text: 'Infra. Scan intents -60%. Absorb 3 read load each turn. Every word points to the documents that contain it.', art: 'invindex', rarity: 'uncommon', concept: 'search', ch: 3 },
+  fanwrite: { name: 'Fan-out on Write', cost: 2, kind: 'infra', pow: 7, tags: ['fanout'], each: { read: 4 }, text: 'Infra. Feed intents -70%. Absorb 4 read load each turn. But a Celebrity post costs 50% more: millions of feeds to fill.', art: 'fanout', rarity: 'uncommon', concept: 'fanout', ch: 3 },
+  hybridfeed: { name: 'Hybrid Feed', cost: 1, kind: 'infra', pow: 8, tags: ['hybrid'], each: {}, text: 'Infra. Celebrity intents -70%. Push posts to most feeds; merge celebrities\' posts in at read time.', art: 'hybrid', rarity: 'uncommon', concept: 'fanout', ch: 3 },
+  seathold: { name: 'Seat Hold + TTL', cost: 1, kind: 'infra', pow: 7, tags: ['hold'], each: {}, text: 'Infra. Rush intents add no Stale and deal 30% less. One fan holds a seat for ten minutes, then it is released.', art: 'hold', rarity: 'common', concept: 'booking', ch: 3 },
+  waitroom: { name: 'Virtual Waiting Room', cost: 2, kind: 'infra', pow: 7, tags: ['waitroom'], each: { any: 2 }, text: 'Infra. Rush and Overload intents -60%. Absorb 2 load each turn. Fans get a place in line instead of an error.', art: 'waitroom', rarity: 'uncommon', concept: 'backpressure', ch: 3 },
+  streamagg: { name: 'Windowed Aggregation', cost: 2, kind: 'infra', pow: 7, tags: ['stream'], each: { write: 3 }, text: 'Infra. Stream intents -65% and add no Stale. Absorb 3 write load each turn. Count per minute as events arrive.', art: 'stream', rarity: 'uncommon', concept: 'streams', ch: 3 },
+  cms:      { name: 'Count-Min Sketch', cost: 0, kind: 'action', pow: 4, tags: ['sketch'], sketch: true, text: 'The next Stream is halved. Approximate counts in a few kilobytes: may overcount, never undercounts.', art: 'sketch', rarity: 'common', concept: 'topk', ch: 3 },
+  topkheap: { name: 'Top-K Heap', cost: 1, kind: 'action', abs: { read: 9 }, pow: 7, tags: ['topk'], text: 'Absorb {read} read load. Keep only the K biggest counts in a min-heap; precompute the leaderboard.', art: 'heap', rarity: 'common', concept: 'topk', ch: 3 },
+  quorumrw: { name: 'Quorum Read (W+R>N)', cost: 1, kind: 'action', abs: { read: 6 }, pow: 6, tags: ['quorum'], clearStale: true, text: 'Absorb {read} read load. Remove all Stale: the read set overlaps the latest write.', art: 'quorum', rarity: 'uncommon', concept: 'consistency', ch: 3 },
+  loadshed: { name: 'Load Shedding', cost: 1, kind: 'action', abs: { any: 6 }, pow: 6, tags: ['shed'], shed: true, text: 'Absorb {any} load. This turn an Overload is halved: drop the least important work, keep checkout alive.', art: 'shed', rarity: 'common', concept: 'backpressure', ch: 3 }
 };
 
 SD.starterDeck = ['hotfix', 'hotfix', 'hotfix', 'hotfix', 'bigbox', 'bigbox', 'bigbox', 'bigbox', 'replica', 'cacheaside'];
@@ -203,7 +274,8 @@ SD.cardUnlocks = {
   4: ['redis', 'counter', 'redirect302']
 };
 // Chapter cards join the reward pool in that chapter's dungeon once it is unlocked.
-SD.chapterCards = { 2: ['tokenbucket', 'slidingwindow', 'gateway', 'atomicincr', 'mq', 'backoff', 'idemkey', 'presign', 'chunk'] };
+SD.chapterCards = { 2: ['tokenbucket', 'slidingwindow', 'gateway', 'atomicincr', 'mq', 'backoff', 'idemkey', 'presign', 'chunk'],
+  3: ['btree', 'lsm', 'invindex', 'fanwrite', 'hybridfeed', 'seathold', 'waitroom', 'streamagg', 'cms', 'topkheap', 'quorumrw', 'loadshed'] };
 
 // Incidents. weak/resist map a card tag to the reason shown on screen. `flavor` is the joke; `symptom` is the lesson.
 SD.enemies = {
@@ -328,6 +400,89 @@ SD.enemies = {
     resist: { vscale: 'A bigger server just lets him flood a bigger server.' },
     pattern: [{ t: 'flood', n: 14 }, { t: 'race', n: 12 }, { t: 'retry', n: 12 }, { t: 'burst', n: 18 }, { t: 'flood', n: 20 }, { t: 'crash', n: 16 }, { t: 'escalate' }]
   },
+  // Chapter 3: the Clockwork Spire.
+  fullscan: {
+    name: 'The Table Scanner', sev: 46, concept: 'indexes', tier: 1, sprite: 'scanner', ch: 3,
+    flavor: 'It reads every row. Every time. It has a monocle for this. It does not need the monocle.',
+    symptom: 'Looking up one user\'s orders takes 9 seconds. The query plan shows a sequential scan of 400M rows. Disk reads are maxed; CPU is fine.',
+    weak: { index: 'An index on user_id turns 400M row reads into a few page hops.', search: 'An inverted index is still an index: lookups, not scans.', cache: 'Caching hot results skips repeat scans.' },
+    resist: { hscale: 'More app servers send the same full scan faster.', replica: 'Every replica scans all 400M rows too.' },
+    pattern: [{ t: 'scan', n: 12 }, { t: 'read', n: 8 }, { t: 'scan', n: 16 }, { t: 'write', n: 8 }]
+  },
+  comment: {
+    name: 'The Time-Traveling Comment', short: 'The Comment', sev: 44, concept: 'consistency', tier: 1, sprite: 'comment', ch: 3,
+    flavor: 'It replied to your post before you wrote it. It is very proud of this.',
+    symptom: 'Users see replies before the post they answer, and their own new comment vanishes on refresh, then reappears. Reads go to async replicas in three regions.',
+    weak: { quorum: 'Quorum reads overlap the latest write, so nothing comes from the past.', sql: 'Reading your own writes from the leader keeps your comment on screen.', cp: 'Choosing consistency refuses out-of-order answers.' },
+    resist: { replica: 'More async replicas mean more ways to read the past.', cache: 'A cache happily serves the reply without its post.' },
+    pattern: [{ t: 'read', n: 9 }, { t: 'audit' }, { t: 'partition', n: 14 }, { t: 'audit' }]
+  },
+  scroll: {
+    name: 'The Infinite Scroll', sev: 46, concept: 'fanout', tier: 1, sprite: 'scroll', ch: 3,
+    flavor: 'It has been scrolling since 2016. It has not blinked. Its eyes are now Xs.',
+    symptom: 'Opening the home feed takes 4 seconds. Every load queries the latest posts of all 500 accounts the user follows and merges them on the fly.',
+    weak: { fanout: 'Fan-out on write precomputes each feed, so a load is one lookup.', cache: 'Caching each user\'s feed makes repeat scrolls cheap.', hybrid: 'A hybrid feed precomputes most of it.' },
+    resist: { vscale: 'A bigger box still merges 500 timelines per refresh.', shard: 'With posts sharded by author, every feed load touches every shard.' },
+    pattern: [{ t: 'feed', n: 12 }, { t: 'read', n: 8 }, { t: 'feed', n: 16 }, { t: 'feed', n: 12 }]
+  },
+  snatchers: {
+    name: 'The Seat Snatchers', sev: 50, concept: 'booking', tier: 2, sprite: 'snatcher', ch: 3,
+    flavor: 'Four hands, two wallets, one seat. They will fight each other for it. And you.',
+    symptom: 'A concert goes on sale. Two fans paid for seat F12, and the site sold 1,040 seats in a 1,000-seat hall. Checkout reads availability, then writes the booking.',
+    weak: { hold: 'An atomic hold with a TTL lets exactly one fan check out each seat.', sql: 'A transaction with a conditional update books each seat once.', waitroom: 'A waiting room lets fans in at a pace booking can handle.' },
+    resist: { cache: 'A cached seat map says F12 is free long after it is gone.', replica: 'Lagging replicas let two fans both see F12 free.' },
+    pattern: [{ t: 'rush', n: 14 }, { t: 'read', n: 10 }, { t: 'rush', n: 18 }, { t: 'audit' }]
+  },
+  clickstorm: {
+    name: 'The Click Goblins', sev: 50, concept: 'streams', tier: 2, sprite: 'clicker', ch: 3,
+    flavor: 'They click every ad. Twice. They are paid per click. By you.',
+    symptom: 'The ad click dashboard lags an hour behind, and after a consumer restart the counts came out 30% too high. Every click writes a row to Postgres; a nightly job counts them.',
+    weak: { stream: 'A stream processor counts clicks per minute window as they arrive.', queue: 'A durable log absorbs the click firehose and replays it after a crash.', idem: 'Deduping by click ID stops a replay counting twice.' },
+    resist: { cache: 'A cache cannot count clicks for you.', sql: 'One database row per click is the bottleneck.' },
+    pattern: [{ t: 'stream', n: 14 }, { t: 'burst', n: 12 }, { t: 'stream', n: 18 }, { t: 'audit' }]
+  },
+  oracle: {
+    name: 'The Trending Oracle', sev: 52, concept: 'topk', tier: 2, sprite: 'oracle', ch: 3,
+    flavor: 'It sees everything that is popular. It has to sort it all first. It is very tired.',
+    symptom: 'The "Top 10 videos this hour" box sorts a billion view counts on every homepage load. Each sort takes 40 seconds.',
+    weak: { topk: 'A min-heap of size K keeps only the leaders.', sketch: 'A count-min sketch estimates counts in tiny memory.', stream: 'Windowed counts keep the leaderboard fresh as views arrive.', cache: 'Cache the leaderboard: it changes once a minute, not once a request.' },
+    resist: { index: 'An index cannot keep a billion changing counts sorted for free.', vscale: 'A bigger box sorts a billion rows only a little faster.' },
+    pattern: [{ t: 'stream', n: 12 }, { t: 'hot', n: 14 }, { t: 'scan', n: 14 }, { t: 'stream', n: 16 }]
+  },
+  backlog: {
+    name: 'The Backlog Kraken', sev: 52, concept: 'backpressure', tier: 2, sprite: 'kraken', ch: 3,
+    flavor: 'Every tentacle is a message nobody processed. It has 40 million tentacles.',
+    symptom: 'The notification queue holds 40M messages and grows by 2M an hour. Consumers are maxed, producers keep pushing, and memory alarms are firing.',
+    weak: { shed: 'Shedding low-priority work keeps the important work flowing.', waitroom: 'Admission control lets work in at the rate it can be finished.', queue: 'A bounded queue pushes back instead of growing forever.' },
+    resist: { vscale: 'A bigger box just holds a bigger backlog.', cache: 'A cache does not drain a queue.' },
+    pattern: [{ t: 'overload', n: 14 }, { t: 'burst', n: 12 }, { t: 'overload', n: 18 }, { t: 'escalate' }]
+  },
+  typeahead: {
+    name: 'The Typeahead Wraith', sev: 58, concept: 'search', tier: 3, elite: true, sprite: 'wraith', ch: 3,
+    flavor: 'It finishes your sentences. Slowly. Wrongly. On every keystroke.',
+    symptom: 'Search-as-you-type sends LIKE \'%query%\' to the database on every keystroke: 50k keystrokes a second, p99 of 3 seconds.',
+    weak: { search: 'An inverted index or prefix table answers in milliseconds.', cache: 'Popular prefixes repeat; cache their top suggestions.', cdn: 'Common prefix results can be served from the edge.' },
+    resist: { index: 'A B-tree cannot help a leading-wildcard LIKE.', vscale: 'A bigger database still scans every row per keystroke.' },
+    pattern: [{ t: 'scan', n: 14 }, { t: 'flood', n: 14 }, { t: 'scan', n: 18 }, { t: 'escalate' }]
+  },
+  scalper: {
+    name: 'The Scalper King', short: 'The Scalper King', sev: 165, concept: 'booking', tier: 9, boss: true, sprite: 'scalper', ch: 3, deep: ['bk1', 'bk4', 'cs4'],
+    intro: 'boss3aIntro', win: 'boss3aWin',
+    flavor: 'He bought every seat to every show, then resold them to the performers.',
+    symptom: 'The kingdom needs a ticket system: browse and search events, book a seat with no double booking, and survive 10 million fans arriving when a big show goes on sale.',
+    weak: { hold: 'Atomic seat holds with a TTL stop double booking.', waitroom: 'A waiting room turns his stampede into a line.', sql: 'Bookings belong in a transactional database.', cache: 'Event pages and seat maps for browsing can be cached.', search: 'Event search runs on an inverted index, not the bookings table.' },
+    resist: { vscale: 'One bigger box still melts at 10 million fans.', replica: 'Booking from lagging replicas sells the same seat twice.' },
+    pattern: [{ t: 'read', n: 12 }, { t: 'rush', n: 16 }, { t: 'scan', n: 14 }, { t: 'rush', n: 20 }, { t: 'overload', n: 16 }, { t: 'audit' }, { t: 'escalate' }]
+  },
+  leviathan: {
+    name: 'The Feed Leviathan', short: 'The Leviathan', sev: 165, concept: 'fanout', tier: 9, boss: true, sprite: 'leviathan', ch: 3, deep: ['fo1', 'fo5', 'cs2'],
+    intro: 'boss3bIntro', win: 'boss3bWin',
+    flavor: 'Three eyes, endless scroll, and it has opinions about your brunch.',
+    symptom: 'The kingdom needs a news feed: post, follow, and a home feed of followed accounts that loads in under 500 ms, for 500M daily users, some with 50M followers.',
+    weak: { fanout: 'Precomputed feeds make every load one lookup.', hybrid: 'Pull celebrity posts at read time instead of pushing them to millions.', cache: 'Feeds and hot posts live in cache.', queue: 'Fan-out runs on queue workers, so posting returns at once.', shard: 'Shard posts and feeds by user to spread the load.' },
+    resist: { vscale: 'No single box holds 500M feeds.', sql: 'A giant join on every feed load is the problem.' },
+    pattern: [{ t: 'feed', n: 14 }, { t: 'write', n: 10 }, { t: 'celeb', n: 16 }, { t: 'feed', n: 18 }, { t: 'read', n: 14 }, { t: 'celeb', n: 20 }, { t: 'escalate' }]
+  },
   // The cold-open tutorial: a small surge, then a stampede big enough that Gary has to step in.
   tutorial: {
     name: 'Read Surge', sev: 40, concept: 'cache', tier: 1, sprite: 'slime', tutorial: true,
@@ -348,6 +503,14 @@ SD.chapters = {
     // Each chapter is tougher than the last (severity x sevMult) and carries curses that town quests lift (quests.js).
     sevMult: 1.1, curses: ['botswarm', 'echo', 'damp'],
     pools: { 1: ['scrapers', 'echo', 'racetwins'], 2: ['bigfile', 'drop', 'scrapers', 'echo', 'readsurge'], 3: ['bigfile', 'drop', 'racetwins', 'herd', 'celebrity'], elite: ['hydra', 'splitbrain', 'drop'] }
+  },
+  3: {
+    name: 'the Clockwork Spire', rank: 'C', boss: 'scalper', intro: 'boss3aIntro', win: 'boss3aWin',
+    // Two bosses, one per run: Ticketmaster or the news feed (Hello Interview week 4).
+    bosses: ['scalper', 'leviathan'],
+    blurb: 'Eight floors of grinding gears, climbing up. The Scalper King or the Feed Leviathan waits at the top.',
+    sevMult: 1.2, curses: ['gears', 'rifts', 'stacks'],
+    pools: { 1: ['fullscan', 'comment', 'scroll'], 2: ['snatchers', 'clickstorm', 'backlog', 'fullscan', 'scroll', 'drop'], 3: ['snatchers', 'clickstorm', 'oracle', 'backlog', 'comment', 'celebrity'], elite: ['typeahead', 'oracle', 'splitbrain'] }
   }
 };
 
@@ -358,7 +521,7 @@ SD.intentText = {
   stampede: i => `Stampede ${i.n}: misses the cache`,
   hot: i => `Hot key ${i.n}: replicas half as useful`,
   crash: i => `Crash ${i.n}: unless a load balancer reroutes`,
-  audit: () => 'Consistency audit: 3 damage per Stale',
+  audit: i => `Consistency audit: ${i.per || 3} damage per Stale`,
   partition: i => `Partition ${i.n}: choose C or A`,
   escalate: () => 'Escalates: all load +3',
   collide: i => `Collision ${i.n}: unless IDs are unique`,
@@ -366,7 +529,50 @@ SD.intentText = {
   burst: i => `Burst ${i.n}: a spike of writes`,
   retry: i => `Retry storm ${i.n}: x1.5 and +1 Stale unless idempotent`,
   race: i => `Race ${i.n}: counters drift unless atomic`,
-  upload: i => `Upload ${i.n}: huge files through your servers`
+  upload: i => `Upload ${i.n}: huge files through your servers`,
+  scan: i => `Full scan ${i.n}: reads every row unless indexed`,
+  feed: i => `Feed load ${i.n}: merge 500 timelines per refresh`,
+  celeb: i => `Celebrity post ${i.n}: one post, 50M followers`,
+  rush: i => `Seat rush ${i.n}: double-books seats unless held`,
+  stream: i => `Click stream ${i.n}: double counts unless windowed`,
+  overload: i => `Overload ${i.n}: the queue only grows`
+};
+
+// Chapter 3 bosses run the delivery framework from data: requirements (multi), estimation (num, or a question id), design (mc).
+// Getting each step right buffs the fight, as in chapters 1 and 2.
+SD.bossDesign = {
+  scalper: {
+    concepts: ['booking', 'consistency', 'backpressure', 'search'],
+    req: {
+      c: 'booking', q: "Step 1, Requirements. Which belong in scope for the kingdom's ticket system?",
+      items: [
+        { t: 'View an event and its seat map', ok: true }, { t: 'Search events by name, date and place', ok: true }, { t: 'Book a seat, never the same seat twice', ok: true },
+        { t: 'Bookings strongly consistent; browsing may be slightly stale', ok: true }, { t: 'Survive 10M fans arriving when a big show goes on sale', ok: true },
+        { t: 'Let fans set their own prices', ok: false }, { t: 'Resale auctions between fans', ok: false }, { t: 'Livestream the concert', ok: false }
+      ],
+      why: 'Three features (view, search, book) and two qualities: consistency where seats and money are involved, and surviving the on-sale stampede. Pricing games and streaming are other products.'
+    },
+    est: { c: 'estimation', q: 'Step 2, Estimation. A hot show opens: 10M fans each reload the seat map every 10 seconds. Read QPS on that one event?', unit: 'QPS', lo: 700000, hi: 1400000, ans: '~1,000,000 (10^7 / 10)', why: 'A million reads a second on one event: serve the seat map from cache, and put a waiting room in front so only admitted fans reach booking.' },
+    design: { c: 'backpressure', q: 'Step 3, Design. Ten million fans arrive the moment sales open. What goes in front of booking?', opts: ['A virtual waiting room that admits fans at the rate booking can handle', 'More booking servers, autoscaled on the spot', 'A bigger database', 'A CDN in front of the booking API'], a: 0, why: 'Autoscaling reacts too late and the database is the real limit. A waiting room gives fans a fair place in line and keeps booking healthy; the CDN helps browsing, not booking.' },
+    startCard: 'waitroom',
+    go: 'Now hold the box office. At half severity, expect a deep dive.'
+  },
+  leviathan: {
+    concepts: ['fanout', 'cache', 'consistency', 'queue'],
+    req: {
+      c: 'fanout', q: "Step 1, Requirements. Which belong in scope for the kingdom's news feed?",
+      items: [
+        { t: 'Post text and photos', ok: true }, { t: 'Follow and unfollow accounts', ok: true }, { t: 'A home feed of followed accounts, newest first', ok: true },
+        { t: 'The feed loads in under 500 ms', ok: true }, { t: 'A new post may take a few seconds to reach feeds', ok: true },
+        { t: 'Every follower sees a post in the same millisecond', ok: false }, { t: 'Video calls between followers', ok: false }, { t: 'An edit history of every post, forever', ok: false }
+      ],
+      why: 'Three features (post, follow, read the feed) and two qualities: fast feed loads, and eventual consistency being acceptable, which is what makes precomputed feeds possible.'
+    },
+    est: 'fo4',
+    design: { c: 'fanout', q: 'Step 3, Design. An account with 50M followers posts. What does your feed service do?', opts: ['Store the post; push ordinary posts to feeds, and merge celebrity posts in when each follower reads', 'Write it into all 50M feeds before replying', 'Switch every user to fan-out on read', 'Limit the celebrity to one post a day'], a: 0, why: 'The hybrid: precomputed feeds for the common case, read-time merging for the handful of accounts whose posts would cost millions of writes.' },
+    startCard: 'hybridfeed',
+    go: 'Now keep the feed flowing. At half severity, expect a deep dive.'
+  }
 };
 
 // Questions. type mc (choose), num (estimate within range), order (tap in sequence).
@@ -443,7 +649,43 @@ SD.questions = [
   { id: 'e5', c: 'estimation', type: 'num', q: '10M users each have a rate-limit counter of about 100 bytes. Memory for all counters, in GB?', unit: 'GB', lo: 0.8, hi: 1.5, ans: '~1 GB (10^7 x 100 B)', why: 'It fits in one Redis node. The hard parts are atomicity and QPS, not memory.' },
   { id: 's2', c: 'stateless', type: 'mc', q: 'Why do stateless app servers make autoscaling easy?', opts: ['They use less CPU', 'Any server can serve any request, so you can add or remove servers at will', 'They do not need a load balancer', 'They never crash'], a: 1, why: 'No user is stuck on the server that is being removed.' },
   { id: 'k2', c: 'hotkey', type: 'mc', q: 'How does key salting fix a hot key?', opts: ['It encrypts the key', 'It stores copies under key#1..key#N on different nodes and reads a random one', 'It shortens the TTL', 'It moves the key to the database'], a: 1, why: 'Reads spread across N nodes. Writes must update every copy, so salt read-heavy keys.' },
-  { id: 'x2', c: 'redirect', type: 'mc', q: 'The main benefit of a 301 for a shortener?', opts: ['Better analytics', 'Browsers cache it, so repeat clicks skip your servers', 'It is more secure', 'It supports custom aliases'], a: 1, why: 'Less load, but you stop seeing repeat clicks.' }
+  { id: 'x2', c: 'redirect', type: 'mc', q: 'The main benefit of a 301 for a shortener?', opts: ['Better analytics', 'Browsers cache it, so repeat clicks skip your servers', 'It is more secure', 'It supports custom aliases'], a: 1, why: 'Less load, but you stop seeing repeat clicks.' },
+  // Chapter 3
+  { id: 'ix1', c: 'indexes', type: 'mc', q: 'Looking up one user\'s orders in a 400M-row table takes 9 seconds; the plan shows a sequential scan. First fix?', opts: ['Add an index on user_id', 'Add read replicas', 'Cache the whole table', 'Shard by order date'], a: 0, why: 'An index turns a scan of every row into a few page lookups. Check the query plan before reaching for more hardware.' },
+  { id: 'ix2', c: 'indexes', type: 'mc', q: 'The cost of adding many indexes to a write-heavy table?', opts: ['Every insert and update must also update each index, so writes slow down and storage grows', 'Reads get slower', 'Transactions stop working', 'Nothing: indexes are free'], a: 0, why: 'Indexes trade write work and space for read speed. Index the columns your queries actually filter and sort on.' },
+  { id: 'ix3', c: 'indexes', type: 'mc', q: 'B-tree or LSM tree: which is built for very high write throughput?', opts: ['LSM tree: writes go to memory and flush as sorted files, merged later', 'B-tree: it updates pages in place', 'They are the same', 'Neither'], a: 0, why: 'LSM trees (Cassandra, RocksDB) turn random writes into sequential ones; reads may check several files, helped by Bloom filters. B-trees (Postgres, MySQL) give fast, predictable reads.' },
+  { id: 'ix4', c: 'indexes', type: 'mc', q: 'A composite index on (country, city). Which query can use it well?', opts: ["WHERE country = 'JP' AND city = 'Osaka'", "WHERE city = 'Osaka' only", "WHERE name LIKE '%saka'", 'ORDER BY RANDOM()'], a: 0, why: 'A composite index works left to right: it helps country, or country and city, but not city alone.' },
+  { id: 'ix5', c: 'indexes', type: 'num', q: 'Each B-tree page points to 100 children. About how many levels to index 100 million rows?', unit: 'levels', lo: 4, hi: 5, ans: '4 (100^4 = 10^8)', why: 'Each level multiplies by 100: 100, 10^4, 10^6, 10^8. Four page reads find any row, which is why indexed lookups stay fast as tables grow.' },
+  { id: 'cs1', c: 'consistency', type: 'mc', q: 'N = 3 replicas. Which W and R guarantee a read sees the latest acknowledged write?', opts: ['W = 2, R = 2', 'W = 1, R = 1', 'W = 1, R = 2', 'W = 2, R = 1'], a: 0, why: 'When W + R > N, every read set overlaps every write set in at least one replica. 2 + 2 > 3.' },
+  { id: 'cs2', c: 'consistency', type: 'mc', q: 'A user posts a comment, refreshes, and it is gone; a minute later it is back. Which guarantee is missing?', opts: ['Read-your-writes', 'Durability', 'Availability', 'Partition tolerance'], a: 0, why: 'Their read hit a replica that had not caught up. Route a user\'s reads to the leader (or a caught-up replica) for a short while after they write.' },
+  { id: 'cs3', c: 'consistency', type: 'mc', q: 'Replies show up before the post they answer. Which model forbids that?', opts: ['Causal consistency', 'Eventual consistency', 'Read-your-writes alone', 'None can'], a: 0, why: 'Causal consistency keeps causes before effects for every reader. Eventual consistency only promises replicas converge some time later.' },
+  { id: 'cs4', c: 'consistency', type: 'mc', q: 'Which of these needs strong (linearizable) consistency?', opts: ['Selling the last seat in a concert hall', 'A like counter', 'A news feed', 'Profile view counts'], a: 0, why: 'If two buyers both see "1 seat left" and both win, you oversell. Counters and feeds tolerate a little lag.' },
+  { id: 'fo1', c: 'fanout', type: 'mc', q: 'Fan-out on write (push) means...', opts: ["When someone posts, the post ID is added to each follower's precomputed feed", 'Each feed is built by querying followed accounts at read time', 'Posts are sent by email', 'Followers poll every second'], a: 0, why: 'Reading a feed becomes one cheap lookup; writing costs one insert per follower.' },
+  { id: 'fo2', c: 'fanout', type: 'mc', q: 'The weakness of pure fan-out on write?', opts: ['A celebrity with 50M followers turns one post into 50M feed writes', 'Feed reads are slow', 'It cannot show images', 'It needs a CDN'], a: 0, why: 'Hence the hybrid: push for ordinary accounts, pull celebrity posts at read time and merge them in.' },
+  { id: 'fo3', c: 'fanout', type: 'mc', q: 'The usual production answer for a social feed?', opts: ['Hybrid: precompute feeds for most accounts, merge celebrity posts at read time', 'Pure fan-out on read for everyone', 'Pure fan-out on write for everyone', 'Recompute every feed nightly'], a: 0, why: 'Push keeps reads cheap for the common case; pull handles the few accounts whose posts would cost millions of writes.' },
+  { id: 'fo4', c: 'fanout', type: 'num', q: '500M daily users each open their feed 10 times a day. Average feed reads per second?', unit: 'reads/s', lo: 40000, hi: 75000, ans: '~58,000 (5 x 10^9 / 86,400)', why: 'About 50k a second on average, so 100-150k at peak. Feed reads must be one cache lookup each, which is why feeds are precomputed.' },
+  { id: 'fo5', c: 'fanout', type: 'mc', q: 'Where should a precomputed feed live?', opts: ['In a cache like Redis, as a capped list of post IDs per user', 'In the CDN', "Only in each user's browser", 'In a SQL join run on every request'], a: 0, why: 'Store IDs only (small), cap the list (a few hundred), and fetch post bodies from a post cache.' },
+  { id: 'st1', c: 'streams', type: 'mc', q: 'An ad dashboard must show clicks per ad per minute, a few seconds behind. Best fit?', opts: ['Stream processing: clicks into Kafka, counted in one-minute windows by Flink', 'A nightly batch job', 'SELECT COUNT(*) on every refresh', 'A CDN'], a: 0, why: 'Count as events arrive and keep only running totals per window; the dashboard reads small precomputed numbers.' },
+  { id: 'st2', c: 'streams', type: 'mc', q: 'Clicks can arrive late (a phone was offline). How does a stream job decide a window is done?', opts: ['A watermark (how far event time has progressed) plus a grace period for late events', 'It never closes windows', 'It counts by arrival time only', 'It waits for every phone to report'], a: 0, why: 'Window by event time, close a window when the watermark passes it, and handle stragglers with allowed lateness or a later correction.' },
+  { id: 'st3', c: 'streams', type: 'mc', q: 'Consumers crash and replay from Kafka. How do you avoid counting clicks twice?', opts: ['Dedupe by click ID, or use exactly-once processing with checkpointed offsets', 'Never restart consumers', 'Use a bigger cluster', 'Count on the client'], a: 0, why: 'Delivery is at least once, so the counting must be idempotent.' },
+  { id: 'st4', c: 'streams', type: 'mc', q: 'Why keep raw clicks in cheap storage when the stream already has counts?', opts: ['A periodic batch job can recompute and reconcile the numbers, since billing must be exact', 'To make the dashboard faster', 'The CDN needs them', 'There is no reason'], a: 0, why: 'Fast stream results now, corrected by a batch pass later: the reconciliation pattern behind most ad click aggregators.' },
+  { id: 'st5', c: 'streams', type: 'num', q: '10 billion ad clicks a day. Average clicks per second?', unit: 'clicks/s', lo: 90000, hi: 140000, ans: '~115,000 (10^10 / 86,400)', why: 'About 100k a second, with peaks several times that: far too many for one database row per click, fine for a partitioned stream.' },
+  { id: 'tk1', c: 'topk', type: 'mc', q: 'Find the top 10 of a billion counts. Best structure?', opts: ['A min-heap of size 10: keep a candidate only if it beats the smallest', 'Sort all billion every time', 'A hash set', 'A Bloom filter'], a: 0, why: 'O(N log K) time and O(K) memory instead of sorting everything.' },
+  { id: 'tk2', c: 'topk', type: 'mc', q: 'Too many distinct videos to count exactly in memory. What estimates counts in small fixed memory?', opts: ['A count-min sketch', 'A Bloom filter', 'An inverted index', 'An LRU cache'], a: 0, why: 'A count-min sketch hashes each item into a few rows of counters and reads the minimum: it may overcount, never undercounts. A Bloom filter answers membership, not counts.' },
+  { id: 'tk3', c: 'topk', type: 'mc', q: 'Views are counted on whichever of 100 servers received them, and you merge each server\'s local top 10. What can go wrong?', opts: ['A video that is 11th on every server can be 1st overall and still be missed', 'Nothing: it is exact', 'Every count doubles', 'The heap overflows'], a: 0, why: 'Partition counts by video ID so each video\'s full count lives on one server; then merging the local top-K lists is exact.' },
+  { id: 'tk4', c: 'topk', type: 'mc', q: 'Top-K for the last hour, sliding. A simple, common approach?', opts: ['Count in one-minute buckets, sum the last 60, and precompute the answer every minute', 'Reset every counter on the hour', 'Store every view forever and sort on request', 'Use a 301'], a: 0, why: 'Old buckets fall off the window. Readers get a cached leaderboard and never touch raw counts.' },
+  { id: 'se1', c: 'search', type: 'mc', q: "Why does LIKE '%dragon%' on a 50M-row table crawl?", opts: ['A leading wildcard cannot use a B-tree index, so every row is scanned', 'Strings are slow', 'The table needs more replicas', 'LIKE is deprecated'], a: 0, why: 'B-trees find values by their beginning. Full-text search needs an inverted index.' },
+  { id: 'se2', c: 'search', type: 'mc', q: 'An inverted index maps...', opts: ['Each word to the list of documents that contain it', 'Each document to its word count', 'Each user to their searches', 'Each shard to its server'], a: 0, why: 'A search looks up each query word\'s list, then intersects and ranks them. Lucene and Elasticsearch work this way.' },
+  { id: 'se3', c: 'search', type: 'mc', q: 'Postgres is the source of truth and Elasticsearch powers search. How do you keep them in sync?', opts: ['Change data capture: stream the database log (say, Debezium into Kafka) to an indexer', 'Write to both from the API and hope', 'Rebuild the index nightly only', 'Send writes to Elasticsearch'], a: 0, why: 'CDC follows committed changes, so search catches up within seconds and misses nothing. Dual writes drift apart when one of them fails.' },
+  { id: 'se4', c: 'search', type: 'mc', q: 'Typeahead suggestions on every keystroke. A good design?', opts: ['Precompute top suggestions per prefix (a trie or prefix table), cache them, and debounce keystrokes', 'Run LIKE on the posts table per keystroke', 'Ship every query to the client', 'Rate limit typing'], a: 0, why: 'Prefixes repeat heavily, so a small precomputed table answers almost everything from cache.' },
+  { id: 'bk1', c: 'booking', type: 'mc', q: 'Two fans click seat F12 at the same instant. What prevents a double booking?', opts: ['An atomic hold with an expiry (Redis SET NX with a TTL, or a row with status and expires_at), confirmed on payment', 'Check the cached seat map, then insert', 'Let both pay and refund one', 'Lock the whole events table'], a: 0, why: 'Only one claim can win the atomic set. The TTL frees the seat if that fan never pays.' },
+  { id: 'bk2', c: 'booking', type: 'mc', q: 'Optimistic vs pessimistic locking. When does optimistic win?', opts: ['When conflicts are rare: read a version, write only if it has not changed, retry otherwise', 'When everyone fights over the same row', 'Never', 'Only with NoSQL'], a: 0, why: 'Pessimistic locks (SELECT ... FOR UPDATE) block others and suit hot rows; optimistic checks avoid locks when collisions are unlikely.' },
+  { id: 'bk3', c: 'booking', type: 'mc', q: 'A fan holds two seats and closes the app. What should happen?', opts: ['The hold expires after its TTL (say 10 minutes) and the seats go back on sale', 'The seats stay held forever', 'Support releases them by hand', 'The fan is charged anyway'], a: 0, why: 'Holds are leases: they must expire on their own, or abandoned carts lock up the venue.' },
+  { id: 'bk4', c: 'booking', type: 'mc', q: 'Ten million fans arrive the moment sales open. Most protective first move?', opts: ['A virtual waiting room that admits fans at the rate booking can handle', 'Autoscale the database instantly', 'Turn off the seat map', 'Let everyone in and retry on errors'], a: 0, why: 'Admission control turns a stampede into a fair, visible line, and the booking service stays healthy.' },
+  { id: 'bp1', c: 'backpressure', type: 'mc', q: 'Producers write faster than consumers can process. Backpressure means...', opts: ['Signalling upstream to slow down (bounded queues, 429s, blocking) instead of buffering forever', 'Adding retries', 'Writing to a bigger disk', 'Deleting the queue'], a: 0, why: 'The system says no early, so the work it accepts still finishes.' },
+  { id: 'bp2', c: 'backpressure', type: 'mc', q: 'During overload, load shedding should drop...', opts: ['The least important work first (prefetches, analytics), keeping login and checkout alive', 'Requests at random', 'The oldest customers', 'Everything equally'], a: 0, why: 'Tag requests by priority so that under pressure you lose the nice-to-haves, not the business.' },
+  { id: 'bp3', c: 'backpressure', type: 'mc', q: 'Why is an unbounded queue dangerous?', opts: ['It hides overload until memory runs out, and every message waits longer and longer', 'It loses messages at once', 'It cannot be partitioned', 'It is slower to read'], a: 0, why: 'A bound turns "slowly dying" into a clear signal: shed load, slow producers, or add consumers.' },
+  { id: 'bp4', c: 'backpressure', type: 'num', q: 'A queue receives 12,000 messages a second; each consumer handles 500 a second. Minimum consumers to keep up?', unit: 'consumers', lo: 24, hi: 30, ans: '24 (12,000 / 500), plus headroom', why: 'Below 24 the backlog grows forever. Add 30-50% headroom for spikes and slow messages.' }
 ];
 
 // Run events: narrative choices where system design judgement picks the best outcome. `ch` defaults to 1.
@@ -482,6 +724,42 @@ SD.events = [
       { label: 'Put orders on a queue; workers process them with an idempotency key each', good: true, out: 'Every order is accepted instantly and filled in turn. Nobody gets 40 croissants by accident.', effect: { card: 'mq', xp: 15 } },
       { label: 'Buy a bigger oven server', good: false, out: 'It melts at 12:00:02. Progress.', effect: { sla: -6 } },
       { label: 'Tell customers to keep retrying until it works', good: false, out: 'A retry storm. Three customers now own 40 croissants each. Wen is delighted. You are not.', effect: { sla: -8 } }
+    ]
+  },
+  {
+    id: 'lexiscan', ch: 3, title: "Lexi's Longest Tuesday", concept: 'indexes',
+    text: 'Lexi is finding every book ever borrowed by "K. Kaito". She is reading the 400,000-row borrowing ledger one row at a time. She is on row 9,000. She started on Tuesday.',
+    choices: [
+      { label: 'Build an index on borrower name', good: true, out: 'The index points straight at Kaito\'s 212 rows. All of them are his own memoir. Lexi hands you a card and a very long look.', effect: { card: 'btree', xp: 15 } },
+      { label: 'Hire three more librarians to read faster', good: false, out: 'Four librarians now read every row, together. They finish on Saturday and unionise on Sunday.', effect: { sla: -6 } },
+      { label: 'Ask Pip to remember the whole ledger', good: false, out: 'Pip remembers row 1. Pip is very proud of row 1.', effect: {} }
+    ]
+  },
+  {
+    id: 'kaitofeed', ch: 3, title: "Kaito's Followers", concept: 'fanout',
+    text: 'Kaito has 4 million followers (Mio\'s class, with alt accounts). Each time he posts, the town crier must shout it at every follower\'s door before anyone else may post.',
+    choices: [
+      { label: 'Push ordinary posts to feeds; let Kaito\'s fans pull his at read time', good: true, out: 'The crier shouts for everyone else. Kaito\'s posts wait on a board by the well. His fans check it 40 times a minute. Kaito calls it "a shrine".', effect: { card: 'hybridfeed', xp: 15 } },
+      { label: 'Give the crier a bigger voice', good: false, out: 'The crier shouts for three days straight. Nobody else posts. The town forgets how to talk.', effect: { sla: -8 } },
+      { label: 'Ban Kaito from posting', good: false, out: 'Kaito posts about being banned. Four million alt accounts riot, politely.', effect: { sla: -4 } }
+    ]
+  },
+  {
+    id: 'chadtickets', ch: 3, title: 'Chad Sells Out', concept: 'booking',
+    text: 'Chad is selling tickets to Uptima\'s first ever concert. Venue: her temple, 40 seats. His plan: "Fans check the seat map in the cache, then book. Zero locks. Locks are legacy."',
+    choices: [
+      { label: 'Hold each seat atomically with a 10-minute expiry, confirm on payment', good: true, out: 'Forty seats, forty fans, zero fights. Chad calls holds "a bold new paradigm" and invoices you for it.', effect: { card: 'seathold', xp: 15 } },
+      { label: 'Trust the cache', good: false, out: 'Chad sells 600 tickets to a 40-seat temple. Uptima is thrilled. Seymour is in charge of crowd control. Seymour is not thrilled.', effect: { sla: -8 } },
+      { label: 'Lock the whole temple until each fan has paid', good: false, out: 'Fan two waits 40 minutes. Fan three gives up and becomes a priest of Gary.', effect: { sla: -4 } }
+    ]
+  },
+  {
+    id: 'cronclicks', ch: 3, title: "Cron's Crow Count", concept: 'streams',
+    text: 'Farmer Cron bills the Crow Guild per crow that lands in his field. He writes each crow on its own parchment and counts them all at midnight. By morning there are more parchments than crows.',
+    choices: [
+      { label: 'Count crows per minute as they land, and keep the parchments for a monthly recount', good: true, out: 'The tally board updates every minute. The monthly recount matches. The Crow Guild pays, grudgingly, in shiny things.', effect: { card: 'streamagg', xp: 15 } },
+      { label: 'Recount every parchment whenever anyone asks', good: false, out: 'Cron is still counting. The crows have started a union. It is a murder, technically.', effect: { sla: -6 } },
+      { label: 'Estimate: "lots"', good: false, out: 'The Crow Guild disputes "lots". Their lawyers are also crows.', effect: { bits: -10 } }
     ]
   },
   {
@@ -687,6 +965,35 @@ SD.story = {
     { s: 'uptima', e: 'happy', t: 'You beat a Demon King! I\'m putting this on my résumé, under "miracles, delegated".' },
     { s: 'pip', t: 'He\'s still buffering. Should we tell him he lost?' },
     { s: 'uptima', t: 'He\'ll find out. Eventually.' },
-    { s: 'system', t: '[SYSTEM] Chapter 2 cleared. Next: Ticketmaster Tower and the Feed Abyss. (Coming soon.)' }
+    { s: 'system', t: '[SYSTEM] Chapter 2 cleared. New dungeon detected: the Clockwork Spire. (Chapter 3: indexes, consistency, feeds, tickets and trending.)' }
+  ],
+  boss3aIntro: [
+    { s: 'narr', t: 'At the top of the Spire, on a throne made of 40,000 tickets to the same concert, sits a very rich goblin in a very tall hat.' },
+    { s: 'narr', t: '"EVERY SEAT IS MINE!" he bellows. "Every show, every row! Want to see Uptima live? That will be nine hundred bits. Per ear."' },
+    { s: 'uptima', e: 'angry', t: 'He scalped MY concert? I haven\'t even written a song! Hero: design the kingdom a ticket system. One seat, one fan.' },
+    { s: 'system', t: '[SYSTEM] Boss: the Scalper King. Design a ticketing system (Ticketmaster). Follow the framework.' }
+  ],
+  boss3aWin: [
+    { s: 'narr', t: 'The Scalper King reaches for seat F12. It is held. He reaches for F13. Held. He joins the waiting room. He is number 9,999,812.' },
+    { s: 'narr', t: '"A... line? For ME?" He takes a ticket. He waits. Something in him softens. Or it is the hat.' },
+    { s: 'gary', t: 'Oh, hey. I was going to fix it, but I was in the waiting room. Very fair. They told me my place in line.' },
+    { s: 'uptima', e: 'happy', t: 'My concert is SAVED! Forty fans, forty seats! ...Thirty-eight are Seymour. He bought backups.' },
+    { s: 'latency', t: '...Is this the queue for the concert? Hello? My tickets will arrive... eventually.' },
+    { s: 'system', t: '[SYSTEM] Chapter 3 cleared. Next dungeon: the Sky Harbour. (Coming soon: chat, presence, consensus and clocks.)' }
+  ],
+  boss3bIntro: [
+    { s: 'narr', t: 'At the top of the Spire, something vast scrolls by. Three eyes. No end. It is reading everyone\'s posts, all at once.' },
+    { s: 'narr', t: '"MORE CONTENT," it rumbles. "FRESHER. FASTER. I FOLLOW FIVE HUNDRED ACCOUNTS AND I MUST SEE THEM ALL, IN ORDER, NOW."' },
+    { s: 'pip', t: 'It just liked my post from 2014. I don\'t know how to feel.' },
+    { s: 'uptima', e: 'confused', t: 'The kingdom\'s feed takes four seconds to load and Kaito\'s posts jam the town crier. Hero: design a news feed.' },
+    { s: 'system', t: '[SYSTEM] Boss: the Feed Leviathan. Design a news feed for 500M daily users. Follow the framework.' }
+  ],
+  boss3bWin: [
+    { s: 'narr', t: 'The Leviathan opens its feed. It loads in 80 milliseconds. Kaito\'s post is in there, merged in at read time, exactly where it belongs.' },
+    { s: 'narr', t: 'It scrolls. It scrolls. It reaches... the end? "YOU\'RE ALL CAUGHT UP," says a little sign. The Leviathan blinks for the first time since 2016.' },
+    { s: 'kaito', t: 'It saw my post in under a second? Hmph. Not that I care. ...I care a little.' },
+    { s: 'gary', t: 'Oh. I muted it years ago. Nice to know it works now.' },
+    { s: 'uptima', e: 'happy', t: 'Caught up! I have never been caught up on anything. This is incredible. I\'m going to post about it.' },
+    { s: 'system', t: '[SYSTEM] Chapter 3 cleared. Next dungeon: the Sky Harbour. (Coming soon: chat, presence, consensus and clocks.)' }
   ]
 };

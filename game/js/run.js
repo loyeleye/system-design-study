@@ -17,6 +17,9 @@
       map: genMap(), mercy: false, startedAt: Date.now(), firstFight: !sv.stats.fights,
       log: { fights: 0, concepts: {}, misses: 0, right: 0, xp: 0 }, boss: {}
     };
+    // Chapters with two bosses pick one per run, favouring one you have not beaten yet.
+    const c = SD.chapters[ch || 1], all = c.bosses || [c.boss], fresh = all.filter(id => !sv.flags['beat-' + id]);
+    sv.run.bossId = rnd(fresh.length ? fresh : all);
     sv.run.sla = S.maxSla();   // after the run exists, so this dungeon's curses apply
     sv.stats.runs++;
     S.persist();
@@ -32,13 +35,14 @@
   R.abandon = function () { endRun(false, 'Your sudden decision to go home'); };
 
   const chap = () => SD.chapters[(S.save.run && S.save.run.ch) || 1];
+  const bossId = () => (S.save.run && S.save.run.bossId) || chap().boss;
   // Plot Devices (town quest rewards) and this dungeon's active curses.
   const dev = id => SD.quests.has(id);
   const curse = id => SD.quests.curses((S.save.run && S.save.run.ch) || 1).includes(id);
   function gateFx(done, ch) {
     const fx = document.createElement('div');
     fx.className = 'gatefx';
-    fx.innerHTML = `<div class="gate-t">${ch === 2 ? 'DIVING INTO THE ARCHIVES...' : 'ENTERING PROD...'}</div>`;
+    fx.innerHTML = `<div class="gate-t">${{ 2: 'DIVING INTO THE ARCHIVES...', 3: 'CLIMBING THE CLOCKWORK SPIRE...' }[ch] || 'ENTERING PROD...'}</div>`;
     document.body.appendChild(fx);
     AU.sfx('gate');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -98,7 +102,7 @@
     }));
     $('#run').innerHTML = `
       <div class="run-hud">${hud()}</div>
-      <div class="map-wrap"><div class="map-title">${U.esc(chap().name.replace(/^the /, '').toUpperCase())} · ${chap().rank}-RANK <span class="muted">Pick a path. ${U.esc(SD.enemies[chap().boss].name)} waits at the end.</span>
+      <div class="map-wrap"><div class="map-title">${U.esc(chap().name.replace(/^the /, '').toUpperCase())} · ${chap().rank}-RANK <span class="muted">Pick a path. ${U.esc(SD.enemies[bossId()].name)} waits at the end.</span>
         ${curseChips()}</div>
       <div class="map" style="height:${rows * 78}px">${svg}${nodes}</div></div>
       <div class="run-foot"><button class="ghost" id="deck-btn">Deck (${run.deck.length})</button><button class="ghost" id="codex-btn2">Cheat sheet</button><button class="ghost danger" id="abandon">Abandon run</button></div>`;
@@ -328,16 +332,18 @@
 
   async function diagnose(go) {
     const e = C.e;
-    const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss && !SD.enemies[k].tutorial)).slice(0, 3);
+    const ch = (S.save.run && S.save.run.ch) || 1;
+    const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss && !SD.enemies[k].tutorial && (SD.enemies[k].ch || 1) <= ch)).slice(0, 3);
     const optsIds = Q.shuffle([C.eid, ...others]);
     const q = { c: e.concept, type: 'mc', q: `Symptoms: ${e.symptom} Which incident is this?`, opts: optsIds.map(k => SD.enemies[k].name), a: optsIds.indexOf(C.eid), why: Object.values(e.weak)[0] };
     const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight', hideOne: S.save.relics.includes('pipeye') });
     if (r.ok) {
-      const bonus = dev('bookmark') ? 2 : 1;
+      // The Unindexed Stacks curse: you know what it is, but you can't find the fix in time.
+      const bonus = curse('stacks') ? 0 : dev('bookmark') ? 2 : 1;
       C.diagBonus += bonus;
       Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t));
       saveKnown();
-      U.system('DIAGNOSIS CORRECT', `+${bonus} Capacity this turn. Weaknesses revealed.`);
+      U.system('DIAGNOSIS CORRECT', bonus ? `+${bonus} Capacity this turn. Weaknesses revealed.` : 'Weaknesses revealed. The Unindexed Stacks hide the fix: no Capacity bonus.');
     }
     go();
   }
@@ -362,7 +368,7 @@
     C.turn++;
     const sv = S.save;
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0);
-    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false;
+    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
@@ -405,6 +411,8 @@
     if (d.throttle) C.throttle = true;
     if (d.backoff) C.backoff = true;
     if (d.chunk) C.chunk = true;
+    if (d.sketch) C.sketch = true;
+    if (d.shed) C.shed = true;
     if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
     if (d.pow) {
       const tags = d.tags || [];
@@ -451,10 +459,13 @@
   function mods(t) {
     if (t === 'flood') return (curse('botswarm') ? 1.4 : 1) * (dev('dougbot') ? 0.7 : 1);
     if (t === 'retry') return (curse('echo') ? 1.4 : 1) * (dev('waxseal') ? 0.7 : 1);
-    if (t === 'stampede' || t === 'burst') return dev('strawhat') ? 0.7 : 1;
+    if (t === 'stampede' || t === 'burst' || t === 'rush') return (curse('gears') ? 1.4 : 1) * (dev('strawhat') && t !== 'rush' ? 0.7 : 1);
     if (t === 'crash') return dev('hammer') ? 0.5 : 1;
+    if (t === 'partition') return curse('rifts') ? 1.4 : 1;
+    if (t === 'scan') return curse('stacks') ? 1.4 : 1;
     return 1;
   }
+  const auditPer = () => dev('shield') ? 2 : curse('rifts') ? 4 : 3;
   function resolveIntent(it) {
     const r = C.rage, m = C.mercyScale, sv = S.save;
     const sc = v => Math.round((v + r) * m);
@@ -481,9 +492,9 @@
         let n = sc(it.n) * (sv.spec === 'warden' ? 0.5 : 1) * mods(it.t);
         dmg = absorb(n, [['any', 1]]); note = 'A server died and nothing routed around it. '; break;
       }
-      case 'audit': dmg = C.stale * (dev('shield') ? 2 : 3); note = C.stale ? `Audit found ${C.stale} stale reads. Capacity cannot fix wrong answers. ` : 'Audit found nothing stale. '; C.stale = Math.floor(C.stale / 2); break;
+      case 'audit': dmg = C.stale * auditPer(); note = C.stale ? `Audit found ${C.stale} stale reads. Capacity cannot fix wrong answers. ` : 'Audit found nothing stale. '; C.stale = Math.floor(C.stale / 2); break;
       case 'partition': {
-        const n = sc(it.n);
+        const n = sc(it.n) * mods(it.t);
         if (C.choice === 'cp') { dmg = absorb(Math.ceil(n / 2), [['any', 1]]); note = 'You chose consistency: some requests refused, no conflicts. '; }
         else if (C.choice === 'ap') { dmg = 0; C.stale += 3; note = 'You chose availability: everyone answered, +3 Stale to reconcile. '; }
         else { dmg = absorb(dev('shield') ? Math.ceil(n / 2) : n, [['any', 1]]); C.stale += 2; note = 'No choice made: you got the worst of both. '; }
@@ -523,6 +534,51 @@
         if (C.chunk) { n *= 0.5; C.chunk = false; note += 'Only the changed chunks travelled. '; }
         if (!note) note = 'Gigabytes squeezed through your app servers. ';
         dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      // Chapter 3
+      case 'scan': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('index') && !C.e.resist.index) { n *= 0.25; note = 'The index jumped straight to the rows. '; }
+        else if (hasInfra('index')) note = 'A leading wildcard: the B-tree could not help. ';
+        if (hasInfra('search')) { n *= 0.4; note += 'The inverted index looked up each word. '; }
+        if (!note) note = 'Every row read, every time. ';
+        dmg = absorb(n, READ); break;
+      }
+      case 'feed': {
+        let n = sc(it.n);
+        if (hasInfra('fanout')) { n *= 0.3; note = 'Feeds were precomputed: one lookup each. '; }
+        else if (hasInfra('hybrid')) { n *= 0.5; note = 'The hybrid feed had most of it ready. '; }
+        else note = 'Every refresh merged 500 timelines from scratch. ';
+        dmg = absorb(n, READ); break;
+      }
+      case 'celeb': {
+        let n = sc(it.n);
+        if (hasInfra('hybrid')) { n *= 0.3; note = 'Celebrity posts were pulled at read time, not pushed to millions. '; }
+        else if (hasInfra('fanout')) { n *= 1.5; note = 'Fan-out on write tried to fill 50 million feeds at once. '; }
+        else note = 'Millions of followers refreshed for the same post. ';
+        dmg = absorb(n, [['cache', 1], ['read', 1], ['write', 1], ['any', 1]]); break;
+      }
+      case 'rush': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('waitroom')) { n *= 0.4; note = 'The waiting room let fans in a few at a time. '; }
+        if (hasInfra('hold')) { n *= 0.7; note += 'Seat holds: one fan per seat. '; }
+        else { C.stale += 2; note += 'Two fans bought the same seat (+2 Stale). '; }
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      case 'stream': {
+        let n = sc(it.n);
+        if (hasInfra('stream')) { n *= 0.35; note = 'Counted per minute as the clicks flowed past. '; }
+        else { C.stale += 1; note = 'A replay counted some clicks twice (+1 Stale). '; }
+        if (C.sketch) { n *= 0.5; C.sketch = false; note += 'The sketch estimated the rest in a few kilobytes. '; }
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      case 'overload': {
+        let n = sc(it.n);
+        if (hasInfra('waitroom')) { n *= 0.4; note = 'Admission control let work in at the pace it can be done. '; }
+        if (hasInfra('queue')) { n *= 0.7; note += 'The bounded queue pushed back on producers. '; }
+        if (C.shed) { n *= 0.5; note += 'Low-priority work was shed; checkout stayed up. '; }
+        if (!note) note = 'The backlog grew, and grew. ';
+        dmg = absorb(n, [['any', 1], ['write', 1]]); break;
       }
     }
     return { dmg, note };
@@ -566,18 +622,21 @@
     const it = C.e.pattern[C.ii % C.e.pattern.length];
     const shown = Object.assign({}, it);
     ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale * (k === 'n' ? mods(it.t) : 1)); });
+    if (it.t === 'audit') shown.per = auditPer();
     const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
     const res = Object.keys(e.resist).filter(t => C.known.has('r:' + t));
     const foeCol = SD.art.enemyColor(e.sprite);
     const chips = [];
     const SHN = { cache: 'Cache', replica: 'Replica', read: 'Read', write: 'Write', any: 'Any' };
     for (const k in C.sh) if (C.sh[k] > 0) chips.push(`<span class="chip sh-${k}">${SHN[k]} ${Math.round(C.sh[k])}</span>`);
-    if (C.stale) chips.push(`<span class="chip stale" title="Stale reads. Audits deal 3 damage per stack.">Stale ${C.stale}</span>`);
+    if (C.stale) chips.push(`<span class="chip stale" title="Stale reads. Audits deal ${auditPer()} damage per stack.">Stale ${C.stale}</span>`);
     if (C.choice) chips.push(`<span class="chip choice">${C.choice === 'cp' ? 'Consistency' : 'Availability'}</span>`);
     if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
     if (C.throttle) chips.push('<span class="chip">Throttled</span>');
     if (C.backoff) chips.push('<span class="chip">Backing off</span>');
     if (C.chunk) chips.push('<span class="chip">Chunked</span>');
+    if (C.sketch) chips.push('<span class="chip">Sketch ready</span>');
+    if (C.shed) chips.push('<span class="chip">Shedding</span>');
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
@@ -694,6 +753,7 @@
   // ---------- Bosses: the Goblin King of Links (URL shortener), Lord Latency (rate limiter) ----------
   async function boss(done) {
     if ((S.save.run.ch || 1) === 2) return boss2(done);
+    if (SD.bossDesign[bossId()]) return bossDesigned(bossId());
     AU.music('boss');
     await U.dialog(SD.story.bossIntro);
     S.seeConcept('delivery'); S.seeConcept('idgen'); S.seeConcept('redirect');
@@ -744,6 +804,26 @@
     fight('latencyboss', { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
   }
 
+  // Chapter 3 onwards: each boss's framework steps live in SD.bossDesign (content.js).
+  async function bossDesigned(eid) {
+    const e = SD.enemies[eid], d = SD.bossDesign[eid];
+    AU.music('boss');
+    await U.dialog(SD.story[e.intro]);
+    d.concepts.forEach(c => S.seeConcept(c));
+    const buffs = { sevScale: 1, bonusEnergy: 0, startCard: null };
+    const r1 = await Q.ask(Object.assign({ type: 'multi', hint: 'Pick the functional and non-functional requirements. Leave out what does not belong.' }, d.req), { title: '[BOSS] REQUIREMENTS', context: 'Delivery framework · 1 of 3' });
+    if (r1.ok) { buffs.sevScale = 0.85; U.system('SCOPE LOCKED!', `Clear requirements: ${U.esc(e.short)} starts 15% weaker.`, 'gold'); }
+    const est = typeof d.est === 'string' ? SD.questions.find(q => q.id === d.est) : Object.assign({ type: 'num' }, d.est);
+    const r2 = await Q.ask(est, { title: '[BOSS] ESTIMATION', context: 'Delivery framework · 2 of 3' });
+    if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND!', '+1 Capacity on turn 1.', 'gold'); }
+    const r3 = await Q.ask(Object.assign({ type: 'mc' }, d.design), { title: '[BOSS] DESIGN', context: 'Delivery framework · 3 of 3' });
+    if (r3.ok) { buffs.startCard = d.startCard; U.system('DESIGN READY!', `${U.esc(SD.cards[d.startCard].name)} starts in your hand.`, 'gold'); }
+    S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok };
+    S.persist();
+    U.system('[BOSS] HIGH-LEVEL DESIGN', d.go, 'gold');
+    fight(eid, { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
+  }
+
   // ---------- End of run: postmortem ----------
   function endRun(won, incident) {
     const sv = S.save, run = sv.run;
@@ -751,10 +831,10 @@
     const mins = Math.round((Date.now() - run.startedAt) / 60000);
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
-    const ch = run.ch || 1;
+    const ch = run.ch || 1, boss = run.bossId || SD.chapters[ch].boss;
     if (won) {
-      sv.stats.wins++; sv.flags['ch' + ch] = true;
-      if (ch === 1 && (sv.chapter || 1) < 2) sv.chapter = 2;
+      sv.stats.wins++; sv.flags['ch' + ch] = true; sv.flags['beat-' + boss] = true;
+      if (SD.chapters[ch + 1] && (sv.chapter || 1) < ch + 1) sv.chapter = ch + 1;
     }
     sv.run = null;
     U.lastIncident = incident || 'A cascade';
@@ -769,7 +849,7 @@
       <button class="primary" id="pm-ok">Continue</button>`, { title: 'POSTMORTEM', noClose: true });
     b.querySelector('#pm-ok').onclick = async () => {
       U.closePanel();
-      if (won) await U.dialog(SD.story[SD.chapters[ch].win]);
+      if (won) await U.dialog(SD.story[SD.enemies[boss].win || SD.chapters[ch].win]);
       else await U.dialog(SD.story.cascade);
       SD.main.toHub(true);
     };

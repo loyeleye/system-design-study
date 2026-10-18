@@ -35,7 +35,10 @@
   SD.curses = {
     botswarm: { name: 'Bot Swarm', text: 'Flood intents deal 40% more.', lift: 'dougbot', hint: "Someone in town runs a very enthusiastic bot. Bru at the Adventurers' Guild wants a word." },
     echo: { name: 'Echoing Halls', text: 'Retry intents deal 40% more and add +1 Stale.', lift: 'waxseal', hint: 'Postmaster Coo at the Pigeon Post knows a thing or two about messages that arrive twice.' },
-    damp: { name: 'Damp Archives', text: '−12 max SLA in this dungeon.', lift: 'recipe', hint: 'Grandma Wen lost something in the flood. Ask her about it at the Cache Café.' }
+    damp: { name: 'Damp Archives', text: '−12 max SLA in this dungeon.', lift: 'recipe', hint: 'Grandma Wen lost something in the flood. Ask her about it at the Cache Café.' },
+    gears: { name: 'Thundering Gears', text: 'Stampede, Burst and Rush intents deal 40% more.', lift: 'strawhat', hint: "Everything in the Spire happens at once. Farmer Cron knows all about that; visit his farm, east by the fields." },
+    rifts: { name: 'Clockwork Rifts', text: 'Partition intents deal 40% more, and audits deal 4 per Stale.', lift: 'shield', hint: 'Sir Seymour keeps a spare shield for exactly this. He keeps a spare everything. Try the bunker.' },
+    stacks: { name: 'Unindexed Stacks', text: 'Scan intents deal 40% more, and a correct diagnosis gives no Capacity.', lift: 'bookmark', hint: 'Lexi at the Grand Library guards a forbidden technique: knowing exactly where to look.' }
   };
 
   const HOME = {

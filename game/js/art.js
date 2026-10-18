@@ -191,7 +191,9 @@
   };
   // Card art comes from Game-icons.net when the icon subset is loaded; the stroke glyphs are the fallback.
   const ICON = { wrench: 'spanner', box: 'cube', copy: 'files', bolt: 'lightning-helix', bolt2: 'lightning-frequency', server: 'server-rack', key: 'key', split: 'split-arrows', globe: 'globe', grid: 'cubes', salt: 'salt-shaker', funnel: 'funnel', dice: 'perspective-dice-six-faces-random', eraser: 'broom', lock: 'padlock', open: 'padlock-open', note: 'notebook', eye: 'magnifying-glass', undo: 'anticlockwise-rotation', tree: 'family-tree', cols: 'stack', cyl: 'database', hash: 'ticket', calc: 'abacus', arrow: 'return-arrow',
-    bucket: 'full-wood-bucket', clock: 'stopwatch', gate: 'medieval-gate', atom: 'atom', queue: 'mailbox', upload: 'cloud-upload', hourglass: 'hourglass', puzzle: 'puzzle' };
+    bucket: 'full-wood-bucket', clock: 'stopwatch', gate: 'medieval-gate', atom: 'atom', queue: 'mailbox', upload: 'cloud-upload', hourglass: 'hourglass', puzzle: 'puzzle',
+    btree: 'pine-tree', lsm: 'book-pile', invindex: 'open-book', fanout: 'radio-tower', hybrid: 'megaphone', hold: 'armchair',
+    waitroom: 'closed-doors', stream: 'river', sketch: 'histogram', heap: 'podium-winner', quorum: 'pie-chart', shed: 'dam' };
   A.icon = function (name, color) {
     const body = SD.icons && SD.icons[name];
     if (!body) return null;
@@ -211,7 +213,12 @@
     imp: { col: '#ffa9cb', anim: 'float' }, goblin: { col: '#a6e070', anim: 'float' },
     bots: { col: '#ffd86b', anim: 'shake' }, echo: { col: '#8fe6f2', anim: 'squish' },
     twins: { col: '#c9a98f', anim: 'float' }, blob: { col: '#f2f2f2', anim: 'squish' },
-    hydra: { col: '#7ee0a8', anim: 'float' }, latency: { col: '#c9a0ff', anim: 'float' }
+    hydra: { col: '#7ee0a8', anim: 'float' }, latency: { col: '#c9a0ff', anim: 'float' },
+    scanner: { col: '#c9b39a', anim: 'float' }, comment: { col: '#efeaff', anim: 'float' },
+    scroll: { col: '#8fe6f2', anim: 'squish' }, snatcher: { col: '#ff9a9a', anim: 'shake' },
+    clicker: { col: '#ffd86b', anim: 'shake' }, oracle: { col: '#f2f2f2', anim: 'float' },
+    kraken: { col: '#8fe6f2', anim: 'squish' }, wraith: { col: '#c9a0ff', anim: 'float' },
+    scalper: { col: '#ffd86b', anim: 'float' }, leviathan: { col: '#8fdcff', anim: 'float' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   A.enemy = function (sprite, boss, hue) {

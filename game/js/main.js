@@ -174,7 +174,7 @@
       if (c === 'W') await bunker();
       if (c === 'B') await board();
       if (c === 'gary') await gary();
-      if (c === 'G') { await gate(); return; }
+      if (c === 'G') await gate();
     } finally {
       atDoor = false;
       if (!$('#screen-hub').hidden) { SD.hub.stepOffDoor(); SD.hub.start(); M.hud(); }
@@ -198,6 +198,12 @@
       groups: [['Limit it', 'Token and leaky buckets · fixed and sliding windows'], ['Place it', 'API gateway · 429 and Retry-After · fail open or closed'],
         ['Keep counts honest', 'Race conditions · atomic counters in Redis'], ['Absorb the chaos', 'Message queues · backoff with jitter · idempotency'], ['Move big files', 'Object storage · presigned URLs · chunking and delta sync']],
       ask: 'where would each of these sit in the request path, and what breaks if you leave it out?'
+    },
+    3: {
+      goal: 'The Scalper King hoards every concert seat, and the Feed Leviathan wants every post from everyone it follows, instantly. In interview terms: <b>design Ticketmaster</b> and <b>design a news feed</b>, with <b>top-K</b> and an <b>ad click aggregator</b> on the side.',
+      groups: [['Find it fast', 'B-tree and LSM indexes · inverted indexes and typeahead'], ['Agree on the truth', 'Quorums (W + R > N) · linearizable, causal, read-your-writes, eventual'],
+        ['Spread the word', 'Fan-out on write vs read · the celebrity hybrid'], ['Count the flood', 'Stream windows and late events · top-K heaps and count-min sketches'], ['Hold the line', 'Seat holds with a TTL · locking · waiting rooms and load shedding']],
+      ask: 'which parts of each system must be strongly consistent, and which can be a few seconds stale?'
     }
   };
 
@@ -323,7 +329,7 @@
       <ul class="qlist"><li>Answer 5 review questions <span class="muted">${due ? `(${due} concept${due > 1 ? 's' : ''} due)` : ''}</span></li></ul>
       <p class="small">Reward: 40 XP and 2 Memory Shards. ${done ? '<b>Completed today.</b> You can still practise for XP.' : 'Skipping the daily quest has no penalty. Uptima says the penalty is forgetting. She also forgets things, so.'}</p></div>
       <div class="plan"><div class="q-ctx">Your real study plan</div>
-      <p class="small">${(sv.chapter || 1) >= 2 ? 'Chapter 2 covers week 3 of your Hello Interview track: the rate limiter and Dropbox-style file sync, plus queues and retries from week 2\'s key technologies.' : 'Chapter 1 covers weeks 1 and 2 of your Hello Interview track: the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener.'} Do the week's problem on paper first; use runs here to keep it fresh.</p></div>
+      <p class="small">${(sv.chapter || 1) >= 3 ? 'Chapter 3 covers weeks 4 and 5 of your Hello Interview track: Ticketmaster and the news feed, then top-K and the ad click aggregator, with indexes, consistency models, search and backpressure along the way.' : (sv.chapter || 1) >= 2 ? 'Chapter 2 covers week 3 of your Hello Interview track: the rate limiter and Dropbox-style file sync, plus queues and retries from week 2\'s key technologies.' : 'Chapter 1 covers weeks 1 and 2 of your Hello Interview track: the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener.'} Do the week's problem on paper first; use runs here to keep it fresh.</p></div>
       <div class="row"><button class="primary" id="dq-go">Start</button><button class="ghost" id="dq-x">Later</button></div>`, { title: 'QUEST BOARD', onClose: () => resolveBoard() });
     let resolveBoard;
     await new Promise(res => {
@@ -343,9 +349,9 @@
     const sv = S.save;
     if (sv.run) {
       const b = U.panel('<p>Your run is still open down in Prod.</p><div class="row"><button class="primary" id="g-r">Resume run</button><button class="ghost" id="g-x">Not yet</button></div>', { title: 'DUNGEON GATE' });
-      b.querySelector('#g-x').onclick = () => { U.closePanel(); SD.hub.stepOffDoor(); SD.hub.start(); };
+      b.querySelector('#g-x').onclick = U.closePanel;
       b.querySelector('#g-r').onclick = () => { U.closePanel(); SD.run.resume(); };
-      return;
+      return waitClose();
     }
     // Once a loop, Uptima intercepts you at the gate with something she has broken.
     if (SD.goddess.due()) await SD.goddess.oops();
@@ -366,8 +372,10 @@
       ${warnCurse ? '<p class="warn small">Pip: "That dungeon is cursed! Town quests earn Plot Devices that lift curses. Check <b>Quests</b>, then the Curses tab."</p>' : ''}
       <p class="muted small">Spec: ${U.esc(SD.specs[sv.spec].name)} · Max SLA ${S.maxSla()}</p>
       <div class="row"><button class="ghost" id="g-x">Not yet</button></div>`, { title: 'DUNGEON GATE' });
-    b.querySelector('#g-x').onclick = () => { U.closePanel(); SD.hub.stepOffDoor(); SD.hub.start(); M.hud(); };
+    b.querySelector('#g-x').onclick = U.closePanel;
     b.querySelectorAll('[data-ch]').forEach(el => el.onclick = () => { U.closePanel(); SD.run.start(+el.dataset.ch); });
+    // Keep the village paused until the gate closes, so keys can't walk you around behind it.
+    await waitClose();
   }
 
   SD.onPickup = function () {
