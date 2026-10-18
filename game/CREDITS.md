@@ -68,6 +68,7 @@ Game content paraphrases ideas from these sources; no text is copied from them.
 
 - Alex Xu, *System Design Interview* vol. 1 and 2
 - Martin Kleppmann, *Designing Data-Intensive Applications*
+- Betsy Beyer, Chris Jones, Jennifer Petoff and Niall Richard Murphy (eds.), *Site Reliability Engineering* (the Google SRE Book), for Explodia's academy
 - Hello Interview's delivery framework and core concepts
 - Barbara Oakley, *Learning How to Learn*
 - Justin Sung's videos on learning

@@ -74,8 +74,8 @@
         v2: { x: 13, y: 26, face: 'east', name: 'TRAVELLER' },
         v4: { x: 17, y: 32, face: 'west', name: 'PILGRIM' },
         // Travellers walking the whole road, between Pingsby and the city gate.
-        v1: { x: 14, y: 42, face: 'north', name: 'MERCHANT', route: [[14, 38], [13, 38], [13, 29], [15, 29], [15, 17], [14, 17], [14, 9], [14, 17], [15, 17], [15, 29], [13, 29], [13, 38], [14, 38], [14, 43]] },
-        v3: { x: 15, y: 12, face: 'south', name: 'COURIER', route: [[15, 17], [16, 17], [16, 25], [27, 25], [16, 25], [16, 28], [12, 28], [12, 36], [2, 36], [12, 36], [12, 28], [16, 28], [16, 17], [15, 17], [15, 10]] }
+        v1: { x: 14, y: 42, face: 'north', name: 'MERCHANT', route: [[14, 38], [13, 38], [13, 29], [15, 29], [15, 17], [14, 17], [14, 9], [14, 8, 'in'], [14, 17], [15, 17], [15, 29], [13, 29], [13, 38], [14, 38], [14, 44, 'in']] },
+        v3: { x: 15, y: 12, face: 'south', name: 'COURIER', route: [[15, 17], [16, 17], [16, 25], [28, 25, 'in'], [16, 25], [16, 28], [12, 28], [12, 36], [1, 36, 'in'], [12, 36], [12, 28], [16, 28], [16, 17], [15, 17], [15, 8, 'in']] }
       },
       // Where you stand when you come back through each door.
       back: { L: [1, 35, 'east'], R: [28, 25, 'west'], K: [1, 13, 'east'], X: [14, 8, 'south'], S: [14, 44, 'north'], C: [7, 23, 'south'] },
@@ -416,20 +416,22 @@
     hero1023: () => ['I\'ve died a thousand and twenty-three times. Kyu was there for most of them. She always looked so... tired.'],
     hero500: () => flags().ch8 ? ['Five hundred loops. Kyu fixed my sword once. Then she told me the sword was never the problem.']
       : ['I\'m in the tournament. I have a shield. Just the shield. It\'s a strategy.'],
-    gong: () => ['*GONNNNG.* Sorry. Reflex.', 'The crowd wants every punch live. The last arena master sent results by pigeon. He is now a pigeon.'],
-    v1: () => cur === 'road' ? ['Silk from Pingsby, spices from the Exchange. Everything goes up this road and comes back down more expensive.', 'Walk with me if you like. I don\'t stop, though. Stopping is how the bandits find you. And the tax collectors.']
-      : ['Is the tea always this slow here? ...It\'s good, though. It\'s really good.', 'GO HERO! I don\'t know which one. All of them!'],
-    v2: () => ['I walked here from three loops ago. My feet are still in the last one.'],
-    v3: () => cur === 'road' ? ['Courier! Coming through! Three letters for the arena, one for the waystation, and one that just says "GARY?"', 'Every letter delivered at least once. Sometimes twice. Seymour calls that "at-least-once delivery". I call it Tuesday.'] : ['I bet my whole pension on the guy with the shield. Don\'t tell my wife.', 'Prices only go up. Until they don\'t. Then they really don\'t.'],
-    v4: () => cur === 'arena' ? ['Odds on the hero? Twelve to one. Odds on Kyu? I stopped taking bets on Kyu.'] : ['I\'m on a pilgrimage to the Exchange. I hear if you trade your worries there, you get them back with interest.']
+    gong: () => ['*GONNNNG.* Sorry. Reflex.', 'The crowd wants every punch live. The last arena master sent results by pigeon. He is now a pigeon.']
   };
   let talkI = 0;
   async function talk(id) {
     if (busy) return;
     busy = true; sc.pause();
+    // Whoever you talk to stops and turns to you (the sparring heroes keep their stance).
+    const who = sc.actors[id];
+    if (who && sc.P && !STILL[id]) { if (who.path.length) { who.path = []; if (who.route && who.leg) who.leg--; } sc.face(id, toward(who, sc.P)); }
     try {
+      // Explodia runs her own Explosion Academy (js/explodia.js), quest steps included; the road's ordinary
+      // people are in js/roadfolk.js.
+      if (id === 'explodia' && SD.explodia) { await SD.explodia.talk(); AU.music(MAPS[cur].music); return; }
       if (QS() && QS().pending(id).length) { await QS().talk(id); AU.music(MAPS[cur].music); return; }
       if (id === 'aigerim') { await shop(); AU.music(MAPS[cur].music); return; }
+      if (SD.roadFolk && await SD.roadFolk.talk(cur, id)) return;
       const own = SD.roadTalk && SD.roadTalk.lines[id];
       const lines = (own && own()) || (TALK[id] && TALK[id]());
       if (!lines) return;
@@ -485,22 +487,51 @@
     if (a.hero3 && beat % 3 === 0) sc.emote('hero3', beat % 6 === 0 ? 'star' : 'dots', 0.8);
     if (a.hero12 && beat % 10 === 7) sc.emote('hero12', 'alert', 1.4);
   }, 700);
-  // People on the road don't stand still. Anyone with a `route` walks it, leg by leg, and loops; everyone else
-  // paces a tile or two from where they stand. Nobody moves while a conversation is open or while you are
-  // right next to them, so you can always catch someone to talk to. The sparring heroes have their own beat.
+  // People on the road don't stand still. Anyone with a `route` walks it, leg by leg, and loops; a leg marked
+  // 'in' ends at a door, where they fade out as if they went inside and come back 10-20 seconds later. Everyone
+  // else paces a tile or two from where they stand. Nobody moves while a conversation is open, and anyone you
+  // walk up to stops on the spot, finishes their step and turns to face you. The sparring heroes have their own beat.
   const STILL = { hero77: 1, hero256: 1, hero12: 1, hero404: 1, aigerim: 1, marta: 1 };
+  const toward = (a, P) => Math.abs(P.x - a.x) > Math.abs(P.y - a.y) ? (P.x > a.x ? 'east' : 'west') : (P.y > a.y ? 'south' : 'north');
+  function fade(a, to, done) {
+    const from = a.alpha == null ? 1 : a.alpha, t0 = performance.now();
+    (function step() {
+      const k = Math.min(1, (performance.now() - t0) / 450);
+      a.alpha = from + (to - from) * k;
+      if (k < 1) requestAnimationFrame(step); else { if (to === 1) a.alpha = null; if (done) done(); }
+    })();
+  }
   setInterval(() => {
     if (!sc || !sc.active || busy || !document.getElementById('dialog').hidden) return;
     const now = performance.now(), P = sc.P;
     Object.values(sc.actors).forEach(a => {
-      if (a.player || a.pip || a.hidden || STILL[a.id] || a.path.length || a.moving || a.arrive) return;
-      if (P && Math.abs(P.x - a.x) + Math.abs(P.y - a.y) <= 2) return;
+      if (a.player || a.pip || STILL[a.id]) return;
+      // Someone who went indoors comes back out after a while, at the door they used.
+      if (a.away) {
+        if (now < a.away) return;
+        a.away = 0; sc.hide(a.id, false); a.alpha = 0; fade(a, 1);
+        a.nextStroll = now + 1200;
+        return;
+      }
+      if (a.hidden) return;
+      if (P && Math.abs(P.x - a.x) + Math.abs(P.y - a.y) <= 2) {
+        // Stop walking: drop the rest of the path (the current step finishes) and retake this leg later.
+        if (a.path.length) { a.path = []; if (a.route && a.leg) a.leg--; }
+        if (!a.moving) sc.face(a.id, toward(a, P));
+        a.nextStroll = Math.max(a.nextStroll || 0, now + 1500);
+        return;
+      }
+      if (a.path.length || a.moving || a.arrive) return;
       if (a.home == null) { a.home = [a.x, a.y]; a.nextStroll = now + 1000 + Math.random() * 4000; a.leg = 0; }
       if (now < a.nextStroll) return;
       if (a.route) {
-        const [x, y] = a.route[a.leg++ % a.route.length];
-        sc.walk(a.id, x, y, { speed: 1.8 });
-        a.nextStroll = now + (a.leg % a.route.length === 0 ? 3000 : 300);
+        const [x, y, into] = a.route[a.leg++ % a.route.length];
+        sc.walk(a.id, x, y, { speed: 1.8 }).then(() => {
+          if (!into || a.x !== x || a.y !== y) return;
+          a.away = Infinity;
+          fade(a, 0, () => { sc.hide(a.id, true); a.away = performance.now() + 10000 + Math.random() * 10000; });
+        });
+        a.nextStroll = now + 300;
         return;
       }
       // Pace: one or two tiles along one axis, only over open ground, then back home next time.
@@ -514,10 +545,10 @@
           if (!sc.walkable(cx, cy)) { tx = a.x; ty = a.y; break; }
         }
       }
-      if (tx !== a.x || ty !== a.y) sc.walk(a.id, tx, ty, { speed: 1.4 }).then(() => { if (!a.path.length) sc.face(a.id, P ? (Math.abs(P.x - a.x) > Math.abs(P.y - a.y) ? (P.x > a.x ? 'east' : 'west') : (P.y > a.y ? 'south' : 'north')) : 'south'); });
+      if (tx !== a.x || ty !== a.y) sc.walk(a.id, tx, ty, { speed: 1.4 }).then(() => { if (!a.path.length) sc.face(a.id, P ? toward(a, P) : 'south'); });
       a.nextStroll = now + 3500 + Math.random() * 5000;
     });
-  }, 400);
+  }, 250);
   NR.go = go;
   NR.where = () => cur;
   NR.scene = () => sc;

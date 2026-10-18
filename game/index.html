@@ -632,6 +632,35 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 @keyframes flashOut { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }
 @media (max-width: 520px) { .foe { width: 88px; height: 88px; } .stage .foe { width: 100px; height: 100px; } .bossfight .stage .foe { width: 124px; height: 124px; } .stage .hero { transform: scale(1.8); } .foe-name { font-size: 17px; } .card { width: 120px; } }
+/* Group fights (js/run.js): 2-3 incidents side by side; tap one to target it. */
+.stage.group .hero { left: 6%; }
+.stage.group .foe { right: var(--gx); width: 112px; height: 112px; cursor: pointer; transition: filter .2s, opacity .3s; }
+.stage.group .foe:focus-visible { outline: 3px dashed var(--sun); outline-offset: 2px; border-radius: 12px; }
+.stage.group .foe.tgt::before { content: '\25BC'; position: absolute; left: 50%; top: -14px; translate: -50% 0; color: var(--sun); font-size: 18px; text-shadow: 0 0 0 var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); animation: bob 1.2s ease-in-out infinite; }
+.stage.group .foe.tgt::after { content: ''; position: absolute; left: 12%; right: 12%; bottom: 0; height: 8px; border-radius: 50%; border: 2px solid var(--sun); z-index: -1; }
+.stage.group .foe.elite { width: 136px; height: 136px; }
+.stage.group .foe.down { filter: grayscale(1) brightness(.8); opacity: .35; cursor: default; }
+.stage.group .foe.down::before, .stage.group .foe.down::after { display: none; }
+.gfoes { display: flex; gap: 8px; justify-content: center; } .gfoes .foe { width: 80px; height: 80px; cursor: pointer; } .gfoes .foe.down { opacity: .35; filter: grayscale(1); }
+.foe-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .foe-row.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.foe-card { display: grid; gap: 4px; align-content: start; min-width: 0; padding: 6px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; cursor: pointer; }
+.foe-card.tgt { background: #fff6dc; box-shadow: 0 0 0 3px var(--sun), 0 3px 0 var(--ink); }
+.foe-card:focus-visible { outline: 3px dashed var(--blue-d, #2b6cd6); outline-offset: 2px; }
+.foe-card.down { opacity: .45; background: #f4f1ea; cursor: default; }
+.fc-name { font-family: var(--f-head); font-weight: 700; font-size: 15px; line-height: 1.15; overflow-wrap: anywhere; }
+.fc-tgt { display: inline-block; font-family: var(--f-body); font-size: 9px; font-weight: 800; letter-spacing: .08em; padding: 1px 5px; margin-right: 4px; border: 2px solid var(--ink); border-radius: 8px; background: var(--sun); vertical-align: middle; }
+.foe-card .bar.sev { height: 16px; } .foe-card .bar.sev span { font-size: 11px; line-height: 12px; }
+.foe-card .intent { font-size: 12px; padding: 4px 6px; border-radius: 10px; line-height: 1.25; }
+.foe-card .intent .lbl { font-size: 10px; padding: 0 5px; margin-right: 3px; }
+.gfi .tags { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
+.chip.fuse { background: #ffd9b3; }
+@media (max-width: 520px) {
+  .stage.group .foe { width: 78px; height: 78px; } .stage.g3 .foe { width: 64px; height: 64px; } .stage.group .foe.elite { width: 96px; height: 96px; }
+  .stage.group .hero { transform: scale(1.5); left: 4%; }
+  .fc-name { font-size: 13px; } .foe-row.n3 .fc-name { font-size: 12px; }
+  .foe-card { padding: 5px; } .foe-card .intent { font-size: 11px; padding: 3px 5px; }
+  .foe-row.n3 .foe-card .intent .lbl { display: none; }
+}
 /* Phones: the hand wraps three to a row instead of scrolling sideways. */
 @media (max-width: 600px) {
   .hand { flex-wrap: wrap; justify-content: center; overflow: visible; gap: 14px 6px; padding: 12px 0 8px; scroll-snap-type: none; }
@@ -772,6 +801,8 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/main.js"></script>
 <script src="js/northroad.js"></script>
 <script src="js/sidequests.js"></script>
+<script src="js/roadfolk.js"></script>
+<script src="js/explodia.js"></script>
 <script src="js/ploy-quest.js"></script>
 <script src="js/saule-quest.js"></script>
 <!-- Debug start (testing only; remove before release) -->

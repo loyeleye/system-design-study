@@ -296,7 +296,13 @@ SD.cards = {
   cms:      { name: 'Count-Min Sketch', cost: 0, kind: 'action', pow: 4, tags: ['sketch'], sketch: true, text: 'The next Stream is halved. Approximate counts in a few kilobytes: may overcount, never undercounts.', art: 'sketch', rarity: 'common', concept: 'topk', ch: 3 },
   topkheap: { name: 'Top-K Heap', cost: 1, kind: 'action', abs: { read: 9 }, pow: 7, tags: ['topk'], text: 'Absorb {read} read load. Keep only the K biggest counts in a min-heap; precompute the leaderboard.', art: 'heap', rarity: 'common', concept: 'topk', ch: 3 },
   quorumrw: { name: 'Quorum Read (W+R>N)', cost: 1, kind: 'action', abs: { read: 6 }, pow: 6, tags: ['quorum'], clearStale: true, text: 'Absorb {read} read load. Remove all Stale: the read set overlaps the latest write.', art: 'quorum', rarity: 'uncommon', concept: 'consistency', ch: 3 },
-  loadshed: { name: 'Load Shedding', cost: 1, kind: 'action', abs: { any: 6 }, pow: 6, tags: ['shed'], shed: true, text: 'Absorb {any} load. This turn an Overload is halved: drop the least important work, keep checkout alive.', art: 'shed', rarity: 'common', concept: 'backpressure', ch: 3 }
+  loadshed: { name: 'Load Shedding', cost: 1, kind: 'action', abs: { any: 6 }, pow: 6, tags: ['shed'], shed: true, text: 'Absorb {any} load. This turn an Overload is halved: drop the least important work, keep checkout alive.', art: 'shed', rarity: 'common', concept: 'backpressure', ch: 3 },
+  // Multi-attack cards (`all: true`): their mitigation hits every incident in a group fight (see SD.groupFights).
+  broadcast: { name: 'Broadcast Fix', cost: 1, kind: 'action', mit: 5, all: true, tags: ['ops'], text: 'Mitigate {mit} to ALL incidents. One config push reaches every server at once.', art: 'fanout', rarity: 'common', ch: 3 },
+  fleetrollback: { name: 'Fleet-wide Rollback', cost: 2, kind: 'action', mit: 10, all: true, exhaust: true, tags: ['ops'], text: 'Mitigate {mit} to ALL incidents. Exhaust. Every region goes back to the last good build.', art: 'undo', rarity: 'uncommon', ch: 3 },
+  globalrl: { name: 'Global Rate Limit', cost: 2, kind: 'action', abs: { any: 4 }, pow: 8, all: true, tags: ['ratelimit'], text: 'Absorb {any} load. Hit ALL incidents with rate limiting: full effect on those weak to it, half on the rest.', art: 'earth2', rarity: 'uncommon', concept: 'ratelimit', ch: 3 },
+  // A delayed blast (`fuse`): Slay the Spire's Bomb. A quest reward only (`quest: true` keeps it out of rewards and shops).
+  'sre-bomb': { name: 'Error Budget Bomb', cost: 2, kind: 'action', fuse: { turns: 3, mit: 40 }, exhaust: true, quest: true, tags: ['ops'], text: 'Exhaust. In 3 turns, deal 40 to ALL incidents: the error budget runs out on everyone at once.', art: 'alarm-clock', rarity: 'rare' }
 };
 
 SD.starterDeck = ['hotfix', 'hotfix', 'hotfix', 'hotfix', 'bigbox', 'bigbox', 'bigbox', 'bigbox', 'replica', 'cacheaside'];
@@ -309,7 +315,20 @@ SD.cardUnlocks = {
 };
 // Chapter cards join the reward pool in that chapter's dungeon once it is unlocked.
 SD.chapterCards = { 2: ['tokenbucket', 'slidingwindow', 'gateway', 'atomicincr', 'mq', 'backoff', 'idemkey', 'presign', 'chunk'],
-  3: ['btree', 'lsm', 'invindex', 'fanwrite', 'hybridfeed', 'seathold', 'waitroom', 'streamagg', 'cms', 'topkheap', 'quorumrw', 'loadshed'] };
+  3: ['btree', 'lsm', 'invindex', 'fanwrite', 'hybridfeed', 'seathold', 'waitroom', 'streamagg', 'cms', 'topkheap', 'quorumrw', 'loadshed', 'broadcast', 'fleetrollback', 'globalrl'] };
+
+// Group fights: two or three incidents at once (Slay the Spire style), so cards with `all: true` pay off.
+// This is the one table that sets how often they happen; run.js fight() reads it. Chapters 1-2 never have them.
+SD.groupFights = {
+  // Chance that a normal fight brings company, by chapter.
+  odds: { 3: 0.2, 4: 0.2, 5: 0.35, 6: 0.35, 7: 0.45, 8: 0.45, 9: 0.45, 10: 0.45 },
+  // Of those, the chance it is a trio rather than a pair.
+  trio: { 5: 0.25, 6: 0.25, 7: 0.4, 8: 0.4, 9: 0.4, 10: 0.4 },
+  // Chance an elite brings a minion along (chapters 7-10).
+  elite: { 7: 0.3, 8: 0.3, 9: 0.3, 10: 0.3 },
+  // Each member's severity and damage as a share of the same incident fought alone, so a group is not much harder.
+  scale: { 2: { sev: 0.6, dmg: 0.6 }, 3: { sev: 0.42, dmg: 0.45 }, elite: { sev: 0.8, dmg: 0.8 }, minion: { sev: 0.4, dmg: 0.45 } }
+};
 
 // Incidents. weak/resist map a card tag to the reason shown on screen. `flavor` is the joke; `symptom` is the lesson.
 SD.enemies = {

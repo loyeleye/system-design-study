@@ -588,7 +588,8 @@
   const qs = () => (S.save.quests = S.save.quests || {});
   QS.devices = () => (S.save.devices = S.save.devices || []);
   QS.has = id => QS.devices().includes(id);
-  const unlocked = q => !q.unlock || !!S.save.flags['ch' + q.unlock];
+  // `requires` (optional) is a function for quests that also wait on something else, like an earlier quest.
+  const unlocked = q => (!q.unlock || !!S.save.flags['ch' + q.unlock]) && (!q.requires || q.requires());
   const status = q => { const s = qs()[q.id]; return s && s.done ? 'done' : s ? 'active' : unlocked(q) ? 'open' : 'locked'; };
   const stepOf = q => q.steps[qs()[q.id].step];
   QS.status = id => status(QUESTS.find(q => q.id === id));
