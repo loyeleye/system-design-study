@@ -27,14 +27,14 @@ Smudge's rebuild-the-diagram loop is inspired by InterviewReady's [The Joy of Sy
 
 | Track | Author and source | License | Plays |
 | --- | --- | --- | --- |
-| "Instavista" (Upbeat Refreshing Commercial) | ISAo (https://airyluvs.com/), https://opengameart.org/content/upbeat-refreshing-commercial | [OGA-BY 3.0](https://static.opengameart.org/OGA-BY-3.0.txt) | Title |
+| "Kokoro no Yume" (2 min edit) | Paul Winter (kaazoom), https://pixabay.com/music/main-title-kokoro-no-yume-2-min-edit-440922/ | [Pixabay Content License](https://pixabay.com/service/license-summary/) | Title |
 | "Local Forecast - Elevator" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The office (first 64 s, faded) |
 | "Fluffing a Duck" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Uptima's arrival |
 | "Hot Springs Town" | Kistol, https://opengameart.org/content/hot-springs-town | CC0 | The village |
 | "Cozy Puzzle In-Game 1" | MintoDog, https://opengameart.org/content/cozy-puzzle-in-game-1 | CC0 | Town quests, mini-games and lessons |
 | "Emotional Piano" | Centurion_of_war, https://opengameart.org/content/emotional-piano-0 | CC0 | Story moments in quests |
 | "Enchanted Festival" (the author's looped version) | Matthew Pablo (http://www.matthewpablo.com), https://opengameart.org/content/enchanted-festival | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | The Adventurers' Guild |
-| "Blaze" (Cinematic Uplifting Emotional Battle) | ISAo (https://airyluvs.com/), https://opengameart.org/content/cinematic-uplifting-emotional-battle | [OGA-BY 3.0](https://static.opengameart.org/OGA-BY-3.0.txt) | The dungeon map |
+| "Kaze no Kioku" (3:15 loopable edit) | Paul Winter (kaazoom), https://pixabay.com/music/world-kaze-no-kioku-315-loopable-edit-439962/ | [Pixabay Content License](https://pixabay.com/service/license-summary/) | The dungeon map |
 | "JRPG Epic Rock Battle Theme #1" | HydroGene, https://opengameart.org/content/jrpg-epic-rock-battle-theme-1 | CC0 | Battles |
 | "Epic Boss Battle [Seamlessly Looping]" | Juhani Junkala (SubspaceAudio), https://opengameart.org/content/boss-battle-music | CC0 | Boss |
 | Music Jingles (SAX set) | Kenney, via OpenGameArt | CC0 | Victory, defeat and Gary jingles |
@@ -43,9 +43,9 @@ Kevin MacLeod credit line: "Local Forecast - Elevator" and "Fluffing a Duck" by 
 
 Matthew Pablo credit line: "Enchanted Festival" by Matthew Pablo (http://www.matthewpablo.com), licensed under CC BY 3.0, https://creativecommons.org/licenses/by/3.0/, via https://opengameart.org/content/enchanted-festival
 
-ISAo credit line: "Instavista" and "Blaze" by ISAo (https://airyluvs.com/), licensed under OGA-BY 3.0, via OpenGameArt.org.
+Pixabay credit line: "Kokoro no Yume" and "Kaze no Kioku" by Paul Winter (kaazoom), via Pixabay (Pixabay Content License). Pixabay marks both as AI-generated. The license allows use inside the game but not standalone redistribution, so these files must not be offered as separate downloads or a soundtrack pack.
 
-The music is anime-flavoured on purpose, but none of it comes from an anime soundtrack: commercial OSTs are copyrighted and this repo is public, so every track here is CC0, CC BY or OGA-BY.
+The music is anime-flavoured on purpose, but none of it comes from an anime soundtrack: commercial OSTs are copyrighted and this repo is public, so every track here is CC0 or CC BY, except the two Pixabay tracks (Pixabay Content License, chosen by Ladi; see above).
 
 Music was re-encoded to 80 kbps MP3 and loudness-normalised; nothing else was changed.
 
