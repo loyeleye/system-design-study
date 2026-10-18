@@ -63,12 +63,12 @@ Ladi pointed at One Punch Man, Overly Cautious Hero, and an r/anime top-10 threa
 | **Gary** | An overpowered Principal Engineer and hobbyist. He makes ONE COMMIT rescues. | Saitama (One Punch Man) |
 | **Sir Seymour Backups** | The Thrice-Replicated Knight. He prepares to prepare. He runs the Spec choice and the "how many backups is enough" jokes. | Seiya (Cautious Hero) |
 | **Mio** | An 8-year-old future hero who can hear what servers think. She draws you a crayon picture every respawn. | Anya (Spy x Family) |
-| **Grandma Wen** | Runs the Cache Café, the meta shop. She remembers her regulars and forgets the rest ("least recently used"). | Village-shopkeeper archetype |
+| **Grandma Wen** | Chinese, silver bun with a jade hairpin and round glasses. Runs the Cache Café, the meta shop. She remembers her regulars and forgets the rest ("least recently used"). | Village-shopkeeper archetype |
 | **Chad the Consultant** | A Certified Solutions Visionary. In an event he sells you "vertical scaling, but make it enterprise". | Reigen (Mob Psycho 100) |
-| **Bru** | The Adventurers' Guild receptionist (Rank: Overworked). Gives out quests, keeps the prayer logs, says "EHHH?!" a lot. | The guild-receptionist archetype (Danmachi, Konosuba's Luna) |
-| **Bram** | The blacksmith. One anvil, one man, until you teach him horizontal scaling. | The gruff-mentor smith (Clint in Stardew Valley) |
+| **Bru** | Marisol Cruz, Latina (Mexican heritage), the Adventurers' Guild receptionist (Rank: Overworked). "Bru" is short for Brújula ("compass") because she always knows where every adventurer is. Gives out quests, keeps the prayer logs, mutters "ay, no", says "EHHH?!" a lot. A core character in chapters 7–10. | The guild-receptionist archetype (Danmachi, Konosuba's Luna) |
+| **Ayo** | The blacksmith, Nigerian (Yoruba). One anvil, one man, until you teach him horizontal scaling. Proud, calm, very warm, with a booming laugh; names every hammer and writes a post-mortem for every bent sword. "My fire runs on-prem." A core character in chapters 7–10. | The gruff-mentor smith (Clint in Stardew Valley) |
 | **Postmaster Coo** | A pigeon who runs the Pigeon Post. Delivers at least once. | Talking-animal civil servants (Ghibli's Baron, Kiki's postal work) |
-| **Lexi** | Chuunibyou librarian guarding the "Forbidden Index" (a card catalogue). | Rikka (Love, Chunibyo & Other Delusions) |
+| **Lekha "Lexi"** | South Asian (Indian) chuunibyou librarian, eyepatch over a perfectly good eye, guarding the "Forbidden Index" (a card catalogue). | Rikka (Love, Chunibyo & Other Delusions) |
 | **Farmer Cron** | Does everything at midnight, like his father did. Causes the valley's thundering herd. | Stardew's farmers; the cron job |
 | **Kaito** | The *other* isekai hero, self-appointed rival, Legendary Skill: Kubernetes. Overengineers everything. Tsundere about learning. | Kazuma's rivals, Vegeta-style rivals, and every "rewrite it in microservices" engineer |
 | **Doug** | Runs a "totally legit" bot named Kevin that refreshes the quest board ten thousand times a minute. | The scraper in every rate-limiting post-mortem |
@@ -107,12 +107,12 @@ Quests 1–15 are built. Quests 16–20 come with chapter 4, since they teach th
 | # | Quest | Giver | Steps | Teaches | Mini-game | Plot Device |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Form 27B, Stamped | Bru | Bru → Uptima signs in the wrong box → Bru | Requirements; napkin math | Requirements Sort, Napkin Math | **Form 27B (Stamped):** bosses start 10% weaker |
-| 2 | One Anvil, One Man, One Very Long Line | Bram | Bram → Mio's class → Seymour's squires → Bram | Load balancing, horizontal scaling, stateless workers | Front Desk, Blueprint | **Apprentice's Hammer:** crash intents halved, Add Server absorbs +3 |
+| 2 | One Anvil, One Man, One Very Long Line | Ayo | Ayo → Mio's class → Seymour's squires → Ayo | Load balancing, horizontal scaling, stateless workers | Front Desk, Blueprint | **Apprentice's Hammer:** crash intents halved, Add Server absorbs +3 |
 | 3 | Pigeon Post-Apocalypse | Coo | Coo → Wen → Coo | At-least-once delivery, idempotency keys, dead-letter queues | Dedupe Desk | **Idempotent Wax Seal:** retry intents −30% and no Stale |
 | 4 | Doug's Totally Legit Bot | Bru | Bru → Doug → Bru → Doug | Rate limiting algorithms and where the limiter lives | Limiter Lab, What's Missing? | **Kevin, Doug's Confiscated Bot:** flood intents −30% |
 | 5 | Hiro's Loop Bread | Wen | Wen → Mio → Coo → Seymour → Wen | Replication, snapshots, write-ahead logs | Rebuild the Recipe | **Hiro's Recipe Card:** +8 max SLA, break rooms heal 10% more |
 | 6 | The Forbidden Index | Lexi | Lexi → Kaito → Lexi | Indexes, full scans, the write cost of indexing | The Forbidden Index | **Lexi's Bookmark:** a correct diagnosis gives +2 Capacity |
-| 7 | Midnight at Cron's Farm | Cron | Cron → Bram → Cron | Thundering herds, jitter, exponential backoff | Jitter Garden | **Cron's Straw Hat:** stampede and burst intents −30% |
+| 7 | Midnight at Cron's Farm | Cron | Cron → Ayo → Cron | Thundering herds, jitter, exponential backoff | Jitter Garden | **Cron's Straw Hat:** stampede and burst intents −30% |
 | 8 | Kaito's 47 Microservices | Kaito | Kaito → Mio → Kaito (a duel) | Requirements first, monoliths, not overengineering | Declutter | **Kaito's Spare Cluster:** +1 card on the first turn of every fight |
 | 9 | Seymour, Seymour and Seymour | Seymour | Seymour → Uptima | Quorums (N, W, R) and the CAP trade-off | Quorum Dial | **Seymour's Spare Shield:** audits 2 per Stale; unchosen partitions deal half |
 | 10 | The Goddess's Performance Review | Uptima | Uptima → Bru → Uptima → Coo → Uptima | Percentiles, SLOs, error budgets | Performance Review | **Uptima's Bent Halo:** the first 5 damage each fight is ignored |

@@ -47,7 +47,7 @@
     { id: 'mio', name: 'MIO', x: 3, y: 14, door: 'H', emo: 'idea' },
     { id: 'seymour', name: 'SEYMOUR', x: 30, y: 13, door: 'W', emo: 'alert' },
     { id: 'bru', name: 'BRU', x: 37, y: 6, door: 'U', emo: 'star' },
-    { id: 'bram', name: 'BRAM', x: 46, y: 6, door: 'F', emo: 'alert' },
+    { id: 'ayo', name: 'AYO', x: 46, y: 6, door: 'F', emo: 'alert' },
     { id: 'coo', name: 'COO', x: 33, y: 13, bird: true, door: 'P', emo: 'music' },
     { id: 'lexi', name: 'LEXI', x: 45, y: 14, door: 'K', emo: 'idea' },
     { id: 'cron', name: 'CRON', x: 43, y: 16, emo: 'sleep' },

@@ -152,7 +152,7 @@
 
   // ---------- Buildings and villagers ----------
   // Who stands at each door, and what "go inside" means when they also have quest business.
-  const DOOR_NPC = { A: 'uptima', C: 'wen', H: 'mio', W: 'seymour', U: 'bru', F: 'bram', P: 'coo', K: 'lexi' };
+  const DOOR_NPC = { A: 'uptima', C: 'wen', H: 'mio', W: 'seymour', U: 'bru', F: 'ayo', P: 'coo', K: 'lexi' };
   const VISIT = { A: 'Visit the temple', C: 'Go into the café', H: 'Climb into the treehouse', W: 'Enter the bunker', U: "Check the Guild's quest log", F: 'Look around the Forge', P: 'Browse the Pigeon Post', K: 'Browse the library' };
   // One conversation at a time: a second trigger (a tap landing while a door's walk-in timer runs) would
   // start a second dialogue on top of the first and strand it.
@@ -215,7 +215,9 @@
     if (S.save.pages.length >= 5) sv.flags.notebookSeen = sv.loop;
     await U.dialog(lines.map(t => ({ s: 'uptima', t })));
     // Priming: the gist before the details.
-    const ch = Math.min(sv.chapter || 1, Object.keys(GIST).length);
+    // Later chapters keep their gist next to their content (SD.gists in js/ch4.js and on).
+    Object.assign(GIST, SD.gists || {});
+    const ch = Math.max(...Object.keys(GIST).map(Number).filter(k => k <= (sv.chapter || 1)));
     const g = GIST[ch];
     const ids = Object.keys(SD.concepts).filter(id => SD.concepts[id].zone === ch);
     const b = U.panel(`<p class="muted small">Uptima's gist board. A minute on the big picture now makes the details land later. Read the shape, not the fine print.</p>
@@ -247,7 +249,7 @@
     const store = { load: () => (sv.whiteboard = sv.whiteboard || {}), save: d => { sv.whiteboard = d; S.persist(); } };
     AU.music('boss');
     SD.wb.hall(root.querySelector('#wb-root'), {
-      maxChapter: Math.min(3, sv.chapter || 1), store,
+      maxChapter: sv.chapter || 1, store,
       onResult(res) {
         (res.concepts || []).forEach(id => { if (SD.concepts[id]) S.recordAnswer(id, false, 1); });
         SD.wb.blueprints.find(x => x.id === res.bp).nodes.forEach(n => { const id = SD.wb.parts[n.p] && SD.wb.parts[n.p].concept; if (id && SD.concepts[id]) S.seeConcept(id); });
@@ -340,7 +342,7 @@
   }
 
   async function forge() {
-    await SD.quests.idle('bram');
+    await SD.quests.idle('ayo');
     SD.quests.log('devices');
     await waitClose();
   }
@@ -352,6 +354,12 @@
     await U.dialog(SD.story.gary[i % SD.story.gary.length].map(t => ({ s: 'gary', t })));
   }
 
+  // Which weeks of the real 10-week plan each later chapter covers (job-hunt-agent/interview/study_plan_dsa_system_design.md).
+  const PLAN = [
+    [6, 'Chapter 6 is the Applied AI add-on from your plan: retrieval-augmented generation, evaluation, latency and cost, and guardrails. Pick it up only once an applied-AI company moves you to a screen.'],
+    [5, 'Chapter 5 covers weeks 7 and 8 of your Hello Interview track: the notification service, then YouTube and the web crawler, with DNS, CDNs, deployments and monitoring along the way.'],
+    [4, 'Chapter 4 covers weeks 6 and 7 of your Hello Interview track: Uber and WhatsApp, then the key-value store and distributed cache, with consensus, clocks, locks and sagas from quests 11 to 15.']
+  ];
   async function board() {
     const sv = S.save;
     const done = sv.flags.dailyDate === today();
@@ -360,7 +368,7 @@
       <ul class="qlist"><li>Answer 5 review questions <span class="muted">${due ? `(${due} concept${due > 1 ? 's' : ''} due)` : ''}</span></li></ul>
       <p class="small">Reward: 40 XP and 2 Memory Shards. ${done ? '<b>Completed today.</b> You can still practise for XP.' : 'Skipping the daily quest has no penalty. Uptima says the penalty is forgetting. She also forgets things, so.'}</p></div>
       <div class="plan"><div class="q-ctx">Your real study plan</div>
-      <p class="small">${(sv.chapter || 1) >= 3 ? 'Chapter 3 covers weeks 4 and 5 of your Hello Interview track: Ticketmaster and the news feed, then top-K and the ad click aggregator, with indexes, consistency models, search and backpressure along the way.' : (sv.chapter || 1) >= 2 ? 'Chapter 2 covers week 3 of your Hello Interview track: the rate limiter and Dropbox-style file sync, plus queues and retries from week 2\'s key technologies.' : 'Chapter 1 covers weeks 1 and 2 of your Hello Interview track: the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener.'} Do the week's problem on paper first; use runs here to keep it fresh.</p></div>
+      <p class="small">${PLAN.find(([c]) => (sv.chapter || 1) >= c) ? PLAN.find(([c]) => (sv.chapter || 1) >= c)[1] : (sv.chapter || 1) >= 3 ? 'Chapter 3 covers weeks 4 and 5 of your Hello Interview track: Ticketmaster and the news feed, then top-K and the ad click aggregator, with indexes, consistency models, search and backpressure along the way.' : (sv.chapter || 1) >= 2 ? 'Chapter 2 covers week 3 of your Hello Interview track: the rate limiter and Dropbox-style file sync, plus queues and retries from week 2\'s key technologies.' : 'Chapter 1 covers weeks 1 and 2 of your Hello Interview track: the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener.'} Do the week's problem on paper first; use runs here to keep it fresh.</p></div>
       <div class="row"><button class="primary" id="dq-go">Start</button><button class="ghost" id="dq-x">Later</button></div>`, { title: 'QUEST BOARD', onClose: () => resolveBoard() });
     let resolveBoard;
     await new Promise(res => {

@@ -8,7 +8,7 @@
   // ---- Dialogue with typewriter text ----
   let dq = [], dDone = null, typing = null, full = '';
   // Each speaker gets a typewriter blip pitch, the way classic JRPGs give characters a voice.
-  const VOICE = { uptima: 900, pip: 1250, gary: 210, seymour: 480, mio: 1100, wen: 720, chad: 430, latency: 150, system: 620, you: 660, bru: 980, bram: 260, coo: 1400, lexi: 820, cron: 330, kaito: 560, doug: 390 };
+  const VOICE = { uptima: 900, pip: 1250, gary: 210, seymour: 480, mio: 1100, wen: 720, chad: 430, latency: 150, system: 620, you: 660, bru: 980, ayo: 260, coo: 1400, lexi: 820, cron: 330, kaito: 560, doug: 390 };
   U.dialog = function (lines, done) {
     return new Promise(res => {
       dq = lines.slice(); dDone = () => { if (done) done(); res(); };

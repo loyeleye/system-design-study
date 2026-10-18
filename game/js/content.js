@@ -557,7 +557,7 @@ SD.intentText = {
   crash: i => `Crash ${i.n}: unless a load balancer reroutes`,
   audit: i => `Consistency audit: ${i.per || 3} damage per Stale`,
   partition: i => `Partition ${i.n}: choose C or A`,
-  escalate: () => 'Escalates: all load +3',
+  escalate: i => `Escalates: all load +${(i && i.up) || 3}`,
   collide: i => `Collision ${i.n}: unless IDs are unique`,
   flood: i => `Flood ${i.n}: one client, way too many requests`,
   burst: i => `Burst ${i.n}: a spike of writes`,
@@ -1028,7 +1028,7 @@ SD.story = {
     { s: 'gary', t: 'Oh, hey. I was going to fix it, but I was in the waiting room. Very fair. They told me my place in line.' },
     { s: 'uptima', e: 'happy', t: 'My concert is SAVED! Forty fans, forty seats! ...Thirty-eight are Seymour. He bought backups.' },
     { s: 'latency', t: '...Is this the queue for the concert? Hello? My tickets will arrive... eventually.' },
-    { s: 'system', t: '[SYSTEM] Chapter 3 cleared. Next dungeon: the Sky Harbour. (Coming soon: chat, presence, consensus and clocks.)' }
+    { s: 'system', t: '[SYSTEM] Chapter 3 cleared. New town quests are posted. Next dungeon: the Sky Harbour, where chat, maps, consensus and clocks are waiting.' }
   ],
   boss3bIntro: [
     { s: 'narr', t: 'At the top of the Spire, something vast scrolls by. Three eyes. No end. It is reading everyone\'s posts, all at once.' },
@@ -1043,6 +1043,6 @@ SD.story = {
     { s: 'kaito', t: 'It saw my post in under a second? Hmph. Not that I care. ...I care a little.' },
     { s: 'gary', t: 'Oh. I muted it years ago. Nice to know it works now.' },
     { s: 'uptima', e: 'happy', t: 'Caught up! I have never been caught up on anything. This is incredible. I\'m going to post about it.' },
-    { s: 'system', t: '[SYSTEM] Chapter 3 cleared. Next dungeon: the Sky Harbour. (Coming soon: chat, presence, consensus and clocks.)' }
+    { s: 'system', t: '[SYSTEM] Chapter 3 cleared. New town quests are posted. Next dungeon: the Sky Harbour, where chat, maps, consensus and clocks are waiting.' }
   ]
 };

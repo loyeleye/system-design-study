@@ -42,7 +42,7 @@
   function gateFx(done, ch) {
     const fx = document.createElement('div');
     fx.className = 'gatefx';
-    fx.innerHTML = `<div class="gate-t">${{ 2: 'DIVING INTO THE ARCHIVES...', 3: 'CLIMBING THE CLOCKWORK SPIRE...' }[ch] || 'ENTERING PROD...'}</div>`;
+    fx.innerHTML = `<div class="gate-t">${(SD.chapters[ch] && SD.chapters[ch].gate) || { 2: 'DIVING INTO THE ARCHIVES...', 3: 'CLIMBING THE CLOCKWORK SPIRE...' }[ch] || 'ENTERING PROD...'}</div>`;
     document.body.appendChild(fx);
     AU.sfx('gate');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -144,11 +144,18 @@
   }
   // Animated bits per chapter: Prod's torches flicker, the Archives' scrolls bob on the flood,
   // the Spire's gears turn and its vents puff steam. Everything else is painted once.
-  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam' };
+  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam', d4a: 'bob', d4b: 'spin', d5a: 'torch' };
+  // A chapter uses its own art when it has some, and borrows the first three chapters' in turn otherwise.
+  function artCh(have) {
+    const ch = (S.save.run && S.save.run.ch) || 1;
+    return have && (Array.isArray(have) ? have.includes(String(ch)) : have[ch]) ? ch : ((ch - 1) % 3) + 1;
+  }
+  // Weather by chapter: sun and leaves early on, wind and drifting cloud in the Sky Harbour, storms elsewhere.
+  const WEATHER = { 1: 'sun', 2: 'sun', 4: 'wind' };
   function paintMap(el, floors, xy, bend, rows, cur) {
     const A = dArt(), cv = el && el.querySelector('.map-bg');
     if (!A || !cv) return;
-    const run = S.save.run, ch = String(((((run && run.ch) || 1) - 1) % 3) + 1);
+    const run = S.save.run, ch = String(artCh(A.terrain));
     const W = el.clientWidth, H = el.clientHeight, ts = 24;
     const again = () => { if (el.isConnected) paintMap(el, floors, xy, bend, rows, cur); };
     const P = (x, y) => [x / 300 * W, y / (rows * 100) * H];
@@ -196,11 +203,28 @@
     const you = SD.villageArt && SD.villageArt.chars && SD.villageArt.chars.you, youPic = you && dPic('../village/c-you', again);
     const [hx, hy] = cur ? P(...xy(cur)) : [W / 2, H - 8];
     // Weather: early chapters get sun rays and leaves on the wind, later ones rain and thunderstorms.
-    const stormy = ((run && run.ch) || 1) >= 3;
+    const sky = WEATHER[(run && run.ch) || 1] || 'storm', stormy = sky === 'storm';
+    const puffs = Array.from({ length: 9 }, (_, k) => ({ x: hash(k, 21) % W, y: hash(21, k) % H, r: 26 + hash(k, 23) % 40, v: 0.5 + (hash(k, 25) % 50) / 100 }));
+    const gusts = Array.from({ length: 14 }, (_, k) => [hash(k, 31) % W, hash(31, k) % H, 0.6 + (hash(k, 33) % 60) / 100]);
     const leaves = Array.from({ length: 16 }, (_, k) => ({ x: hash(k, 3) % W, y: hash(3, k) % H, v: 0.6 + (hash(k, 9) % 60) / 100, c: ['#8fd16a', '#e8b04a', '#d9783f', '#b6e07a'][k % 4], r: (hash(k, 5) % 628) / 100 }));
     const drops = Array.from({ length: 140 }, (_, k) => [hash(k, 11) % W, hash(11, k) % H, 0.8 + (hash(k, 13) % 40) / 100]);
     let bolt = null;
     function weather(c, t, W, H) {
+      if (sky === 'wind') {
+        // Cloud banks drifting past below the docks, and quick white gust lines
+        puffs.forEach(p => {
+          const x = (p.x + t * 14 * p.v) % (W + p.r * 2) - p.r, y = p.y + Math.sin(t * 0.4 + p.r) * 6;
+          c.fillStyle = 'rgba(255,255,255,.22)';
+          [[0, 0, 1], [p.r * 0.6, 4, 0.7], [-p.r * 0.6, 6, 0.65]].forEach(([dx, dy, k]) => { c.beginPath(); c.ellipse(x + dx, y + dy, p.r * k, p.r * 0.45 * k, 0, 0, 7); c.fill(); });
+        });
+        c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.5; c.lineCap = 'round';
+        gusts.forEach(([gx, gy, v]) => {
+          const k = (t * 0.35 * v + gx / W) % 1, x = k * (W + 120) - 60, a = Math.sin(k * Math.PI);
+          if (a < 0.2) return;
+          c.globalAlpha = a; c.beginPath(); c.moveTo(x, gy); c.quadraticCurveTo(x + 18, gy - 5, x + 40, gy); c.stroke(); c.globalAlpha = 1;
+        });
+        return;
+      }
       if (!stormy) {
         // Slanted sun rays that breathe slowly
         for (let k = 0; k < 4; k++) {
@@ -324,9 +348,10 @@
     S.persist();
   };
   function cardChoices(n) {
-    // Each dungeon offers its own chapter's cards (weighted up) plus the general pool.
+    // Each dungeon offers its own chapter's cards (weighted up), earlier chapters' cards, and the general pool.
+    // From chapter 4 on, older incidents come back, so their answers have to be findable too.
     const ch = S.save.run.ch || 1;
-    const pool = S.unlockedCards().filter(id => (SD.cards[id].ch || 1) <= ch && !(SD.cards[id].ch && SD.cards[id].ch !== ch));
+    const pool = S.unlockedCards().filter(id => { const c = SD.cards[id].ch; return !c || c === ch || (ch >= 4 && c < ch); });
     const focus = new Set(S.pickConcepts(5));
     const weighted = [];
     pool.forEach(id => { const d = SD.cards[id]; const w = (d.concept && focus.has(d.concept) ? 3 : 1) + (d.ch === ch && ch > 1 ? 2 : 0); for (let i = 0; i < w; i++) weighted.push(id); });
@@ -525,8 +550,9 @@
   function beginTurn() {
     C.turn++;
     const sv = S.save;
-    C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0);
-    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false;
+    // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
+    C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0);
+    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
@@ -571,6 +597,9 @@
     if (d.chunk) C.chunk = true;
     if (d.sketch) C.sketch = true;
     if (d.shed) C.shed = true;
+    if (d.hb) C.hb = true;
+    if (d.merge) C.merge = true;
+    if (d.handoff) C.handoff = true;
     if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
     if (d.pow) {
       const tags = d.tags || [];
@@ -621,12 +650,14 @@
     if (t === 'stampede' || t === 'burst' || t === 'rush') return (curse('gears') ? 1.4 : 1) * (dev('strawhat') && t !== 'rush' ? 0.7 : 1);
     if (t === 'crash') return dev('hammer') ? 0.5 : 1;
     if (t === 'partition') return (curse('rifts') ? 1.4 : 1) * (dev('gavel') ? 0.7 : 1);
-    if (t === 'race') return dev('timer') ? 0.7 : 1;
-    if (t === 'collide') return dev('fencing') ? 0.7 : 1;
+    if (t === 'race') return (curse('drift') ? 1.4 : 1) * (dev('timer') ? 0.7 : 1) * (hasInfra('vclock') ? 0.7 : 1);
+    if (t === 'collide') return (curse('dbook') ? 1.4 : 1) * (dev('fencing') ? 0.7 : 1);
     if (t === 'scan') return curse('stacks') ? 1.4 : 1;
     return 1;
   }
   const auditPer = () => dev('shield') ? 2 : curse('rifts') ? 4 : 3;
+  // Escalate: +3 load, +2 with Cron's Almanac, and +2 more under the Many Kings curse.
+  const escUp = () => (dev('almanac') ? 2 : 3) + (curse('kings') ? 2 : 0);
   function resolveIntent(it) {
     const r = C.rage, m = C.mercyScale, sv = S.save;
     const sc = v => Math.round((v + r) * m);
@@ -658,14 +689,16 @@
         const n = sc(it.n) * mods(it.t);
         if (C.choice === 'cp') { dmg = absorb(Math.ceil(n / 2), [['any', 1]]); note = 'You chose consistency: some requests refused, no conflicts. '; }
         else if (C.choice === 'ap') { dmg = 0; C.stale += 3; note = 'You chose availability: everyone answered, +3 Stale to reconcile. '; }
+        else if (hasInfra('consensus')) { dmg = absorb(Math.ceil(n / 2), [['any', 1]]); note = 'Raft: only the majority side kept a leader; the minority refused writes. '; }
         else { dmg = absorb(dev('shield') ? Math.ceil(n / 2) : n, [['any', 1]]); C.stale += 2; note = 'No choice made: you got the worst of both. '; }
         break;
       }
       case 'collide': {
         if (hasInfra('idgen')) { dmg = 0; note = 'Counter ranges: every code unique. '; break; }
-        dmg = absorb(sc(it.n) * mods(it.t), [['any', 1]]); note = 'Two links got the same short code. '; break;
+        if (hasInfra('fence')) { dmg = 0; note = 'Fencing tokens: the stale claim was refused. '; break; }
+        dmg = absorb(sc(it.n) * mods(it.t), [['any', 1]]); note = (C.e.ch || 1) >= 4 ? 'Two workers claimed the same thing at once. ' : 'Two links got the same short code. '; break;
       }
-      case 'escalate': { const up = dev('almanac') ? 2 : 3; C.rage += up; note = `The incident escalates. All load +${up}. `; break; }
+      case 'escalate': { const up = escUp(); C.rage += up; note = `The incident escalates. All load +${up}. ${curse('kings') ? 'Every king wants a say. ' : ''}`; break; }
       case 'flood': {
         let n = sc(it.n) * mods(it.t);
         if (hasInfra('ratelimit')) { n *= 0.4; note = 'Token buckets ran dry: the flood got 429s. '; }
@@ -676,6 +709,7 @@
       case 'burst': {
         let n = sc(it.n) * mods(it.t);
         if (hasInfra('queue')) { n *= 0.3; note = 'The queue swallowed the spike; workers drain it later. '; } else note = 'A burst of writes hit the database all at once. ';
+        if (hasInfra('sched')) { n *= 0.5; note += 'The scheduler released jobs as they came due. '; }
         dmg = absorb(n, [['write', 1], ['any', 1]]); break;
       }
       case 'retry': {
@@ -687,7 +721,7 @@
       }
       case 'race': {
         if (hasInfra('atomic')) { dmg = 0; note = 'Atomic INCR: every count landed exactly once. '; break; }
-        dmg = absorb(sc(it.n) * mods(it.t), [['any', 1]]); C.stale += 2; note = 'Two servers read the same count; limits drifted (+2 Stale). '; break;
+        dmg = absorb(sc(it.n) * mods(it.t), [['any', 1]]); C.stale += 2 + (curse('drift') ? 1 : 0); note = curse('drift') ? 'Every clock disagrees about who was first (+3 Stale). ' : 'Two servers read the same count; limits drifted (+2 Stale). '; break;
       }
       case 'upload': {
         let n = sc(it.n);
@@ -740,6 +774,35 @@
         if (C.shed) { n *= 0.5; note += 'Low-priority work was shed; checkout stayed up. '; }
         if (!note) note = 'The backlog grew, and grew. ';
         dmg = absorb(n, [['any', 1], ['write', 1]]); break;
+      }
+      // Chapter 4
+      case 'nearby': {
+        let n = sc(it.n);
+        if (hasInfra('geo')) { n *= 0.3; note = 'The geohash grid checked nine cells, not every row. '; }
+        else note = 'Every driver\'s row checked, for every rider. ';
+        dmg = absorb(n, READ); break;
+      }
+      case 'connect': {
+        let n = sc(it.n);
+        if (hasInfra('ws')) { n *= 0.4; note = 'One open socket each: no polling storm. '; }
+        else note = 'Millions of clients asking "anything new?" every second. ';
+        if (C.hb) { n *= 0.5; note += 'Heartbeats timed out the ghosts. '; }
+        dmg = absorb(n, [['any', 1], ['read', 1]]); break;
+      }
+      case 'conflict': {
+        let n = sc(it.n);
+        if (C.merge) { n = 0; note = 'The CRDT merged both edits. Nothing lost. '; }
+        else if (hasInfra('vclock')) { n *= 0.5; note = 'Vector clocks caught the concurrent writes and kept both. '; }
+        else { C.stale += 2; note = 'Last write won; the other edit vanished (+2 Stale). '; }
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      case 'nodefail': {
+        let n = sc(it.n);
+        if (hasInfra('chash')) { n *= 0.4; note = 'The ring moved only the dead node\'s keys. '; }
+        if (hasInfra('gossip')) { n *= 0.6; note += 'Gossip spread the news in seconds. '; }
+        if (C.handoff) { n *= 0.5; note += 'A neighbour held its writes (hinted handoff). '; }
+        if (!note) note = 'A node vanished, nobody noticed, and its keys went dark. ';
+        dmg = absorb(n, [['any', 1], ['replica', 1]]); break;
       }
     }
     return { dmg, note };
@@ -794,7 +857,7 @@
   }
   const flashing = cls => performance.now() - (flashes[cls] || -1e9) < 250 ? ' ' + cls : '';
   function stageHtml(e, foeCol) {
-    const A = BA(), ch = ((((S.save.run && S.save.run.ch) || 1) - 1) % 3) + 1;
+    const A = BA(), ch = artCh(A && A.backdrops);
     const foe = `<div class="foe${flashing('hitflash')}" style="--foe:${foeCol}">${SD.art.enemy(e.sprite, C.boss, e.hue)}</div>`;
     if (!A) return foe;
     const h = A.hero;
@@ -817,6 +880,7 @@
     const shown = Object.assign({}, it);
     ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale * (k === 'n' ? mods(it.t) : 1)); });
     if (it.t === 'audit') shown.per = auditPer();
+    if (it.t === 'escalate') shown.up = escUp();
     const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
     const res = Object.keys(e.resist).filter(t => C.known.has('r:' + t));
     const foeCol = SD.art.enemyColor(e.sprite);
@@ -831,6 +895,9 @@
     if (C.chunk) chips.push('<span class="chip">Chunked</span>');
     if (C.sketch) chips.push('<span class="chip">Sketch ready</span>');
     if (C.shed) chips.push('<span class="chip">Shedding</span>');
+    if (C.hb) chips.push('<span class="chip">Heartbeats on</span>');
+    if (C.merge) chips.push('<span class="chip">Merging</span>');
+    if (C.handoff) chips.push('<span class="chip">Handoff ready</span>');
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">

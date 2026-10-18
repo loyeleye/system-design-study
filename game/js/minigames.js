@@ -221,7 +221,7 @@
     });
   };
 
-  // ---------- Dispatch: you are the load balancer at Bram's forge ----------
+  // ---------- Dispatch: you are the load balancer at Ayo's forge ----------
   // def: {title, who, intro}. Orders arrive; tap an apprentice to send each one. One apprentice faints halfway.
   G.dispatch = function (def) {
     return new Promise(async res => {
@@ -256,7 +256,7 @@
         t += 100;
         if (t >= next * GAP && next < TOTAL && desk == null) { desk = next; next++; deskT = 0; }
         if (desk != null) { deskT += 100; if (deskT >= TIMEOUT) { angry++; desk = null; deskT = 0; sfx('wrong'); note = 'A customer got tired of waiting at the desk and left. In a server, that is a timeout.'; } }
-        if (next > FAINT && !fainted) { fainted = true; sfx('hurt'); note = 'Squire Tim has fainted face-first into the coal! Bram: "HE\'S FINE. Probably. Do NOT send him orders."'; }
+        if (next > FAINT && !fainted) { fainted = true; sfx('hurt'); note = 'Squire Tim has fainted face-first into the coal! Ayo: "HE\'S FINE. Probably. Do NOT send him orders."'; }
         sm.forEach((s, k) => {
           if (k === 1 && fainted) { if (s.busy || s.q.length) { lost += s.q.length + (s.busy ? 1 : 0); s.q = []; s.busy = 0; sfx('wrong'); note = 'Orders sent to a fainted apprentice are lost. A real load balancer runs <b>health checks</b> so it stops sending work to dead servers.'; } return; }
           if (!s.busy && s.q.length) s.busy = s.q.shift();

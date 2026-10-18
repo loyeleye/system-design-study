@@ -192,7 +192,7 @@ SD.wb.blueprints = [
     ]
   },
   {
-    id: 'chat', ch: 4, name: 'Chat (WhatsApp)', boss: 'Planned: Sky Harbour',
+    id: 'chat', ch: 4, name: 'Chat (WhatsApp)', boss: 'The Chatterwyrm',
     brief: 'One-to-one messages delivered in real time, kept when the receiver is offline, never lost. 1 billion users.',
     w: 8, h: 4.6,
     nodes: [

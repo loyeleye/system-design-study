@@ -9,7 +9,7 @@
 
   Object.assign(SD.cast, {
     bru: { name: 'Bru', title: "Guild Receptionist (Rank: Overworked)", hue: 20, hair: 'ponytail', eye: '#c0392b' },
-    bram: { name: 'Bram', title: 'Blacksmith · One Anvil, One Man', hue: 15, hair: 'beard', eye: '#2b2340' },
+    ayo: { name: 'Ayo', title: 'Blacksmith · One Anvil, One Man', hue: 15, hair: 'beard', eye: '#2b2340' },
     coo: { name: 'Postmaster Coo', title: 'Pigeon Post · Delivers At Least Once', hue: 215, hair: 'pigeon', eye: '#ff9f1c' },
     lexi: { name: 'Lexi', title: 'Librarian · Keeper of the Forbidden Index', hue: 265, hair: 'witch', eye: '#7b3fe4' },
     cron: { name: 'Farmer Cron', title: 'Does Everything at Midnight', hue: 95, hair: 'straw', eye: '#2b2340' },
@@ -20,7 +20,7 @@
   // Plot Devices: quest rewards that survive every loop and change every run. Effects live in run.js and state.js.
   SD.devices = {
     form27b: { name: 'Form 27B (Stamped)', icon: 'scroll-unfurled', text: 'Bosses start 10% weaker. You did the requirements first.', flavor: 'Signed in the "do not write here" box, which turns out to be the most binding box.' },
-    hammer: { name: "Apprentice's Hammer", icon: 'spanner', text: 'Crash intents deal half damage. Add Server absorbs +3 more.', flavor: 'Bram has several now. He will not admit he likes having help.' },
+    hammer: { name: "Apprentice's Hammer", icon: 'spanner', text: 'Crash intents deal half damage. Add Server absorbs +3 more.', flavor: 'Ayo has several now. He will not admit he likes having help.' },
     waxseal: { name: 'Idempotent Wax Seal', icon: 'envelope', text: 'Retry intents deal 30% less and never add Stale.', flavor: 'Stamp anything with it and it can arrive a thousand times but only counts once.' },
     dougbot: { name: "Kevin, Doug's Confiscated Bot", icon: 'robot-golem', text: 'Flood intents deal 30% less.', flavor: 'Kevin is rate limited now. Kevin is at peace.' },
     recipe: { name: "Hiro's Recipe Card", icon: 'croissant', text: '+8 max SLA. Break rooms heal 10% more.', flavor: 'Three copies: one for the café, one for Mio, one for you.' },
@@ -48,7 +48,7 @@
   };
 
   const HOME = {
-    bru: "the Adventurers' Guild", bram: 'the Forge', coo: 'the Pigeon Post', lexi: 'the Grand Library', cron: "Cron's farm (east, by the fields)",
+    bru: "the Adventurers' Guild", ayo: 'the Forge', coo: 'the Pigeon Post', lexi: 'the Grand Library', cron: "Cron's farm (east, by the fields)",
     kaito: 'the plaza (posing)', doug: 'the riverbank (east of the café)', uptima: 'the Goddess Temple', wen: 'the Cache Café', mio: "Mio's treehouse",
     seymour: "Seymour's bunker", gary: 'the plaza'
   };
@@ -69,6 +69,7 @@
           { say: [['bru', "Welcome to the Adventurers' Guild! Registering? Wonderful! Please place your hand on the crystal so it can read your stats."],
             ['narr', 'The crystal flickers. It reads: GOOGLING (S). STACK OVERFLOW (S). SLEEP (E). SOCIAL SKILLS (pending).'],
             ['bru', "EHHHHH?! An S-rank in Googling?! I've only read about this in legends!"],
+            ['bru', "Ay, no, where are my manners. I'm Bru. Well, Marisol Cruz, but nobody calls me that. The Guild calls me Brújula, the compass, because I always know where every adventurer is."],
             ['bru', 'Ahem. Before I can register you, I need Form 27B signed by a sponsoring deity. Any deity. Even... her.'],
             ['pip', 'She means Uptima. She definitely means Uptima.']] },
           { item: 'form' }] },
@@ -116,19 +117,20 @@
       ]
     },
     {
-      id: 'forge', title: 'One Anvil, One Man, One Very Long Line', giver: 'bram', unlock: 0, device: 'hammer', xp: 70,
-      blurb: "Bram refuses to hire help. The queue outside the Forge has its own weather.",
+      id: 'forge', title: 'One Anvil, One Man, One Very Long Line', giver: 'ayo', unlock: 0, device: 'hammer', xp: 70,
+      blurb: "Ayo refuses to hire help. The queue outside the Forge has its own weather.",
       teaches: 'Load balancing, horizontal scaling, stateless workers', concepts: ['lb', 'vscale', 'stateless'],
       items: { kids: 'Mio and her class (helmets: buckets)', squires: "Seymour's identical squires" },
       steps: [
-        { at: 'bram', hint: 'Talk to Bram at the Forge.', do: [
+        { at: 'ayo', hint: 'Talk to Ayo at the Forge.', do: [
           { say: [['narr', 'A line of customers stretches out of the Forge, past the well, and some way into next week.'],
-            ['bram', 'ONE anvil. ONE smith. The way of my father, and his father, and his father\'s very tired arms.'],
-            ['bram', "You. Junior. Stand at the front desk and hand out the orders. I've got two apprentices in training. Do NOT let the customers riot."]] },
-          { game: 'dispatch', def: { title: 'FRONT DESK · THE FORGE', who: 'bram', intro: 'Orders arrive at the desk. Tap a worker to hand it over before the customer gives up. Long orders take longer.' } },
-          { say: [['bram', "...Tim fainted. Tim always faints. Fine. FINE. I can't hit any harder, and a bigger anvil won't save me."],
-            ['pip', "A bigger anvil is vertical scaling: one beefier machine. It has a ceiling, and if Bram faints, everything stops. He needs MORE smiths: horizontal scaling!"],
-            ['bram', "Then go and find me more hands. Mio's always looking for work. And Seymour's got spare squires lying around that bunker."]] }] },
+            ['ayo', 'ONE anvil. ONE smith. The way of my father, and his father, and his father\'s very tired arms.'],
+            ['ayo', "Cloud forges? HA! HA HA! No. My fire runs on-prem. This is Adebayo the Fourth. Every hammer here has a name, and a post-mortem for every sword it bent."],
+            ['ayo', "You. Junior. Stand at the front desk and hand out the orders. I've got two apprentices in training. Do NOT let the customers riot."]] },
+          { game: 'dispatch', def: { title: 'FRONT DESK · THE FORGE', who: 'ayo', intro: 'Orders arrive at the desk. Tap a worker to hand it over before the customer gives up. Long orders take longer.' } },
+          { say: [['ayo', "...Tim fainted. Tim always faints. Fine. FINE. I can't hit any harder, and a bigger anvil won't save me."],
+            ['pip', "A bigger anvil is vertical scaling: one beefier machine. It has a ceiling, and if Ayo faints, everything stops. He needs MORE smiths: horizontal scaling!"],
+            ['ayo', "Then go and find me more hands. Mio's always looking for work. And Seymour's got spare squires lying around that bunker."]] }] },
         { at: 'mio', hint: "Ask Mio at the treehouse if she'll help at the Forge.", do: [
           { say: [['mio', 'A REAL forge?! Can I hit things? Can I hit things with FIRE?'],
             ['mio', "I'm bringing my whole class. We have helmets. They are buckets."]] },
@@ -138,11 +140,11 @@
             ['seymour', 'Mostly because they are very young. But it makes them excellent workers. Any squire can pick up any order.'],
             ['pip', "Stateless workers! If the orders are written on the wall, not kept in someone's head, it doesn't matter who picks up which one."]] },
           { item: 'squires' }] },
-        { at: 'bram', hint: 'Bring the helpers back to Bram at the Forge.', do: [
-          { say: [['bram', "Hmph. Children with buckets and squires with no memory. Draw me a plan, Junior. If it's bad, I'm hitting it with a hammer."]] },
+        { at: 'ayo', hint: 'Bring the helpers back to Ayo at the Forge.', do: [
+          { say: [['ayo', "Hmph. Children with buckets and squires with no memory. Draw me a plan, Junior. If it's bad, I'm hitting it with a hammer."]] },
           { take: 'kids' }, { take: 'squires' },
           { game: 'blueprint', def: {
-            title: 'BLUEPRINT · THE FORGE', who: 'bram', w: 600, h: 330,
+            title: 'BLUEPRINT · THE FORGE', who: 'ayo', w: 600, h: 330,
             intro: 'Drag each part to its <b>?</b>. Customers come in on the left; the work has to get done and written down on the right.',
             nodes: [
               { id: 'cust', label: 'Customers', icon: 'house', x: 60, y: 165 },
@@ -158,12 +160,12 @@
               { id: 's3', kind: 'worker', label: 'Mio, with bucket', icon: 'full-wood-bucket', no: 'A worker belongs between the desk and the order book.' },
               { id: 'db', label: 'Order book on the wall (database)', icon: 'database', no: 'Orders must live in one shared place every worker can read: that is the far right.' },
               { id: 'anvil', label: 'One giant anvil', icon: 'stone-tower', no: 'A bigger anvil makes one smith faster until it doesn\'t, and when he faints, everything stops. That is vertical scaling.' },
-              { id: 'head', label: "Bram's memory", icon: 'crystal-ball', no: "If the orders live in one smith's head, only that smith can finish them. Keep state somewhere shared." }
+              { id: 'head', label: "Ayo's memory", icon: 'crystal-ball', no: "If the orders live in one smith's head, only that smith can finish them. Keep state somewhere shared." }
             ],
             done: '<p class="small">Customers hit one <b>load balancer</b>, which spreads orders across identical <b>stateless</b> workers, and the state (who ordered what) lives in a shared <b>database</b>. Busier festival? Add another worker. That is <b>horizontal scaling</b>, and it survives one worker fainting.</p>'
           } },
-          { ask: { id: 'qq-forge', c: 'vscale', type: 'mc', q: 'Bram wants to handle twice the orders at the next festival. What is the plan that scales?', opts: ['Add more stateless apprentices behind the front desk', 'Buy one enormous anvil', 'Tell customers to come back tomorrow', 'Give each apprentice a private order notebook'], a: 0, why: 'More identical workers behind a load balancer scales out and survives one of them fainting. A bigger anvil (vertical scaling) hits a ceiling and is a single point of failure. Private notebooks tie each order to one worker.' } },
-          { say: [['bram', "...It's a good plan. Don't tell anyone I said that."], ['bram', "Take this hammer. It's spare. I have... several, now."]] }] }
+          { ask: { id: 'qq-forge', c: 'vscale', type: 'mc', q: 'Ayo wants to handle twice the orders at the next festival. What is the plan that scales?', opts: ['Add more stateless apprentices behind the front desk', 'Buy one enormous anvil', 'Tell customers to come back tomorrow', 'Give each apprentice a private order notebook'], a: 0, why: 'More identical workers behind a load balancer scales out and survives one of them fainting. A bigger anvil (vertical scaling) hits a ceiling and is a single point of failure. Private notebooks tie each order to one worker.' } },
+          { say: [['ayo', "...It's a good plan. Don't tell anyone I said that."], ['ayo', "Take this hammer. It's spare. I have... several, now."]] }] }
       ]
     },
     {
@@ -187,11 +189,11 @@
               { id: 'A-104', to: 'undefined', t: 'Dear [object Object], please find attached: NaN.', cursed: true },
               { id: 'A-102', to: 'Mrs. Higgins', t: 'Your tax bill. Please pay 5 gold.', twice: 'Mrs. Higgins paid her tax twice. The tax office is delighted.' },
               { id: 'A-105', to: 'Mio', t: 'You have been accepted to Junior Hero Camp!' },
-              { id: 'A-106', to: 'Bram', t: 'Invoice: one anvil (large).' },
+              { id: 'A-106', to: 'Ayo', t: 'Invoice: one anvil (large).' },
               { id: 'A-105', to: 'Mio', t: 'You have been accepted to Junior Hero Camp!', twice: 'Mio is now enrolled in Junior Hero Camp twice. She is extremely proud.' },
               { id: 'A-107', to: 'null', t: 'Deliver to: null, null, null, Pingsby.', cursed: true },
               { id: 'A-108', to: 'Gary', t: 'Hi Gary.' },
-              { id: 'A-106', to: 'Bram', t: 'Invoice: one anvil (large).', twice: 'Bram has paid for two anvils. He has opinions about it.' }
+              { id: 'A-106', to: 'Ayo', t: 'Invoice: one anvil (large).', twice: 'Ayo has paid for two anvils. He has opinions about it.' }
             ]
           } },
           { say: [['coo', "Coo... excellent. But Grandma Wen sent word. Well, she sent a pigeon. Something about far too many croissant orders. Go and see her."]] }] },
@@ -321,6 +323,7 @@
       steps: [
         { at: 'lexi', hint: 'Visit Lexi at the Grand Library.', do: [
           { say: [['lexi', 'HALT, mortal! You stand before the Grand Library, where my Forbidden Index slumbers!'],
+            ['lexi', "I am Lekha, which means 'writing', Keeper of the Index. You may call me Lexi. I chose it myself. The eyepatch is ceremonial. So are the glasses on top of it."],
             ['lexi', "...It's not built yet. I find books by reading every spine on every shelf. Most patrons die of old age. Kaito has been waiting for one since Tuesday."],
             ['lexi', "Help me find 'Lonely Slimes'. Then help me awaken the Forbidden Index. It's a card catalogue. I gave it a cooler name."]] },
           { game: 'indexHunt', def: { title: 'THE FORBIDDEN INDEX · LIBRARY', who: 'lexi', intro: 'First, my ancient method: check the books one at a time.' } },
@@ -341,17 +344,17 @@
       id: 'sprinkler', title: "Midnight at Cron's Farm", giver: 'cron', unlock: 2, device: 'strawhat', xp: 90,
       blurb: 'Every sprinkler in the valley switches on at exactly midnight. The well has filed a complaint.',
       teaches: 'Thundering herds, jitter and exponential backoff', concepts: ['herd', 'backoff'],
-      items: { timers: "Bram's wobbly timers" },
+      items: { timers: "Ayo's wobbly timers" },
       steps: [
         { at: 'cron', hint: "Visit Farmer Cron by the fields.", do: [
           { say: [['cron', "Midnight, sonny. Everything on this farm happens at midnight. Sprinklers, chickens, my bath. That's how my father did it."],
             ['cron', 'Trouble is, every farm in the valley copied me. Twelve sprinklers switch on at 00:00 sharp and the well can feed four. It coughs. They all retry. It coughs harder.'],
             ['cron', 'Fix it before my turnips unionise.']] }] },
-        { at: 'bram', hint: 'Bram might make timers. Visit the Forge.', do: [
-          { say: [['bram', "Timers? I make timers. Each one ticks at a slightly different speed, because I'm a blacksmith, not a clockmaker."],
+        { at: 'ayo', hint: 'Ayo might make timers. Visit the Forge.', do: [
+          { say: [['ayo', "Timers? I make timers. Each one ticks at a slightly different speed, because I'm a blacksmith, not a clockmaker."],
             ['pip', 'Slightly different start times... that might actually be the fix!']] },
           { item: 'timers' }] },
-        { at: 'cron', hint: "Bring Bram's wobbly timers back to Farmer Cron.", do: [
+        { at: 'cron', hint: "Bring Ayo's wobbly timers back to Farmer Cron.", do: [
           { take: 'timers' },
           { game: 'jitter', def: { title: 'JITTER GARDEN · CRON\'S FARM', who: 'cron', intro: 'Pick when the sprinklers start and how they retry, then run the night. Goal: every field watered, and the well coughs four times or fewer.' } },
           { say: [['cron', "Twelve fields watered and barely a cough. The well's still got a cold, mind."]] },
@@ -541,12 +544,12 @@
       items: { order: "Cron's bread order" },
       steps: [
         { at: 'cron', hint: 'Visit Farmer Cron by the fields.', do: [
-          { say: [['cron', "Harvest festival, sonny. One hundred loaves. My wheat, Bram's mill, Wen's oven, Coo's pigeons. Four shops, one order."],
+          { say: [['cron', "Harvest festival, sonny. One hundred loaves. My wheat, Ayo's mill, Wen's oven, Coo's pigeons. Four shops, one order."],
             ['cron', 'Last year the oven broke after the mill was paid, and nobody knew who owed what. My father settled it with a duel. I would rather not.']] },
           { item: 'order' }] },
-        { at: 'bram', hint: 'Ask Bram at the Forge how the mill handles a broken order.', do: [
-          { say: [['bram', "I can't un-grind flour. Nobody can un-grind flour."],
-            ['bram', "But I can give the coins back. Every shop can undo its own part, its own way. Just tell us which, and in what order."],
+        { at: 'ayo', hint: 'Ask Ayo at the Forge how the mill handles a broken order.', do: [
+          { say: [['ayo', "I can't un-grind flour. Nobody can un-grind flour."],
+            ['ayo', "But I can give the coins back. Every shop can undo its own part, its own way. Just tell us which, and in what order."],
             ['pip', 'Every step gets its own undo. Like a list of apologies, prepared in advance!']] }] },
         { at: 'cron', hint: "Bring the plan back to Cron.", do: [
           { take: 'order' },
@@ -747,7 +750,7 @@
   // ---------- Villagers with nothing quest-related to say ----------
   const IDLE = {
     bru: ['Welcome back! The quest board is right here. Please do not refresh it ten thousand times a minute.', 'Your rank is E! E for... Effort! That is what I tell everyone.', 'Kaito asked if the Guild offers an S-rank for "vision". It does not.'],
-    bram: ['One anvil. Several apprentices now. Don\'t make it weird.', "Mio's class works hard. They also hit everything. Including each other. With buckets.", 'Plot Devices? I polish them for you. Free. Don\'t tell anyone.'],
+    ayo: ['One anvil. Several apprentices now. Don\'t make it weird.', 'HA! Sword #212 bent this morning. The post-mortem is pinned by the door. Blameless, of course. It was the sword\'s fault.', 'My fire runs on-prem. When the Cloud goes down, come and warm your hands.', "Mio's class works hard. They also hit everything. Including each other. With buckets.", 'Plot Devices? I polish them for you. Free. Don\'t tell anyone.'],
     coo: ['Coo. Every letter numbered, every repeat ignored. The Post has never been calmer.', 'The Dead Letter Box has three letters to "undefined" today. Undefined never writes back.', 'Coo-ah. Priority post to Heaven is two snacks extra.'],
     lexi: ['Silence in the library! Unless you are asking about the Forbidden Index. Then speak freely.', 'The Index has two columns: title and author. They are the strongest columns.', 'Kaito borrowed his own memoir again.'],
     cron: ['Midnight, sonny. Well. Midnight-ish now. Midnight give or take a jitter.', "My turnips are doing grand. The well's doing better.", "My father did everything at midnight too. Then again, he also had one sprinkler."],

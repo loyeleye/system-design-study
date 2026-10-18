@@ -7,8 +7,8 @@
   // Painted busts with expressions. Gary stays code-drawn on purpose: like Saitama, he's drawn plainly. That is the joke.
   const PAINTED = {
     uptima: ['neutral', 'happy', 'sad', 'angry', 'blush', 'confused'], seymour: ['neutral', 'happy', 'smug', 'angry'],
-    wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral'],
-    bru: ['neutral', 'happy', 'angry', 'confused'], bram: ['neutral'], lexi: ['neutral', 'happy', 'angry', 'blush', 'smug'],
+    wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral', 'confused', 'happy'],
+    bru: ['neutral', 'happy', 'angry', 'confused', 'sad'], ayo: ['neutral', 'smug', 'happy', 'confused', 'sad'], lexi: ['neutral', 'happy', 'angry', 'blush', 'smug'],
     kaito: ['neutral'], doug: ['neutral', 'smug', 'happy', 'angry']
   };
   A.painted = who => !!PAINTED[who];
@@ -133,7 +133,7 @@
       mouth = `<path d="M54 86 Q60 94 66 86Z" fill="#ff6b8a" stroke="${INK}" stroke-width="2"/>`;
       body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="#2f4a8a" ${stroke}/><path d="M48 102 L60 118 L72 102" fill="#fff" ${stroke} stroke-width="2"/><circle cx="84" cy="122" r="6" fill="#ffd257" ${stroke} stroke-width="1.8"/>`;
     } else if (c.hair === 'beard') {
-      // Bram: one anvil, one man, one magnificent beard.
+      // Ayo: one anvil, one man, one booming laugh.
       front = `<path d="M38 52 Q40 30 60 30 Q80 30 82 52 Q72 40 60 40 Q48 40 38 52Z" fill="#c9764a" ${stroke}/><path d="M42 58 L56 60 M64 60 L78 58" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
       extra = `<path d="M36 72 Q36 118 60 122 Q84 118 84 72 Q78 92 60 92 Q42 92 36 72Z" fill="${hairCol}" ${stroke}/><path d="M48 86 Q60 80 72 86" stroke="${INK}" stroke-width="2.5" fill="none"/>`;
       mouth = ''; blush = '';
@@ -193,7 +193,9 @@
   const ICON = { wrench: 'spanner', box: 'cube', copy: 'files', bolt: 'lightning-helix', bolt2: 'lightning-frequency', server: 'server-rack', key: 'key', split: 'split-arrows', globe: 'globe', grid: 'cubes', salt: 'salt-shaker', funnel: 'funnel', dice: 'perspective-dice-six-faces-random', eraser: 'broom', lock: 'padlock', open: 'padlock-open', note: 'notebook', eye: 'magnifying-glass', undo: 'anticlockwise-rotation', tree: 'family-tree', cols: 'stack', cyl: 'database', hash: 'ticket', calc: 'abacus', arrow: 'return-arrow',
     bucket: 'full-wood-bucket', clock: 'stopwatch', gate: 'medieval-gate', atom: 'atom', queue: 'mailbox', upload: 'cloud-upload', hourglass: 'hourglass', puzzle: 'puzzle',
     btree: 'pine-tree', lsm: 'book-pile', invindex: 'open-book', fanout: 'radio-tower', hybrid: 'megaphone', hold: 'armchair',
-    waitroom: 'closed-doors', stream: 'river', sketch: 'histogram', heap: 'podium-winner', quorum: 'pie-chart', shed: 'dam' };
+    waitroom: 'closed-doors', stream: 'river', sketch: 'histogram', heap: 'podium-winner', quorum: 'pie-chart', shed: 'dam',
+    geo: 'position-marker', quad: 'checkbox-tree', socket: 'electrical-socket', pulse: 'heart-beats', vclock: 'cuckoo-clock', merge: 'linked-rings',
+    king: 'chess-king', fence: 'wooden-fence', saga: 'scroll-quill', ring: 'globe-ring', handoff: 'divert', gossip: 'conversation', calendar: 'calendar', stack: 'stack' };
   A.icon = function (name, color) {
     const body = SD.icons && SD.icons[name];
     if (!body) return null;
@@ -218,7 +220,11 @@
     scroll: { col: '#8fe6f2', anim: 'squish' }, snatcher: { col: '#ff9a9a', anim: 'shake' },
     clicker: { col: '#ffd86b', anim: 'shake' }, oracle: { col: '#f2f2f2', anim: 'float' },
     kraken: { col: '#8fe6f2', anim: 'squish' }, wraith: { col: '#c9a0ff', anim: 'float' },
-    scalper: { col: '#ffd86b', anim: 'float' }, leviathan: { col: '#8fdcff', anim: 'float' }
+    scalper: { col: '#ffd86b', anim: 'float' }, leviathan: { col: '#8fdcff', anim: 'float' },
+    gremlin: { col: '#a6e070', anim: 'shake' }, phantom: { col: '#c9f2d8', anim: 'float' }, kings: { col: '#ffd86b', anim: 'shake' },
+    vanish: { col: '#b9c4d6', anim: 'float' }, avalanche: { col: '#cfeeff', anim: 'squish' }, jobswarm: { col: '#ffb27a', anim: 'shake' },
+    djinn: { col: '#8fb8ff', anim: 'float' }, basilisk: { col: '#a6e070', anim: 'float' }, scribes: { col: '#efeaff', anim: 'float' },
+    rider: { col: '#ff9a6b', anim: 'shake' }, chatwyrm: { col: '#8fdcff', anim: 'float' }, colossus: { col: '#c9b39a', anim: 'float' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   A.enemy = function (sprite, boss, hue) {
