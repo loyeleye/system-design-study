@@ -454,6 +454,7 @@
     // Install the floor once: the incident's severity can't drop below 10% until the rebuild succeeds.
     if (!C.floorOn) {
       C.floorOn = true;
+      AU.music('kyuboss');
       let v = C.sev;
       const floor = Math.ceil(C.max * 0.1);
       Object.defineProperty(C, 'sev', { configurable: true, enumerable: true, get: () => v, set: x => { v = C.freed ? x : Math.max(floor, x); } });
@@ -506,7 +507,7 @@
       C.hand = [0, 1, 2, 3, 4].map(i => ({ id: 'retrying', up: false, uid: 900 + i }));
       C.draw = C.draw.map((c, i) => ({ id: 'retrying', up: false, uid: 910 + i }));
       C.log = 'Your whole hand says RETRYING... It is the tutorial\'s stampede again, and this time there is no Gary.';
-      AU.sfx('pager');
+      AU.music('storm'); AU.sfx('pager'); AU.sfx('thunder');
       return render();
     }
     if (C.turn < 2 || C.flushing) return;
@@ -591,6 +592,7 @@
       const end = async () => {
         if (over) return; over = true;
         el.remove();
+        AU.jingle('after', null);
         await U.dialog([
           { s: 'narr', t: 'Later. A bench in the plaza. Gary finishes his lunch and turns the box over.' },
           { s: 'narr', t: 'On the bottom, in faded ink: "Croissant Pizza: cached in 1984."' },
@@ -659,19 +661,19 @@
 
   // ---------- Cutscene maps and scenes ----------
   const hall = [
-    'TTTTTTTTTTTTTTTTTT',
-    'T................T',
-    'T................T',
-    'T....pppppppp....T',
-    'T....pppppppp....T',
-    'T....pppppppp....T',
-    'T................T',
-    'T................T',
-    'T................T',
-    'TTTTTTTTTTTTTTTTTT'
+    '##################',
+    '#................#',
+    '#................#',
+    '#....pppppppp....#',
+    '#....pppppppp....#',
+    '#....pppppppp....#',
+    '#................#',
+    '#................#',
+    '#................#',
+    '##################'
   ];
   Object.assign(SD.arcMaps, {
-    exchange10: { map: hall, terrain: { p: 'd10' }, top: ['d10'], cam: [8.5, 5], bg: '#2a2236', sky: 'storm',
+    exchange10: { map: hall, terrain: { p: 'd10' }, top: ['d10'], base: 'd10', cam: [8.5, 5], bg: '#2a2236', sky: 'storm',
       objects: [{ name: 'ex-townhouse', x: 3.5, y: 2.6 }, { name: 'ex-townhouse2', x: 14.5, y: 2.6 }, { name: 'ex-ticker', x: 9, y: 2.2 }, { name: 'ex-bull', x: 4, y: 8.4 }, { name: 'ex-planter', x: 14, y: 8.4 }] }
   });
 
@@ -766,7 +768,7 @@
     },
     // Amends.
     c10end: {
-      map: 'plaza', music: 'garyq',
+      map: 'plaza', music: 'credits',
       cast: { gary: { x: 9, y: 4, face: 'south' }, seymour: { x: 7, y: 5, face: 'east' }, wen: { x: 12, y: 5, face: 'west' }, uptima: { x: 6, y: 6, face: 'east' }, kyu: { x: 11, y: 6, face: 'west' } },
       script: [
         ['caption', 'AFTER', 'Pingsby\'s lights come back on, one building at a time.'],

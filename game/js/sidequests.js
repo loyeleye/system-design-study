@@ -75,7 +75,7 @@
   // ---------- Plot Devices for the two story quests ----------
   Object.assign(SD.devices, {
     lunch: { name: "Wen's Packed Lunch", icon: 'cupcake', text: 'North Road: heals between floors restore all of your SLA.', flavor: 'Made the night before, warmed in the morning, eaten in a dungeon. A cache, dear.' },
-    note: { name: 'The Cryptic Note', icon: 'tied-scroll', text: 'The first time your SLA falls below half in a boss fight, draw 2 cards.', flavor: 'Whatever you hear, do not open the door.' }
+    note: { name: 'The Cryptic Note', icon: 'tied-scroll', text: 'The first time your SLA falls below half in a boss fight, draw 2 cards.', get flavor() { return SD.state.save.flags.ch10 ? 'It was the croissants.' : 'Whatever you hear, do not open the door.'; } }
   });
 
   // ---------- A timed sorting mini-game ----------
@@ -645,4 +645,13 @@
     hero404: () => ['...', '(Hero #404 is not here. A sign on the ground says "NOT FOUND". It has been signed by Hero #404.)']
   };
   if (SD.roadTalk) Object.assign(SD.roadTalk.lines, lines);
+
+  // The Cryptic Note: the first time your SLA falls below half in a boss fight, the next turn starts with 2 more cards.
+  if (SD.meta && SD.meta.on) SD.meta.on('turnEnd', C => {
+    const run = S.save.run;
+    if (!C.boss || C.noteUsed || !QS.has('note') || !run || run.sla >= S.maxSla() / 2) return;
+    C.noteUsed = true;
+    for (let i = 0; i < 2 && C.draw.length; i++) C.hand.push(C.draw.shift());
+    U.system('THE CRYPTIC NOTE', '"Whatever you hear, do not open the door." You draw 2 more cards.', 'gold');
+  });
 })();

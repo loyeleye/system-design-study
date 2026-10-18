@@ -437,22 +437,22 @@
 
   // ---------- Cutscene maps and scenes ----------
   const pit = [
-    'TTTTTTTTTTTTTTTTTT',
-    'T................T',
-    'T..pppppppppppp..T',
-    'T..pppppppppppp..T',
-    'T..pppppppppppp..T',
-    'T..pppppppppppp..T',
-    'T..pppppppppppp..T',
-    'T................T',
-    'T................T',
-    'TTTTTTTTTTTTTTTTTT'
+    '##################',
+    '#................#',
+    '#..pppppppppppp..#',
+    '#..pppppppppppp..#',
+    '#..pppppppppppp..#',
+    '#..pppppppppppp..#',
+    '#..pppppppppppp..#',
+    '#................#',
+    '#................#',
+    '##################'
   ];
   Object.assign(SD.arcMaps, {
-    abyss9: { map: pit, terrain: { p: 'd9' }, top: ['d9'], cam: [8.5, 5], bg: '#1d2a33', sky: 'night',
+    abyss9: { map: pit, terrain: { p: 'd9' }, top: ['d9'], base: 'd9', cam: [8.5, 5], bg: '#1d2a33', sky: 'night',
       objects: [{ name: 'd9a', x: 3, y: 1 }, { name: 'd9a', x: 14, y: 1 }, { name: 'd9b', x: 3, y: 7 }, { name: 'd9b', x: 14, y: 7 }] },
-    temple9: { map: pit, terrain: { p: 'd9' }, top: ['d9'], cam: [8.5, 5], bg: '#151022', sky: 'night',
-      objects: [{ name: 'statue', x: 3, y: 2 }, { name: 'statue', x: 14, y: 2 }, { name: 'statue', x: 6, y: 1 }, { name: 'statue', x: 11, y: 1 }, { name: 'd9a', x: 8, y: 7 }] }
+    temple9: { map: pit, terrain: { p: 'd9' }, top: ['d9'], base: 'd9', cam: [8.5, 5], bg: '#151022', sky: 'night',
+      objects: [{ name: 'ar-statue', x: 2, y: 4 }, { name: 'ar-statue', x: 15, y: 4 }, { name: 'ar-statue', x: 5, y: 2 }, { name: 'ar-statue', x: 12, y: 2 }, { name: 'd9a', x: 8, y: 7 }] }
   });
 
   Object.assign(SD.cutscenes, {

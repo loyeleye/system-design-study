@@ -22,6 +22,10 @@ The story and the design decisions live in the "Chapters 7–10" Claude Doc. Thi
 | `game/js/arc.js` | Arc engine: floors, snapshots and retries, heals, boss framework steps, Kyu nodes, Runbook, Downtime meter, Lord Latency's delay, music swaps |
 | `game/js/ch7.js` | Chapter 7, the Northbound Road: proximity service, nearby friends, Google Maps. Cards, enemies, bosses, questions, events, cutscene maps and scripts |
 | `game/js/northroad.js` | The North Road overworld and its screen |
+| `game/js/ch8.js`, `ch9.js`, `ch10.js` | Chapters 8 (the Tournament of Power Levels), 9 (the Abyss Beneath the Temple) and 10 (the Promised Day), in the same shape as `ch7.js` |
+| `game/js/roadquests.js` | North Road quests with Plot Devices that work on the road |
+| `game/js/sidequests.js` | Chapter 7-10 side quests that pay shards: Aigerim's Rare Shelf quest, five new characters (Suzu, Baldwin, Explodia, Hypewagon, President Akane), Hero #12's vending machine, Uptima's Purification Consulting, Wen's Packed Lunch and Missing, One Gary. Also the timed sorting minigame (`SD.games.rushSort`) and the Cryptic Note's effect |
+| `game/js/debug.js` | **Testing only; remove it and its script tag before release.** `?debug&ch=9&rank=A&at=run&floor=3&quests=done` starts on any chapter, rank, place or floor, on a separate save |
 | `game/js/arc-art.js`, `arc-dungeon-art.js`, `arc-battle-art.js` | Art manifests (made by `tools/village_art.py` and `tools/arc_art.py`) |
 | `game/tools/arc_art.py` | Builds the arc's monsters, backdrops and `arc-battle-art.js` from PixelLab downloads |
 | `game/CREDITS-arc.md` | Credits for the arc's PixelLab art and Pixabay audio |
@@ -50,6 +54,22 @@ These are the only edits to existing files. Each one is small, so a merge only n
    - Script tags after `ch4.js` (and any later chapter files): `arc-art.js`, `arc-dungeon-art.js`, `arc-battle-art.js`, `scene.js`, `arc.js` and `ch7.js`.
    - `northroad.js` after `main.js`.
 6. **`game/CREDITS.md`**: one line pointing at `CREDITS-arc.md`.
+7. **`game/js/quests.js`** (for the side quests):
+   - `act()` runs an optional `{ fn }` step action.
+   - `complete()` pays `q.shards` when set, and a quest without a `device` shows its `payoff` instead of a Plot Device.
+   - The completed list shows shards for device-less quests, and the devices tab lists only quests with a device.
+8. **`game/js/peddler.js`**: Aigerim's six Ancient cards and the Rare Shelf (one rare or Ancient card a loop, 500 or 750 shards), opened by `flags.aigShelf` from her quest.
+9. **`game/js/hub.js`**: Gary's villager entry gets `roam`, so he is gone from Pingsby from the end of chapter 9 (`flags.garyGone`) until chapter 10 is cleared.
+10. **`game/js/bestiary-data.js`**: interview notes for the chapter 9 and 10 enemies.
+11. **`game/index.html`**: `ch8.js`, `ch9.js`, `ch10.js` and `roadquests.js` after `ch7.js`; `sidequests.js` and `debug.js` after `northroad.js`.
+
+`arc.js` also gained, in its own code: whistle ranks in the run HUD (`chapter.whistles`), a `finale` after the last boss (chapter 9's army, chapter 10's pager), `afterEnding` (chapter 10's credits), and boss chains (`floor.chain` with `floor.links` cutscenes between them; each boss after the first gets one framework step).
+
+## Names other features rely on
+
+- Chapter 9 enemies: `unreadimp`, `spamslime`, `bitrot`, `orphanchunk`, `rankrat`, `hotshard`, elite `mailstorm`; bosses `leviathan9`, `vaultgolem`, `whistleboard`; finale `shadowarmy`.
+- Chapter 10 enemies: `doublebook`, `chargeback`, `forgedcoin`, `orderflood`, `shadowhero`, elite `homunculus`; bosses `gluttony`, `greed`, `envy`, then the floor 4 chain `marketopen`, `pride`, `kyuburnout`; finale `pager`.
+- The credits flag is `flags.credits`, set when chapter 10's credits start. `flags.garyGone` is set at the end of chapter 9.
 
 `northroad.js` wraps `SD.main.show`, `SD.main.toHub`, `SD.run.start` and `SD.run.resume`. That way the road is a fourth screen and arc runs end back on the road. `arc.js` wraps these:
 
@@ -67,11 +87,7 @@ None of those files needed edits.
 
 ## Left to build
 
-- Chapter 8: the tournament bracket, the Time Chamber, the Senzu Croissant, the Scouter, and Kyu one-punching Kaito.
-- Chapter 9: a descending map, smaller heals, whistle ranks, a survival fight and tape deaths.
-- Chapter 10: four floors, the three-phase Kyu fight with the timed rebuild (she heals to 80% if it fails), the rogue pager, Gary's ONE COMMIT, the credits and the after-credits scene.
-- Town side:
-  - Gary disappearing from Pingsby.
-  - The "Missing, One Gary" quest for Seymour.
-  - The lunch upgrade quest that makes between-floor heals full.
-  - Arc curses.
+- Pingsby going grey building by building during chapter 10 (the cutscene says so; the hub map doesn't change yet).
+- Gary's cold coffee cup on the plaza bench while he is missing.
+- Portraits for the five new side-quest characters (their dialogue uses the village-style bust for now).
+- Arc curses.

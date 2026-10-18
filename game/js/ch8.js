@@ -442,33 +442,33 @@
   // ---------- Cutscene maps and scenes ----------
   // The arena: a sand ring (chapter 8's floor tiles) inside white stone, lanterns at the corners.
   const ring = [
-    'TTTTTTTTTTTTTTTTTT',
-    'T................T',
-    'T...pppppppppp...T',
-    'T...pppppppppp...T',
-    'T...pppppppppp...T',
-    'T...pppppppppp...T',
-    'T...pppppppppp...T',
-    'T................T',
-    'T................T',
-    'TTTTTTTTTTTTTTTTTT'
+    '##################',
+    '#................#',
+    '#...pppppppppp...#',
+    '#...pppppppppp...#',
+    '#...pppppppppp...#',
+    '#...pppppppppp...#',
+    '#...pppppppppp...#',
+    '#................#',
+    '#................#',
+    '##################'
   ];
   Object.assign(SD.arcMaps, {
-    arena8: { map: ring, terrain: { p: 'd8' }, top: ['d8'], cam: [8.5, 5], bg: '#e9e2d0',
+    arena8: { map: ring, terrain: { p: 'd8' }, top: ['d8'], base: 'd8', cam: [8.5, 5], bg: '#e9e2d0',
       objects: [{ name: 'd8b', x: 3, y: 1 }, { name: 'd8b', x: 14, y: 1 }, { name: 'd8a', x: 3, y: 7 }, { name: 'd8a', x: 14, y: 7 }] },
     // The server room under the temple, year 3: Pingsby's dungeon floor, lit low.
     vault8: { map: [
-      'TTTTTTTTTTTTTTTTTT',
-      'T................T',
-      'T..pppppppppppp..T',
-      'T..pppppppppppp..T',
-      'T..pppppppppppp..T',
-      'T..pppppppppppp..T',
-      'T................T',
-      'T................T',
-      'T................T',
-      'TTTTTTTTTTTTTTTTTT'
-    ], terrain: { p: 'd1' }, top: ['d1'], cam: [8.5, 5], bg: '#2a2340', sky: 'night',
+      '##################',
+      '#................#',
+      '#..pppppppppppp..#',
+      '#..pppppppppppp..#',
+      '#..pppppppppppp..#',
+      '#..pppppppppppp..#',
+      '#................#',
+      '#................#',
+      '#................#',
+      '##################'
+    ], terrain: { p: 'd1' }, top: ['d1'], base: 'd1', cam: [8.5, 5], bg: '#2a2340', sky: 'night',
       objects: [{ name: 'd1a', x: 4, y: 2 }, { name: 'd1a', x: 13, y: 2 }, { name: 'd1b', x: 8, y: 1 }] }
   });
 
