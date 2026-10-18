@@ -709,7 +709,7 @@
     if (p.id === 'kids') {
       if (!['kid1', 'kid2', 'kid3'].every(k => ok(ipic('c-' + k)))) return false;
       ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.42, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-      sprite('kid1', X - 10 * s, Y, t); sprite('kid3', X + 10 * s, Y, t); sprite('kid2', X, Y + 2 * s, t);
+      sprite('kid1', X - 10 * s, Y, t); sprite('kid2', X + 10 * s, Y, t); sprite('kid3', X, Y + 2 * s, t);
       return true;
     }
     if (!I.ART || !I.ART.chars[p.id] || !ok(ipic('c-' + p.id))) return false;
