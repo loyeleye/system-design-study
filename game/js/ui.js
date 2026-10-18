@@ -102,6 +102,9 @@
     el.className = 'sysnote ' + (n.kind || '');
     el.setAttribute('role', 'status');
     el.innerHTML = `<div class="sys-h"><span class="sys-i">!</span>${U.esc(n.title)}</div>${n.body ? `<div class="sys-b">${n.body}</div>` : ''}`;
+    // Sit just below whatever header is showing, so a wrapped phone HUD never hides the toast.
+    const bar = ['#hud', '.run-hud'].map(q => $(q)).find(h => h && h.offsetParent);
+    $('#notes').style.top = (bar ? Math.max(12, bar.getBoundingClientRect().bottom + 8) : 12) + 'px';
     $('#notes').appendChild(el);
     setTimeout(() => el.classList.add('out'), 2600);
     setTimeout(() => { el.remove(); pump(); }, 3000);
@@ -154,6 +157,7 @@
     if (tab === 'concepts') {
       body += '<div class="cx-list">';
       for (const id in SD.concepts) {
+        if (SD.concepts[id].zone > (sv.chapter || 1)) continue;
         const c = SD.concepts[id], st = SD.state.concept(id), m = SD.state.mastery(id);
         const page = sv.pages.includes(id);
         const due = st.seen && st.due <= Date.now();
@@ -180,19 +184,19 @@
     b.querySelectorAll('.tab').forEach(t => t.onclick = () => U.codex(t.dataset.tab));
   };
   U.mindMap = function () {
-    const sv = SD.state.save; const ids = Object.keys(SD.concepts);
+    const sv = SD.state.save; const ids = Object.keys(SD.concepts).filter(id => SD.concepts[id].zone <= (sv.chapter || 1));
     const R = 130, cx = 170, cy = 160;
     const pos = {};
     ids.forEach((id, i) => { const a = i / ids.length * Math.PI * 2 - Math.PI / 2; pos[id] = [cx + Math.cos(a) * R, cy + Math.sin(a) * R]; });
     let s = `<div class="mm"><svg viewBox="0 0 340 320" role="img" aria-label="Concept mind map">`;
-    SD.links.forEach(l => {
+    SD.links.filter(l => pos[l.a] && pos[l.b]).forEach(l => {
       const [x1, y1] = pos[l.a], [x2, y2] = pos[l.b]; const on = sv.links.includes(l.id);
       s += `<path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${on ? 'var(--blue)' : 'var(--line)'}" stroke-width="${on ? 2.5 : 1.2}" ${on ? '' : 'stroke-dasharray="3 4"'}/>`;
     });
     ids.forEach(id => {
       const [x, y] = pos[id]; const seen = SD.state.concept(id).seen; const m = SD.state.mastery(id).stage;
       s += `<circle cx="${x}" cy="${y}" r="${seen ? 6 + m * 1.5 : 4}" fill="${seen ? 'var(--blue)' : 'var(--line)'}" stroke="var(--ink)" stroke-width="1.5" opacity="${seen ? 0.5 + m * 0.12 : 0.7}"/>`;
-      s += `<text x="${x}" y="${y + (y > cy ? 18 : -10)}" text-anchor="middle" font-size="9" font-weight="700" fill="${seen ? 'var(--ink)' : 'var(--muted)'}">${seen ? U.esc(SD.concepts[id].name.split(' ')[0]) : '?'}</text>`;
+      s += `<text x="${x}" y="${y + (y > cy ? 18 : -10)}" text-anchor="middle" font-size="9" font-weight="700" fill="${seen ? 'var(--ink)' : 'var(--muted)'}">${seen ? U.esc(SD.concepts[id].tag || SD.concepts[id].name.split(' ')[0]) : '?'}</text>`;
     });
     return s + '</svg></div>';
   };

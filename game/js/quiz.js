@@ -72,6 +72,19 @@
         let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : 'NOT QUITE!'}</div>`;
         if (!ok || conf === 0) h += `<p><b>Answer:</b> ${U.esc(right)}</p>`;
         h += `<p class="why">${U.esc(q.why || '')}</p>`;
+        // Plain-language help: a game analogy for this answer, then the whole idea plus jargon on "Huh???".
+        const eli = (q.id && SD.eli5[q.id]) || (SD.huh[q.c] || '');
+        const text = [q.q, right, q.why].concat(q.opts || []).join(' ');
+        const words = SD.glossary.filter(g => g[1].test(text)).slice(0, 8);
+        const huhBlock = `<button class="ghost help-b" id="q-huh" aria-expanded="false">Huh???</button>
+          <div class="helpbox huh" id="q-huh-box" hidden><div class="q-ctx">Pip explains it in game terms</div>
+          ${SD.huh[q.c] ? `<p>${U.esc(SD.huh[q.c])}</p>` : ''}
+          ${words.length ? `<p class="q-ctx">Words in this question</p><dl class="gloss">${words.map(g => `<dt>${U.esc(g[0])}</dt><dd>${U.esc(g[2])}</dd>`).join('')}</dl>` : ''}</div>`;
+        if (eli) h += `<button class="ghost help-b" id="q-eli5" aria-expanded="false">ELI5 🎮</button><div class="helpbox" id="q-eli5-box" hidden><p>${U.esc(eli)}</p></div>`;
+        const help = b => ['eli5', 'huh'].forEach(k => {
+          const btn = b.querySelector('#q-' + k), box = b.querySelector('#q-' + k + '-box');
+          if (btn) btn.onclick = () => { box.hidden = !box.hidden; btn.setAttribute('aria-expanded', String(!box.hidden)); if (!box.hidden) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
+        });
         if (over) h += `<p class="warn">You were sure and it was wrong. That gap is the most valuable thing you found today, so this comes back first.</p>`;
         if (ok && conf === 0) h += `<p class="muted small">A lucky guess is not knowledge yet. It will come back soon.</p>`;
         if (!ok && concept) {
@@ -82,9 +95,10 @@
             `What breaks first if load grows 10x, and how does ${concept.name.toLowerCase()} help?`
           ];
           h += `<div class="compass"><div class="q-ctx">Confusion compass</div><p class="small">Turn the confusion into a question. Pick the one closest to what tripped you up; it goes in your notebook.</p>
-            <div class="opts">${prompts.map((p, i) => `<button class="opt" data-p="${i}">${U.esc(p)}</button>`).join('')}</div></div>`;
+            <div class="opts">${prompts.map((p, i) => `<button class="opt" data-p="${i}">${U.esc(p)}</button>`).join('')}</div>${huhBlock}</div>`;
           h += `<button class="primary" id="q-next" disabled>Continue</button>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
+          help(b);
           const nx = b.querySelector('#q-next');
           b.querySelectorAll('[data-p]').forEach(el => el.onclick = () => {
             const sv = SD.state.save; sv.openQs = sv.openQs || [];
@@ -97,8 +111,9 @@
           setTimeout(() => { nx.disabled = false; }, 2500);
           nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score }); };
         } else {
-          h += `<button class="primary" id="q-next">Continue</button>`;
+          h += huhBlock + `<button class="primary" id="q-next">Continue</button>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
+          help(b);
           b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score }); };
           b.querySelector('#q-next').focus();
         }

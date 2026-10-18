@@ -139,7 +139,8 @@
     note: 'M32 24 h28 l10 10 v42 h-38Z M40 44 h22 M40 54 h22 M40 64 h14'
   };
   // Card art comes from Game-icons.net when the icon subset is loaded; the stroke glyphs are the fallback.
-  const ICON = { wrench: 'spanner', box: 'cube', copy: 'files', bolt: 'lightning-helix', bolt2: 'lightning-frequency', server: 'server-rack', key: 'key', split: 'split-arrows', globe: 'globe', grid: 'cubes', salt: 'salt-shaker', funnel: 'funnel', dice: 'perspective-dice-six-faces-random', eraser: 'broom', lock: 'padlock', open: 'padlock-open', note: 'notebook', eye: 'magnifying-glass', undo: 'anticlockwise-rotation', tree: 'family-tree', cols: 'stack', cyl: 'database', hash: 'ticket', calc: 'abacus', arrow: 'return-arrow' };
+  const ICON = { wrench: 'spanner', box: 'cube', copy: 'files', bolt: 'lightning-helix', bolt2: 'lightning-frequency', server: 'server-rack', key: 'key', split: 'split-arrows', globe: 'globe', grid: 'cubes', salt: 'salt-shaker', funnel: 'funnel', dice: 'perspective-dice-six-faces-random', eraser: 'broom', lock: 'padlock', open: 'padlock-open', note: 'notebook', eye: 'magnifying-glass', undo: 'anticlockwise-rotation', tree: 'family-tree', cols: 'stack', cyl: 'database', hash: 'ticket', calc: 'abacus', arrow: 'return-arrow',
+    bucket: 'full-wood-bucket', clock: 'stopwatch', gate: 'medieval-gate', atom: 'atom', queue: 'mailbox', upload: 'cloud-upload', hourglass: 'hourglass', puzzle: 'puzzle' };
   A.icon = function (name, color) {
     const body = SD.icons && SD.icons[name];
     if (!body) return null;
@@ -156,16 +157,19 @@
     slime: { col: '#7ee0a8', anim: 'squish' }, storm: { col: '#8fdcff', anim: 'float' },
     golem: { col: '#c9b39a', anim: 'float' }, ghost: { col: '#efeaff', anim: 'float' },
     cow: { col: '#ffffff', anim: 'shake' }, cat: { col: '#ffd08f', anim: 'float' },
-    imp: { col: '#ffa9cb', anim: 'float' }, goblin: { col: '#a6e070', anim: 'float' }
+    imp: { col: '#ffa9cb', anim: 'float' }, goblin: { col: '#a6e070', anim: 'float' },
+    bots: { col: '#ffd86b', anim: 'shake' }, echo: { col: '#8fe6f2', anim: 'squish' },
+    twins: { col: '#c9a98f', anim: 'float' }, blob: { col: '#f2f2f2', anim: 'squish' },
+    hydra: { col: '#7ee0a8', anim: 'float' }, latency: { col: '#c9a0ff', anim: 'float' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
-  A.enemy = function (sprite, boss) {
+  A.enemy = function (sprite, boss, hue) {
     const f = FOE[sprite] ? FOE[sprite] : FOE.slime;
     const crown = boss ? `<path d="M42 16 L48 0 L56 12 L62 -4 L68 12 L76 0 L82 16Z" fill="#ffd23f" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '';
     return `<svg viewBox="0 0 120 120" aria-hidden="true">
       <ellipse cx="60" cy="113" rx="36" ry="6" fill="rgba(43,35,64,.18)"/>
       <g class="${f.anim}">
-        <image href="${IMG}monsters/${FOE[sprite] ? sprite : 'slime'}.webp" x="8" y="4" width="104" height="110" preserveAspectRatio="xMidYMax meet"/>
+        <image href="${IMG}monsters/${FOE[sprite] ? sprite : 'slime'}.webp" x="8" y="4" width="104" height="110" preserveAspectRatio="xMidYMax meet"${hue ? ` style="filter:hue-rotate(${hue}deg)"` : ''}/>
         ${crown}
       </g></svg>`;
   };

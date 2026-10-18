@@ -13,7 +13,7 @@
 | Monster Builder Pack | Kenney, via https://opengameart.org/content/monster-builder-pack | CC0 | Incident monsters, assembled by `tools/monsters.py` |
 | Toon Characters 1 | Kenney, via OpenGameArt | CC0 | The hero in the intro slideshow |
 | Emotes Pack, Particle Pack | Kenney, via OpenGameArt | CC0 | Speech-bubble emotes in the village, hit sparks in combat |
-| Game-icons.net (66-icon subset in `assets/game-icons.js`) | https://game-icons.net, via the npm package `@iconify-json/game-icons` 1.2.4. Icons by Lorc, Delapouite and other contributors listed at https://game-icons.net/about.html | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Card art, map nodes, story props |
+| Game-icons.net (73-icon subset in `assets/game-icons.js`) | https://game-icons.net, via the npm package `@iconify-json/game-icons` 1.2.4. Icons by Lorc, Delapouite and other contributors listed at https://game-icons.net/about.html | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Card art, map nodes, story props |
 
 Portraits are cut by `tools/portraits.py`. Everything else (Gary and Pip's portraits, the truck, the slideshow scenes, the ONE COMMIT effect, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/intro.js`, `js/hub.js` and `index.html`.
 

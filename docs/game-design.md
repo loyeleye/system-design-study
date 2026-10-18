@@ -65,7 +65,7 @@ Ladi pointed at One Punch Man, Overly Cautious Hero, and an r/anime top-10 threa
 | **Mio** | An 8-year-old future hero who can hear what servers think. She draws you a crayon picture every respawn. | Anya (Spy x Family) |
 | **Grandma Wen** | Runs the Cache Café, the meta shop. She remembers her regulars and forgets the rest ("least recently used"). | Village-shopkeeper archetype |
 | **Chad the Consultant** | A Certified Solutions Visionary. In an event he sells you "vertical scaling, but make it enterprise". | Reigen (Mob Psycho 100) |
-| **Lord Latency** | Demon King of Lag. His lines type out slowly, and he gets teased after the boss as the chapter 2 villain. | The isekai Demon King archetype |
+| **Lord Latency** | Demon King of Lag. His lines type out slowly. He is teased after chapter 1 and is the chapter 2 boss, where he finally gets rate limited. | The isekai Demon King archetype |
 
 Respawns keep the time-loop learning frame from the first version, played for laughs:
 
@@ -94,6 +94,7 @@ Recorded music and samples play when they load, with the original chiptune synth
 | Path to mastery: accuracy, then consistency, then fluency | Sung | Each concept moves through four stages: Accuracy, then Consistency (success rate over the last 5), then Fluency (75% or better), then Mastered (5 out of 5, mostly under 12 s, box 3 or higher). The game never asks you to go faster. |
 | Deep processing: relate, compare, judge | Sung (schemas, "isolated vs integrated") | Reflect at a Campfire: pick how two concepts connect, and correct links draw lines in the Cheat Sheet's mind map. Events ask for judgement (for example, Chad's pitch), not definitions. |
 | Confusion compass | Sung | After a miss, you turn the confusion into a question ("When would sharding be the wrong choice?"). It is saved under Open questions for real study sessions. |
+| Concrete before abstract; analogies for newcomers | Oakley (metaphor and analogy), Sung (encoding through relation) | Every answer has an **ELI5** button that explains it through a game or anime (token buckets are Overwatch ability charges; replicas are a mirror a few seconds behind). **Huh???** explains the whole concept in game terms and defines the jargon that appears in that question. Text lives in `game/js/eli5.js`. |
 | Priming the gist before details | Sung (priming), Oakley (chunking) | Uptima's gist board at the temple shows tonight's goal and four concept chunks before you enter the dungeon. Pip nudges you if you skip it. |
 | Focused and diffuse modes; Pomodoro-sized sessions | Oakley | A run takes about 20 minutes. Campfires frame rest as diffuse mode, and the postmortem says how long you focused and suggests a five-minute break. |
 | Practise like you play | Sung (match challenge, level and cue) | Bosses follow the interview's real structure and cues. Estimation answers are typed, not chosen. |
@@ -140,13 +141,13 @@ The art refresh (Ladi asked for art and sound closer to top games and anime) fol
 
 ## Curriculum map
 
-Chapter 1 matches weeks 1 and 2 of the 10-week plan in `job-hunt-agent/interview/study_plan_dsa_system_design.md`.
+Chapters 1 and 2 match weeks 1 to 3 of the 10-week plan in `job-hunt-agent/interview/study_plan_dsa_system_design.md`.
 
 | Chapter | Dungeon | Concepts | Boss | Plan weeks |
 | --- | --- | --- | --- | --- |
 | 1 (built) | Prod (E-Rank) | Delivery framework, estimation, vertical vs horizontal scaling, stateless services, load balancing, caching, CDN, stampedes, hot keys, replication, sharding, CAP/PACELC, SQL vs NoSQL, unique IDs, 301 vs 302 | The Goblin King of Links (URL shortener) | 1–2 |
-| 2 | Tidewater Archives | Indexes (B-tree, LSM), replication lag and read-your-writes, consistent hashing, quorums, Redis patterns, rate limiting algorithms, blob storage and sync | Lord Latency's Throttle (rate limiter); Dropbox | 3 |
-| 3 | Clockwork Spire | Queues and Kafka, fan-out on write vs read, idempotency, backpressure, top-K, stream aggregation | News feed, Ticketmaster, ad click aggregator | 4–5 |
+| 2 (built) | Tidewater Archives (D-Rank) | Rate limiting algorithms, where the limiter lives (gateway, 429, fail open), race conditions and atomic counters, message queues, retries with backoff and idempotency, object storage and presigned URLs, chunking and delta sync | Lord Latency, Demon King of Lag (rate limiter); the Sync Hydra elite (Dropbox) | 3 |
+| 3 | Clockwork Spire | Indexes (B-tree, LSM), quorums, fan-out on write vs read, backpressure, top-K, stream aggregation | News feed, Ticketmaster, ad click aggregator | 4–5 |
 | 4 | Sky Harbour | Geospatial indexes, WebSockets and presence, consensus and leader election, distributed locks, sagas, distributed caches | Uber, WhatsApp, key-value store | 6–7 |
 | 5 | Lord Latency's Castle | Video pipelines, crawlers, notification systems, multi-region | YouTube, web crawler | 8–9 |
 
@@ -159,7 +160,8 @@ Chapter 1 matches weeks 1 and 2 of the 10-week plan in `job-hunt-agent/interview
 - `game/js/intro.js` — the manga slideshow panels and the truck.
 - `game/js/hub.js` — the canvas village.
 - `game/js/run.js` — run map, combat, Gary, the tutorial, rewards, café, campfire, events, boss.
-- `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass.
+- `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass, ELI5 and Huh???.
+- `game/js/eli5.js` — plain-language help: a game analogy per question, a game-terms summary per concept, and a jargon glossary.
 - `game/js/ui.js`, `game/js/art.js`, `game/js/main.js` — UI helpers and dialogue, code-drawn art, boot, cold open and hub buildings.
 - `game/assets/` — icon subset, images (`img/`) and audio (`audio/`); see `game/CREDITS.md`.
 - `game/tools/monsters.py`, `game/tools/portraits.py` — rebuild the monsters and portrait crops from the source packs.
@@ -168,6 +170,6 @@ Saves go to localStorage. On claude.ai they also go to a private per-user docume
 
 ## Next steps
 
-- Chapter 2 content and Lord Latency's rate limiter boss.
+- Chapter 3 (Ticketmaster and news feed). `SD.chapters` in `content.js` takes a new dungeon: concepts with `zone: 3`, cards with `ch: 3`, enemies with `ch: 3`, pools, a boss and its story lines.
 - Pixel-art dungeon scenes behind combat, and painted portraits for Pip and Lord Latency if good matches turn up.
 - A balance pass after real play: boss severity, card numbers, reward pacing, and how often Gary shows up.

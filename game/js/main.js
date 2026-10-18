@@ -163,6 +163,21 @@
     obs.observe(p, { attributes: true, attributeFilter: ['hidden'] });
   });
 
+  const GIST = {
+    1: {
+      goal: 'The Goblin King of Links wants every long quest URL in the kingdom turned into a short code, and back again, fast. In interview terms: <b>design a URL shortener</b>.',
+      groups: [['Frame it', 'Delivery framework · back-of-envelope math'], ['Scale reads', 'Caching · CDN · replication · hot keys · stampedes'],
+        ['Scale everything else', 'Vertical vs horizontal · load balancing · stateless servers · sharding'], ['Choose your trade-offs', 'CAP & PACELC · SQL vs NoSQL · unique IDs · 301 vs 302']],
+      ask: 'which of these would the Goblin King need first, and what would each one cost?'
+    },
+    2: {
+      goal: 'Lord Latency floods the kingdom\'s API with bots and retries, and the Archives choke on giant scrolls. In interview terms: <b>design a rate limiter</b>, and know how <b>Dropbox-style file sync</b> moves big files.',
+      groups: [['Limit it', 'Token and leaky buckets · fixed and sliding windows'], ['Place it', 'API gateway · 429 and Retry-After · fail open or closed'],
+        ['Keep counts honest', 'Race conditions · atomic counters in Redis'], ['Absorb the chaos', 'Message queues · backoff with jitter · idempotency'], ['Move big files', 'Object storage · presigned URLs · chunking and delta sync']],
+      ask: 'where would each of these sit in the request path, and what breaks if you leave it out?'
+    }
+  };
+
   async function temple() {
     const sv = S.save;
     const lines = S.save.pages.length >= 5 && sv.flags.notebookSeen !== sv.loop
@@ -170,16 +185,13 @@
     if (S.save.pages.length >= 5) sv.flags.notebookSeen = sv.loop;
     await U.dialog(lines.map(t => ({ s: 'uptima', t })));
     // Priming: the gist before the details.
-    const ids = Object.keys(SD.concepts).filter(id => SD.concepts[id].zone === 1);
+    const ch = Math.min(sv.chapter || 1, Object.keys(GIST).length);
+    const g = GIST[ch];
+    const ids = Object.keys(SD.concepts).filter(id => SD.concepts[id].zone === ch);
     const b = U.panel(`<p class="muted small">Uptima's gist board. A minute on the big picture now makes the details land later. Read the shape, not the fine print.</p>
-      <div class="gist"><div class="gist-goal"><span class="q-ctx">Today's quest</span><p>The Goblin King of Links wants every long quest URL in the kingdom turned into a short code, and back again, fast. In interview terms: <b>design a URL shortener</b>.</p></div>
-      <div class="gist-groups">
-        <div><span class="q-ctx">Frame it</span><p>Delivery framework · back-of-envelope math</p></div>
-        <div><span class="q-ctx">Scale reads</span><p>Caching · CDN · replication · hot keys · stampedes</p></div>
-        <div><span class="q-ctx">Scale everything else</span><p>Vertical vs horizontal · load balancing · stateless servers · sharding</p></div>
-        <div><span class="q-ctx">Choose your trade-offs</span><p>CAP & PACELC · SQL vs NoSQL · unique IDs · 301 vs 302</p></div>
-      </div>
-      <p class="small">Ask yourself before you go: <i>which of these would the Goblin King need first, and what would each one cost?</i></p></div>
+      <div class="gist"><div class="gist-goal"><span class="q-ctx">Today's quest</span><p>${g.goal}</p></div>
+      <div class="gist-groups">${g.groups.map(([h, t]) => `<div><span class="q-ctx">${h}</span><p>${t}</p></div>`).join('')}</div>
+      <p class="small">Ask yourself before you go: <i>${g.ask}</i></p></div>
       <div class="row"><button class="primary" id="ar-codex">Open the cheat sheet</button><button class="ghost" id="ar-x">Leave</button></div>`, { title: 'GIST BOARD · GODDESS TEMPLE' });
     ids.forEach(id => S.concept(id));
     if (sv.flags.primedLoop !== sv.loop) { sv.flags.primedLoop = sv.loop; SD.run.gainXp(5); }
@@ -262,7 +274,7 @@
       <ul class="qlist"><li>Answer 5 review questions <span class="muted">${due ? `(${due} concept${due > 1 ? 's' : ''} due)` : ''}</span></li></ul>
       <p class="small">Reward: 40 XP and 2 Memory Shards. ${done ? '<b>Completed today.</b> You can still practise for XP.' : 'Skipping the daily quest has no penalty. Uptima says the penalty is forgetting. She also forgets things, so.'}</p></div>
       <div class="plan"><div class="q-ctx">Your real study plan</div>
-      <p class="small">Chapter 1 covers weeks 1 and 2 of your Hello Interview track: the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener. Do the week's problem on paper first; use runs here to keep it fresh.</p></div>
+      <p class="small">${(sv.chapter || 1) >= 2 ? 'Chapter 2 covers week 3 of your Hello Interview track: the rate limiter and Dropbox-style file sync, plus queues and retries from week 2\'s key technologies.' : 'Chapter 1 covers weeks 1 and 2 of your Hello Interview track: the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener.'} Do the week's problem on paper first; use runs here to keep it fresh.</p></div>
       <div class="row"><button class="primary" id="dq-go">Start</button><button class="ghost" id="dq-x">Later</button></div>`, { title: 'QUEST BOARD', onClose: () => resolveBoard() });
     let resolveBoard;
     await new Promise(res => {
@@ -287,13 +299,20 @@
       return;
     }
     const primed = sv.flags.primedLoop === sv.loop;
+    // Each cleared chapter opens the next dungeon; earlier ones stay open for practice.
+    const open = Object.keys(SD.chapters).map(Number).filter(ch => ch === 1 || sv.flags['ch' + (ch - 1)]);
+    const latest = open[open.length - 1];
+    const dungeons = open.slice().reverse().map(ch => {
+      const c = SD.chapters[ch];
+      return `<button class="opt${ch === latest ? ' on' : ''}" data-ch="${ch}"><b>${c.rank}-Rank Dungeon: ${U.esc(c.name.replace(/^the /, 'The '))}</b>${sv.flags['ch' + ch] ? ' · Cleared' : ''}<br><span class="small">${U.esc(c.blurb)}</span></button>`;
+    }).join('');
     const b = U.panel(`<div class="gate-art"></div>
-      <p><b>E-Rank Dungeon: Prod.</b> Eight floors down. The Goblin King of Links waits at the bottom.</p>
+      <div class="opts">${dungeons}</div>
       ${primed ? '' : '<p class="warn small">Pip: "You haven\'t looked at Uptima\'s gist board this loop! One minute there makes the fights make sense. Also she gets lonely."</p>'}
       <p class="muted small">Spec: ${U.esc(SD.specs[sv.spec].name)} · Max SLA ${S.maxSla()}</p>
-      <div class="row"><button class="primary" id="g-go">Jump in</button><button class="ghost" id="g-x">Not yet</button></div>`, { title: 'DUNGEON GATE' });
+      <div class="row"><button class="ghost" id="g-x">Not yet</button></div>`, { title: 'DUNGEON GATE' });
     b.querySelector('#g-x').onclick = () => { U.closePanel(); SD.hub.stepOffDoor(); SD.hub.start(); M.hud(); };
-    b.querySelector('#g-go').onclick = () => { U.closePanel(); SD.run.start(); };
+    b.querySelectorAll('[data-ch]').forEach(el => el.onclick = () => { U.closePanel(); SD.run.start(+el.dataset.ch); });
   }
 
   SD.onPickup = function () {

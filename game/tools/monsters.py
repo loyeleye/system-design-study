@@ -15,6 +15,13 @@ M = {
  'cat':    dict(col='yellow', body='A', arm='B', leg='D', armY=.55, legX=.24, eyes=[('eye_cute_dark', .31, .4, .8), ('eye_cute_dark', .69, .4, .8)], mouth=('mouth_closed_happy', .5, .68), det=[('ear', .22, .0, 0), ('ear', .78, .0, 1)]),
  'imp':    dict(col='red', body='F', arm='C', leg='B', armY=.48, legX=.22, eyes=[('eye_psycho_dark', .32, .3, .9), ('eye_psycho_dark', .68, .3, .9)], mouth=('mouthF', .5, .52), det=[('horn_large', .22, -.04, 0), ('horn_large', .78, -.04, 1)]),
  'goblin': dict(col='green', body='D', arm='A', leg='A', armY=.55, legX=.25, eyes=[('eye_angry_green', .33, .38, 1), ('eye_angry_green', .67, .38, 1)], mouth=('mouthI', .5, .7), det=[('ear', .08, .25, 0), ('ear', .92, .25, 1)], brow=[('eyebrowA', .33, .2, 1), ('eyebrowA', .67, .2, -1)]),
+ # Chapter 2: the Tidewater Archives.
+ 'bots':   dict(col='yellow', body='B', arm='E', leg='C', armY=.5, legX=.22, eyes=[('eye_yellow', .25, .38, .8), ('eye_yellow', .5, .3, .8), ('eye_yellow', .75, .38, .8)], mouth=('mouthB', .5, .7), det=[('antenna_small', .3, -.06, 0), ('antenna_small', .7, -.06, 1)]),
+ 'echo':   dict(col='blue', body='E', arm='B', leg='D', armY=.5, legX=.22, eyes=[('eye_psycho_light', .34, .36, .9), ('eye_psycho_light', .66, .36, .9)], mouth=('mouthA', .5, .66), det=[('ear_round', .14, .08, 0), ('ear_round', .86, .08, 1)]),
+ 'twins':  dict(col='dark', body='A', arm='A', leg='B', armY=.55, legX=.22, eyes=[('eye_red', .32, .38, .9), ('eye_red', .68, .38, .9)], mouth=('mouth_closed_fangs', .5, .68), det=[('horn_small', .25, -.02, 0), ('horn_small', .75, -.02, 1)], brow=[('eyebrowC', .32, .2, 1), ('eyebrowC', .68, .2, -1)]),
+ 'blob':   dict(col='white', body='F', arm='E', leg='E', armY=.55, legX=.26, eyes=[('eye_cute_dark', .35, .34, .9), ('eye_cute_dark', .65, .34, .9)], mouth=('mouthC', .5, .62), det=[], extra=[('snot_large', .62, .5)]),
+ 'hydra':  dict(col='green', body='F', arm='D', leg='C', armY=.5, legX=.22, eyes=[('eye_angry_green', .22, .34, .8), ('eye_angry_green', .5, .26, .8), ('eye_angry_green', .78, .34, .8)], mouth=('mouthH', .5, .62), det=[('horn_small', .2, -.04, 0), ('horn_small', .5, -.1, 0), ('horn_small', .8, -.04, 1)]),
+ 'latency':dict(col='dark', body='F', arm='C', leg='A', armY=.48, legX=.22, eyes=[('eye_human_red', .34, .34, 1), ('eye_human_red', .66, .34, 1)], mouth=('mouth_closed_teeth', .5, .6), det=[('horn_large', .2, -.06, 0), ('horn_large', .8, -.06, 1)], brow=[('eyebrowC', .34, .18, 1.1), ('eyebrowC', .66, .18, -1.1)]),
 }
 for name, m in M.items():
     c = m['col']; body = L(f"body_{c}{m['body']}")

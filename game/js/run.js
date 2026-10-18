@@ -8,9 +8,10 @@
   let C = null; // current combat
 
   // ---------- Run lifecycle ----------
-  R.start = function () {
+  R.start = function (ch) {
     const sv = S.save;
     sv.run = {
+      ch: ch || 1,
       deck: SD.starterDeck.map(id => ({ id, up: false })),
       sla: S.maxSla(), bits: 20, floor: -1, pos: null, pending: null,
       map: genMap(), mercy: false, startedAt: Date.now(), firstFight: !sv.stats.fights,
@@ -19,7 +20,7 @@
     sv.stats.runs++;
     S.persist();
     SD.main.show('run');
-    gateFx(() => R.showMap());
+    gateFx(() => R.showMap(), ch);
   };
   R.resume = function () {
     SD.main.show('run');
@@ -29,10 +30,11 @@
   };
   R.abandon = function () { endRun(false, 'Your sudden decision to go home'); };
 
-  function gateFx(done) {
+  const chap = () => SD.chapters[(S.save.run && S.save.run.ch) || 1];
+  function gateFx(done, ch) {
     const fx = document.createElement('div');
     fx.className = 'gatefx';
-    fx.innerHTML = '<div class="gate-t">ENTERING PROD...</div>';
+    fx.innerHTML = `<div class="gate-t">${ch === 2 ? 'DIVING INTO THE ARCHIVES...' : 'ENTERING PROD...'}</div>`;
     document.body.appendChild(fx);
     AU.sfx('gate');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -92,7 +94,7 @@
     }));
     $('#run').innerHTML = `
       <div class="run-hud">${hud()}</div>
-      <div class="map-wrap"><div class="map-title">PROD DUNGEON · E-RANK <span class="muted">Pick a path. The Goblin King of Links waits at the end.</span></div>
+      <div class="map-wrap"><div class="map-title">${U.esc(chap().name.replace(/^the /, '').toUpperCase())} · ${chap().rank}-RANK <span class="muted">Pick a path. ${U.esc(SD.enemies[chap().boss].name)} waits at the end.</span></div>
       <div class="map" style="height:${rows * 78}px">${svg}${nodes}</div></div>
       <div class="run-foot"><button class="ghost" id="deck-btn">Deck (${run.deck.length})</button><button class="ghost" id="codex-btn2">Cheat sheet</button><button class="ghost danger" id="abandon">Abandon run</button></div>`;
     $('#run').querySelectorAll('.node.can').forEach(b => b.onclick = () => enterNode(findNode(b.dataset.n)));
@@ -127,8 +129,9 @@
       S.persist();
       if (S.save.run) R.showMap();
     };
-    if (n.type === 'fight') return fight(rnd(SD.enemyPools[n.f < 2 ? 1 : n.f < 5 ? 2 : 3]), { diagnose: Math.random() < 0.45 }, done);
-    if (n.type === 'elite') return fight(rnd(SD.enemyPools.elite), { diagnose: true, elite: true }, done);
+    const pools = chap().pools;
+    if (n.type === 'fight') return fight(rnd(pools[n.f < 2 ? 1 : n.f < 5 ? 2 : 3]), { diagnose: Math.random() < 0.45 }, done);
+    if (n.type === 'elite') return fight(rnd(pools.elite), { diagnose: true, elite: true }, done);
     if (n.type === 'boss') return boss(done);
     if (n.type === 'board') return whiteboard(done);
     if (n.type === 'cafe') return cafe(done);
@@ -150,10 +153,12 @@
     S.persist();
   };
   function cardChoices(n) {
-    const pool = S.unlockedCards();
+    // Each dungeon offers its own chapter's cards (weighted up) plus the general pool.
+    const ch = S.save.run.ch || 1;
+    const pool = S.unlockedCards().filter(id => (SD.cards[id].ch || 1) <= ch && !(SD.cards[id].ch && SD.cards[id].ch !== ch));
     const focus = new Set(S.pickConcepts(5));
     const weighted = [];
-    pool.forEach(id => { const w = SD.cards[id].concept && focus.has(SD.cards[id].concept) ? 3 : 1; for (let i = 0; i < w; i++) weighted.push(id); });
+    pool.forEach(id => { const d = SD.cards[id]; const w = (d.concept && focus.has(d.concept) ? 3 : 1) + (d.ch === ch && ch > 1 ? 2 : 0); for (let i = 0; i < w; i++) weighted.push(id); });
     const out = [];
     let guard = 0;
     while (out.length < n && guard++ < 200) { const id = rnd(weighted); if (!out.includes(id)) out.push(id); }
@@ -245,9 +250,11 @@
   async function reflect(done) {
     const sv = S.save;
     const seen = id => S.concept(id).seen;
-    let cands = SD.links.filter(l => !sv.links.includes(l.id) && seen(l.a) && seen(l.b));
-    if (!cands.length) cands = SD.links.filter(l => !sv.links.includes(l.id));
-    if (!cands.length) cands = SD.links;
+    const z = id => SD.concepts[id].zone, ch = sv.chapter || 1;
+    const avail = SD.links.filter(l => z(l.a) <= ch && z(l.b) <= ch);
+    let cands = avail.filter(l => !sv.links.includes(l.id) && seen(l.a) && seen(l.b));
+    if (!cands.length) cands = avail.filter(l => !sv.links.includes(l.id));
+    if (!cands.length) cands = avail;
     const link = rnd(cands);
     const wrong = Q.shuffle(SD.links.filter(l => l.id !== link.id)).slice(0, 3).map(l => l.text);
     const opts = Q.shuffle([link.text, ...wrong]);
@@ -263,7 +270,8 @@
   }
   function eventNode(done) {
     const run = S.save.run;
-    const ev = rnd(SD.events);
+    const ch = run.ch || 1;
+    const ev = rnd(SD.events.filter(x => (x.ch || 1) === ch || (ch > 1 && Math.random() < 0.3)));
     S.seeConcept(ev.concept);
     const order = Q.shuffle(ev.choices.map((c, i) => i));
     const b = U.panel(`<p>${U.esc(ev.text)}</p><div class="opts">${order.map(i => `<button class="opt" data-c="${i}">${U.esc(ev.choices[i].label)}</button>`).join('')}</div>`, { title: ev.title.toUpperCase(), noClose: true });
@@ -341,7 +349,7 @@
     C.turn++;
     const sv = S.save;
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0);
-    C.sh = zero(); C.choice = null;
+    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
@@ -380,6 +388,9 @@
     if (d.clearStale) C.stale = 0;
     if (d.jitter) C.jitter = true;
     if (d.choice) C.choice = d.choice;
+    if (d.throttle) C.throttle = true;
+    if (d.backoff) C.backoff = true;
+    if (d.chunk) C.chunk = true;
     if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
     if (d.pow) {
       const tags = d.tags || [];
@@ -402,10 +413,10 @@
     if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {
       C.deepAsked = true;
       renderCombat();
-      const q = SD.questions.find(x => x.id === rnd(['x1', 'i3', 'i1']));
+      const q = SD.questions.find(x => x.id === rnd(C.e.deep));
       const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."' });
-      if (r.ok) { mitigate(16, 'DEEP DIVE LANDED! The Goblin King staggers.', 'crit'); U.shake('.foe'); AU.sfx('crit'); }
-      else C.log = 'The deep dive slipped. The Goblin King cackles and presses on.';
+      if (r.ok) { mitigate(16, `DEEP DIVE LANDED! ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
+      else C.log = `The deep dive slipped. ${C.e.short} cackles and presses on.`;
       if (C.sev <= 0) return win();
     }
     renderCombat();
@@ -461,6 +472,35 @@
         dmg = absorb(sc(it.n), [['any', 1]]); note = 'Two links got the same short code. '; break;
       }
       case 'escalate': C.rage += 3; note = 'The incident escalates. All load +3. '; break;
+      case 'flood': {
+        let n = sc(it.n);
+        if (hasInfra('ratelimit')) { n *= 0.4; note = 'Token buckets ran dry: the flood got 429s. '; }
+        if (hasInfra('gateway')) { n *= 0.8; note += 'The gateway turned some away at the door. '; }
+        if (C.throttle) { n *= 0.5; note += 'The sliding window clipped the rest. '; }
+        dmg = absorb(n, READ); if (!note) note = 'Nobody was limited. One client ate the whole API. '; break;
+      }
+      case 'burst': {
+        let n = sc(it.n);
+        if (hasInfra('queue')) { n *= 0.3; note = 'The queue swallowed the spike; workers drain it later. '; } else note = 'A burst of writes hit the database all at once. ';
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      case 'retry': {
+        let n = sc(it.n);
+        if (!hasInfra('idem')) { n *= 1.5; C.stale += 1; note = 'Retries doubled up, and a few charges went through twice (+1 Stale). '; } else note = 'Idempotency keys: repeats got the stored answer. ';
+        if (C.backoff) { n *= 0.4; note += 'Backoff with jitter spread the retries out. '; }
+        dmg = absorb(n, [['any', 1], ['write', 1]]); break;
+      }
+      case 'race': {
+        if (hasInfra('atomic')) { dmg = 0; note = 'Atomic INCR: every count landed exactly once. '; break; }
+        dmg = absorb(sc(it.n), [['any', 1]]); C.stale += 2; note = 'Two servers read the same count; limits drifted (+2 Stale). '; break;
+      }
+      case 'upload': {
+        let n = sc(it.n);
+        if (hasInfra('blob')) { n *= 0.25; note = 'Uploads went straight to object storage. '; }
+        if (C.chunk) { n *= 0.5; C.chunk = false; note += 'Only the changed chunks travelled. '; }
+        if (!note) note = 'Gigabytes squeezed through your app servers. ';
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
     }
     return { dmg, note };
   }
@@ -510,11 +550,14 @@
     if (C.stale) chips.push(`<span class="chip stale" title="Stale reads. Audits deal 3 damage per stack.">Stale ${C.stale}</span>`);
     if (C.choice) chips.push(`<span class="chip choice">${C.choice === 'cp' ? 'Consistency' : 'Availability'}</span>`);
     if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
+    if (C.throttle) chips.push('<span class="chip">Throttled</span>');
+    if (C.backoff) chips.push('<span class="chip">Backing off</span>');
+    if (C.chunk) chips.push('<span class="chip">Chunked</span>');
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
         <div class="foe-zone">
-          <div class="foe" style="--foe:${foeCol}">${SD.art.enemy(e.sprite, C.boss)}</div>
+          <div class="foe" style="--foe:${foeCol}">${SD.art.enemy(e.sprite, C.boss, e.hue)}</div>
           <div class="foe-info">
             <div class="foe-name">${U.esc(e.name)} ${C.boss ? '<span class="tier boss">BOSS</span>' : C.elite ? '<span class="tier elite">ELITE</span>' : '<span class="tier">INCIDENT</span>'}</div>
             ${e.flavor ? `<div class="foe-flavor">${U.esc(e.flavor)}</div>` : ''}
@@ -623,8 +666,9 @@
     if (done) done();
   }
 
-  // ---------- Boss: the Goblin King of Links (URL shortener) ----------
+  // ---------- Bosses: the Goblin King of Links (URL shortener), Lord Latency (rate limiter) ----------
   async function boss(done) {
+    if ((S.save.run.ch || 1) === 2) return boss2(done);
     AU.music('boss');
     await U.dialog(SD.story.bossIntro);
     S.seeConcept('delivery'); S.seeConcept('idgen'); S.seeConcept('redirect');
@@ -649,6 +693,31 @@
     U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now build it under load. At half severity, expect a deep dive.', 'gold');
     fight('ledger', { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
   }
+  async function boss2() {
+    AU.music('boss');
+    await U.dialog(SD.story.boss2Intro);
+    ['ratelimit', 'limiterdesign', 'atomic'].forEach(c => S.seeConcept(c));
+    const buffs = { sevScale: 1, bonusEnergy: 0, startCard: null };
+    const r1 = await Q.ask({
+      c: 'limiterdesign', type: 'multi', q: 'Step 1, Requirements. Which belong in scope for the kingdom\'s API rate limiter?', hint: 'Pick the functional and non-functional requirements. Leave out what does not belong.',
+      items: [
+        { t: 'Limit each user to N requests per time window', ok: true }, { t: 'Reply 429 with Retry-After when limited', ok: true },
+        { t: 'Enforce one shared limit across all 20 API servers', ok: true }, { t: 'Add only a millisecond or two per request', ok: true }, { t: 'Keep the API up if the limiter\'s store fails', ok: true },
+        { t: 'Ban a user forever after one burst', ok: false }, { t: 'Store every request body for audits', ok: false }, { t: 'Trust the app to limit itself', ok: false }
+      ],
+      why: 'Two features (count and reject with a clear signal) and three qualities (distributed, low latency, fault tolerant). Banning, logging bodies and client-side trust are not the limiter\'s job.'
+    }, { title: '[BOSS] REQUIREMENTS', context: 'Delivery framework · 1 of 3' });
+    if (r1.ok) { buffs.sevScale = 0.85; U.system('SCOPE LOCKED!', 'Clear requirements: Lord Latency starts 15% weaker.', 'gold'); }
+    const r2 = await Q.ask(SD.questions.find(q => q.id === 'e5'), { title: '[BOSS] ESTIMATION', context: 'Delivery framework · 2 of 3' });
+    if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND!', '+1 Capacity on turn 1.', 'gold'); }
+    const algos = ['Token bucket per user', 'Fixed window counter per user', 'Sliding window log per user', 'Leaky bucket per user'];
+    const r3 = await Q.ask({ c: 'ratelimit', type: 'mc', q: 'Step 3, Design. Clients may burst a little but must average 100 requests a minute. Which algorithm?', opts: algos, a: 0, why: 'A token bucket allows short bursts up to its size and enforces the average with its refill rate. Fixed windows let 2x through at the edges, a sliding log stores every timestamp, and a leaky bucket smooths output instead of allowing bursts.' }, { title: '[BOSS] DESIGN', context: 'Delivery framework · 3 of 3' });
+    if (r3.ok) { buffs.startCard = 'tokenbucket'; U.system('DESIGN READY!', 'Token Bucket starts in your hand.', 'gold'); }
+    S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok };
+    S.persist();
+    U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now hold the line under his legions. At half severity, expect a deep dive.', 'gold');
+    fight('latencyboss', { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
+  }
 
   // ---------- End of run: postmortem ----------
   function endRun(won, incident) {
@@ -657,7 +726,11 @@
     const mins = Math.round((Date.now() - run.startedAt) / 60000);
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
-    if (won) { sv.stats.wins++; sv.flags.ch1 = true; }
+    const ch = run.ch || 1;
+    if (won) {
+      sv.stats.wins++; sv.flags['ch' + ch] = true;
+      if (ch === 1 && (sv.chapter || 1) < 2) sv.chapter = 2;
+    }
     sv.run = null;
     U.lastIncident = incident || 'A cascade';
     sv.loop++;
@@ -671,7 +744,7 @@
       <button class="primary" id="pm-ok">Continue</button>`, { title: 'POSTMORTEM', noClose: true });
     b.querySelector('#pm-ok').onclick = async () => {
       U.closePanel();
-      if (won) await U.dialog(SD.story.bossWin);
+      if (won) await U.dialog(SD.story[SD.chapters[ch].win]);
       else await U.dialog(SD.story.cascade);
       SD.main.toHub(true);
     };

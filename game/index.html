@@ -133,6 +133,14 @@ button:disabled { cursor: default; opacity: .5; }
 .why { border-left: 4px solid var(--blue); padding: 6px 10px; background: #eef5ff; border-radius: 0 10px 10px 0; }
 .compass { margin-top: 14px; padding: 12px; border: 2px dashed #d39a00; background: #fff7d6; border-radius: 12px; }
 .compass .q-ctx { color: #a06a00; }
+.help-b { display: inline-block; margin: 10px 8px 0 0; padding: 6px 14px; font-size: 14px; }
+.helpbox { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #f1ecff; border: 2px solid #b9a6ff; }
+.helpbox p { margin: 4px 0; }
+.helpbox.huh { background: #e9fbf2; border-color: #7fd6a8; }
+.gloss { margin: 4px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; font-size: 13px; }
+.gloss dt { font-weight: 800; }
+.gloss dd { margin: 0; }
+@media (max-width: 480px) { .gloss { grid-template-columns: 1fr; } .gloss dd { margin-bottom: 4px; } }
 .loot { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .loot span { font-family: var(--f-head); font-weight: 600; font-size: 14px; padding: 4px 12px; border: 2px solid var(--ink); border-radius: 20px; background: var(--sun); }
 .shopkeep { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; font-weight: 600; }
@@ -453,6 +461,15 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
 @keyframes flashOut { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }
 @media (max-width: 520px) { .foe { width: 88px; height: 88px; } .foe-name { font-size: 17px; } .card { width: 120px; } }
+/* Phones: the hand wraps three to a row instead of scrolling sideways. */
+@media (max-width: 600px) {
+  .hand { flex-wrap: wrap; justify-content: center; overflow: visible; gap: 14px 6px; padding: 12px 0 8px; scroll-snap-type: none; }
+  .hand .card { width: calc((100% - 12px) / 3); min-height: 0; padding-bottom: 6px; }
+  .hand .c-name { font-size: 12px; padding: 5px 6px 5px 18px; min-height: 2.7em; }
+  .hand .c-art { height: 30px; } .hand .c-art svg { height: 26px; width: 26px; }
+  .hand .c-text { font-size: 10.5px; padding: 0 6px; }
+  .hand .c-cost { width: 26px; height: 26px; font-size: 13px; top: -9px; left: -7px; }
+}
 </style>
 </head>
 <body>
@@ -494,6 +511,7 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
 
 <script src="assets/game-icons.js"></script>
 <script src="js/content.js"></script>
+<script src="js/eli5.js"></script>
 <script src="js/state.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/art.js"></script>

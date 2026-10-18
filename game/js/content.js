@@ -79,6 +79,42 @@ SD.concepts = {
     name: '301 vs 302 Redirects', zone: 1,
     gist: '301 is permanent: browsers cache it, so later clicks skip your servers (less load, no analytics). 302 is temporary: every click comes back to you.',
     page: 'A forwarding address you never check is cheap. One you check every time tells you who is writing. — U.'
+  },
+  // Chapter 2: the Tidewater Archives. Rate limiter and Dropbox-style file sync (Hello Interview week 3).
+  ratelimit: {
+    name: 'Rate Limiting Algorithms', zone: 2,
+    gist: 'Token bucket: tokens refill at a fixed rate and allow bursts up to the bucket size. Leaky bucket: a queue drained at a fixed rate, so output is smooth. Fixed window counters are simple but allow 2x bursts at window edges. Sliding window log is exact but stores every timestamp; sliding window counter approximates it cheaply.',
+    page: 'Every villager gets ten bread tokens. One more appears each minute. No tokens, no bread, come back later. Seymour hoards tokens. Seymour is not allowed tokens. — U.'
+  },
+  limiterdesign: {
+    name: 'Where the Limiter Lives', zone: 2, tag: 'Placement',
+    gist: 'Put the limiter server-side, usually in the API gateway or middleware, keyed by user, IP or API key. Rejected requests get HTTP 429 with Retry-After and X-RateLimit-Remaining headers. Rules live in config; client-side limits are only a courtesy since clients can be forged.',
+    page: 'Put the guard at the castle gate, not in the throne room. And never trust a visitor who says he already counted himself. — U.'
+  },
+  atomic: {
+    name: 'Race Conditions & Atomic Counters', zone: 2,
+    gist: 'With many limiter servers, counters live in a shared store like Redis. Read-then-write races let two servers both read 9 and write 10. Use atomic operations: INCR with EXPIRE, or a Lua script, so check and update happen as one step. Sticky routing also works but scales worse.',
+    page: 'Two clerks both saw "9 loaves left" and both sold the ninth loaf. Make the counting one motion, not two. — U.'
+  },
+  queue: {
+    name: 'Message Queues', zone: 2,
+    gist: 'A queue (Kafka, SQS) decouples producers from consumers and absorbs bursts: workers drain at their own pace. Delivery is usually at-least-once, so consumers must tolerate duplicates. Kafka orders messages within a partition only; partition by key to keep one entity in order. Watch consumer lag.',
+    page: 'The post office does not deliver every letter the moment you write it. It holds them in a sack and the postman walks. The sack is the point. — U.'
+  },
+  backoff: {
+    name: 'Retries, Backoff & Idempotency', zone: 2,
+    gist: 'Retry transient failures with exponential backoff plus jitter so clients do not retry in lockstep and cause a retry storm. Cap retries, and use circuit breakers to stop hammering a dead dependency. Make writes idempotent with an idempotency key so a retried payment is not charged twice.',
+    page: 'If the door is shut, knock, wait one breath, then two, then four. And write your name on the parcel so you never deliver it twice. — U.'
+  },
+  blob: {
+    name: 'Object Storage & Presigned URLs', zone: 2,
+    gist: 'Store large files in blob storage (S3), not the database; keep only metadata (name, owner, size, chunk list) in the DB. Presigned URLs let clients upload and download directly to storage, so big files never pass through your app servers. Serve popular downloads through a CDN.',
+    page: 'Do not carry every villager\'s furniture through the throne room. Give them a signed note and send them straight to the warehouse. — U.'
+  },
+  chunking: {
+    name: 'Chunking & Delta Sync', zone: 2,
+    gist: 'Split files into chunks (around 4-5 MB) identified by a content hash. Uploads resume chunk by chunk, unchanged chunks are never re-sent, and identical chunks dedupe across users. To sync, clients compare chunk lists and fetch only what changed, then learn of changes by polling or a push channel.',
+    page: 'If one page of the scroll changes, copy one page. Not the whole scroll. The scribes unionised over this. — U.'
   }
 };
 
@@ -98,7 +134,15 @@ SD.links = [
   { id: 'redirect-cache', a: 'redirect', b: 'cache', text: 'A 301 turns every browser into a cache for your redirect.' },
   { id: 'cdn-redirect', a: 'cdn', b: 'redirect', text: 'Redirects for viral links can be served from the edge to cut latency.' },
   { id: 'sqlnosql-cap', a: 'sqlnosql', b: 'cap', text: 'Many NoSQL stores default to availability; relational stores default to consistency.' },
-  { id: 'herd-hotkey', a: 'herd', b: 'hotkey', text: 'A hot key that expires is the worst stampede of all.' }
+  { id: 'herd-hotkey', a: 'herd', b: 'hotkey', text: 'A hot key that expires is the worst stampede of all.' },
+  { id: 'ratelimit-atomic', a: 'ratelimit', b: 'atomic', text: 'A distributed limiter is only as correct as its counter update is atomic.' },
+  { id: 'queue-backoff', a: 'queue', b: 'backoff', text: 'Queues deliver at least once, so consumers need the same idempotency that safe retries need.' },
+  { id: 'ratelimit-backoff', a: 'ratelimit', b: 'backoff', text: 'A 429 with Retry-After tells well-behaved clients exactly how long to back off.' },
+  { id: 'blob-chunking', a: 'blob', b: 'chunking', text: 'Each chunk is stored as an object; the metadata database keeps every file\'s list of chunk hashes.' },
+  { id: 'blob-cdn', a: 'blob', b: 'cdn', text: 'Popular files are served from the edge, pulled from object storage on a miss.' },
+  { id: 'limiterdesign-lb', a: 'limiterdesign', b: 'lb', text: 'The gateway in front of your servers is also the natural place to enforce limits.' },
+  { id: 'atomic-cap', a: 'atomic', b: 'cap', text: 'When the counter store is unreachable, failing open favours availability and failing closed favours correctness.' },
+  { id: 'queue-herd', a: 'queue', b: 'herd', text: 'Both tame a spike: a queue spreads work out over time, coalescing removes the duplicate work.' }
 ];
 
 // Card effects: abs = absorb load this turn {cache, replica, read, write, any}; mit = flat mitigation;
@@ -130,7 +174,17 @@ SD.cards = {
   postgres: { name: 'Postgres Transaction', cost: 1, kind: 'action', abs: { write: 7 }, pow: 6, tags: ['sql'], clearStale: true, text: 'Absorb {write} write load. Remove all Stale: one source of truth.', art: 'cyl', rarity: 'common', concept: 'sqlnosql' },
   counter:  { name: 'Counter Ranges + Base62', cost: 1, kind: 'infra', pow: 8, tags: ['idgen'], each: {}, text: 'Infra. Collision intents deal 0. Each server takes a block of IDs.', art: 'hash', rarity: 'uncommon', concept: 'idgen' },
   estimate: { name: 'Napkin Math', cost: 0, kind: 'action', draw: 2, text: 'Draw 2. Knowing the numbers tells you which card to play.', art: 'calc', rarity: 'common', concept: 'estimation' },
-  redirect302: { name: '302 Redirect', cost: 1, kind: 'action', abs: { read: 8 }, pow: 7, tags: ['302'], text: 'Absorb {read} read load. Every click is counted.', art: 'arrow', rarity: 'uncommon', concept: 'redirect' }
+  redirect302: { name: '302 Redirect', cost: 1, kind: 'action', abs: { read: 8 }, pow: 7, tags: ['302'], text: 'Absorb {read} read load. Every click is counted.', art: 'arrow', rarity: 'uncommon', concept: 'redirect' },
+  // Chapter 2 cards turn up only in the Tidewater Archives.
+  tokenbucket: { name: 'Token Bucket', cost: 2, kind: 'infra', pow: 7, tags: ['ratelimit'], each: {}, text: 'Infra. Flood intents -60%. Each client gets a bucket of tokens; the rest get a 429.', art: 'bucket', rarity: 'uncommon', concept: 'ratelimit', ch: 2 },
+  slidingwindow: { name: 'Sliding Window Counter', cost: 1, kind: 'action', abs: { any: 6 }, pow: 6, tags: ['ratelimit'], throttle: true, text: 'Absorb {any} load. This turn a Flood is halved. Counts the last 60 seconds, not since the top of the minute.', art: 'clock', rarity: 'common', concept: 'ratelimit', ch: 2 },
+  gateway: { name: 'API Gateway', cost: 2, kind: 'infra', pow: 6, tags: ['gateway'], each: { any: 3 }, text: 'Infra. Each turn absorb 3 load. Floods -20%. One front door for auth, routing and limits.', art: 'gate', rarity: 'common', concept: 'limiterdesign', ch: 2 },
+  atomicincr: { name: 'Atomic INCR', cost: 1, kind: 'infra', pow: 6, tags: ['atomic'], each: {}, text: 'Infra. Race intents deal 0 and add no Stale. Check and increment happen in one Lua script.', art: 'atom', rarity: 'uncommon', concept: 'atomic', ch: 2 },
+  mq:       { name: 'Message Queue', cost: 2, kind: 'infra', pow: 7, tags: ['queue'], each: { write: 4 }, text: 'Infra. Burst intents -70%. Absorb 4 write load each turn. Workers drain the backlog.', art: 'queue', rarity: 'uncommon', concept: 'queue', ch: 2 },
+  backoff:  { name: 'Backoff + Jitter', cost: 0, kind: 'action', pow: 4, tags: ['backoff'], backoff: true, text: 'This turn a Retry Storm deals 60% less. Wait 1 s, 2 s, 4 s, plus a random nudge.', art: 'hourglass', rarity: 'common', concept: 'backoff', ch: 2 },
+  idemkey:  { name: 'Idempotency Key', cost: 1, kind: 'infra', pow: 6, tags: ['idem'], each: {}, text: 'Infra. Retry Storms are not amplified and add no Stale. A retried payment is charged once.', art: 'key', rarity: 'uncommon', concept: 'backoff', ch: 2 },
+  presign:  { name: 'Presigned URL', cost: 1, kind: 'infra', pow: 7, tags: ['blob'], each: {}, text: 'Infra. Upload intents -75%. Clients send files straight to object storage.', art: 'upload', rarity: 'uncommon', concept: 'blob', ch: 2 },
+  chunk:    { name: 'Chunk + Dedupe', cost: 1, kind: 'action', abs: { write: 8 }, pow: 7, tags: ['chunk'], chunk: true, text: 'Absorb {write} write load. The next Upload is halved: only changed chunks travel.', art: 'puzzle', rarity: 'common', concept: 'chunking', ch: 2 }
 };
 
 SD.starterDeck = ['hotfix', 'hotfix', 'hotfix', 'hotfix', 'bigbox', 'bigbox', 'bigbox', 'bigbox', 'replica', 'cacheaside'];
@@ -141,6 +195,8 @@ SD.cardUnlocks = {
   3: ['shard', 'nosql', 'cp', 'ap', 'rca', 'leaderfollower'],
   4: ['redis', 'counter', 'redirect302']
 };
+// Chapter cards join the reward pool in that chapter's dungeon once it is unlocked.
+SD.chapterCards = { 2: ['tokenbucket', 'slidingwindow', 'gateway', 'atomicincr', 'mq', 'backoff', 'idemkey', 'presign', 'chunk'] };
 
 // Incidents. weak/resist map a card tag to the reason shown on screen. `flavor` is the joke; `symptom` is the lesson.
 SD.enemies = {
@@ -201,12 +257,69 @@ SD.enemies = {
     pattern: [{ t: 'partition', n: 16 }, { t: 'read', n: 9 }, { t: 'partition', n: 20 }, { t: 'audit' }]
   },
   ledger: {
-    name: 'The Goblin King of Links', sev: 135, concept: 'idgen', tier: 9, boss: true, sprite: 'goblin',
+    name: 'The Goblin King of Links', short: 'The Goblin King', sev: 135, concept: 'idgen', tier: 9, boss: true, sprite: 'goblin', deep: ['x1', 'i3', 'i1'],
     flavor: 'He hoards a hundred million long URLs and demands they all be short. Immediately.',
     symptom: 'The kingdom needs short codes for 100M quest links, redirects in under 100 ms, and reads outnumber writes 100 to 1.',
     weak: { idgen: 'Counter ranges hand out unique codes with no collisions.', cache: 'Redirects are reads of the same codes, again and again.', cdn: 'Viral links can redirect from the edge.', '302': 'A 302 keeps every click countable.', lb: 'Many stateless redirect servers behind a balancer.' },
     resist: { vscale: 'One bigger box cannot carry a kingdom of redirects.' },
     pattern: [{ t: 'write', n: 10 }, { t: 'read', n: 22 }, { t: 'collide', n: 18 }, { t: 'hot', n: 20 }, { t: 'crash', n: 18 }, { t: 'read', n: 28 }, { t: 'escalate' }]
+  },
+  // Chapter 2: the Tidewater Archives.
+  scrapers: {
+    name: 'Scraper Swarm', sev: 42, concept: 'ratelimit', tier: 1, sprite: 'bots', ch: 2,
+    flavor: 'Three-eyed bots asking for page 1, page 2, page 3... of every catalogue. Politely. 900 times a second.',
+    symptom: 'One API key sends 900 requests a second and everyone else gets timeouts. Each request is cheap; there are just far too many.',
+    weak: { ratelimit: 'A per-key limit sends the greedy client 429s and keeps everyone else fast.', gateway: 'The gateway turns excess traffic away before it reaches your servers.', cache: 'Cached pages make each scrape cheaper.' },
+    resist: { vscale: 'A bigger box just serves the bots faster.', replica: 'More replicas give the bots more to read.' },
+    pattern: [{ t: 'flood', n: 12 }, { t: 'flood', n: 16 }, { t: 'read', n: 8 }, { t: 'flood', n: 20 }]
+  },
+  echo: {
+    name: 'The Echo', sev: 40, concept: 'backoff', tier: 1, sprite: 'echo', ch: 2,
+    flavor: 'It repeats everything you say. Then repeats it again. Faster.',
+    symptom: 'Payments blipped for 2 seconds. Now it gets 8x normal traffic, all retries fired at the same instants, and some customers were charged twice.',
+    weak: { backoff: 'Exponential backoff with jitter spreads the retries out.', idem: 'Idempotency keys make a retried charge harmless.', ratelimit: 'A limit caps how hard any one client can retry.' },
+    resist: { hscale: 'More servers just get retried at harder.', cache: 'Payments are writes. A cache does not take them.' },
+    pattern: [{ t: 'read', n: 8 }, { t: 'retry', n: 10 }, { t: 'retry', n: 12 }, { t: 'write', n: 9 }]
+  },
+  racetwins: {
+    name: 'The Race Twins', sev: 40, concept: 'atomic', tier: 1, sprite: 'twins', ch: 2,
+    flavor: 'Two identical demons who both swear they took the last ticket.',
+    symptom: 'The limiter runs on 6 servers sharing Redis. Under load, users get 130 requests through a 100-per-minute limit. Logs show a GET, then a SET, on each counter.',
+    weak: { atomic: 'An atomic INCR makes check and update one step.', sql: 'A transaction also makes the update atomic, at a higher cost.', ratelimit: 'A well-built limiter is half the fix.' },
+    resist: { cache: 'A local cache on each server makes the counts disagree even more.', replica: 'Reading counters from lagging replicas makes races worse.' },
+    pattern: [{ t: 'race', n: 10 }, { t: 'read', n: 8 }, { t: 'race', n: 14 }, { t: 'audit' }]
+  },
+  bigfile: {
+    name: 'The Upload Blob', sev: 44, concept: 'blob', tier: 2, sprite: 'blob', ch: 2,
+    flavor: 'A 40 GB holiday video. It is all one beach. It wants to come in through your app server.',
+    symptom: 'App server memory and bandwidth are maxed by file uploads, so API calls time out. The database stores files in BLOB columns.',
+    weak: { blob: 'Presigned URLs send files straight to object storage.', chunk: 'Chunked uploads resume and skip what is already stored.', cdn: 'Popular downloads can come from the edge.' },
+    resist: { sql: 'Stuffing files into the database is the problem.', vscale: 'A bigger app server still carries every byte.' },
+    pattern: [{ t: 'upload', n: 14 }, { t: 'read', n: 8 }, { t: 'upload', n: 18 }, { t: 'write', n: 8 }]
+  },
+  drop: {
+    name: 'The Midnight Drop', sev: 46, concept: 'queue', tier: 2, sprite: 'slime', hue: 80, ch: 2,
+    flavor: 'A limited-edition sword goes on sale at midnight. Every blue slime in the kingdom clicks Buy at once.',
+    symptom: 'Order traffic jumps 50x for 90 seconds at midnight. Order writes time out; afterwards the system sits idle.',
+    weak: { queue: 'A queue accepts orders instantly and workers process them at a steady pace.', ratelimit: 'A limit shaves the top off the spike.', nosql: 'A write-heavy store keeps up for longer.' },
+    resist: { cache: 'Caches cannot take writes for you.', cdn: 'The edge cannot accept orders.' },
+    pattern: [{ t: 'write', n: 8 }, { t: 'burst', n: 22 }, { t: 'read', n: 8 }, { t: 'burst', n: 26 }]
+  },
+  hydra: {
+    name: 'The Sync Hydra', sev: 52, concept: 'chunking', tier: 3, elite: true, sprite: 'hydra', ch: 2,
+    flavor: 'Edit one word in a file and all three heads re-upload the whole thing. To every device. Forever.',
+    symptom: 'A user changes one line of a 2 GB file; the client re-uploads all 2 GB and every device re-downloads it. Uploads from flaky phones restart from zero.',
+    weak: { chunk: 'Chunking sends only the changed pieces and resumes where it stopped.', blob: 'Object storage holds the chunks; the app servers stay out of the way.', queue: 'A queue fans change notices out to devices without blocking uploads.' },
+    resist: { cache: 'A cache does not shrink an upload.', vscale: 'A bigger box still moves 2 GB per edit.' },
+    pattern: [{ t: 'upload', n: 16 }, { t: 'burst', n: 14 }, { t: 'upload', n: 20 }, { t: 'escalate' }]
+  },
+  latencyboss: {
+    name: 'Lord Latency, Demon King of Lag', short: 'Lord Latency', sev: 150, concept: 'ratelimit', tier: 9, boss: true, sprite: 'latency', ch: 2, deep: ['at1', 'ld3', 'rl1'],
+    flavor: 'He answers every request eventually. Eventually.',
+    symptom: 'The kingdom\'s public API needs a rate limiter: 100 requests per user per minute across 20 API servers, a millisecond or two of overhead, and it must survive its own store failing.',
+    weak: { ratelimit: 'A token bucket per user enforces the rate and allows small bursts.', atomic: 'Atomic counters in Redis stay correct across 20 servers.', gateway: 'The gateway rejects excess traffic before it costs anything.', backoff: 'Retry-After plus backoff calms his retry legions.', queue: 'A queue soaks up his bursts.' },
+    resist: { vscale: 'A bigger server just lets him flood a bigger server.' },
+    pattern: [{ t: 'flood', n: 14 }, { t: 'race', n: 12 }, { t: 'retry', n: 12 }, { t: 'burst', n: 18 }, { t: 'flood', n: 20 }, { t: 'crash', n: 16 }, { t: 'escalate' }]
   },
   // The cold-open tutorial: a small surge, then a stampede big enough that Gary has to step in.
   tutorial: {
@@ -220,6 +333,15 @@ SD.enemies = {
 };
 SD.enemyPools = { 1: ['readsurge', 'writestorm', 'lonely', 'stalewraith'], 2: ['herd', 'celebrity', 'readsurge', 'lonely'], 3: ['herd', 'celebrity', 'writestorm', 'stalewraith'], elite: ['splitbrain', 'celebrity', 'herd'] };
 
+// Dungeons, one per chapter. Pools by depth: 1 for floors 0-1, 2 for floors 2-4, 3 below. Old foes come back to keep them fresh.
+SD.chapters = {
+  1: { name: 'Prod', rank: 'E', boss: 'ledger', pools: SD.enemyPools, intro: 'bossIntro', win: 'bossWin', blurb: 'Eight floors down. The Goblin King of Links waits at the bottom.' },
+  2: {
+    name: 'the Tidewater Archives', rank: 'D', boss: 'latencyboss', intro: 'boss2Intro', win: 'boss2Win', blurb: 'Eight flooded floors of scrolls. Lord Latency waits at the bottom, eventually.',
+    pools: { 1: ['scrapers', 'echo', 'racetwins'], 2: ['bigfile', 'drop', 'scrapers', 'echo', 'readsurge'], 3: ['bigfile', 'drop', 'racetwins', 'herd', 'celebrity'], elite: ['hydra', 'splitbrain', 'drop'] }
+  }
+};
+
 SD.intentText = {
   read: i => `Read load ${i.n}`,
   write: i => `Write load ${i.n}`,
@@ -230,7 +352,12 @@ SD.intentText = {
   audit: () => 'Consistency audit: 3 damage per Stale',
   partition: i => `Partition ${i.n}: choose C or A`,
   escalate: () => 'Escalates: all load +3',
-  collide: i => `Collision ${i.n}: unless IDs are unique`
+  collide: i => `Collision ${i.n}: unless IDs are unique`,
+  flood: i => `Flood ${i.n}: one client, way too many requests`,
+  burst: i => `Burst ${i.n}: a spike of writes`,
+  retry: i => `Retry storm ${i.n}: x1.5 and +1 Stale unless idempotent`,
+  race: i => `Race ${i.n}: counters drift unless atomic`,
+  upload: i => `Upload ${i.n}: huge files through your servers`
 };
 
 // Questions. type mc (choose), num (estimate within range), order (tap in sequence).
@@ -272,11 +399,78 @@ SD.questions = [
   { id: 'i1', c: 'idgen', type: 'mc', q: 'Short codes from an auto-increment counter in base62. A downside?', opts: ['Codes can collide', 'Codes are predictable and the counter is a coordination point', 'Base62 is not URL-safe', 'Codes are too long'], a: 1, why: 'Hand each server a range of IDs to remove the bottleneck; obfuscate if guessability matters.' },
   { id: 'i2', c: 'idgen', type: 'num', q: 'How many unique codes do 7 base62 characters give? Answer in trillions.', unit: 'trillion', lo: 3, hi: 4, ans: '~3.5 trillion (62^7)', why: '62^7 ≈ 3.5 x 10^12. Plenty for billions of links.' },
   { id: 'i3', c: 'idgen', type: 'mc', q: 'You hash the long URL and keep the first 7 characters. What must you handle?', opts: ['Collisions', 'Clock skew', 'Replication lag', 'Cache stampedes'], a: 0, why: 'Truncated hashes collide. Check on insert and retry with a salt.' },
-  { id: 'x1', c: 'redirect', type: 'mc', q: 'A shortener that needs click analytics should redirect with...', opts: ['301 Moved Permanently', '302 Found (temporary)', '200 with a meta refresh', '404'], a: 1, why: 'Browsers cache 301s, so later clicks never reach you. A 302 sends every click through.' }
+  { id: 'x1', c: 'redirect', type: 'mc', q: 'A shortener that needs click analytics should redirect with...', opts: ['301 Moved Permanently', '302 Found (temporary)', '200 with a meta refresh', '404'], a: 1, why: 'Browsers cache 301s, so later clicks never reach you. A 302 sends every click through.' },
+  // Chapter 2
+  { id: 'rl1', c: 'ratelimit', type: 'mc', q: 'A fixed window allows 100 requests per minute. Worst case inside any 60-second span?', opts: ['100', 'About 200, straddling the boundary between two windows', '150', '50'], a: 1, why: '100 at 0:59 and 100 more at 1:00. Sliding windows fix the edge burst.' },
+  { id: 'rl2', c: 'ratelimit', type: 'mc', q: 'Which algorithm allows short bursts while enforcing an average rate?', opts: ['Leaky bucket', 'Token bucket', 'Fixed window counter', 'Round robin'], a: 1, why: 'Tokens pile up to the bucket size, so a quiet client can burst; the refill rate sets the average.' },
+  { id: 'rl3', c: 'ratelimit', type: 'mc', q: 'The main cost of a sliding window log?', opts: ['It allows bursts at window edges', 'It stores a timestamp per request, so memory grows with traffic', 'It cannot be distributed', 'It needs a message queue'], a: 1, why: 'Exact, but heavy. The sliding window counter approximates it with two counters.' },
+  { id: 'rl4', c: 'ratelimit', type: 'mc', q: 'A leaky bucket is the best fit when...', opts: ['The downstream needs a steady, smooth rate', 'You want to allow bursts', 'You need per-user analytics', 'Most requests are reads'], a: 0, why: 'It drains a queue at a fixed rate, so output is smooth and bursts wait (or drop).' },
+  { id: 'ld1', c: 'limiterdesign', type: 'mc', q: "Where should a public API's rate limiter run?", opts: ['In the mobile app', 'Server-side, in the API gateway or middleware', 'Inside the database', 'Nowhere: autoscale instead'], a: 1, why: 'Clients can be modified or forged. Reject excess traffic before it does work.' },
+  { id: 'ld2', c: 'limiterdesign', type: 'mc', q: 'A rate-limited request should get...', opts: ['HTTP 500', 'HTTP 429 with a Retry-After header', 'HTTP 200 with an empty body', 'A silently dropped connection'], a: 1, why: '429 Too Many Requests, plus headers like Retry-After and X-RateLimit-Remaining so clients can back off.' },
+  { id: 'ld3', c: 'limiterdesign', type: 'mc', q: "The limiter's Redis goes down. For a social app's public API, the usual choice?", opts: ['Fail closed: reject everything', 'Fail open: let requests through and page someone', 'Crash the API servers', 'Switch to client-side limits'], a: 1, why: 'Blocking every user is worse than a few minutes without limits. For login or payments you might fail closed; say which and why.' },
+  { id: 'ld4', c: 'limiterdesign', type: 'mc', q: 'Best key for limiting an authenticated API?', opts: ['IP address only', 'User ID or API key', 'Request path only', 'Time of day'], a: 1, why: 'Offices and mobile carriers share IPs. Use the user or key, and fall back to IP for anonymous traffic.' },
+  { id: 'at1', c: 'atomic', type: 'mc', q: 'Limiter servers GET a counter, then SET it to count+1. Under load, users exceed the limit. Why?', opts: ['Redis is too slow', 'A race: two servers read the same value before either writes', 'Clock skew', 'The TTL is too short'], a: 1, why: 'Read-modify-write is two steps. Between them, another server reads the old value.' },
+  { id: 'at2', c: 'atomic', type: 'mc', q: 'The fix for that race?', opts: ['A bigger Redis node', 'INCR with EXPIRE, or a Lua script that checks and increments in one step', 'Read the counter from a replica', 'Put a CDN in front'], a: 1, why: 'Redis runs each command and each Lua script atomically.' },
+  { id: 'at3', c: 'atomic', type: 'mc', q: "Why not keep rate-limit counters in each API server's memory?", opts: ['Memory is expensive', "A user's requests spread across servers, so each server sees only part of the count", 'It is slower than Redis', 'Counters cannot expire'], a: 1, why: 'Twenty servers each allowing 100 is a limit of 2,000. Share the count, or use sticky routing and accept uneven load.' },
+  { id: 'mq1', c: 'queue', type: 'mc', q: 'A flash sale sends 50x write traffic for 90 seconds. A queue helps because...', opts: ['It makes each write faster', 'It accepts the burst and lets workers process at a steady rate', 'It removes duplicates', 'It caches reads'], a: 1, why: 'Producers and consumers are decoupled. The backlog drains after the spike.' },
+  { id: 'mq2', c: 'queue', type: 'mc', q: 'Most queues deliver at least once. So consumers should be...', opts: ['Stateless', 'Idempotent: handling the same message twice is harmless', 'Single-threaded', 'Behind a CDN'], a: 1, why: 'A crash after processing but before acknowledging means the message comes back.' },
+  { id: 'mq3', c: 'queue', type: 'mc', q: 'Kafka guarantees message order...', opts: ['Across the whole topic', 'Within a partition', 'Never', 'Only for one consumer group'], a: 1, why: 'Partition by key (an order ID, a user ID) to keep each entity\'s events in order.' },
+  { id: 'mq4', c: 'queue', type: 'mc', q: 'Consumer lag keeps growing. First move?', opts: ['Delete the topic', 'Add consumers (up to the partition count) or speed up processing', 'Increase retention', 'Switch to a 301'], a: 1, why: 'Lag means consumers are slower than producers. More partitions allow more consumers.' },
+  { id: 'bo1', c: 'backoff', type: 'mc', q: 'A service blips. Every client retries at once, then every 100 ms. What is this?', opts: ['A cache stampede', 'A retry storm: lockstep retries amplify the outage', 'Split brain', 'A hot key'], a: 1, why: 'Retries multiply load exactly when the service is weakest.' },
+  { id: 'bo2', c: 'backoff', type: 'mc', q: 'Why add jitter to exponential backoff?', opts: ['To retry sooner', 'So clients stop retrying at the same moments', 'To make retries idempotent', 'To save memory'], a: 1, why: 'Without jitter, every client waits 1 s, 2 s, 4 s together and arrives in waves.' },
+  { id: 'bo3', c: 'backoff', type: 'mc', q: 'A payment request times out and the client retries. How do you avoid charging twice?', opts: ['Never retry payments', 'Send an idempotency key; the server returns the stored result for repeats', 'Use a 301 redirect', 'Retry faster'], a: 1, why: 'The server records the key with the outcome; a repeat gets the same answer, not a second charge.' },
+  { id: 'bo4', c: 'backoff', type: 'mc', q: 'A circuit breaker...', opts: ['Fails fast after repeated errors, then lets a few requests probe for recovery', 'Retries forever', 'Encrypts traffic', 'Balances load across regions'], a: 0, why: 'It stops you hammering a dependency that is down, and gives it room to recover.' },
+  { id: 'bl1', c: 'blob', type: 'mc', q: 'Where do 2 GB user files belong?', opts: ['A BLOB column in Postgres', 'Object storage like S3, with metadata in a database', 'Redis', 'The app server\'s disk'], a: 1, why: 'Object storage is cheap and durable for big files; the database keeps the small, queryable metadata.' },
+  { id: 'bl2', c: 'blob', type: 'mc', q: 'Presigned URLs help because...', opts: ['They compress files', 'Clients upload and download straight to storage, bypassing your servers', 'They make files public forever', 'They dedupe files'], a: 1, why: 'Your server only signs a short-lived permission; the bytes never pass through it.' },
+  { id: 'bl3', c: 'blob', type: 'mc', q: 'Thousands of people download the same shared file at once. Add...', opts: ['More app servers', 'A CDN in front of object storage', 'A message queue', 'Sharding by filename'], a: 1, why: 'The edge serves the hot file close to users, and storage sees one fetch per region.' },
+  { id: 'ch1', c: 'chunking', type: 'mc', q: 'A user edits one line of a 2 GB file. With chunking, the client uploads...', opts: ['The whole 2 GB again', 'Only the changed chunks', 'Nothing', 'A diff of the database'], a: 1, why: 'Compare chunk hashes; send only the ones that changed.' },
+  { id: 'ch2', c: 'chunking', type: 'mc', q: 'How are chunks identified so they can be deduplicated?', opts: ['By upload time', 'By a hash of their content', 'By filename', 'By user ID'], a: 1, why: 'Same bytes, same hash, stored once, even across users.' },
+  { id: 'ch3', c: 'chunking', type: 'num', q: 'A 2 GB file is split into 4 MB chunks. How many chunks?', unit: 'chunks', lo: 450, hi: 550, ans: '~500 (2,000 MB / 4 MB)', why: 'Hundreds of chunks per big file means the chunk list itself is metadata worth designing.' },
+  { id: 'ch4', c: 'chunking', type: 'mc', q: 'How do your other devices learn a file changed?', opts: ['They re-download every file hourly', 'Long polling or a push channel tells them, then they fetch the changed chunks', 'By email', 'They cannot'], a: 1, why: 'Notify cheaply, then sync only the difference.' },
+  { id: 'e5', c: 'estimation', type: 'num', q: '10M users each have a rate-limit counter of about 100 bytes. Memory for all counters, in GB?', unit: 'GB', lo: 0.8, hi: 1.5, ans: '~1 GB (10^7 x 100 B)', why: 'It fits in one Redis node. The hard parts are atomicity and QPS, not memory.' },
+  { id: 's2', c: 'stateless', type: 'mc', q: 'Why do stateless app servers make autoscaling easy?', opts: ['They use less CPU', 'Any server can serve any request, so you can add or remove servers at will', 'They do not need a load balancer', 'They never crash'], a: 1, why: 'No user is stuck on the server that is being removed.' },
+  { id: 'k2', c: 'hotkey', type: 'mc', q: 'How does key salting fix a hot key?', opts: ['It encrypts the key', 'It stores copies under key#1..key#N on different nodes and reads a random one', 'It shortens the TTL', 'It moves the key to the database'], a: 1, why: 'Reads spread across N nodes. Writes must update every copy, so salt read-heavy keys.' },
+  { id: 'x2', c: 'redirect', type: 'mc', q: 'The main benefit of a 301 for a shortener?', opts: ['Better analytics', 'Browsers cache it, so repeat clicks skip your servers', 'It is more secure', 'It supports custom aliases'], a: 1, why: 'Less load, but you stop seeing repeat clicks.' }
 ];
 
-// Run events: narrative choices where system design judgement picks the best outcome.
+// Run events: narrative choices where system design judgement picks the best outcome. `ch` defaults to 1.
 SD.events = [
+  {
+    id: 'pipretry', ch: 2, title: "Pip's Resend Button", concept: 'backoff',
+    text: 'Pip has found a resend button. The archive server hiccupped, so Pip has pressed it four hundred times. "It\'s not answering! It needs MORE!"',
+    choices: [
+      { label: 'Teach Pip exponential backoff with jitter', good: true, out: 'One second. Two. Four. The server wakes up and answers Pip first. Pip is moved.', effect: { card: 'backoff', xp: 15 } },
+      { label: 'Help Pip press it faster', good: false, out: 'The server falls over. Pip is thrilled it finally responded. It responded 503.', effect: { sla: -8 } },
+      { label: 'Unplug Pip', good: false, out: 'Pip is offended. Packets have feelings.', effect: {} }
+    ]
+  },
+  {
+    id: 'seymourupload', ch: 2, title: "Sir Seymour's Backups", concept: 'blob',
+    text: 'Sir Seymour wants to upload his 400 backups (6 TB) through the guild\'s one API server. "It is the only door I know."',
+    choices: [
+      { label: 'Give him a presigned URL straight to the vault', good: true, out: 'The backups stream into object storage. The API server never notices. Seymour backs up the URL.', effect: { card: 'presign', xp: 15 } },
+      { label: 'Store the backups in the database', good: false, out: 'The database now weighs more than the castle. Queries take a scenic route.', effect: { sla: -6 } },
+      { label: 'Let him carry them through the API server', good: false, out: 'Every quest request waits behind Seymour\'s backups. So does Seymour.', effect: { sla: -8 } }
+    ]
+  },
+  {
+    id: 'chadlimit', ch: 2, title: 'Chad Has a Limiter', concept: 'limiterdesign',
+    text: 'Chad unveils his rate limiter: "The app promises to behave. Client-side. Zero servers! Only 600 bits."',
+    choices: [
+      { label: 'Enforce limits in the API gateway, per user', good: true, out: 'Chad mutters about "legacy thinking". The bots hit a wall of 429s.', effect: { bits: 15, xp: 15 } },
+      { label: 'Sign the contract', good: false, out: 'A bot ignores the promise within four minutes. Chad is unreachable. He is on a yacht.', effect: { bits: -15 } },
+      { label: 'Limit by IP with a fixed window', good: false, out: 'A guild hall of 300 heroes shares one IP and gets locked out together, and the bots burst at every window edge.', effect: { sla: -4 } }
+    ]
+  },
+  {
+    id: 'wendrop', ch: 2, title: "Wen's Midnight Croissants", concept: 'queue',
+    text: 'Grandma Wen is selling 100 legendary croissants at midnight. Last year the order scroll caught fire at 12:00:01.',
+    choices: [
+      { label: 'Put orders on a queue; workers process them with an idempotency key each', good: true, out: 'Every order is accepted instantly and filled in turn. Nobody gets 40 croissants by accident.', effect: { card: 'mq', xp: 15 } },
+      { label: 'Buy a bigger oven server', good: false, out: 'It melts at 12:00:02. Progress.', effect: { sla: -6 } },
+      { label: 'Tell customers to keep retrying until it works', good: false, out: 'A retry storm. Three customers now own 40 croissants each. Wen is delighted. You are not.', effect: { sla: -8 } }
+    ]
+  },
   {
     id: 'junior', title: 'The Panicking Intern', concept: 'cache',
     text: 'A trembling intern from the Royal Bank grabs your sleeve. "The king wants the account balance page cached for an hour so it loads faster. Should I? He has a very big axe."',
@@ -459,6 +653,23 @@ SD.story = {
     { s: 'latency', t: '...' },
     { s: 'latency', t: 'MUAHAHA! Tremble, hero! ...Wait, have you all gone home? My messages take a while to arrive.' },
     { s: 'latency', t: 'Enjoy your little links. Next I shall THROTTLE EVERYTHING. Rate limits! Queues! Retries without backoff! Muahaha... ha... (buffering)' },
-    { s: 'system', t: '[SYSTEM] Chapter 1 cleared. New dungeon detected: Tidewater Archives. (Chapter 2: rate limiters, indexes and the Demon King of Lag.)' }
+    { s: 'system', t: '[SYSTEM] Chapter 1 cleared. New dungeon detected: the Tidewater Archives. (Chapter 2: rate limiters, queues, file sync and the Demon King of Lag.)' }
+  ],
+  boss2Intro: [
+    { s: 'narr', t: 'At the bottom of the Archives, on a throne of spinning loading icons, sits a hooded figure.' },
+    { s: 'latency', t: 'AT LAST. I have been waiting for you for... (buffering) ...a while.' },
+    { s: 'latency', t: 'My bot legions flood the kingdom\'s API! Nobody is limited! Everyone retries! Instantly! FOREVER! Muahaha!' },
+    { s: 'uptima', e: 'angry', t: 'He\'s why my prayers arrive three days late. Hero: design a rate limiter. Framework first, then punch.' },
+    { s: 'system', t: '[SYSTEM] Boss: Lord Latency. Design a rate limiter for the kingdom\'s API. Follow the framework.' }
+  ],
+  boss2Win: [
+    { s: 'narr', t: 'Lord Latency raises a hand to summon one more bot. It receives a 429. Retry-After: 60.' },
+    { s: 'latency', t: 'I... have been... rate limited? ME? I AM the waiting!' },
+    { s: 'latency', t: 'Fine. FINE. I shall wait sixty seconds. Exponentially. With jitter. ...This is actually quite relaxing.' },
+    { s: 'gary', t: 'Oh, hey. I was going to fix that, but I was in the queue at the bakery. Good queue. Very fair.' },
+    { s: 'uptima', e: 'happy', t: 'You beat a Demon King! I\'m putting this on my résumé, under "miracles, delegated".' },
+    { s: 'pip', t: 'He\'s still buffering. Should we tell him he lost?' },
+    { s: 'uptima', t: 'He\'ll find out. Eventually.' },
+    { s: 'system', t: '[SYSTEM] Chapter 2 cleared. Next: Ticketmaster Tower and the Feed Abyss. (Coming soon.)' }
   ]
 };

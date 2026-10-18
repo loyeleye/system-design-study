@@ -21,6 +21,8 @@
       const raw = localStorage.getItem(KEY);
       if (raw) S.save = Object.assign(fresh(), JSON.parse(raw));
     } catch (e) { /* storage blocked: play without a local save */ }
+    // Saves from before chapter 2 existed: a cleared chapter 1 opens chapter 2.
+    if (S.save.flags.ch1 && (S.save.chapter || 1) < 2) S.save.chapter = 2;
     connectCloud();
   };
 
@@ -83,6 +85,7 @@
   S.unlockedCards = function () {
     const out = [];
     for (const lvl in SD.cardUnlocks) if (S.save.level >= +lvl) out.push(...SD.cardUnlocks[lvl]);
+    for (const ch in SD.chapterCards) if (S.save.flags['ch' + (ch - 1)]) out.push(...SD.chapterCards[ch]);
     return out;
   };
 
