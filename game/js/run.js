@@ -13,10 +13,11 @@
     sv.run = {
       ch: ch || 1,
       deck: SD.starterDeck.map(id => ({ id, up: false })),
-      sla: S.maxSla(), bits: 20, floor: -1, pos: null, pending: null,
+      sla: 0, bits: 20, floor: -1, pos: null, pending: null,
       map: genMap(), mercy: false, startedAt: Date.now(), firstFight: !sv.stats.fights,
       log: { fights: 0, concepts: {}, misses: 0, right: 0, xp: 0 }, boss: {}
     };
+    sv.run.sla = S.maxSla();   // after the run exists, so this dungeon's curses apply
     sv.stats.runs++;
     S.persist();
     SD.main.show('run');
@@ -31,6 +32,9 @@
   R.abandon = function () { endRun(false, 'Your sudden decision to go home'); };
 
   const chap = () => SD.chapters[(S.save.run && S.save.run.ch) || 1];
+  // Plot Devices (town quest rewards) and this dungeon's active curses.
+  const dev = id => SD.quests.has(id);
+  const curse = id => SD.quests.curses((S.save.run && S.save.run.ch) || 1).includes(id);
   function gateFx(done, ch) {
     const fx = document.createElement('div');
     fx.className = 'gatefx';
@@ -94,7 +98,8 @@
     }));
     $('#run').innerHTML = `
       <div class="run-hud">${hud()}</div>
-      <div class="map-wrap"><div class="map-title">${U.esc(chap().name.replace(/^the /, '').toUpperCase())} · ${chap().rank}-RANK <span class="muted">Pick a path. ${U.esc(SD.enemies[chap().boss].name)} waits at the end.</span></div>
+      <div class="map-wrap"><div class="map-title">${U.esc(chap().name.replace(/^the /, '').toUpperCase())} · ${chap().rank}-RANK <span class="muted">Pick a path. ${U.esc(SD.enemies[chap().boss].name)} waits at the end.</span>
+        ${curseChips()}</div>
       <div class="map" style="height:${rows * 78}px">${svg}${nodes}</div></div>
       <div class="run-foot"><button class="ghost" id="deck-btn">Deck (${run.deck.length})</button><button class="ghost" id="codex-btn2">Cheat sheet</button><button class="ghost danger" id="abandon">Abandon run</button></div>`;
     $('#run').querySelectorAll('.node.can').forEach(b => b.onclick = () => enterNode(findNode(b.dataset.n)));
@@ -109,6 +114,10 @@
     const first = $('#run').querySelector('.node.can');
     if (first) setTimeout(() => first.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
   };
+  function curseChips() {
+    const list = SD.quests.curses(S.save.run.ch || 1);
+    return list.length ? `<div class="curses">${list.map(id => `<span class="chip stale" title="${U.esc(SD.curses[id].hint)}">☠ ${U.esc(SD.curses[id].name)}: ${U.esc(SD.curses[id].text)}</span>`).join('')}</div>` : '';
+  }
   function hud() {
     const run = S.save.run, sv = S.save;
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
@@ -235,7 +244,7 @@
   }
   function campfire(done) {
     const run = S.save.run;
-    const heal = Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0)));
+    const heal = Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0)));
     const b = U.panel(`<p>A cosy campfire between floors. Pip roasts a marshmallow and drops it. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
       <p class="muted small">Diffuse mode: stepping back is part of learning. Choose one.</p>
       <div class="opts">
@@ -302,9 +311,12 @@
       eid, e, sev: e.sev, max: e.sev, ii: 0, rage: 0, turn: 0, energy: 0, tutorial: !!opts.tutorial,
       draw: opts.tutorial ? deck : Q.shuffle(deck), hand: [], disc: [], exh: [], infra: [],
       sh: zero(), stale: 0, jitter: false, choice: null, known: new Set(known), diagBonus: 0,
-      elite: !!opts.elite, boss: !!opts.boss, done, deepAsked: false, mercyScale: run.firstFight ? 0.75 : 1, log: ''
+      elite: !!opts.elite, boss: !!opts.boss, done, deepAsked: false, mercyScale: run.firstFight ? 0.75 : 1, log: '',
+      budget: dev('halo') ? 5 : 0
     };
-    if (opts.sevScale) { C.sev = C.max = Math.round(e.sev * opts.sevScale); }
+    // Deeper chapters hit harder; Form 27B takes 10% off bosses.
+    const scale = (opts.sevScale || 1) * (opts.tutorial ? 1 : chap().sevMult || 1) * (opts.boss && dev('form27b') ? 0.9 : 1);
+    C.sev = C.max = Math.round(e.sev * scale);
     if (opts.bonusEnergy) C.diagBonus += opts.bonusEnergy;
     if (opts.reveal) { Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t)); }
     if (opts.startCard) C.draw.unshift({ id: opts.startCard, up: false, uid: 999 });
@@ -321,10 +333,11 @@
     const q = { c: e.concept, type: 'mc', q: `Symptoms: ${e.symptom} Which incident is this?`, opts: optsIds.map(k => SD.enemies[k].name), a: optsIds.indexOf(C.eid), why: Object.values(e.weak)[0] };
     const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight', hideOne: S.save.relics.includes('pipeye') });
     if (r.ok) {
-      C.diagBonus += 1;
+      const bonus = dev('bookmark') ? 2 : 1;
+      C.diagBonus += bonus;
       Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t));
       saveKnown();
-      U.system('DIAGNOSIS CORRECT', '+1 Capacity this turn. Weaknesses revealed.');
+      U.system('DIAGNOSIS CORRECT', `+${bonus} Capacity this turn. Weaknesses revealed.`);
     }
     go();
   }
@@ -355,7 +368,7 @@
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
       if (d.eachStale) C.stale += d.eachStale;
     });
-    drawN(C.turn === 1 && sv.spec === 'shard' ? 4 : 5);
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0));
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();
     if (garyShouldCome()) garyRescue();
@@ -382,6 +395,7 @@
     if (d.abs) for (const k in d.abs) {
       let v = d.abs[k] + up + (cacheSpec ? 3 : 0);
       if (c.id === 'addserver' && hasInfra('stateless')) v += 4;
+      if (c.id === 'addserver' && dev('hammer')) v += 3;
       C.sh[k] += v;
     }
     if (d.stale) C.stale = Math.max(0, C.stale + d.stale + (cacheSpec ? 1 : 0));
@@ -433,6 +447,14 @@
     }
     return Math.max(0, Math.round(left));
   }
+  // Curses push some intents up and Plot Devices push them down. The intent shown in combat includes both.
+  function mods(t) {
+    if (t === 'flood') return (curse('botswarm') ? 1.4 : 1) * (dev('dougbot') ? 0.7 : 1);
+    if (t === 'retry') return (curse('echo') ? 1.4 : 1) * (dev('waxseal') ? 0.7 : 1);
+    if (t === 'stampede' || t === 'burst') return dev('strawhat') ? 0.7 : 1;
+    if (t === 'crash') return dev('hammer') ? 0.5 : 1;
+    return 1;
+  }
   function resolveIntent(it) {
     const r = C.rage, m = C.mercyScale, sv = S.save;
     const sc = v => Math.round((v + r) * m);
@@ -447,7 +469,7 @@
       }
       case 'hot': { const n = sc(it.n) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1], ['replica', 0.5]]); note = 'A hot key: replicas only half as useful. '; break; }
       case 'stampede': {
-        let n = sc(it.n);
+        let n = sc(it.n) * mods(it.t);
         if (hasInfra('coalesce')) { n *= 0.25; note = 'Coalescing: one request refilled the cache. '; }
         if (C.jitter) { n *= 0.5; C.jitter = false; note += 'Jitter spread the expiries. '; }
         dmg = absorb(n, [['replica', 1], ['read', 1], ['any', 1]]);
@@ -456,15 +478,15 @@
       }
       case 'crash': {
         if (hasInfra('lb')) { dmg = 0; note = 'Health checks rerouted around the dead server. '; break; }
-        let n = sc(it.n) * (sv.spec === 'warden' ? 0.5 : 1);
+        let n = sc(it.n) * (sv.spec === 'warden' ? 0.5 : 1) * mods(it.t);
         dmg = absorb(n, [['any', 1]]); note = 'A server died and nothing routed around it. '; break;
       }
-      case 'audit': dmg = C.stale * 3; note = C.stale ? `Audit found ${C.stale} stale reads. Capacity cannot fix wrong answers. ` : 'Audit found nothing stale. '; C.stale = Math.floor(C.stale / 2); break;
+      case 'audit': dmg = C.stale * (dev('shield') ? 2 : 3); note = C.stale ? `Audit found ${C.stale} stale reads. Capacity cannot fix wrong answers. ` : 'Audit found nothing stale. '; C.stale = Math.floor(C.stale / 2); break;
       case 'partition': {
         const n = sc(it.n);
         if (C.choice === 'cp') { dmg = absorb(Math.ceil(n / 2), [['any', 1]]); note = 'You chose consistency: some requests refused, no conflicts. '; }
         else if (C.choice === 'ap') { dmg = 0; C.stale += 3; note = 'You chose availability: everyone answered, +3 Stale to reconcile. '; }
-        else { dmg = absorb(n, [['any', 1]]); C.stale += 2; note = 'No choice made: you got the worst of both. '; }
+        else { dmg = absorb(dev('shield') ? Math.ceil(n / 2) : n, [['any', 1]]); C.stale += 2; note = 'No choice made: you got the worst of both. '; }
         break;
       }
       case 'collide': {
@@ -473,20 +495,21 @@
       }
       case 'escalate': C.rage += 3; note = 'The incident escalates. All load +3. '; break;
       case 'flood': {
-        let n = sc(it.n);
+        let n = sc(it.n) * mods(it.t);
         if (hasInfra('ratelimit')) { n *= 0.4; note = 'Token buckets ran dry: the flood got 429s. '; }
         if (hasInfra('gateway')) { n *= 0.8; note += 'The gateway turned some away at the door. '; }
         if (C.throttle) { n *= 0.5; note += 'The sliding window clipped the rest. '; }
         dmg = absorb(n, READ); if (!note) note = 'Nobody was limited. One client ate the whole API. '; break;
       }
       case 'burst': {
-        let n = sc(it.n);
+        let n = sc(it.n) * mods(it.t);
         if (hasInfra('queue')) { n *= 0.3; note = 'The queue swallowed the spike; workers drain it later. '; } else note = 'A burst of writes hit the database all at once. ';
         dmg = absorb(n, [['write', 1], ['any', 1]]); break;
       }
       case 'retry': {
-        let n = sc(it.n);
-        if (!hasInfra('idem')) { n *= 1.5; C.stale += 1; note = 'Retries doubled up, and a few charges went through twice (+1 Stale). '; } else note = 'Idempotency keys: repeats got the stored answer. ';
+        let n = sc(it.n) * mods(it.t);
+        if (curse('echo')) { C.stale += 1; note = 'The halls echo every retry back at you (+1 Stale). '; }
+        if (!hasInfra('idem')) { n *= 1.5; if (!dev('waxseal')) C.stale += 1; note += dev('waxseal') ? 'Retries doubled up, but the wax seal made each count once. ' : 'Retries doubled up, and a few charges went through twice (+1 Stale). '; } else note += 'Idempotency keys: repeats got the stored answer. ';
         if (C.backoff) { n *= 0.4; note += 'Backoff with jitter spread the retries out. '; }
         dmg = absorb(n, [['any', 1], ['write', 1]]); break;
       }
@@ -509,8 +532,10 @@
     if (C.over || C.busy) return;
     const it = C.e.pattern[C.ii % C.e.pattern.length];
     C.disc.push(...C.hand); C.hand = [];
-    const { dmg, note } = resolveIntent(it);
+    let { dmg, note } = resolveIntent(it);
     const run = S.save.run;
+    // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
+    if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
     run.sla -= dmg;
     C.log = note + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
     if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); } else AU.sfx('shield');
@@ -540,7 +565,7 @@
     const run = S.save.run, e = C.e;
     const it = C.e.pattern[C.ii % C.e.pattern.length];
     const shown = Object.assign({}, it);
-    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale); });
+    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale * (k === 'n' ? mods(it.t) : 1)); });
     const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
     const res = Object.keys(e.resist).filter(t => C.known.has('r:' + t));
     const foeCol = SD.art.enemyColor(e.sprite);

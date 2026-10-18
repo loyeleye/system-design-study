@@ -345,6 +345,8 @@ SD.chapters = {
   1: { name: 'Prod', rank: 'E', boss: 'ledger', pools: SD.enemyPools, intro: 'bossIntro', win: 'bossWin', blurb: 'Eight floors down. The Goblin King of Links waits at the bottom.' },
   2: {
     name: 'the Tidewater Archives', rank: 'D', boss: 'latencyboss', intro: 'boss2Intro', win: 'boss2Win', blurb: 'Eight flooded floors of scrolls. Lord Latency waits at the bottom, eventually.',
+    // Each chapter is tougher than the last (severity x sevMult) and carries curses that town quests lift (quests.js).
+    sevMult: 1.1, curses: ['botswarm', 'echo', 'damp'],
     pools: { 1: ['scrapers', 'echo', 'racetwins'], 2: ['bigfile', 'drop', 'scrapers', 'echo', 'readsurge'], 3: ['bigfile', 'drop', 'racetwins', 'herd', 'celebrity'], elite: ['hydra', 'splitbrain', 'drop'] }
   }
 };

@@ -8,6 +8,10 @@
 | "LPC Anime Portrait #2" | ZaPaper, commissioned through ZeNeRIA29, https://opengameart.org/content/lpc-anime-portrait-2 | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Sir Seymour's and Grandma Wen's portraits (cropped) |
 | "Maid YOYO" | Aeihu, https://opengameart.org/content/maid-yoyo | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Mio's portrait (cropped) |
 | "boy" | Aeihu, https://opengameart.org/content/boy | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | The player's portrait (cropped) |
+| "Sara, Trevor, Puck Anime Portrait and Expressions" | ZaPaper, commissioned through ZeNeRIA29, https://opengameart.org/content/sara-trevor-puck-anime-portrait-and-expressions | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Bru's (Sara) and Doug's (Trevor) portraits (cropped) |
+| "Animated Nordic Warrior Sprite + Bust" | Sevarihk, https://opengameart.org/content/animated-nordic-warrior-sprite-bust | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Bram's portrait (cropped) |
+| "Kuudere VIsual novel Sprite" | LisadiKaprio, https://opengameart.org/content/kuudere-visual-novel-sprite | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Lexi's portraits (cropped) |
+| "Brown haired hero" | Ironthunder (with thanks to Markeus Brumfield and Frank Ni), https://opengameart.org/content/brown-haired-hero | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Kaito's portrait (background removed, cropped) |
 | "Business Man" | Grahhhhh, https://opengameart.org/content/business-man-1 | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | Chad's portraits |
 | Tiny Town, Tiny Dungeon | Kenney (www.kenney.nl), via https://opengameart.org/content/tiny-town and /tiny-dungeon | CC0 | The village tiles, villagers and the player sprite |
 | Monster Builder Pack | Kenney, via https://opengameart.org/content/monster-builder-pack | CC0 | Incident monsters, assembled by `tools/monsters.py` |
@@ -15,22 +19,29 @@
 | Emotes Pack, Particle Pack | Kenney, via OpenGameArt | CC0 | Speech-bubble emotes in the village, hit sparks in combat |
 | Game-icons.net (73-icon subset in `assets/game-icons.js`) | https://game-icons.net, via the npm package `@iconify-json/game-icons` 1.2.4. Icons by Lorc, Delapouite and other contributors listed at https://game-icons.net/about.html | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Card art, map nodes, story props |
 
-Portraits are cut by `tools/portraits.py`. Everything else (Gary and Pip's portraits, the truck, the slideshow scenes, the ONE COMMIT effect, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/intro.js`, `js/hub.js` and `index.html`.
+Portraits are cut by `tools/portraits.py`. Everything else (Gary, Pip, Postmaster Coo and Farmer Cron's portraits, Coo's pigeon sprite, Cron's farm, the truck, the slideshow scenes, the ONE COMMIT effect, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/intro.js`, `js/hub.js` and `index.html`.
 
 ## Music
 
 | Track | Author and source | License | Plays |
 | --- | --- | --- | --- |
-| "Monkeys Spinning Monkeys" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Title |
+| "Determination - Anime Style Music" | HydroGene, https://opengameart.org/content/determination-anime-style-music | CC0 | Title |
 | "Local Forecast - Elevator" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The office (first 64 s, faded) |
 | "Fluffing a Duck" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Uptima's arrival |
 | "Sneaky Snitch" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The dungeon map |
-| "Loop Town" | Fupi, https://opengameart.org/content/loop-town | CC0 | The village |
+| "Hot Springs Town" | Kistol, https://opengameart.org/content/hot-springs-town | CC0 | The village |
+| "Cozy Puzzle In-Game 1" | MintoDog, https://opengameart.org/content/cozy-puzzle-in-game-1 | CC0 | Town quests, mini-games and lessons |
+| "Emotional Piano" | Centurion_of_war, https://opengameart.org/content/emotional-piano-0 | CC0 | Story moments in quests |
+| "Enchanted Festival" (the author's looped version) | Matthew Pablo (http://www.matthewpablo.com), https://opengameart.org/content/enchanted-festival | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | The Adventurers' Guild |
 | "JRPG Epic Rock Battle Theme #1" | HydroGene, https://opengameart.org/content/jrpg-epic-rock-battle-theme-1 | CC0 | Battles |
 | "Epic Boss Battle [Seamlessly Looping]" | Juhani Junkala (SubspaceAudio), https://opengameart.org/content/boss-battle-music | CC0 | Boss |
 | Music Jingles (SAX set) | Kenney, via OpenGameArt | CC0 | Victory, defeat and Gary jingles |
 
-Kevin MacLeod credit line: "Monkeys Spinning Monkeys", "Local Forecast - Elevator", "Fluffing a Duck", "Sneaky Snitch" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
+Kevin MacLeod credit line: "Local Forecast - Elevator", "Fluffing a Duck", "Sneaky Snitch" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
+
+Matthew Pablo credit line: "Enchanted Festival" by Matthew Pablo (http://www.matthewpablo.com), licensed under CC BY 3.0, https://creativecommons.org/licenses/by/3.0/, via https://opengameart.org/content/enchanted-festival
+
+The music is anime-flavoured on purpose, but none of it comes from an anime soundtrack: commercial OSTs are copyrighted and this repo is public, so every track here is CC0 or CC BY.
 
 Music was re-encoded to 80 kbps MP3 and loudness-normalised; nothing else was changed.
 

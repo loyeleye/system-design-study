@@ -16,16 +16,21 @@
     const sv = S.save;
     const need = S.xpFor(sv.level);
     const due = S.dueCount();
+    const marks = SD.quests.marks();
+    const newQ = Object.values(marks).filter(m => m === '!').length;
     $('#hud').innerHTML = `
       <div class="rank"><b>${S.rank()}</b><span>RANK</span></div>
       <div class="hud-mid"><div class="hud-name">${U.esc(sv.name)} <span class="muted">Lv ${sv.level} · Loop ${sv.loop}</span></div>
         <div class="bar xp"><i style="width:${sv.xp / need * 100}%"></i></div></div>
       <span class="hud-chip">Shards <b>${sv.shards}</b></span>
       ${due ? `<span class="hud-chip due">${due} review${due > 1 ? 's' : ''} due</span>` : ''}
+      <button class="ghost" id="hud-quests">Quests${newQ ? ` <b class="badge">${newQ}</b>` : ''}</button>
       <button class="ghost" id="hud-codex">Cheat sheet</button>
       <button class="ghost" id="hud-snd" aria-label="Sound on or off">${sndIcon()}</button>
       <button class="ghost" id="hud-menu" aria-label="Menu">☰</button>`;
     $('#hud-codex').onclick = () => U.codex();
+    $('#hud-quests').onclick = () => SD.quests.log();
+    SD.hub.npcMarks = marks;
     $('#hud-snd').onclick = e => toggleSound(e.currentTarget);
     $('#hud-menu').onclick = menu;
     SD.hub.markers = {
@@ -60,8 +65,8 @@
   function credits() {
     U.panel(`<p class="small">Free art and music, used with thanks. Full details are in CREDITS.md in the game's repository.</p>
       <ul class="links small">
-        <li><b>Portraits:</b> "Character Portrait ~ Maid" by Jupiter's Daughter; "LPC Anime Portrait #2" by ZaPaper, commissioned through ZeNeRIA29; "Maid YOYO" and "boy" by Aeihu (all CC BY 3.0, OpenGameArt). "Business Man" by Grahhhhh (CC0).</li>
-        <li><b>Music:</b> "Monkeys Spinning Monkeys", "Local Forecast - Elevator", "Fluffing a Duck" and "Sneaky Snitch" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0. "Loop Town" by Fupi, "JRPG Epic Rock Battle Theme #1" by HydroGene, "Epic Boss Battle" by Juhani Junkala (CC0).</li>
+        <li><b>Portraits:</b> "Character Portrait ~ Maid" by Jupiter's Daughter; "LPC Anime Portrait #2" and "Sara, Trevor, Puck Anime Portrait and Expressions" by ZaPaper, commissioned through ZeNeRIA29; "Maid YOYO" and "boy" by Aeihu; "Brown haired hero" by Ironthunder, with thanks to Markeus Brumfield and Frank Ni (all CC BY 3.0, OpenGameArt). "Animated Nordic Warrior Sprite + Bust" by Sevarihk and "Kuudere VIsual novel Sprite" by LisadiKaprio (CC BY 4.0). "Business Man" by Grahhhhh (CC0).</li>
+        <li><b>Music:</b> "Local Forecast - Elevator", "Fluffing a Duck" and "Sneaky Snitch" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0. "Enchanted Festival" by Matthew Pablo (www.matthewpablo.com), CC BY 3.0. "Determination - Anime Style Music" and "JRPG Epic Rock Battle Theme #1" by HydroGene, "Hot Springs Town" by Kistol, "Cozy Puzzle In-Game 1" by MintoDog, "Emotional Piano" by Centurion_of_war and "Epic Boss Battle" by Juhani Junkala (CC0).</li>
         <li><b>Village, monsters, intro hero, emotes, particles, jingles and sound effects:</b> Kenney (www.kenney.nl), CC0.</li>
         <li><b>Icons:</b> Game-icons.net by Lorc, Delapouite and contributors (CC BY 3.0).</li>
         <li><b>Fonts:</b> Fredoka and Nunito (SIL Open Font License).</li></ul>`, { title: 'CREDITS', cls: 'wide' });
@@ -74,6 +79,8 @@
       <li><b>Matchups.</b> Cards that fit the incident are EFFECTIVE and mitigate hard. Wrong components are RESISTED, and the game tells you why. That reason is the lesson.</li>
       <li><b>Stale.</b> Caches and async replicas add Stale. Audits deal 3 damage per Stale. Speed now, correctness debt later.</li>
       <li><b>Questions.</b> Answer first, then rate how sure you are. Confident misses come back soonest. Cheat sheet pages return when you get a concept right twice in a row.</li>
+      <li><b>Town quests.</b> A villager with a <b>!</b> has a story quest for you; a <b>?</b> means they are waiting on you. Quests send you around town and teach through mini-games. Each one ends with a <b>Plot Device</b>: a permanent upgrade for every future run.</li>
+      <li><b>Curses.</b> Deeper dungeons are harder and cursed. The right Plot Device lifts a curse for good, so explore the town between runs. The Quests button shows which quest lifts which curse.</li>
       <li><b>Gary.</b> Sometimes Gary wanders into a fight and fixes it in one commit. Explain why his fix worked for bonus XP.</li>
       <li><b>Loops.</b> If SLA hits zero, you respawn on the same morning. You keep XP, shards, cards unlocked and everything you learned.</li></ul>`, { title: 'HOW TO PLAY', cls: 'wide' });
   }
@@ -140,13 +147,22 @@
     if (afterRun) SD.hub.placeAt(5, 7);
     M.hud();
     if (afterRun) U.system('[SYSTEM] VILLAGE MORNING', `Loop ${S.save.loop}. You respawned. Uptima has filed the paperwork.`);
+    SD.quests.checkNew();
   };
 
   // ---------- Buildings and villagers ----------
+  // Who stands at each door, and what "go inside" means when they also have quest business.
+  const DOOR_NPC = { A: 'uptima', C: 'wen', H: 'mio', W: 'seymour', U: 'bru', F: 'bram', P: 'coo', K: 'lexi' };
+  const VISIT = { A: 'Visit the temple', C: 'Go into the café', H: 'Climb into the treehouse', W: 'Enter the bunker', U: "Check the Guild's quest log", F: 'Look around the Forge', P: 'Browse the Pigeon Post', K: 'Browse the library' };
   async function door(c) {
     SD.hub.stop();
-    AU.sfx(c === 'gary' || c === 'B' ? 'blip' : 'door');
+    AU.sfx(DOOR_NPC[c] || c === 'G' ? 'door' : 'blip');
     try {
+      // Quest business comes first; villagers with a building offer to carry on inside instead.
+      if (c !== 'G' && c !== 'B' && await SD.quests.talk(DOOR_NPC[c] || c, VISIT[c])) return;
+      if (c === 'U') await SD.quests.guild();
+      if (c === 'F') await forge();
+      if (c === 'P' || c === 'K' || c === 'cron' || c === 'kaito' || c === 'doug') await SD.quests.idle(DOOR_NPC[c] || c);
       if (c === 'A') await temple();
       if (c === 'C') await cafe();
       if (c === 'H') await treehouse();
@@ -280,6 +296,12 @@
     if (lesson) await SD.lessons.play(lesson);
   }
 
+  async function forge() {
+    await SD.quests.idle('bram');
+    SD.quests.log('devices');
+    await waitClose();
+  }
+
   async function gary() {
     const sv = S.save;
     const i = sv.flags.garyTalk || 0;
@@ -327,11 +349,15 @@
     const latest = open[open.length - 1];
     const dungeons = open.slice().reverse().map(ch => {
       const c = SD.chapters[ch];
-      return `<button class="opt${ch === latest ? ' on' : ''}" data-ch="${ch}"><b>${c.rank}-Rank Dungeon: ${U.esc(c.name.replace(/^the /, 'The '))}</b>${sv.flags['ch' + ch] ? ' · Cleared' : ''}<br><span class="small">${U.esc(c.blurb)}</span></button>`;
+      const cursed = SD.quests.curses(ch), all = c.curses || [];
+      return `<button class="opt${ch === latest ? ' on' : ''}" data-ch="${ch}"><b>${c.rank}-Rank Dungeon: ${U.esc(c.name.replace(/^the /, 'The '))}</b>${sv.flags['ch' + ch] ? ' · Cleared' : ''}<br><span class="small">${U.esc(c.blurb)}</span>
+        ${all.length ? `<br><span class="small ${cursed.length ? 'warn' : 'good'}">${cursed.length ? `☠ Cursed: ${cursed.map(id => U.esc(SD.curses[id].name)).join(', ')}` : '✓ Every curse lifted'}</span>` : ''}</button>`;
     }).join('');
+    const warnCurse = SD.quests.curses(latest).length;
     const b = U.panel(`<div class="gate-art"></div>
       <div class="opts">${dungeons}</div>
       ${primed ? '' : '<p class="warn small">Pip: "You haven\'t looked at Uptima\'s gist board this loop! One minute there makes the fights make sense. Also she gets lonely."</p>'}
+      ${warnCurse ? '<p class="warn small">Pip: "That dungeon is cursed! Town quests earn Plot Devices that lift curses. Check <b>Quests</b>, then the Curses tab."</p>' : ''}
       <p class="muted small">Spec: ${U.esc(SD.specs[sv.spec].name)} · Max SLA ${S.maxSla()}</p>
       <div class="row"><button class="ghost" id="g-x">Not yet</button></div>`, { title: 'DUNGEON GATE' });
     b.querySelector('#g-x').onclick = () => { U.closePanel(); SD.hub.stepOffDoor(); SD.hub.start(); M.hud(); };

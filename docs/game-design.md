@@ -65,6 +65,13 @@ Ladi pointed at One Punch Man, Overly Cautious Hero, and an r/anime top-10 threa
 | **Mio** | An 8-year-old future hero who can hear what servers think. She draws you a crayon picture every respawn. | Anya (Spy x Family) |
 | **Grandma Wen** | Runs the Cache Café, the meta shop. She remembers her regulars and forgets the rest ("least recently used"). | Village-shopkeeper archetype |
 | **Chad the Consultant** | A Certified Solutions Visionary. In an event he sells you "vertical scaling, but make it enterprise". | Reigen (Mob Psycho 100) |
+| **Bru** | The Adventurers' Guild receptionist (Rank: Overworked). Gives out quests, keeps the prayer logs, says "EHHH?!" a lot. | The guild-receptionist archetype (Danmachi, Konosuba's Luna) |
+| **Bram** | The blacksmith. One anvil, one man, until you teach him horizontal scaling. | The gruff-mentor smith (Clint in Stardew Valley) |
+| **Postmaster Coo** | A pigeon who runs the Pigeon Post. Delivers at least once. | Talking-animal civil servants (Ghibli's Baron, Kiki's postal work) |
+| **Lexi** | Chuunibyou librarian guarding the "Forbidden Index" (a card catalogue). | Rikka (Love, Chunibyo & Other Delusions) |
+| **Farmer Cron** | Does everything at midnight, like his father did. Causes the valley's thundering herd. | Stardew's farmers; the cron job |
+| **Kaito** | The *other* isekai hero, self-appointed rival, Legendary Skill: Kubernetes. Overengineers everything. Tsundere about learning. | Kazuma's rivals, Vegeta-style rivals, and every "rewrite it in microservices" engineer |
+| **Doug** | Runs a "totally legit" bot named Kevin that refreshes the quest board ten thousand times a minute. | The scraper in every rate-limiting post-mortem |
 | **Lord Latency** | Demon King of Lag. His lines type out slowly. He is teased after chapter 1 and is the chapter 2 boss, where he finally gets rate limited. | The isekai Demon King archetype |
 
 Respawns keep the time-loop learning frame from the first version, played for laughs:
@@ -73,11 +80,118 @@ Respawns keep the time-loop learning frame from the first version, played for la
 - Mio never remembers drawing you.
 - Uptima recognises her own handwriting in Cheat Sheet pages she hasn't written yet.
 
+## Town quests and Plot Devices
+
+Ladi asked for town exploration between dungeon runs, with story quests in the spirit of To The Moon, Stardew Valley and Borderlands, and for quest rewards that work like Slay the Spire relics. The rewards are called **Plot Devices**: they survive every loop, and Uptima says it is in her contract ("the plot must go on").
+
+- **To The Moon:** one quest is a quiet, sad story. In "Hiro's Loop Bread", Grandma Wen lost her late husband's only recipe in a flood, and you rebuild it from a child's drawing (a snapshot), his numbered letters and the café ledger (a log). The lesson is snapshot plus log replay; the point is the last letter. It plays the story theme.
+- **Stardew Valley:** villagers live somewhere (the Guild, the Forge, the Pigeon Post, the Grand Library, Cron's farm), have idle lines that change each visit, and send you to each other.
+- **Borderlands:** quest givers wear a yellow **!** (a quest to start) or a blue **?** (a quest waiting on them); a quest log tracks steps and items; quest titles are puns; every reward has flavour text ("Kevin is rate limited now. Kevin is at peace.").
+
+Every quest still teaches. Each has a signature mini-game, one or two whiteboard questions recorded in spaced review, and it marks its concepts as seen in the Cheat Sheet.
+
+### Unlock schedule
+
+| Posted | Quests | Count |
+| --- | --- | --- |
+| From the start | 1–2 | 2 |
+| After clearing chapter 1 (Prod) | 3–5 | 3 |
+| After clearing chapter 2 (Tidewater Archives) | 6–10 | 5 |
+| After clearing chapter 3 (Clockwork Spire) | 11–15 | 5 |
+| After clearing chapter 4 (Sky Harbour) | 16–20 | 5 |
+
+Quests 1–10 are built. Quests 11–20 are specified below and get built alongside chapters 3 and 4, since they teach those chapters' material and lift those dungeons' curses.
+
+### Built quests (1–10)
+
+| # | Quest | Giver | Steps | Teaches | Mini-game | Plot Device |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Form 27B, Stamped | Bru | Bru → Uptima signs in the wrong box → Bru | Requirements; napkin math | Requirements Sort, Napkin Math | **Form 27B (Stamped):** bosses start 10% weaker |
+| 2 | One Anvil, One Man, One Very Long Line | Bram | Bram → Mio's class → Seymour's squires → Bram | Load balancing, horizontal scaling, stateless workers | Front Desk, Blueprint | **Apprentice's Hammer:** crash intents halved, Add Server absorbs +3 |
+| 3 | Pigeon Post-Apocalypse | Coo | Coo → Wen → Coo | At-least-once delivery, idempotency keys, dead-letter queues | Dedupe Desk | **Idempotent Wax Seal:** retry intents −30% and no Stale |
+| 4 | Doug's Totally Legit Bot | Bru | Bru → Doug → Bru → Doug | Rate limiting algorithms and where the limiter lives | Limiter Lab, What's Missing? | **Kevin, Doug's Confiscated Bot:** flood intents −30% |
+| 5 | Hiro's Loop Bread | Wen | Wen → Mio → Coo → Seymour → Wen | Replication, snapshots, write-ahead logs | Rebuild the Recipe | **Hiro's Recipe Card:** +8 max SLA, campfires heal 10% more |
+| 6 | The Forbidden Index | Lexi | Lexi → Kaito → Lexi | Indexes, full scans, the write cost of indexing | The Forbidden Index | **Lexi's Bookmark:** a correct diagnosis gives +2 Capacity |
+| 7 | Midnight at Cron's Farm | Cron | Cron → Bram → Cron | Thundering herds, jitter, exponential backoff | Jitter Garden | **Cron's Straw Hat:** stampede and burst intents −30% |
+| 8 | Kaito's 47 Microservices | Kaito | Kaito → Mio → Kaito (a duel) | Requirements first, monoliths, not overengineering | Declutter | **Kaito's Spare Cluster:** +1 card on the first turn of every fight |
+| 9 | Seymour, Seymour and Seymour | Seymour | Seymour → Uptima | Quorums (N, W, R) and the CAP trade-off | Quorum Dial | **Seymour's Spare Shield:** audits 2 per Stale; unchosen partitions deal half |
+| 10 | The Goddess's Performance Review | Uptima | Uptima → Bru → Uptima → Coo → Uptima | Percentiles, SLOs, error budgets | Performance Review | **Uptima's Bent Halo:** the first 5 damage each fight is ignored |
+
+Quest data lives in `game/js/quests.js`. Each step names the villager it waits on and a list of actions: dialogue, music, item given or taken, a mini-game, or a question. Talking to a villager with quest business runs their next step; villagers with a building ask whether you want the quest or the building.
+
+### Curses: why chapter 2 onwards needs Plot Devices
+
+Each dungeon after the first is harder in two ways:
+
+- A severity multiplier on every incident (`sevMult` in `SD.chapters`): 1.1 for chapter 2, planned at 1.2, 1.3 and 1.4 for chapters 3 to 5.
+- **Curses** (`SD.curses`, listed per chapter). Each one is lifted for good by one Plot Device, so town quests are the intended way through. The gate shows each dungeon's curses, the map shows them as chips, and the quest log has a Curses tab with a hint for each.
+
+| Chapter | Curse | Effect | Lifted by |
+| --- | --- | --- | --- |
+| 2 (built) | Bot Swarm | Flood intents +40% | Kevin (quest 4) |
+| 2 (built) | Echoing Halls | Retry intents +40% and +1 Stale | Idempotent Wax Seal (quest 3) |
+| 2 (built) | Damp Archives | −12 max SLA | Hiro's Recipe Card (quest 5) |
+| 3 | Thundering Gears | Stampede and burst intents +40% | Cron's Straw Hat (quest 7) |
+| 3 | Clockwork Rifts | Partitions +40%, and doing nothing costs double | Seymour's Spare Shield (quest 9) |
+| 3 | Unindexed Stacks | A correct diagnosis gives no Capacity | Lexi's Bookmark (quest 6) |
+| 4 | Dead Air | Turn 1 of every fight starts with 1 less Capacity | Mio's Walkie-Talkie (quest 11) |
+| 4 | Clock Drift | Race intents +40% and +1 Stale | Wen's Kitchen Timer (quest 12) |
+| 4 | Many Kings | Escalate adds +5 load instead of +3 | The Speaker's Gavel (quest 13) |
+| 4 | Double Booking | Collide intents +40% | Bru's Fencing Token (quest 14) |
+| 5 | Wrong Address | Hot-key intents +40% | Coo's Phonebook (quest 16) |
+| 5 | Big Bang Release | Crash intents +40% | Rollback the Canary (quest 17) |
+| 5 | Viral Surge | Read intents +25% | Kaito's Ring Light (quest 18) |
+
+Every dungeon is still beatable without its Plot Devices; it is just meant to feel unfair, the way a JRPG boss does when you skipped the side quests.
+
+### Planned quests (11–20)
+
+Posted after chapter 3 (they teach chapter 4's material and lift its curses):
+
+| # | Quest | Giver | Story | Teaches | Mini-game (mechanic) | Plot Device |
+| --- | --- | --- | --- | --- | --- | --- |
+| 11 | Is Anyone There? | Mio | Mio's walkie-talkie club keeps "losing" friends who are just eating lunch, and one ghost never logs off. | WebSockets vs polling, heartbeats, timeouts, presence | **Heartbeat Haunt**: tune heartbeat interval and timeout while kids drift in and out; too short raises false "gone" alarms, too long leaves ghosts online | **Mio's Walkie-Talkie:** turn 1 shows the next two intents. Lifts Dead Air |
+| 12 | Who Ate the Last Croissant? | Wen | Two café tills disagree about who bought the last croissant. Both clocks are wrong. | Clock skew, Lamport and vector clocks, last-write-wins losing data | **Timeline Detective**: draw happens-before arrows between three witnesses' events, then mark which ones were truly concurrent | **Wen's Kitchen Timer:** race intents −30%. Lifts Clock Drift |
+| 13 | The Election of Seymour | Seymour | Five Seymours (he found two more) must elect a captain while a storm cuts the bunker in half. | Leader election, terms, majorities, split votes, randomised timeouts (Raft-style) | **Ballot Box**: real-time vote requests across a partition; get exactly one leader with a majority | **The Speaker's Gavel:** partition intents −30%. Lifts Many Kings |
+| 14 | The Guild's Great Double Booking | Bru | Two heroes accepted the same dragon. One of them fell asleep holding the quest key. | Distributed locks, leases, fencing tokens | **Lock & Lease**: hand out a quest key with an expiry; a hero frozen mid-swing wakes after the lease ends, and fencing numbers decide whose write counts | **Bru's Fencing Token:** collide intents −30%. Lifts Double Booking |
+| 15 | Cron's Very Long Harvest | Cron | Harvest, mill, bake and deliver across four shops; the mill breaks halfway. | Sagas, compensating actions, scheduled jobs and retries | **Saga Builder**: chain the steps, pair each with its undo, then watch a failure roll the chain back | **Cron's Almanac:** escalate adds +2 load instead of +3 |
+
+Posted after chapter 4 (chapter 5's material and curses):
+
+| # | Quest | Giver | Story | Teaches | Mini-game (mechanic) | Plot Device |
+| --- | --- | --- | --- | --- | --- | --- |
+| 16 | The Pigeon Phonebook | Coo | Pigeons keep flying to Kaito's old address. He moved. He wants everyone to know he moved. | DNS resolution, caching and TTLs, GeoDNS | **Resolver Relay**: route a lookup root → TLD → authoritative with caches on the way, then pick a TTL that survives the next move | **Coo's Phonebook:** hot-key intents −30%. Lifts Wrong Address |
+| 17 | Uptima's Canary | Uptima | Halo 2.0 is ready. Uptima wants to ship it to every prayer at once. | Canary releases, feature flags, rollbacks | **Canary Coop**: release to 1%, 10%, 50%, 100% while error graphs move; roll back at the right moment | **Rollback the Canary:** the first crash each fight deals nothing. Lifts Big Bang Release |
+| 18 | Kaito's Livestream | Kaito | Kaito livestreams his training to an audience of thousands (Mio and her class, many times). | Video pipelines: transcoding, adaptive bitrate, CDN push vs pull | **Bitrate Ladder**: pick renditions for viewers on different connections and pre-warm the CDN before the stream starts | **Kaito's Ring Light:** read and hot-key intents −15%. Lifts Viral Surge |
+| 19 | Lexi's Endless Catalogue | Lexi | Lexi wants to catalogue every book in every town. One town's library is a calendar with infinite pages. | Web crawlers: frontier, politeness, dedupe by content hash, crawler traps | **Crawler Garden**: send spiders through a web of pages, respect each site's pace, skip duplicates, escape the infinite calendar | **Lexi's Spider:** write intents −15% |
+| 20 | The Goddess Never Sleeps | Gary | Gary takes a holiday. You are on call for Heaven. | Monitoring, logging, alerting on SLO burn rate, multi-region failover | **Pager Panic**: triage a wall of alerts, separate symptoms from causes, silence the noisy ones, fail over a region | **Gary's Coffee Mug:** once per fight, a RESISTED card refunds its Capacity |
+
+### Mini-games and the learning principle each one uses
+
+Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `def` and resolves to `{ ok, score }`. Most open with a **prediction** (generate an answer before seeing it, then the result screen checks it), and every one ends by naming the idea in plain words, after you have felt it.
+
+| Mini-game | Mechanic | Teaches | Learning principle |
+| --- | --- | --- | --- |
+| Requirements Sort | Sort cards into three bins; misses come back at the end | Functional vs non-functional vs out of scope | Retrieval with immediate feedback; errors are recycled until right (Sung's gap seeking) |
+| Napkin Math | A chain of estimates on a powers-of-ten slider; each step uses the real number from the last | Back-of-the-envelope estimation | Generate before the reveal; chunking numbers (Oakley); practise like the interview (Sung) |
+| Front Desk | Be the load balancer: tap a worker for each order; one faints halfway | Load balancing, health checks | Concrete experience before abstraction (Oakley); predict, then compare your play to round robin, least busy and random |
+| Blueprint | Drag parts into the empty slots of a diagram; wrong parts bounce with a reason | How the parts of a design fit together | Building a schema, big picture first (Sung); wrong choices explained, not just marked |
+| What's Missing? | Tap where a design breaks, then pick what fixes it | Where a component belongs | Evaluation, a higher-order task (Sung); the gap is found before it is named |
+| Dedupe Desk | Deliver, skip or dead-letter each letter against a ledger | Idempotency, at-least-once delivery, dead-letter queues | Procedural practice with variation; a vivid consequence for each mistake (80 croissants) |
+| Rebuild the Recipe | Order log entries onto a snapshot, skipping old and duplicate ones | Snapshots, logs, replication | Constructing the answer from parts; specific feedback on the kind of mistake |
+| Limiter Lab | Run three algorithms against the same traffic and compare | Fixed window, sliding window, token bucket | Compare and contrast (Sung's relating); a prediction checked against the result |
+| Jitter Garden | Pick start spread and retry policy, run the night, repeat | Thundering herds, backoff, jitter | Hypothesis, experiment, observe; productive failure on the first run |
+| The Forbidden Index | Scan 64 books one by one, then binary-search a sorted catalogue | Indexes, O(n) vs O(log n) | Feel the difference before the term (Oakley's concrete first); prediction |
+| Quorum Dial | Set W and R until all three goals hold | R + W > N | Discover the rule instead of being told it (Sung's generation) |
+| Performance Review | Read a histogram, slide to p99, then make an error-budget call | Percentiles, SLOs, error budgets | Estimate from a picture, then apply it to a judgement in context |
+| Declutter | Remove parts from Kaito's design until it meets the requirements | Requirements first, monolith before microservices | Evaluating against goals; Kaito is a walking Einstellung effect (Oakley): stuck on the tool he already knows |
+
 ## Audio
 
 Recorded music and samples play when they load, with the original chiptune synth in `game/js/audio.js` as the fallback. Sources and licenses are in `game/CREDITS.md`.
 
-- **Music** (`game/assets/audio/m-*.mp3`): comedic Kevin MacLeod tracks for the title ("Monkeys Spinning Monkeys"), the office (elevator music) and Uptima's entrance ("Fluffing a Duck") and the dungeon map ("Sneaky Snitch"); "Loop Town" for the village; a JRPG rock battle theme; an epic looping boss theme. Songs stream through `<audio>` elements routed into the Web Audio music bus, so mute and fades still work.
+- **Music** (`game/assets/audio/m-*.mp3`): an anime-opening style title theme ("Determination"), a cosy town theme ("Hot Springs Town"), a light puzzle theme for quests, mini-games and lessons, a piano theme for sad story moments, and a bustling festival track for the Adventurers' Guild. Comedic Kevin MacLeod tracks stay for the office (elevator music), Uptima's entrance ("Fluffing a Duck") and the dungeon map ("Sneaky Snitch"), with a JRPG rock battle theme and an epic looping boss theme. Songs stream through `<audio>` elements routed into the Web Audio music bus, so mute and fades still work. If a quest, story or guild track fails to load, the town theme plays instead.
+- **Why not real anime OSTs:** Ladi suggested a YouTube playlist of anime soundtracks. Those are copyrighted, and this repo and the published game are public, so every track is CC0 or CC BY and credited in `game/CREDITS.md`.
 - **Jingles:** Kenney's saxophone jingles for victory, defeat and Gary.
 - **Sound effects:** Kenney's interface and RPG sounds for clicks, confirms, errors, card flips, slashes, coins and doors. The synth still voices the typewriter blips (each speaker has a pitch; Lord Latency types slowly), the truck horn, the crash and the alarm.
 - **Controls:** Music and sound effects can each be toggled from the menu. The HUD has a mute button. Preferences are saved in the browser.
@@ -99,6 +213,7 @@ Recorded music and samples play when they load, with the original chiptune synth
 | Concrete experience before abstraction | Oakley (chunking), Sung (priming with structure) | Building lessons let you *do* the idea before the dungeon tests it: be the cache in Cache Rush, watch shelves overload in Shard Sorter, spam a token bucket, run a festival with and without a queue. |
 | Focused and diffuse modes; Pomodoro-sized sessions | Oakley | A run takes about 20 minutes. Campfires frame rest as diffuse mode, and the postmortem says how long you focused and suggests a five-minute break. |
 | Practise like you play | Sung (match challenge, level and cue) | Bosses follow the interview's real structure and cues. Estimation answers are typed, not chosen. |
+| Predict, then play | Sung (generation and priming), Oakley (concrete before abstract) | Most quest mini-games open with a prediction ("which rule keeps the wait shortest?", "how many cards will you need?"), then you play it, and the result screen checks the guess. A wrong prediction is framed as the memorable part. |
 | Mindset: mistakes are the data | Sung | Dying is part of the joke. You keep XP, shards and knowledge; only the run resets. |
 
 ## Game design notes (Extra Credits and others)
@@ -115,7 +230,7 @@ Recorded music and samples play when they load, with the original chiptune synth
   - Geographic: the walkable village and its sparkly pickups.
   - Mechanical: finding that The Celebrity Post shrugs off shards but not salted keys.
   - Content: new cards, incidents and relics.
-  - Narrative: Cheat Sheet pages, Mio's drawings, and dialogue that changes each respawn.
+  - Narrative: Cheat Sheet pages, Mio's drawings, dialogue that changes each respawn, and town quests that post in waves as you clear dungeons.
 - **Classes with a niche and a weakness** (Extra Credits with Eddie Webb). The Specs:
   - Cache Whisperer absorbs more with caches but gains extra Stale.
   - Shardsmith plays infra cheaper but starts with one less card.
@@ -128,7 +243,7 @@ Recorded music and samples play when they load, with the original chiptune synth
   - It teaches by doing in a scripted fight.
   - It ends with a spectacle (ONE COMMIT) that sets up a recurring payoff.
 - **Juice:** Thick outlines, squishy idle animations, googly-eyed monsters, screen shake, floating numbers, and a sound on every action. The aim is that pressing a button feels good before the player knows why.
-- **Level design guidance:** Landmarks and markers lead the eye in the hub: the Cloud overhead, the fountain plaza, wooden signs, and a "!" over buildings with something new.
+- **Level design guidance:** Landmarks and markers lead the eye in the hub: the Cloud overhead, the fountain plaza, wooden signs, and a "!" over buildings with something new. Villagers wear a yellow "!" when they have a quest to give and a blue "?" when a quest step waits on them, and the Quests button counts quests ready to start.
 
 ## Visual style
 
@@ -162,11 +277,13 @@ Topic coverage is cross-checked against the public outline of Educative's *Grokk
 - `game/js/state.js` — save data, levels, spaced review and mastery.
 - `game/js/audio.js` — recorded music and samples, with the synth as fallback.
 - `game/js/intro.js` — the manga slideshow panels and the truck.
-- `game/js/hub.js` — the canvas village.
+- `game/js/hub.js` — the canvas village, including the east district (Guild, Forge, Pigeon Post, Grand Library, Cron's farm) and quest markers.
 - `game/js/run.js` — run map, combat, Gary, the tutorial, rewards, café, campfire, events, boss.
 - `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass, ELI5 and Huh???.
 - `game/js/goddess.js` — Uptima's Oopsies: once a loop she breaks something in town on your way to the gate; one question fixes it, and her reward is rolled from a mostly-junk loot table (rarely a shard).
 - `game/js/lessons.js` — building lessons that prime the next dungeon: Uptima's How Many Nines?, Mio's illustrated walkthroughs (a request's journey, how a big file travels), Wen's mini-games (Cache Rush, Token Bucket) and Seymour's (Shard Sorter, Festival Queue).
+- `game/js/minigames.js` — the quest mini-games (`SD.games`): Blueprint, What's Missing?, Requirements Sort, Napkin Math, Front Desk, Dedupe Desk, Rebuild the Recipe, Limiter Lab, Jitter Garden, The Forbidden Index, Quorum Dial, Performance Review and Declutter.
+- `game/js/quests.js` — town quests, the new villagers, Plot Devices (`SD.devices`), curses (`SD.curses`), the quest log and villagers' idle lines.
 - `game/js/eli5.js` — plain-language help: a game analogy per question, a game-terms summary per concept, and a jargon glossary.
 - `game/js/ui.js`, `game/js/art.js`, `game/js/main.js` — UI helpers and dialogue, code-drawn art, boot, cold open and hub buildings.
 - `game/assets/` — icon subset, images (`img/`) and audio (`audio/`); see `game/CREDITS.md`.
@@ -176,6 +293,7 @@ Saves go to localStorage. On claude.ai they also go to a private per-user docume
 
 ## Next steps
 
-- Chapter 3 (Ticketmaster and news feed). `SD.chapters` in `content.js` takes a new dungeon: concepts with `zone: 3`, cards with `ch: 3`, enemies with `ch: 3`, pools, a boss and its story lines.
+- Chapter 3 (Ticketmaster and news feed). `SD.chapters` in `content.js` takes a new dungeon: concepts with `zone: 3`, cards with `ch: 3`, enemies with `ch: 3`, pools, a boss and its story lines, plus `sevMult: 1.2` and its three curses.
+- Town quests 11–15 with chapter 3 and 16–20 with chapter 4, as specified above, each with its new mini-game.
 - Pixel-art dungeon scenes behind combat, and painted portraits for Pip and Lord Latency if good matches turn up.
 - A balance pass after real play: boss severity, card numbers, reward pacing, and how often Gary shows up.

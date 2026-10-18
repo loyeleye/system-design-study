@@ -7,7 +7,9 @@
   // Painted busts with expressions. Gary stays code-drawn on purpose: like Saitama, he's drawn plainly. That is the joke.
   const PAINTED = {
     uptima: ['neutral', 'happy', 'sad', 'angry', 'blush', 'confused'], seymour: ['neutral', 'happy', 'smug', 'angry'],
-    wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral']
+    wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral'],
+    bru: ['neutral', 'happy', 'angry', 'confused'], bram: ['neutral'], lexi: ['neutral', 'happy', 'angry', 'blush', 'smug'],
+    kaito: ['neutral'], doug: ['neutral', 'smug', 'happy', 'angry']
   };
   A.painted = who => !!PAINTED[who];
   // Guess a mood from the line when the script doesn't give one.
@@ -61,6 +63,15 @@
         <path d="M55 88 Q60 92 65 88" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
         <ellipse cx="40" cy="86" rx="5" ry="3" fill="#ff8fb8" opacity=".6"/><ellipse cx="80" cy="86" rx="5" ry="3" fill="#ff8fb8" opacity=".6"/></svg>`;
     }
+    if (c.hair === 'pigeon') {
+      return `${open}${bg}
+        <path d="M22 132 Q16 84 46 70 Q40 40 62 34 Q86 32 88 58 Q92 72 84 82 Q106 96 100 132Z" fill="#a9b4c8" ${stroke}/>
+        <path d="M46 84 Q60 98 82 84 Q86 96 76 104 Q60 110 48 100Z" fill="#6fcf97" opacity=".85"/><path d="M50 92 Q64 102 80 92" stroke="#b36bdb" stroke-width="4" fill="none" opacity=".7"/>
+        <path d="M84 56 L104 62 L86 68Z" fill="#ffb347" ${stroke} stroke-width="2"/>
+        <circle cx="72" cy="54" r="7" fill="#ff9f1c" ${stroke} stroke-width="2"/><circle cx="73" cy="54" r="3" fill="${INK}"/><circle cx="71" cy="52" r="1.3" fill="#fff"/>
+        <path d="M40 40 Q62 18 88 38 L84 44 Q62 32 44 46Z" fill="#23318f" ${stroke}/><path d="M42 44 H90 Q94 48 88 50 H44Z" fill="#1b2470" ${stroke} stroke-width="2"/><circle cx="64" cy="32" r="4" fill="#ffd257" ${stroke} stroke-width="1.5"/>
+        <path d="M30 112 Q44 104 52 116" stroke="${INK}" stroke-width="2" fill="none"/><rect x="58" y="112" width="26" height="18" rx="2" fill="#fff" ${stroke} stroke-width="2"/><path d="M58 112 L71 122 L84 112" fill="none" stroke="${INK}" stroke-width="1.8"/></svg>`;
+    }
     if (c.hair === 'none') {
       return `${open}<rect x="18" y="30" width="84" height="76" rx="12" fill="#3d5bd8" ${stroke}/><rect x="18" y="30" width="84" height="16" rx="8" fill="#23318f" ${stroke}/>
         <circle cx="30" cy="38" r="3" fill="#ff6b6b"/><circle cx="40" cy="38" r="3" fill="#ffd34d"/><circle cx="50" cy="38" r="3" fill="#55d68a"/>
@@ -70,7 +81,7 @@
     let back = '', front = '', extra = '', eyeStyle = 'normal', mouth = `<path d="M54 87 Q60 92 66 87" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
     let body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="${cloth}" ${stroke}/><path d="M50 102 L60 116 L70 102" fill="none" stroke="${INK}" stroke-width="2.2"/>`;
     let blush = `<ellipse cx="43" cy="81" rx="5" ry="3" fill="#ff8fb8" opacity=".55"/><ellipse cx="77" cy="81" rx="5" ry="3" fill="#ff8fb8" opacity=".55"/>`;
-    const hairCol = c.hair === 'goddess' ? '#ffd257' : c.hair === 'bob' ? '#ff86b8' : c.hair === 'bun' ? '#d9d4e4' : c.hair === 'slick' ? '#6b4a3a' : '#5a3b2e';
+    const hairCol = { goddess: '#ffd257', bob: '#ff86b8', bun: '#d9d4e4', slick: '#6b4a3a', ponytail: '#e8743b', beard: '#8a4b2a', witch: '#4b3a7a', straw: '#eeeae0', spiky: '#e03131', hoodie: '#3b2f2a' }[c.hair] || '#5a3b2e';
     if (c.hair === 'goddess') {
       back = `<ellipse cx="60" cy="18" rx="22" ry="6" fill="none" stroke="#ffcf33" stroke-width="5"/><ellipse cx="60" cy="18" rx="22" ry="6" fill="none" stroke="${INK}" stroke-width="1.5"/>
         <path d="M30 56 Q26 22 60 22 Q94 22 90 56 L98 128 Q84 132 78 118 L60 104 L42 118 Q36 132 22 128Z" fill="${hairCol}" ${stroke}/>`;
@@ -115,6 +126,46 @@
       eyeStyle = 'glow'; blush = '';
       mouth = `<path d="M50 88 L54 92 L58 88 L62 92 L66 88 L70 92" stroke="${INK}" stroke-width="2" fill="none"/>`;
       extra = `<g class="spin" style="transform-origin:60px 12px">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i / 8 * Math.PI * 2; return `<circle cx="${(60 + Math.cos(a) * 9).toFixed(1)}" cy="${(12 + Math.sin(a) * 9).toFixed(1)}" r="${1 + i * 0.35}" fill="#ff4d6d"/>`; }).join('')}</g>`;
+    } else if (c.hair === 'ponytail') {
+      // Bru: guild uniform, a ponytail that reacts before she does.
+      back = `<path d="M82 40 Q114 46 104 104 Q98 84 86 70Z" fill="${hairCol}" ${stroke}/>`;
+      front = `<path d="M36 62 Q32 28 60 26 Q88 28 84 62 Q80 44 70 46 Q66 36 58 42 Q48 36 36 62Z" fill="${hairCol}" ${stroke}/><path d="M76 34 l3 -6 l3 6 l6 1 l-4 4 l1 6 l-6 -3 l-6 3 l1 -6 l-4 -4Z" fill="#ffe14d" ${stroke} stroke-width="1.5"/>`;
+      mouth = `<path d="M54 86 Q60 94 66 86Z" fill="#ff6b8a" stroke="${INK}" stroke-width="2"/>`;
+      body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="#2f4a8a" ${stroke}/><path d="M48 102 L60 118 L72 102" fill="#fff" ${stroke} stroke-width="2"/><circle cx="84" cy="122" r="6" fill="#ffd257" ${stroke} stroke-width="1.8"/>`;
+    } else if (c.hair === 'beard') {
+      // Bram: one anvil, one man, one magnificent beard.
+      front = `<path d="M38 52 Q40 30 60 30 Q80 30 82 52 Q72 40 60 40 Q48 40 38 52Z" fill="#c9764a" ${stroke}/><path d="M42 58 L56 60 M64 60 L78 58" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
+      extra = `<path d="M36 72 Q36 118 60 122 Q84 118 84 72 Q78 92 60 92 Q42 92 36 72Z" fill="${hairCol}" ${stroke}/><path d="M48 86 Q60 80 72 86" stroke="${INK}" stroke-width="2.5" fill="none"/>`;
+      mouth = ''; blush = '';
+      body = `<path d="M12 140 Q16 104 46 98 L74 98 Q104 104 108 140Z" fill="#8a5a3a" ${stroke}/><path d="M40 108 H80 V140 H40Z" fill="#5a3b2e" ${stroke}/>`;
+    } else if (c.hair === 'witch') {
+      // Lexi: librarian, self-declared keeper of forbidden knowledge.
+      back = `<path d="M32 58 Q30 40 60 38 Q90 40 88 58 L92 120 Q80 124 76 110 L60 100 L44 110 Q40 124 28 120Z" fill="${hairCol}" ${stroke}/>`;
+      front = `<path d="M36 60 Q38 44 60 44 Q82 44 84 60 Q72 50 60 52 Q48 50 36 60Z" fill="${hairCol}" ${stroke}/><path d="M18 46 Q60 30 102 46 Q60 54 18 46Z" fill="#6a3fc0" ${stroke}/><path d="M38 42 Q52 4 82 8 Q66 20 76 40Z" fill="#6a3fc0" ${stroke}/><circle cx="80" cy="9" r="4" fill="#ffe14d" ${stroke} stroke-width="1.5"/>`;
+      extra = `<circle cx="49" cy="68" r="9" fill="none" stroke="${INK}" stroke-width="2.2"/><circle cx="71" cy="68" r="9" fill="none" stroke="${INK}" stroke-width="2.2"/><path d="M58 68 H62" stroke="${INK}" stroke-width="2"/>`;
+      mouth = `<path d="M54 88 Q60 84 66 88" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+      body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="#4b2f78" ${stroke}/><path d="M50 116 h20 v18 h-20Z" fill="#c43c3c" ${stroke} stroke-width="2"/>`;
+    } else if (c.hair === 'straw') {
+      // Farmer Cron: everything at midnight, since 1956.
+      front = `<path d="M10 50 Q60 34 110 50 Q60 60 10 50Z" fill="#f2c94c" ${stroke}/><path d="M34 46 Q36 18 60 18 Q84 18 86 46Z" fill="#f2c94c" ${stroke}/><path d="M36 42 H84" stroke="#c0392b" stroke-width="5"/>`;
+      eyeStyle = 'closed';
+      extra = `<path d="M44 84 Q52 78 60 84 Q68 78 76 84 Q70 92 60 88 Q50 92 44 84Z" fill="${hairCol}" ${stroke} stroke-width="2"/><path d="M42 58 L54 60 M66 60 L78 58" stroke="${hairCol}" stroke-width="4" stroke-linecap="round"/>`;
+      mouth = ''; blush = '';
+      body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="#e9e4d8" ${stroke}/><path d="M36 112 H84 V140 H36Z" fill="#3b6fb6" ${stroke}/><path d="M42 104 V114 M78 104 V114" stroke="#3b6fb6" stroke-width="5"/>`;
+    } else if (c.hair === 'spiky') {
+      // Kaito: the other isekai hero. The hair has its own aura.
+      back = `<path d="M10 140 L24 96 Q60 84 96 96 L110 140Z" fill="#7a1f2b" ${stroke}/>`;
+      front = `<path d="M34 64 L22 44 L38 46 L30 22 L48 36 L52 12 L62 32 L74 10 L76 34 L94 20 L86 44 L100 42 L86 64 Q80 46 60 46 Q40 46 34 64Z" fill="${hairCol}" ${stroke}/>`;
+      mouth = `<path d="M52 88 Q62 92 70 84" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+      body = `<path d="M18 140 Q22 108 48 102 L72 102 Q98 108 102 140Z" fill="#c7d3e6" ${stroke}/><path d="M48 104 L60 116 L72 104" fill="#e03131" ${stroke} stroke-width="2"/><circle cx="60" cy="124" r="5" fill="#ffe14d" ${stroke} stroke-width="1.6"/>`;
+    } else if (c.hair === 'hoodie') {
+      // Doug: has not slept since the bot went live.
+      back = `<path d="M18 132 Q14 42 60 30 Q106 42 102 132Z" fill="#2f9e6b" ${stroke}/>`;
+      front = `<path d="M36 64 Q36 40 60 40 Q84 40 84 64 Q78 50 70 54 Q64 46 58 52 Q50 46 44 56 Q40 54 36 64Z" fill="${hairCol}" ${stroke}/>`;
+      eyeStyle = 'dot'; blush = '';
+      extra = `<path d="M43 74 Q49 77 55 74 M65 74 Q71 77 77 74" stroke="#8f7fa8" stroke-width="2" fill="none"/>`;
+      mouth = `<path d="M54 89 H66" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
+      body = `<path d="M16 140 Q20 106 48 100 L72 100 Q100 106 104 140Z" fill="#2f9e6b" ${stroke}/><path d="M54 104 V120 M66 104 V120" stroke="#fff" stroke-width="2.2"/>`;
     } else {
       // You: messy hair, dev hoodie, lanyard.
       front = `<path d="M35 62 Q30 26 60 24 Q92 26 85 62 L82 48 L76 54 L72 42 L64 50 L60 38 L54 50 L46 42 L44 54 L38 48Z" fill="${hairCol}" ${stroke}/>`;

@@ -168,7 +168,11 @@
 
   // ---------- Recorded music and samples ----------
   const BASE = 'assets/audio/';
-  const SONG = { title: 'm-title', office: 'm-office', goddess: 'm-goddess', town: 'm-town', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss' };
+  const SONG = { title: 'm-opening', office: 'm-office', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild' };
+  // Songs without a synth version fall back to this one if the file fails to load.
+  const FALLBACK = { quest: 'town', story: 'town', guild: 'town' };
+  // Per-song loudness: the piano is gentle on purpose.
+  const SONG_VOL = { story: 0.75 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
   const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door' };
   const SONG_GAIN = 1.5;  // recorded tracks are mastered quieter than the synth
@@ -197,7 +201,7 @@
     el.loop = true; el.preload = 'auto';
     const gain = ctx.createGain(); gain.gain.value = 0;
     ctx.createMediaElementSource(el).connect(gain); gain.connect(musicBus);
-    gain.gain.setTargetAtTime(SONG_GAIN, ctx.currentTime, 0.15);
+    gain.gain.setTargetAtTime(SONG_GAIN * (SONG_VOL[name] || 1), ctx.currentTime, 0.15);
     const me = { name, gain, el, timer: 0 };
     el.onerror = () => { failed.add(file); if (cur === me) { stopCur(0.05); play(name); } };
     el.play().catch(() => { /* resumes on the next tap */ });
@@ -205,6 +209,7 @@
   }
 
   function play(name, onEnd) {
+    if ((!SONG[name] || failed.has(SONG[name])) && !TRACKS[name] && FALLBACK[name]) name = FALLBACK[name];
     if (SONG[name] && !failed.has(SONG[name]) && !onEnd) { playSong(name); return; }
     if (!TRACKS[name]) return;
     const T = track(name);

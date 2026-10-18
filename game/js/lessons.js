@@ -326,8 +326,10 @@
   };
   L.play = function (id) {
     const l = LESSONS.find(x => x.id === id);
+    SD.audio.music('quest');
     return new Promise(res => {
       l.run(ok => {
+        SD.audio.music('town');
         const first = ok && !doneSet()[id];
         if (ok) doneSet()[id] = true;
         l.concepts.forEach(c => S.seeConcept(c));

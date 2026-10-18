@@ -1,39 +1,43 @@
 // Pingsby Village: the walkable hub, drawn on a canvas. The Cloud floats overhead.
 (function () {
   const H = SD.hub = {};
+  // The east district (Guild, Forge, Pigeon Post, Grand Library and Cron's farm) opens up the town for quests.
   const MAP = [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'T..............................T',
-    'T.#######......L.......#######.T',
-    'T.#######..............#######.T',
-    'T.#######....,,,,,,....#######.T',
-    'T.###A###....,,,,,,....###C###.T',
-    'T............,,BB,,............T',
-    'T..L.........,,,,,,.........L..T',
-    'T~~~~~~~~~~~~~~==~~~~~~~~~~~~~~T',
-    'T~~~~~~~~~~~~~~==~~~~~~~~~~~~~~T',
-    'T..L...........................T',
-    'T.#######...............######.T',
-    'T.#######.......L.......######.T',
-    'T.###H###...............##W###.T',
-    'T..............................T',
-    'T.......T.....#####......T.....T',
-    'T.............#####............T',
-    'T.......L.....##G##.......L....T',
-    'T..............................T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'T..............................................T',
+    'T.#######......L.......#######....#########....T',
+    'T.#######..............#######....#########.###T',
+    'T.#######....,,,,,,....#######....#########.###T',
+    'T.###A###....,,,,,,....###C###....####U####.#F#T',
+    'T............,,BB,,............................T',
+    'T..L.........,,,,,,............................T',
+    'T~~~~~~~~~~~~~~==~~~~~~~~~~~~~~~~~~~~~~~==~~~~~T',
+    'T~~~~~~~~~~~~~~==~~~~~~~~~~~~~~~~~~~~~~~==~~~~~T',
+    'T..L...........................................T',
+    'T.#######...............######....######.######T',
+    'T.#######.......L.......######....######.######T',
+    'T.###H###...............##W###....##P###.##K###T',
+    'T..............................................T',
+    'T.......T.....#####......T........fffffffff....T',
+    'T.............#####...............fffffffff....T',
+    'T.......L.....##G##.......L.......fffffffff....T',
+    'T..............................................T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
   ];
   const W = MAP[0].length, HT = MAP.length;
   const INK = '#2b2340';
   const BUILD = {
     A: { name: 'GODDESS TEMPLE', roof: '#ffd257', wall: '#fffaf0' }, C: { name: 'CACHE CAFÉ', roof: '#5fc27a', wall: '#fff3dc' },
     H: { name: "MIO'S TREEHOUSE", roof: '#ff86b8', wall: '#f3d6a6' }, W: { name: "SEYMOUR'S BUNKER", roof: '#7c93c9', wall: '#e6ebf5' },
-    G: { name: 'DUNGEON (PROD)', roof: '#8a7f99', wall: '#b9b0c6' }, B: { name: 'QUEST BOARD' }
+    G: { name: 'DUNGEON (PROD)', roof: '#8a7f99', wall: '#b9b0c6' }, B: { name: 'QUEST BOARD' },
+    U: { name: "ADVENTURERS' GUILD" }, F: { name: 'FORGE' }, P: { name: 'PIGEON POST' }, K: { name: 'GRAND LIBRARY' }
   };
+  const DOORS = 'ACHWGUFPK';
   // Dirt paths from each door to the plaza and the bridge (drawn as stepping stones, walkable).
   const PATHS = [[5, 6], [26, 6], ...[5, 6, 7, 8, 9, 10, 11, 12].map(x => [x, 7]), ...[19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 7]),
     ...[10, 11, 12, 13].map(y => [15, y]), ...[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 14]),
-    ...[15, 16, 17].map(y => [12, y]), [12, 18], [13, 18], [14, 18], [15, 18], [16, 18], [15, 14]];
+    ...[15, 16, 17].map(y => [12, y]), [12, 18], [13, 18], [14, 18], [15, 18], [16, 18], [15, 14],
+    ...Array.from({ length: 19 }, (_, i) => [27 + i, 7]), [38, 6], [45, 6], ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14])];
   PATHS.forEach(([x, y]) => { if (MAP[y][x] === '.') MAP[y] = MAP[y].slice(0, x) + 'p' + MAP[y].slice(x + 1); });
   // Villagers stand by their doors; talking to one is the same as walking in. Sprites are Tiny Dungeon tiles.
   const NPCS = [
@@ -41,13 +45,20 @@
     { id: 'uptima', name: 'UPTIMA', x: 3, y: 6, spr: 99, door: 'A', emo: 'star' },
     { id: 'wen', name: 'WEN', x: 28, y: 6, spr: 100, door: 'C', emo: 'heart' },
     { id: 'mio', name: 'MIO', x: 3, y: 14, spr: 88, door: 'H', emo: 'idea' },
-    { id: 'seymour', name: 'SEYMOUR', x: 29, y: 14, spr: 96, door: 'W', emo: 'alert' }
+    { id: 'seymour', name: 'SEYMOUR', x: 30, y: 13, spr: 96, door: 'W', emo: 'alert' },
+    { id: 'bru', name: 'BRU', x: 37, y: 6, spr: 88, hue: 150, door: 'U', emo: 'star' },
+    { id: 'bram', name: 'BRAM', x: 46, y: 6, spr: 86, door: 'F', emo: 'alert' },
+    { id: 'coo', name: 'COO', x: 33, y: 13, bird: true, door: 'P', emo: 'music' },
+    { id: 'lexi', name: 'LEXI', x: 45, y: 14, spr: 84, door: 'K', emo: 'idea' },
+    { id: 'cron', name: 'CRON', x: 43, y: 16, spr: 111, emo: 'sleep' },
+    { id: 'kaito', name: 'KAITO', x: 18, y: 5, spr: 112, emo: 'star' },
+    { id: 'doug', name: 'DOUG', x: 34, y: 10, spr: 98, emo: 'dots' }
   ];
-  const PAGE_SPOTS = [[9, 1], [20, 3], [28, 10], [3, 14], [12, 18], [22, 16], [30, 6], [10, 10]];
+  const PAGE_SPOTS = [[9, 1], [20, 3], [28, 10], [2, 15], [12, 18], [22, 16], [30, 6], [10, 10], [35, 1], [44, 10], [38, 18]];
 
   const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
   const npcAt = (x, y) => NPCS.find(n => n.x === x && n.y === y);
-  const walkable = (x, y) => '.,=*pACHWG'.includes(tile(x, y)) && !npcAt(x, y);
+  const walkable = (x, y) => ('.,=*pf' + DOORS).includes(tile(x, y)) && !npcAt(x, y);
   const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
   let cv, ctx, raf, dpr = 1, ts = 32, t0 = 0;
@@ -85,7 +96,7 @@
   H.stop = function () { active = false; cancelAnimationFrame(raf); };
   H.placeAt = function (x, y) { P.x = P.px = x; P.y = P.py = y; P.path = []; pip.x = x - 1; pip.y = y; };
   H.stepOffDoor = function () {
-    if ('ACHWG'.includes(tile(P.x, P.y))) H.placeAt(P.x, P.y + 1);
+    if (DOORS.includes(tile(P.x, P.y))) H.placeAt(P.x, P.y + 1);
   };
 
   // Things you talk to by standing next to them: the quest board and villagers.
@@ -132,7 +143,7 @@
   function nearestDoor(tx, ty) {
     let best = null, bd = 1e9;
     for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
-      if ('ACHWG'.includes(tile(x, y))) {
+      if (DOORS.includes(tile(x, y))) {
         const d = Math.abs(x - tx) + Math.abs(y - ty);
         if (d < bd && d < 6) { bd = d; best = [x, y]; }
       }
@@ -176,7 +187,7 @@
       if (nx !== P.x) P.dir = nx > P.x ? 1 : -1;
       P.x = nx; P.y = ny; stepT = 0.02;
       const t = tile(nx, ny);
-      if ('ACHWG'.includes(t)) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => onDoor(t), 140); }
+      if (DOORS.includes(t)) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => onDoor(t), 140); }
       checkPage();
     } else if (nx !== P.x || ny !== P.y) {
       // Bumping into a villager starts a conversation.
@@ -234,7 +245,8 @@
       if (BUILD[c] && c !== 'B') label(x, y, BUILD[c].name, t, H.markers && H.markers[c]);
     }
     label(15.5, 5.6, 'QUEST BOARD', t, H.markers && H.markers.B);
-    NPCS.forEach(n => label(n.x, n.y + 1.45, n.name, t, false, true));
+    label(38, 15.2, "CRON'S FARM", t, false);
+    NPCS.forEach(n => label(n.x, n.y + 1.45, n.name, t, H.npcMarks && H.npcMarks[n.id], true));
     petals.forEach(f => {
       const fx = (f.x + Math.sin(t * 0.4 + f.p) * 0.8) * ts, fy = (f.y + Math.cos(t * 0.3 + f.p) * 0.6) * ts;
       const flap = Math.abs(Math.sin(t * 8 + f.p));
@@ -324,6 +336,11 @@
       const row = !P(x, y - 1) ? 12 : !P(x, y + 1) ? 36 : 24, col = !P(x - 1, y) ? 0 : !P(x + 1, y) ? 2 : 1;
       spr(TOWN, row + col, x, y);
     } else if (c === 'p') spr(TOWN, 43, x, y);
+    else if (c === 'f') {
+      const F = (a, b) => tile(a, b) === 'f';
+      spr(TOWN, (!F(x, y - 1) ? 12 : !F(x, y + 1) ? 36 : 24) + (!F(x - 1, y) ? 0 : !F(x + 1, y) ? 2 : 1), x, y);
+      if ((x + y) % 2 === 0) spr(TOWN, 17, x, y - 0.15);
+    }
     else if (c === '=') {
       const px = ts / 16;
       ctx.fillStyle = '#b8763c'; ctx.fillRect(X, Y, ts, ts);
@@ -349,14 +366,15 @@
   }
 
   // Building looks: wall material, roof colour. G is the dungeon keep.
-  const STYLE = { A: { wall: 'stone', roof: 'red' }, C: { wall: 'wood', roof: 'red' }, H: { wall: 'wood', roof: 'grey' }, W: { wall: 'stone', roof: 'grey' } };
+  const STYLE = { A: { wall: 'stone', roof: 'red' }, C: { wall: 'wood', roof: 'red' }, H: { wall: 'wood', roof: 'grey' }, W: { wall: 'stone', roof: 'grey' },
+    U: { wall: 'stone', roof: 'red' }, F: { wall: 'stone', roof: 'grey' }, P: { wall: 'wood', roof: 'red' }, K: { wall: 'wood', roof: 'grey' } };
   const ROOF = { grey: [48, 60, 63], red: [52, 64, 67] };          // top row start, lower row start, gable
   const WALL = { wood: { l: 72, m: 73, r: 75, win: 84, door: 85 }, stone: { l: 76, m: 77, r: 79, win: 88, door: 89 } };
   const DECO = [5, 29, 94, 17];
   function drawObject(x, y, c, t) {
     if (c === 'T') { spr(TOWN, [28, 16, 28, 16, 3][hash(x, y) % 5], x, y); return; }
     if (c === 'L') { spr(TOWN, DECO[hash(x, y) % DECO.length], x, y); return; }
-    if (c !== '#' && !'ACHWG'.includes(c)) return;
+    if (c !== '#' && !DOORS.includes(c)) return;
     const o = blockOwner(x, y), b = bbox(o);
     if (!b) return;
     if (o === 'G') {
@@ -380,12 +398,13 @@
     const col = x === b.x0 ? 0 : x === b.x1 ? 2 : 1;
     if (y === b.y1) {
       const doorX = b.door[0];
-      const i = 'ACHW'.includes(c) ? Wl.door : x === b.x0 ? Wl.l : x === b.x1 ? Wl.r : (Math.abs(x - doorX) % 2 === 0 ? Wl.m : Wl.win);
+      const i = 'ACHWUFPK'.includes(c) ? Wl.door : x === b.x0 ? Wl.l : x === b.x1 ? Wl.r : (Math.abs(x - doorX) % 2 === 0 ? Wl.m : Wl.win);
       spr(TOWN, i, x, y);
     } else {
       spr(TOWN, (y === b.y0 ? R[0] : R[1]) + col, x, y);
       if (y === b.y1 - 1 && x === b.door[0]) spr(TOWN, R[2], x, y);   // gable over the door
       if (y === b.y0 && x === b.x1 - 1 && o !== 'W') spr(TOWN, st.roof === 'red' ? 55 : 51, x, y); // chimney
+      if (o === 'F' && y === b.y0 && x === b.x1 - 1) forgeSmoke(x, y, t);
     }
   }
   const blockCache = {};
@@ -394,11 +413,11 @@
     const seen = new Set([k]); const q = [[x, y]]; let found = null;
     while (q.length && !found) {
       const [a, b] = q.shift();
-      if ('ACHWG'.includes(tile(a, b))) { found = tile(a, b); break; }
+      if (DOORS.includes(tile(a, b))) { found = tile(a, b); break; }
       for (const [dx, dy] of DIRS) {
         const nx = a + dx, ny = b + dy, c = tile(nx, ny), kk = nx + ',' + ny;
         if (seen.has(kk)) continue;
-        if ('ACHWG'.includes(c)) { found = c; break; }
+        if (DOORS.includes(c)) { found = c; break; }
         if (c === '#') { seen.add(kk); q.push([nx, ny]); }
       }
     }
@@ -432,12 +451,35 @@
     ctx.fillStyle = INK; ctx.fillRect(X - 3 * s, Y - 2 * s, 1.5 * s, 2 * s); ctx.fillRect(X + 1.5 * s, Y - 2 * s, 1.5 * s, 2 * s);
   }
   function drawNpc(n, t) {
-    person(n.spr, n.x, n.y, t, false, n.x > P.x, true);
+    if (n.bird) drawBird(n, t);
+    else if (n.hue) { ctx.save(); ctx.filter = `hue-rotate(${n.hue}deg)`; person(n.spr, n.x, n.y, t, false, n.x > P.x, true); ctx.restore(); }
+    else person(n.spr, n.x, n.y, t, false, n.x > P.x, true);
     // Gary sips coffee. Everyone else occasionally has a feeling about something.
     const phase = (t + n.x) % 9;
-    if (phase < 2.2) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', n.x * ts + ts / 2, n.y * ts - ts * 0.05);
+    // A quest marker replaces the feeling, so the two never overlap.
+    if (phase < 2.2 && !(H.npcMarks && H.npcMarks[n.id])) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', n.x * ts + ts / 2, n.y * ts - ts * 0.05);
   }
-  const WANDER = [{ spr: 111, x: 9, y: 1 }, { spr: 112, x: 22, y: 18 }, { spr: 87, x: 10, y: 10 }, { spr: 110, x: 28, y: 10 }];
+  // Postmaster Coo is a pigeon, drawn in code (no pigeon in the tile sheet), bobbing like pigeons do.
+  function drawBird(n, t) {
+    const s = ts / 32, X = n.x * ts + ts / 2, Y = n.y * ts + ts * 0.62, bob = Math.sin(t * 5) > 0.6 ? -3 * s : 0, f = n.x > P.x ? -1 : 1;
+    ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y + 9 * s, 9 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.translate(X, Y + bob); ctx.scale(f, 1);
+    ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.fillStyle = '#a9b4c8'; ctx.beginPath(); ctx.ellipse(-2 * s, 2 * s, 9 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#6fcf97'; ctx.beginPath(); ctx.arc(5 * s, -4 * s, 5 * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.moveTo(9 * s, -5 * s); ctx.lineTo(14 * s, -3 * s); ctx.lineTo(9 * s, -2 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = INK; ctx.fillRect(5 * s, -6 * s, 2 * s, 2 * s);
+    ctx.fillStyle = '#23318f'; ctx.fillRect(1 * s, -11 * s, 9 * s, 3 * s); ctx.strokeRect(1 * s, -11 * s, 9 * s, 3 * s);
+    ctx.restore();
+  }
+  function forgeSmoke(x, y, t) {
+    for (let i = 0; i < 3; i++) {
+      const k = (t * 0.6 + i / 3) % 1;
+      ctx.fillStyle = `rgba(220,220,230,${0.6 * (1 - k)})`;
+      ctx.beginPath(); ctx.arc(x * ts + ts / 2 + Math.sin(t + i) * 4, y * ts - k * ts * 1.2, ts * (0.12 + k * 0.18), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  const WANDER = [{ spr: 97, x: 9, y: 1 }, { spr: 108, x: 22, y: 18 }, { spr: 87, x: 10, y: 10 }, { spr: 110, x: 28, y: 10 }];
   WANDER.forEach(w => { w.px = w.x; w.py = w.y; w.wait = Math.random() * 3; w.flip = false; w.emo = null; w.emoT = 0; });
   function updateWanderers(dt) {
     WANDER.forEach(w => {
@@ -462,10 +504,12 @@
     rr(X - w / 2, Y - h * 0.72, w, h, 6); ctx.fill(); ctx.stroke();
     ctx.fillStyle = INK; ctx.fillText(text, X, Y);
     if (marker) {
-      const my = Y - ts * 0.62 + Math.sin(t * 5) * 4;
-      ctx.fillStyle = '#ffe14d'; ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
+      // "!" a quest or lesson to start; "?" a quest waiting on this villager.
+      const ch = marker === '?' ? '?' : '!';
+      const my = Y - ts * (small ? 1.5 : 0.62) + Math.sin(t * 5) * 4;
+      ctx.fillStyle = ch === '?' ? '#7fd1ff' : '#ffe14d'; ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(X, my, ts * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = INK; ctx.font = `700 ${ts * 0.3}px Fredoka, sans-serif`; ctx.fillText('!', X, my + ts * 0.1);
+      ctx.fillStyle = INK; ctx.font = `700 ${ts * 0.3}px Fredoka, sans-serif`; ctx.fillText(ch, X, my + ts * 0.1);
     }
   }
 })();

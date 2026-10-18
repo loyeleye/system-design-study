@@ -79,8 +79,11 @@
     return ups;
   };
   S.maxSla = function () {
-    const sv = S.save;
-    return 60 + (sv.level - 1) * 4 + (sv.relics.includes('lantern') ? 10 : 0) + (sv.spec === 'warden' ? 15 : 0);
+    const sv = S.save, Q = SD.quests;
+    const dev = Q ? (Q.has('recipe') ? 8 : 0) : 0;
+    // The Damp Archives curse drains max SLA while you are down there, until Hiro's recipe lifts it.
+    const curse = Q && sv.run && sv.run.ch && Q.curses(sv.run.ch).includes('damp') ? 12 : 0;
+    return 60 + (sv.level - 1) * 4 + (sv.relics.includes('lantern') ? 10 : 0) + (sv.spec === 'warden' ? 15 : 0) + dev - curse;
   };
   S.unlockedCards = function () {
     const out = [];
