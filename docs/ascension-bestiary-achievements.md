@@ -37,7 +37,7 @@ All new code is in new files, loaded after the Isles scripts and before `main.js
 
 These are the only edits outside the new files. Each one is a single line or a single expression, and every one is guarded so the game still runs if the new files are missing.
 
-**`game/index.html`** has seven script tags between `isles/isles-map.js` and `main.js`: `meta.js`, `bestiary-data.js`, `bestiary.js`, `achievements.js`, `ascension.js`, `journal.js` and `meta-demo.js`.
+**`game/index.html`** has six script tags between `isles/isles-map.js` and `main.js`: `meta.js`, `bestiary-data.js`, `bestiary.js`, `achievements.js`, `ascension.js` and `journal.js`. The main game (`index.html`) does not load `meta-demo.js`; only the preview does.
 
 **`game/js/main.js`**
 1. `M.hud`: `${SD.journal ? SD.journal.button() : ''}` before the Cheat sheet button.
