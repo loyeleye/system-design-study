@@ -1,6 +1,6 @@
-// The Eventual Isles: who lives there and what they look like. Portraits are drawn in code in the same chibi
-// style as art.js until PixelLab art arrives (see docs/eventual-isles.md for the art list); the map sprites in
-// isles-map.js read the same looks, so a new character needs only one entry here.
+// The Eventual Isles: who lives there and what they look like. Portraits and map sprites are PixelLab art in
+// assets/img/isles (made by tools/isles_art.py, listed in I.ART below); the looks still drive the code-drawn
+// fallbacks, so a new character works with only an entry here until their art arrives.
 (function () {
   const I = SD.isles;
   const INK = '#2b2340';
@@ -38,6 +38,10 @@
     kids: { skin: '#c99266', hair: 'kids', hc: '#20161c', cloth: '#ffc93c', acc: 'none', note: 'Three small students of mixed backgrounds, all raising their hands' },
     keeper: { skin: '#fff3dc', hair: 'note', hc: '#2b2340', cloth: '#fff3dc', acc: 'none', note: 'Never seen: shown as a folded note in K.\'s handwriting' }
   });
+
+  // <isles-art> Made by tools/isles_art.py: sprite sheet and object sizes in assets/img/isles.
+  I.ART = {"chars": {"bloom": {"w": 48, "h": 42, "n": [8, 0, 0, 0]}, "farida": {"w": 34, "h": 84, "n": [4, 0, 0, 0]}, "haeun": {"w": 30, "h": 76, "n": [4, 0, 0, 0]}, "hajin": {"w": 30, "h": 78, "n": [4, 0, 0, 0]}, "kid1": {"w": 32, "h": 75, "n": [4, 0, 0, 0]}, "kid2": {"w": 36, "h": 72, "n": [4, 0, 0, 0]}, "kid3": {"w": 28, "h": 75, "n": [4, 0, 0, 0]}, "kwame": {"w": 30, "h": 76, "n": [4, 0, 0, 0]}, "leilani": {"w": 38, "h": 78, "n": [4, 0, 0, 0]}, "lucia": {"w": 34, "h": 76, "n": [4, 0, 0, 0]}, "minh": {"w": 40, "h": 75, "n": [4, 0, 0, 0]}, "mutex": {"w": 30, "h": 74, "n": [4, 0, 0, 0]}, "ruth": {"w": 32, "h": 76, "n": [4, 0, 0, 0]}, "tomas": {"w": 46, "h": 77, "n": [4, 0, 0, 0]}}, "objects": {"bank": [142, 133], "boat": [19, 28], "bollard": [10, 29], "ferry": [73, 56], "hallE": [70, 75], "hallW": [80, 91], "light": [62, 186], "mill": [76, 136], "note": [22, 26], "office": [142, 131], "pilings": [20, 64], "planks": [35, 29], "sails": [108, 109], "school": [138, 156], "shop": [139, 138], "stallB": [52, 56], "stallG": [56, 44], "stallR": [54, 47], "tide": [25, 48], "tower": [78, 204]}};
+  // </isles-art>
 
   const FACE = 'M37 60 Q37 99 60 104 Q83 99 83 60 Q83 32 60 32 Q37 32 37 60Z';
   const ST = `stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"`;
@@ -114,12 +118,20 @@
     return null;
   }
 
-  // Portraits for the islanders; everyone else falls through to art.js.
+  // Portraits for the islanders; everyone else falls through to art.js. PixelLab busts (assets/img/isles/portraits)
+  // come first, as the villagers' do; the code-drawn chibi is the fallback for anyone without one.
+  const BUSTS = { keeper: ['neutral'] };
+  Object.keys(I.looks).forEach(w => { if (!BUSTS[w]) BUSTS[w] = ['neutral', 'happy', 'angry', 'confused']; });
+  I.bust = who => !!BUSTS[who];
   let uid = 0;
   I.portrait = function (who, size, mood) {
     const L = I.looks[who], c = SD.cast[who];
     if (!L || !c) return null;
     mood = ['happy', 'angry', 'confused'].includes(mood) ? mood : 'neutral';
+    if (BUSTS[who]) {
+      const m = BUSTS[who].includes(mood) ? mood : 'neutral';
+      return `<span class="bust b-${who}" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/isles/portraits/${who}-${m}.webp" alt="" draggable="false"></span>`;
+    }
     const W = size, H = Math.round(size * 140 / 120);
     const open = `<svg viewBox="0 0 120 140" width="${W}" height="${H}" aria-hidden="true" data-isle="${who}${uid++}">`;
     const bg = `<circle cx="60" cy="66" r="56" fill="hsl(${c.hue},85%,88%)" stroke="${INK}" stroke-width="2.5"/>`;
