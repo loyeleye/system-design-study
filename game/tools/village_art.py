@@ -1,6 +1,7 @@
 """Turn PixelLab downloads into the village art in assets/img/village (see CREDITS.md).
 
-usage: village_art.py SRC_DIR OUT_DIR js/village-art.js
+usage: village_art.py SRC_DIR OUT_DIR js/village-art.js [villageArt]
+The dungeon map art uses the same tool: village_art.py SRC assets/img/dungeon js/dungeon-art.js dungeonArt
 SRC_DIR holds the raw PixelLab files: map objects as <key>.png, Wang tilesets as <key>.png + <key>.json,
 and characters as <key>/ folders unzipped from PixelLab's character download.
 Map objects sometimes come back on a flat light background, so that is flood-filled away from the edges.
@@ -53,7 +54,8 @@ for name, key in json.load(open(os.path.join(SRC, 'terrain.json'))).items():
 # Characters: one sheet per villager. Rows: south, west, east, north. Column 0 is the standing pose,
 # then the animation frames (walk for walkers, a breathing idle facing south for villagers).
 DIRS = ['south', 'west', 'east', 'north']
-for name, key in json.load(open(os.path.join(SRC, 'chars.json'))).items():
+CHARS = os.path.join(SRC, 'chars.json')
+for name, key in (json.load(open(CHARS)).items() if os.path.exists(CHARS) else []):
     d = os.path.join(SRC, key)
     meta = json.load(open(os.path.join(d, 'metadata.json')))
     rows = []
@@ -81,5 +83,6 @@ for name, key in json.load(open(os.path.join(SRC, 'chars.json'))).items():
     save(out, 'c-' + name)
     manifest['chars'][name] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows]}
 
-open(sys.argv[3], 'w').write('// Made by tools/village_art.py: sizes of the village art and where each terrain tile sits.\nSD.villageArt = ' + json.dumps(manifest) + ';\n')
+VAR = sys.argv[4] if len(sys.argv) > 4 else 'villageArt'
+open(sys.argv[3], 'w').write('// Made by tools/village_art.py: sizes of the art and where each terrain tile sits.\nSD.' + VAR + ' = ' + json.dumps(manifest) + ';\n')
 print(json.dumps(manifest)[:400])

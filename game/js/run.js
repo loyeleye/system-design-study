@@ -98,14 +98,15 @@
       const can = reach.includes(n.id);
       const st = visited.has(n.id) ? 'done' : can ? 'can' : '';
       nodes += `<button class="node t-${n.type} ${st}" style="left:${x / 3}%;top:${y / rows}%" data-n="${n.id}" ${can ? '' : 'disabled'} aria-label="${NODE[n.type].l}${can ? ', reachable' : ''}">
-        ${SD.art.glyph(NODE[n.type].g, 'currentColor')}<span>${NODE[n.type].l}</span></button>`;
+        ${nodeIcon(n.type)}<span>${NODE[n.type].l}</span></button>`;
     }));
     $('#run').innerHTML = `
       <div class="run-hud">${hud()}</div>
       <div class="map-wrap"><div class="map-title">${U.esc(chap().name.replace(/^the /, '').toUpperCase())} · ${chap().rank}-RANK <span class="muted">Pick a path. ${U.esc(SD.enemies[bossId()].name)} waits at the end.</span>
         ${curseChips()}</div>
-      <div class="map" style="height:${rows * 78}px">${svg}${nodes}</div></div>
+      <div class="map" style="height:${rows * 78}px"><canvas class="map-bg" aria-hidden="true"></canvas>${svg}${nodes}</div></div>
       <div class="run-foot"><button class="ghost" id="deck-btn">Deck (${run.deck.length})</button><button class="ghost" id="codex-btn2">Cheat sheet</button><button class="ghost danger" id="abandon">Abandon run</button></div>`;
+    paintMap($('#run .map'), floors, xy, rows);
     $('#run').querySelectorAll('.node.can').forEach(b => b.onclick = () => enterNode(findNode(b.dataset.n)));
     $('#deck-btn').onclick = showDeck;
     $('#codex-btn2').onclick = () => U.codex();
@@ -118,6 +119,53 @@
     const first = $('#run').querySelector('.node.can');
     if (first) setTimeout(() => first.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
   };
+  // PixelLab map art (tools/village_art.py → js/dungeon-art.js): a room icon per node type, and each
+  // chapter's floor tileset painted behind the map with worn paths along the links between rooms.
+  const dArt = () => SD.dungeonArt;
+  const dPics = {};
+  function dPic(name, redraw) {
+    if (!dPics[name]) { dPics[name] = new Image(); dPics[name].src = 'assets/img/dungeon/' + name + '.webp'; }
+    const im = dPics[name];
+    if (redraw && !im.complete) im.addEventListener('load', redraw, { once: true });
+    return im;
+  }
+  function nodeIcon(type) {
+    return dArt() && dArt().objects[type] ? `<img class="node-art" src="assets/img/dungeon/${type}.webp" alt="">` : SD.art.glyph(NODE[type].g, 'currentColor');
+  }
+  function paintMap(el, floors, xy, rows) {
+    const A = dArt(), cv = el && el.querySelector('.map-bg');
+    if (!A || !cv) return;
+    const run = S.save.run, ch = String(((((run && run.ch) || 1) - 1) % 3) + 1);
+    const W = el.clientWidth, H = el.clientHeight, ts = 24;
+    const draw = () => paintMap(el, floors, xy, rows);
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+    const P = n => { const [x, y] = xy(n); return [x / 300 * W, y / (rows * 100) * H]; };
+    const segs = [], pts = [];
+    floors.forEach(fl => fl.forEach(n => { pts.push(P(n)); n.next.forEach(id => segs.push([P(n), P(findNode(id))])); }));
+    const near = (x, y, d) => pts.some(([px, py]) => Math.hypot(x - px, y - py) < d * 2) || segs.some(([[ax, ay], [bx, by]]) => {
+      const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+      return Math.hypot(x - ax - t * dx, y - ay - t * dy) < d;
+    });
+    const cols = Math.ceil(W / ts) + 1, rws = Math.ceil(H / ts) + 1;
+    const path = [];
+    for (let j = 0; j <= rws; j++) { path.push([]); for (let i = 0; i <= cols; i++) path[j].push(near(i * ts, j * ts, ts * 0.6)); }
+    const sheet = dPic('t-' + ch, draw), at = A.terrain[ch];
+    const hash = (i, j) => ((i * 73856093) ^ (j * 19349663) ^ (+ch * 83492791)) >>> 0;
+    for (let j = 0; j < rws; j++) for (let i = 0; i < cols; i++) {
+      const k = path[j][i] << 3 | path[j][i + 1] << 2 | path[j + 1][i] << 1 | path[j + 1][i + 1];
+      if (sheet.complete && at[k]) ctx.drawImage(sheet, at[k][0], at[k][1], 32, 32, i * ts, j * ts, ts, ts);
+    }
+    // Dim the floor a little so the room icons stand out
+    ctx.fillStyle = 'rgba(24,16,44,.28)'; ctx.fillRect(0, 0, W, H);
+    // A few props per chapter, only on open floor away from the rooms
+    for (let j = 0; j < rws - 1; j++) for (let i = 0; i < cols - 1; i++) {
+      const h = hash(i, j);
+      if (h % 7 || (i + j) % 2 || near(i * ts + ts, j * ts + ts, ts * 1.4)) continue;
+      const name = 'd' + ch + (h % 2 ? 'a' : 'b'), im = dPic(name, draw), sz = A.objects[name];
+      if (im.complete && sz) ctx.drawImage(im, i * ts + ts - sz[0] / 2, j * ts + ts * 1.4 - sz[1], sz[0], sz[1]);
+    }
+  }
   function curseChips() {
     const list = SD.quests.curses(S.save.run.ch || 1);
     return list.length ? `<div class="curses">${list.map(id => `<span class="chip stale" title="${U.esc(SD.curses[id].hint)}">☠ ${U.esc(SD.curses[id].name)}: ${U.esc(SD.curses[id].text)}</span>`).join('')}</div>` : '';
