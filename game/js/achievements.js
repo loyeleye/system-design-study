@@ -14,6 +14,7 @@
   const isles = () => SD.isles && SD.isles.commissions && SD.isles.st ? SD.isles : null;
   const comms = () => { const I = isles(); return I ? I.commissions.map(c => I.st().commissions[c.id]).filter(s => s && s.done) : []; };
   const questsDone = () => Object.values(sv().quests || {}).filter(q => q && q.done).length;
+  const mockPassed = () => { const b = (sv().mock || {}).best || {}; return SD.mock ? SD.mock.problems.filter(p => b[p.id] === 'senior' || b[p.id] === 'strong') : []; };
   const bossIds = () => SD.bestiary.ids().filter(id => SD.enemies[id].boss);
 
   // test() returns true once earned; progress() returns [have, need] for a bar.
@@ -56,6 +57,9 @@
     { id: 'isles1', tier: 1, icon: 'wave-crest', name: 'Commissioned', text: 'Finish an Eventual Isles commission.', test: () => comms().length >= 1 },
     { id: 'islesall', tier: 3, icon: 'globe-ring', name: "Harbourmaster's Pride", text: 'Finish every Eventual Isles commission.', progress: () => { const I = isles(); return [comms().length, I ? I.commissions.length : 99]; } },
     { id: 'islesperfect', tier: 2, icon: 'star-formation', name: 'Perfect Pitch', text: 'Finish an Isles commission at 100% SLA.', test: () => comms().some(s => s.best >= 100) },
+    // Mock interviews (mock.js): sv.mock.best is { problemId: verdict }, flags.mockSenior marks senior passes
+    { id: 'mock1', tier: 2, icon: 'chat-bubble', name: "You're Hired", text: 'Get a senior hire verdict in a mock interview with Gary.', test: () => Object.keys(flags().mockSenior || {}).length > 0 || mockPassed().length > 0 },
+    { id: 'mockall', tier: 3, icon: 'scales', name: 'Bar Raiser', text: 'Get a senior hire verdict on every mock interview problem.', progress: () => [mockPassed().length, SD.mock ? SD.mock.problems.length : 6] },
     // Ascension
     { id: 'asc1', tier: 2, icon: 'stairs', name: 'Ascended', text: 'Clear a dungeon at Ascension 1.', test: () => bestAsc() >= 1 },
     { id: 'asc5', tier: 3, icon: 'lightning-storm', name: 'Sev-1 Survivor', text: 'Clear a dungeon at Ascension 5.', test: () => bestAsc() >= 5 },
