@@ -140,15 +140,16 @@
     .pd-get .q-ctx.il-k { display:block; }
   `);
 
-  // Memory Shard rewards, sized for the main game's economy (the daily quest board pays 100 shards; Wen's relics
-  // cost 80 to 300 and cards 100 and up). Shells are the Isles' small change, traded at Leilani's.
+  // Memory Shard rewards, sized for the main game's economy (town quests pay 65 to 350 shards and the quest board
+  // 100; Wen's keepsakes cost 80 to 300 and Ayo's cards 100 to 280). Shells are the Isles' own small change, kept
+  // under S.save.isles and traded at Leilani's; no save migration touches them.
   I.REWARD = {
-    chain: 60,            // each Isles quest chain
-    commission: 150,      // first clear of a commission (a replay pays `commissionAgain`)
-    commissionAgain: 10,
+    chain: 120,           // each Isles quest chain (a mid-sized town quest)
+    commission: 250,      // first clear of a commission (a replay pays `commissionAgain`)
+    commissionAgain: 15,
     ferryRound: 50,       // the daily ferry round (3 questions; the town board pays 100 for 5)
     bridge: 40,           // each bridge built
-    festival: 200,        // once, when every bridge is built
+    festival: 300,        // once, when every bridge is built
     shellTrade: [10, 25]  // 10 shells buy 25 shards
   };
 
