@@ -37,7 +37,7 @@
   };
 
   // A fresh save that has just reached chapter `ch`.
-  D.build = function (ch, rank, shards) {
+  D.build = function (ch, rank, shards, quests) {
     ch = Math.max(1, Math.min(10, ch || 1));
     S.reset();
     const sv = S.save, f = sv.flags;
@@ -50,9 +50,9 @@
     if (ch >= 10) f.garyGone = true;
     const r = (rank || CH_RANK[ch] || 'E').toUpperCase();
     sv.level = LEVEL[r] || 1;
-    sv.shards = shards != null ? +shards : 2000;
+    sv.shards = shards != null && shards !== '' ? +shards : 2000;
     sv.loop = ch + 1; sv.chapter = ch;
-    if (P.get('quests') === 'done') finishQuests();
+    if ((quests || P.get('quests')) === 'done') finishQuests();
     S.persist();
   };
 
@@ -103,25 +103,30 @@
     document.body.appendChild(b);
   }
   function panel() {
-    const sv = S.save, ch = sv.chapter || 1, rank = S.rank();
+    const sv = S.save, ch = sv.chapter || 1;
     const opt = (v, cur, label) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${label || v}</option>`;
     const name = n => SD.chapters[n] ? `${n} · ${SD.chapters[n].name}` : n;
     const b = U.panel(`<p class="muted small">Testing only. This uses a separate debug save, so your real game is safe.</p>
       <div class="dbg-grid" style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center">
         <label for="dbg-ch">Chapter</label><select id="dbg-ch">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => opt(n, ch, name(n))).join('')}</select>
-        <label for="dbg-rank">Rank</label><select id="dbg-rank">${Object.keys(LEVEL).map(r => opt(r, rank)).join('')}</select>
+        <label for="dbg-rank">Rank</label><select id="dbg-rank">${opt('', '', 'the chapter\'s usual rank')}${Object.keys(LEVEL).map(r => opt(r, P.get('rank') || '')).join('')}</select>
         <label for="dbg-at">Start at</label><select id="dbg-at">${['town', 'road', ...PLACES, 'run', 'title'].map(a => opt(a, P.get('at') || '', { run: 'the chapter\'s dungeon', town: 'Pingsby', road: 'the North Road' }[a])).join('')}</select>
         <label for="dbg-floor">Floor</label><select id="dbg-floor">${[1, 2, 3, 4].map(n => opt(n, P.get('floor') || 1)).join('')}</select>
-        <label for="dbg-shards">Shards</label><input id="dbg-shards" type="number" value="${sv.shards}" min="0" step="100">
+        <label for="dbg-shards">Shards</label><input id="dbg-shards" type="number" placeholder="2000" min="0" step="100">
         <label for="dbg-q">Quests</label><label><input id="dbg-q" type="checkbox"${P.get('quests') === 'done' ? ' checked' : ''}> finish every quest so far</label>
       </div>
       <div class="row"><button class="primary" id="dbg-go">Start here</button><button class="ghost" id="dbg-win">Win this fight</button><button class="ghost" id="dbg-sh">+1,000 shards</button></div>
       <p class="muted small">Or put it in the link: <code>?debug&amp;ch=9&amp;rank=A&amp;at=camp</code></p>`, { title: 'DEBUG START' });
+    // Rebuild the save in place (a hosted preview can't always reload with a new link), then go there.
     b.querySelector('#dbg-go').onclick = () => {
-      const q = new URLSearchParams({ debug: '', ch: b.querySelector('#dbg-ch').value, rank: b.querySelector('#dbg-rank').value, at: b.querySelector('#dbg-at').value, floor: b.querySelector('#dbg-floor').value, shards: b.querySelector('#dbg-shards').value });
-      if (b.querySelector('#dbg-q').checked) q.set('quests', 'done');
-      if (window.SD_ARC_PREVIEW) q.set('arc', '');
-      location.search = q.toString().replace('debug=&', 'debug&').replace('&arc=', '&arc');
+      const v = k => b.querySelector('#dbg-' + k).value;
+      const quests = b.querySelector('#dbg-q').checked ? 'done' : null;
+      U.closePanel();
+      if (SD.run.api && SD.run.api.combat() && !SD.run.api.combat().over) SD.run.api.combat().over = true;
+      D.build(+v('ch'), v('rank'), v('shards'), quests);
+      S.syncChapter();
+      try { const q = new URLSearchParams({ debug: '', ch: v('ch'), rank: v('rank'), at: v('at'), floor: v('floor'), shards: v('shards') }); if (quests) q.set('quests', 'done'); history.replaceState(null, '', '?' + q.toString().replace('debug=&', 'debug&')); } catch (e) { /* hosted preview */ }
+      D.goTo(v('at'), v('floor'));
     };
     b.querySelector('#dbg-win').onclick = () => {
       const C = SD.run.api && SD.run.api.combat();
