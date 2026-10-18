@@ -153,7 +153,7 @@
     node(n, done) {
       const r = run(), c = chap(), fl = c.floors[r.arc.floor];
       if (n.type === 'fight') { api().fight(rnd(fl.pool || c.pools[Math.min(3, r.arc.floor + 1)]), { diagnose: Math.random() < 0.45 }, done); return true; }
-      if (n.type === 'elite') { api().fight(rnd(fl.elite || c.pools.elite), { diagnose: true, elite: true }, done); return true; }
+      if (n.type === 'elite') { api().fight(rnd(fl.elite || c.pools.elite), { diagnose: true, elite: true, sevScale: SD.quests.has('arenagong') ? 0.9 : 1 }, done); return true; }
       const own = (c.nodes && c.nodes[n.type]) || A.nodes[n.type];
       if (own) { own(n, done); return true; }
       if (n.type === 'camp' && c.camp) { c.camp(done); return true; }
@@ -193,7 +193,9 @@
       const b = root.querySelector('#arc-ll');
       if (b) b.onclick = () => {
         if (C.llUsed || C.over || C.busy) return;
-        C.llUsed = true; C.llHold = true;
+        // Fen's Three-Tick Satchel: the delay works twice a fight.
+        C.llCount = (C.llCount || 0) + 1;
+        C.llUsed = C.llCount >= (SD.quests.has('satchel') ? 2 : 1); C.llHold = true;
         C.log = rnd(LL_DELAY);
         AU.sfx('shield');
         render();
@@ -219,7 +221,7 @@
     if (fl.before && first) await A.cutscene(fl.before);
     await U.dialog(first ? SD.story[e.intro] : [{ s: 'narr', t: rnd(e.rematch || [`${e.name} again. It remembers you. You remember it.`]) }]);
     d.concepts.forEach(id => S.seeConcept(id));
-    const buffs = { sevScale: 1, bonusEnergy: 0, startCard: null };
+    const buffs = { sevScale: 1, bonusEnergy: SD.quests.has('ballad') ? 1 : 0, startCard: null };
     const steps = last ? ['req', 'est', 'design'] : [fl.step || (f === 0 ? 'req' : f === 1 ? 'est' : 'design')];
     const ok = {};
     for (let i = 0; i < steps.length; i++) {
@@ -231,7 +233,7 @@
       } else if (s === 'est') {
         const r2 = await Q.ask(Object.assign({ type: 'num' }, d.est), { title: '[BOSS] ESTIMATION', context: ctx });
         ok.est = r2.ok;
-        if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND!', '+1 Capacity on turn 1.', 'gold'); }
+        if (r2.ok) { buffs.bonusEnergy += 1; U.system('NUMBERS IN HAND!', '+1 Capacity on turn 1.', 'gold'); }
       } else {
         const r3 = await Q.ask(Object.assign({ type: 'mc' }, d.design), { title: '[BOSS] DESIGN', context: ctx });
         ok.design = r3.ok;
@@ -257,7 +259,7 @@
     else await cardReward();
     if (last) return finish();
     // Heal between floors: half your SLA, or all of it with Wen's Packed Lunch.
-    const frac = (SD.quests.has('lunch') ? 1 : 0.5) - (c.healDrop ? c.healDrop * (f + 1) : 0);
+    const frac = A.healFrac() - (c.healDrop ? c.healDrop * (f + 1) : 0);
     const heal = Math.max(0, Math.round(S.maxSla() * frac));
     r.sla = Math.min(S.maxSla(), r.sla + heal);
     S.persist();
@@ -267,6 +269,9 @@
     U.system('BETWEEN FLOORS', `+${heal} SLA${SD.quests.has('lunch') ? ' (Wen\'s Packed Lunch)' : ''}. Uptima's snapshot saved as you entered.`.replace('Uptima\'s snapshot', c.death === 'tape' ? 'Seymour\'s tape' : 'Uptima\'s snapshot'));
     floorFx(c.floors[f + 1].gate || `FLOOR ${f + 2}`, () => R.showMap());
   }
+  // Between-floor heals: half, all of it with Wen's Packed Lunch, and 15% more with Marta's Crate Ledger.
+  A.healFrac = () => Math.min(1, (SD.quests.has('lunch') ? 1 : 0.5) + (SD.quests.has('crateledger') ? 0.15 : 0));
+  A.healText = () => A.healFrac() >= 1 ? 'full' : Math.round(A.healFrac() * 100) + '%';
   function cardReward() {
     return new Promise(res => {
       const r = run(), picks = api().cardChoices(3);

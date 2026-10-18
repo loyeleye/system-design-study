@@ -1,96 +1,253 @@
-// The North Road: the second overworld map, north of Pingsby, where chapters 7-10 start. You walk it like the
-// village (js/scene.js draws it): Lord Latency's waystation, the tournament arena, the heroes' camp and the
-// Exchange, with the arc's own dungeon gate in the middle. The village's north gate (the N door in js/hub.js)
-// brings you here; the south exit takes you home. Finishing or leaving an arc run brings you back here.
+// The North Road: the overworld north of Pingsby, where chapters 7-10 start. You walk it like the village
+// (js/scene.js draws it). The road winds north from Pingsby's gate past travellers, a courier post, a bard's stage
+// and a card shop. Side paths lead off the map to four places, each its own map with its chapter's dungeon inside:
+// Lord Latency's waystation (chapter 7), the tournament arena (8), the heroes' camp (9) and, through the city gate
+// at the top of the road, the Exchange (10). Finishing or leaving an arc run brings you back where you went in.
 (function () {
   const NR = SD.northRoad = {};
   const S = SD.state, U = SD.ui, AU = SD.audio, A = SD.arc;
   const $ = U.$;
   const flags = () => S.save.flags;
+  const QS = () => SD.quests;
 
-  // ---------- The map ----------
-  // T trees, # building footprints, ~ water, p path, r rocks (solid). Doors: S south exit, G the arc gate,
-  // L the waystation (ch 7), R the arena (ch 8), K the heroes' camp (ch 9), X the Exchange (ch 10).
-  const W = 28, H = 22;
-  const grid = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x === 0 || y === 0 || x === W - 1 || y === H - 1) ? 'T' : '.'));
-  const put = (x, y, c) => { grid[y][x] = c; };
-  const rect = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(x, y, c); };
-  rect(13, 5, 14, 20, 'p');                 // the road north
-  rect(5, 10, 21, 10, 'p'); rect(5, 19, 21, 19, 'p');
-  rect(13, 3, 14, 4, '#'); put(13, 5, 'G'); put(14, 5, 'G');
-  rect(3, 6, 7, 8, '#'); put(5, 9, 'L');
-  rect(19, 6, 23, 8, '#'); put(21, 9, 'R');
-  rect(3, 15, 7, 17, '#'); put(5, 18, 'K');
-  rect(19, 15, 23, 17, '#'); put(21, 18, 'X');
-  put(13, 21, 'S'); put(14, 21, 'S');
-  rect(2, 2, 6, 3, '~'); rect(23, 12, 25, 13, '~');
-  [[9, 3], [18, 2], [24, 3], [2, 12], [10, 14], [17, 14], [25, 20], [2, 20], [9, 7], [18, 7]].forEach(([x, y]) => put(x, y, 'T'));
-  const MAP = grid.map(r => r.join(''));
-  const DOOR_AT = { G: [13.5, 4], L: [5, 8], R: [21, 8], K: [5, 17], X: [21, 17] };
+  // ---------- Map building ----------
+  // T trees, # solid footprints, ~ water, p dirt path, a arena sand, c cobbles. Doors are single letters (below).
+  function grid(W, H, edge) {
+    const g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (edge && (x === 0 || y === 0 || x === W - 1 || y === H - 1)) ? 'T' : '.'));
+    const put = (x, y, c) => { if (g[y] && x >= 0 && x < W) g[y][x] = c; };
+    const rect = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(x, y, c); };
+    const trees = list => list.forEach(([x, y]) => put(x, y, 'T'));
+    return { g, put, rect, trees, rows: () => g.map(r => r.join('')) };
+  }
 
-  const def = {
-    map: MAP, terrain: { p: 'dirt', G: 'dirt', L: 'dirt', R: 'dirt', K: 'dirt', X: 'dirt', S: 'dirt', '~': 'water' },
-    top: ['water', 'dirt'], solid: 'T#~r', bg: '#5fbf5f',
-    doors: { S: 'S', G: 'G', L: 'L', R: 'R', K: 'K', X: 'X' },
-    // Tapping a building walks you to its door.
-    doorFor: (x, y) => {
-      for (const [d, [cx, cy]] of Object.entries(DOOR_AT)) if (Math.abs(x - cx) <= 2.5 && y <= cy + 0.5 && y >= cy - 3) return d === 'G' ? [13, 5] : [Math.round(cx), cy + 1];
-      return null;
-    },
-    objects: [
-      { name: 'nr-dungeon', x: 13.5, y: 4 },
-      { name: 'nr-waystation', x: 5, y: 8 },
-      { name: 'nr-arena', x: 21, y: 8 },
-      { name: 'nr-camp', x: 5, y: 17 },
-      { name: 'nr-exchange', x: 21, y: 17 },
-      { name: 'nr-signpost', x: 15, y: 12 },
-      { name: 'nr-milestone', x: 12, y: 16 },
-      { name: 'nr-cart', x: 9, y: 11 },
-      { name: 'nr-rock', x: 11, y: 4 }, { name: 'nr-rock', x: 17, y: 18 }, { name: 'nr-rock', x: 24, y: 9 }
-    ],
-    labels: [
-      { x: 13.5, y: 5.6, text: 'ROAD DUNGEON' },
-      { x: 5, y: 9.6, text: 'WAYSTATION' },
-      { x: 21, y: 9.6, text: 'THE ARENA' },
-      { x: 5, y: 18.6, text: "HEROES' CAMP" },
-      { x: 21, y: 18.6, text: 'THE EXCHANGE' },
-      { x: 13.5, y: 21.4, text: 'TO PINGSBY' }
-    ],
-    actors: {
-      latency: { x: 7, y: 11, face: 'south', name: 'LORD LATENCY' },
-      seymour: { x: 15, y: 20, face: 'west', name: 'SEYMOUR' },
-      hero1023: { x: 3, y: 19, face: 'east', name: 'HERO #1023', hidden: true },
-      hero500: { x: 8, y: 19, face: 'west', name: 'HERO #500', hidden: true }
-    }
-  };
-  // Which chapter each building belongs to.
-  const PLACE = { L: 7, R: 8, K: 9, X: 10 };
-  const PLACE_NAME = { L: "Lord Latency's waystation", R: 'the tournament arena', K: "the heroes' camp", X: 'the Exchange' };
+  // ---------- The road ----------
+  // Doors: S south to Pingsby, L the waystation (west), R the arena (east), K the heroes' camp (west),
+  // X the city gate to the Exchange (north), C the card shop.
+  const road = (function () {
+    const W = 30, H = 46, m = grid(W, H, true);
+    m.rect(14, 38, 15, 45, 'p'); m.rect(12, 37, 15, 38, 'p'); m.rect(12, 29, 13, 37, 'p');
+    m.rect(12, 28, 16, 29, 'p'); m.rect(15, 17, 16, 28, 'p'); m.rect(14, 16, 16, 17, 'p'); m.rect(14, 8, 15, 16, 'p');
+    m.rect(1, 35, 12, 36, 'p'); m.rect(16, 25, 28, 26, 'p'); m.rect(1, 13, 14, 14, 'p');
+    m.rect(7, 30, 11, 30, 'p'); m.rect(17, 19, 19, 19, 'p'); m.rect(16, 41, 18, 41, 'p'); m.rect(8, 22, 14, 22, 'p');
+    m.put(0, 35, 'L'); m.put(0, 36, 'L');
+    m.put(29, 25, 'R'); m.put(29, 26, 'R');
+    m.put(0, 13, 'K'); m.put(0, 14, 'K');
+    m.put(14, 45, 'S'); m.put(15, 45, 'S');
+    m.rect(10, 1, 19, 6, '#'); m.put(14, 7, 'X'); m.put(15, 7, 'X');
+    m.rect(5, 19, 9, 21, '#'); m.put(7, 22, 'C');
+    m.rect(5, 27, 8, 28, '#');                               // courier post
+    m.rect(19, 16, 23, 17, '#');                             // bard's stage
+    m.rect(18, 39, 22, 40, '#');                             // Marta's caravan
+    m.rect(22, 30, 26, 32, '~'); m.rect(3, 40, 6, 42, '~');
+    m.trees([[4, 3], [7, 5], [23, 3], [26, 6], [21, 9], [6, 10], [9, 8], [25, 11], [3, 17], [11, 18], [24, 20], [27, 16], [2, 24], [9, 25], [20, 22],
+      [26, 21], [3, 31], [19, 33], [27, 35], [8, 38], [23, 36], [4, 44], [10, 43], [20, 44], [25, 42], [18, 11], [11, 11], [27, 29], [6, 33]]);
+    return {
+      map: m.rows(), terrain: { p: 'dirt', L: 'dirt', R: 'dirt', K: 'dirt', S: 'dirt', X: 'dirt', C: 'dirt', '~': 'water' },
+      top: ['water', 'dirt'], solid: 'T#~', bg: '#5fbf5f',
+      doors: { S: 'S', L: 'L', R: 'R', K: 'K', X: 'X', C: 'C' },
+      doorFor: (x, y) => (x >= 10 && x <= 19 && y <= 7) ? [14, 8] : (x >= 5 && x <= 9 && y >= 17 && y <= 21) ? [7, 23] : null,
+      objects: [
+        { name: 'nr-citygate', x: 14.5, y: 7 },
+        { name: 'nr-shop', x: 7, y: 21 },
+        { name: 'nr-courierpost', x: 6.5, y: 28 },
+        { name: 'nr-stage', x: 21, y: 17 },
+        { name: 'nr-caravan', x: 20, y: 40 },
+        { name: 'nr-arch', x: 2, y: 34 }, { name: 'nr-arch', x: 27, y: 24 }, { name: 'nr-arch', x: 2, y: 12 },
+        { name: 'nr-signpost', x: 11, y: 34 }, { name: 'nr-signpost', x: 17, y: 24 }, { name: 'nr-signpost', x: 13, y: 12 },
+        { name: 'nr-milestone', x: 16, y: 43 }, { name: 'nr-milestone', x: 11, y: 30 }, { name: 'nr-milestone', x: 13, y: 10 },
+        { name: 'nr-fence', x: 18, y: 37 }, { name: 'nr-fence', x: 21, y: 37 }, { name: 'nr-fence', x: 8, y: 16 },
+        { name: 'nr-rock', x: 24, y: 14 }, { name: 'nr-rock', x: 5, y: 7 }, { name: 'nr-rock', x: 21, y: 28 }, { name: 'nr-cart', x: 9, y: 40 }
+      ],
+      labels: [
+        { x: 2, y: 37.6, text: '← WAYSTATION' }, { x: 27, y: 27.6, text: 'THE ARENA →' }, { x: 2, y: 15.6, text: "← HEROES' CAMP" },
+        { x: 14.5, y: 8.7, text: 'THE EXCHANGE' }, { x: 7, y: 23.6, text: 'CARD SHOP', id: 'shop' }, { x: 14.5, y: 44.6, text: 'TO PINGSBY' }
+      ],
+      actors: {
+        seymour: { x: 17, y: 43, face: 'west', name: 'SEYMOUR' },
+        marta: { x: 17, y: 41, face: 'south', name: 'MARTA' },
+        fen: { x: 9, y: 31, face: 'east', name: 'FEN' },
+        lyra: { x: 18, y: 19, face: 'south', name: 'LYRA' },
+        v2: { x: 13, y: 26, face: 'east', name: 'TRAVELLER' },
+        v4: { x: 17, y: 32, face: 'west', name: 'PILGRIM' }
+      },
+      // Where you stand when you come back through each door.
+      back: { L: [1, 35, 'east'], R: [28, 25, 'west'], K: [1, 13, 'east'], X: [14, 8, 'south'], S: [14, 44, 'north'], C: [7, 23, 'south'] },
+      music: 'ch7', weather: 'sun'
+    };
+  })();
+
+  // ---------- Lord Latency's waystation (chapter 7) ----------
+  const waystation = (function () {
+    const W = 26, H = 20, m = grid(W, H, true);
+    m.rect(2, 3, 10, 7, '#');                                // the inn
+    m.rect(15, 1, 23, 5, '#'); m.put(19, 6, 'D');           // the road tunnel in the cliff
+    m.rect(19, 13, 23, 15, '#');                             // stable
+    m.rect(12, 13, 13, 13, '#');                             // well
+    m.rect(3, 14, 6, 15, '#');                               // garden
+    m.rect(9, 10, 11, 10, '#');                              // tables
+    m.rect(6, 8, 6, 11, 'p'); m.rect(6, 11, 24, 12, 'p'); m.rect(19, 7, 20, 11, 'p'); m.put(25, 11, 'E'); m.put(25, 12, 'E');
+    m.rect(11, 1, 14, 3, 'T'); m.trees([[1, 9], [2, 17], [9, 17], [14, 17], [24, 17], [16, 8], [24, 7], [13, 7]]);
+    return {
+      map: m.rows(), terrain: { p: 'dirt', D: 'dirt', E: 'dirt' }, top: ['dirt'], solid: 'T#', bg: '#5fbf5f',
+      doors: { D: 'D', E: 'E' },
+      doorFor: (x, y) => (x >= 15 && x <= 23 && y <= 6) ? [19, 7] : (x >= 2 && x <= 10 && y <= 8) ? [6, 8] : null,
+      objects: [
+        { name: 'ws-inn', x: 6, y: 8 }, { name: 'ws-tunnel', x: 19, y: 6 }, { name: 'ws-stable', x: 21, y: 15 },
+        { name: 'well', x: 12.5, y: 13 }, { name: 'ws-garden', x: 4.5, y: 15 }, { name: 'ws-tables', x: 10, y: 10 },
+        { name: 'nr-milestone', x: 22, y: 9 }, { name: 'lamp', x: 17, y: 7 }, { name: 'lamp', x: 22, y: 7 }, { name: 'nr-rock', x: 14, y: 5 }
+      ],
+      labels: [{ x: 19.5, y: 7.6, text: 'THE NORTHBOUND ROAD' }, { x: 6, y: 9.1, text: 'WAYSTATION' }, { x: 24.5, y: 13.6, text: 'ROAD →' }],
+      actors: { latency: { x: 8, y: 10, face: 'south', name: 'LORD LATENCY' }, v1: { x: 16, y: 13, face: 'west', name: 'GUEST' } },
+      back: { D: [19, 7, 'south'], E: [24, 11, 'west'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun'
+    };
+  })();
+
+  // ---------- The tournament arena (chapter 8) ----------
+  const arena = (function () {
+    const W = 44, H = 36, m = grid(W, H, false);
+    // The sand ring, an oval in the middle of the stone floor.
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (((x - 21.5) / 14) ** 2 + ((y - 19) / 9.5) ** 2 <= 1) m.put(x, y, 'a');
+    m.rect(0, 0, 43, 0, '#');
+    m.rect(4, 0, 16, 3, '#'); m.rect(27, 0, 39, 3, '#');       // north stands
+    m.rect(18, 0, 25, 5, '#'); m.put(21, 6, 'D'); m.put(22, 6, 'D');   // fighters' gate
+    m.rect(0, 0, 3, 35, '#'); m.rect(40, 0, 43, 35, '#');       // side stands
+    m.rect(4, 32, 16, 35, '#'); m.rect(27, 32, 39, 35, '#');    // south stands
+    m.rect(17, 35, 26, 35, '#'); m.put(21, 35, 'S'); m.put(22, 35, 'S');
+    m.rect(35, 9, 38, 11, '#');                                 // booth
+    m.rect(5, 9, 9, 11, '#');                                   // bracket board
+    m.rect(21, 30, 22, 30, '#');                                // statue
+    return {
+      map: m.rows(), terrain: { a: 'd8' }, top: ['d8'], base: 'd8', solid: '#', bg: '#c9b48a',
+      doors: { D: 'D', S: 'S' },
+      doorFor: (x, y) => (x >= 18 && x <= 25 && y <= 6) ? [21, 7] : null,
+      objects: [
+        { name: 'ar-stand', x: 10, y: 4 }, { name: 'ar-stand', x: 33, y: 4 },
+        { name: 'ar-gate', x: 21.5, y: 6 },
+        { name: 'ar-standv', x: 1.5, y: 17 }, { name: 'ar-standv', x: 1.5, y: 28 }, { name: 'ar-standv', x: 41.5, y: 17, flip: true }, { name: 'ar-standv', x: 41.5, y: 28, flip: true },
+        { name: 'ar-stand', x: 10, y: 35 }, { name: 'ar-stand', x: 33, y: 35 },
+        { name: 'ar-booth', x: 36.5, y: 11 }, { name: 'ar-bracket', x: 7, y: 11 }, { name: 'ar-statue', x: 21.5, y: 30 },
+        { name: 'ar-wall', x: 12, y: 9 }, { name: 'ar-wall', x: 31, y: 9 }, { name: 'ar-wall', x: 12, y: 28 }, { name: 'ar-wall', x: 31, y: 28 },
+        { name: 'd8a', x: 7, y: 19 }, { name: 'd8a', x: 36, y: 19 }, { name: 'd8a', x: 16, y: 31 }, { name: 'd8a', x: 27, y: 31 },
+        { name: 'd8b', x: 17, y: 7 }, { name: 'd8b', x: 26, y: 7 }, { name: 'd8b', x: 19, y: 33 }, { name: 'd8b', x: 24, y: 33 }
+      ],
+      labels: [{ x: 21.5, y: 7.6, text: "FIGHTERS' GATE" }, { x: 7, y: 12.1, text: 'THE BRACKET' }, { x: 21.5, y: 34.6, text: 'ROAD ↓' }],
+      actors: {
+        gong: { x: 34, y: 13, face: 'south', name: 'GONG' },
+        v3: { x: 9, y: 14, face: 'north', name: 'FAN' }, v1: { x: 30, y: 25, face: 'west', name: 'FAN' },
+        hero500: { x: 26, y: 15, face: 'west', name: 'HERO #500', hidden: true }
+      },
+      back: { D: [21, 7, 'south'], S: [21, 34, 'north'] }, enter: [21, 34, 'north'], ch: 8, music: 'ch8', weather: 'sun'
+    };
+  })();
+
+  // ---------- The heroes' camp (chapter 9) ----------
+  const camp = (function () {
+    const W = 30, H = 24, m = grid(W, H, true);
+    m.rect(4, 1, 12, 6, '#'); m.put(8, 7, 'D'); m.put(9, 7, 'D');   // the chasm
+    m.rect(17, 4, 21, 5, '#'); m.rect(23, 6, 25, 7, '#'); m.rect(15, 16, 17, 17, '#');
+    m.rect(14, 12, 16, 12, '#'); m.rect(21, 12, 23, 12, '#'); m.rect(25, 17, 27, 18, '#'); m.rect(4, 15, 6, 16, '#');
+    m.rect(8, 8, 9, 10, 'p'); m.rect(8, 10, 28, 11, 'p'); m.put(29, 10, 'E'); m.put(29, 11, 'E'); m.rect(15, 11, 15, 11, 'p');
+    m.trees([[2, 9], [2, 20], [8, 20], [12, 18], [20, 20], [27, 3], [14, 3], [26, 13]]);
+    return {
+      map: m.rows(), terrain: { p: 'dirt', D: 'dirt', E: 'dirt' }, top: ['dirt'], solid: 'T#', bg: '#4f9f55',
+      doors: { D: 'D', E: 'E' },
+      doorFor: (x, y) => (x >= 4 && x <= 12 && y <= 7) ? [8, 8] : null,
+      objects: [
+        { name: 'cp-chasm', x: 8.5, y: 7 }, { name: 'cp-tent1', x: 19, y: 5 }, { name: 'cp-tent2', x: 24, y: 7 }, { name: 'cp-tent2', x: 16, y: 17, flip: true },
+        { name: 'cp-fire', x: 15, y: 12 }, { name: 'cp-board', x: 22, y: 12 }, { name: 'cp-tower', x: 26, y: 18 }, { name: 'cp-rack', x: 5, y: 16 },
+        { name: 'nr-rock', x: 13, y: 7 }, { name: 'd9a', x: 3, y: 7 }, { name: 'd9a', x: 12, y: 8 }
+      ],
+      labels: [{ x: 8.5, y: 8.6, text: 'THE ABYSS' }, { x: 22, y: 13.1, text: 'NOTICE BOARD' }, { x: 28.5, y: 12.6, text: 'ROAD →' }],
+      actors: {
+        hero1023: { x: 13, y: 13, face: 'east', name: 'HERO #1023', hidden: true },
+        hero500: { x: 17, y: 13, face: 'west', name: 'HERO #500', hidden: true }
+      },
+      back: { D: [8, 8, 'south'], E: [28, 10, 'west'] }, enter: [28, 10, 'west'], ch: 9, music: 'ch9', weather: 'rain'
+    };
+  })();
+
+  // ---------- The Exchange (chapter 10) ----------
+  const exchange = (function () {
+    const W = 34, H = 30, m = grid(W, H, false);
+    m.rect(0, 0, 33, 0, '#'); m.rect(0, 0, 0, 29, '#'); m.rect(33, 0, 33, 29, '#');
+    m.rect(11, 1, 22, 9, '#'); m.put(16, 11, 'D'); m.put(17, 11, 'D');
+    m.rect(15, 12, 18, 28, 'c'); m.rect(3, 13, 30, 14, 'c'); m.rect(15, 10, 18, 10, 'c');
+    m.rect(4, 8, 9, 8, '#'); m.rect(25, 15, 28, 16, '#'); m.rect(15, 18, 18, 19, '#');
+    m.rect(5, 16, 8, 17, '#'); m.rect(7, 22, 10, 23, '#'); m.rect(25, 23, 28, 24, '#');
+    m.rect(0, 29, 33, 29, '#'); m.put(16, 29, 'S'); m.put(17, 29, 'S');
+    return {
+      map: m.rows(), terrain: { c: 'd10', D: 'd10', S: 'd10' }, top: ['d10'], base: 'd10', solid: '#', bg: '#5b5b66',
+      doors: { D: 'D', S: 'S' },
+      doorFor: (x, y) => (x >= 11 && x <= 22 && y <= 11) ? [16, 12] : null,
+      sky: () => flags().ch9 ? 'dark' : 'dusk',
+      objects: [
+        { name: 'ex-tower', x: 16.5, y: 11 }, { name: 'ex-ticker', x: 6.5, y: 8 }, { name: 'ex-bull', x: 26.5, y: 16 }, { name: 'ex-fountain', x: 16.5, y: 19 },
+        { name: 'ex-stall', x: 6.5, y: 17 }, { name: 'ex-stall', x: 8.5, y: 23 }, { name: 'ex-stall', x: 26.5, y: 24, flip: true },
+        { name: 'd10a', x: 14, y: 15 }, { name: 'd10a', x: 19, y: 15 }, { name: 'd10a', x: 14, y: 25 }, { name: 'd10a', x: 19, y: 25 }, { name: 'd10b', x: 3, y: 26 }, { name: 'd10b', x: 30, y: 9 }
+      ],
+      labels: [{ x: 16.5, y: 12.6, text: 'THE EXCHANGE' }, { x: 16.5, y: 28.6, text: 'ROAD ↓' }],
+      actors: { v3: { x: 21, y: 21, face: 'west', name: 'TRADER' } },
+      back: { D: [16, 12, 'south'], S: [16, 28, 'north'] }, enter: [16, 28, 'north'], ch: 10, music: 'ch10', weather: 'storm'
+    };
+  })();
+
+  const MAPS = NR.maps = { road, waystation, arena, camp, exchange };
+  // Road doors that lead to places, and the place each chapter's dungeon is in.
+  const PLACE = { L: 'waystation', R: 'arena', K: 'camp', X: 'exchange' };
+  const NAME = { waystation: "Lord Latency's waystation", arena: 'the tournament arena', camp: "the heroes' camp", exchange: 'the Exchange' };
+  const WHERE = { 7: 'waystation', 8: 'arena', 9: 'camp', 10: 'exchange' };
+  const ROAD_DOOR = { waystation: 'L', arena: 'R', camp: 'K', exchange: 'X' };
 
   // ---------- The screen ----------
-  let sc = null, busy = false;
+  const scenes = {};
+  let cur = 'road', sc = null, busy = false;
   function screen() {
     let el = $('#screen-north');
     if (el) return el;
     el = document.createElement('section');
     el.id = 'screen-north'; el.className = 'screen'; el.hidden = true;
     el.innerHTML = `<div id="nr-hud" class="nr-hud"></div>
-      <canvas id="north-canvas" aria-label="The North Road. Walk to a building's door to enter, or south to go back to Pingsby."></canvas>
+      <canvas id="north-canvas" aria-label="The North Road. Walk along the road and off its side paths to reach new places, or south to go back to Pingsby."></canvas>
       <div class="hub-hint">Tap to walk · WASD or arrows · walk into doors and people</div>`;
     document.querySelector('.app').appendChild(el);
     return el;
   }
+  const TITLE = { road: 'THE NORTH ROAD', waystation: 'THE WAYSTATION', arena: 'THE ARENA', camp: "HEROES' CAMP", exchange: 'THE EXCHANGE' };
   function hud() {
     const open = A.chapters().filter(A.open), cleared = open.filter(ch => flags()['ch' + ch]);
-    $('#nr-hud').innerHTML = `<div class="hud-chip"><b>THE NORTH ROAD</b></div>
+    $('#nr-hud').innerHTML = `<div class="hud-chip"><b>${TITLE[cur]}</b></div>
       <div class="hud-chip">Cleared ${cleared.length}/${A.chapters().length}</div>
+      <button class="hud-chip" data-nr="quests">Quests</button>
       ${(flags().runbook || []).length || (flags().kyuFiles || []).length ? '<button class="hud-chip" data-arc="runbook">📓 Runbook</button>' : ''}
       ${flags().downtime ? `<div class="hud-chip warn">Downtime ${flags().downtime}%</div>` : ''}`;
+    const q = $('#nr-hud [data-nr="quests"]'); if (q) q.onclick = () => QS().log();
   }
-  // Who is around depends on how far the story has got.
+  // Who is around, and who has a quest for you, depends on how far the story has got.
   function cast() {
-    sc.hide('hero1023', !flags().ch8); sc.hide('hero500', !flags().ch8);
-    sc.actors.latency.marker = A.open(7) && !flags().ch7;
+    const marks = (QS() && QS().marks) ? QS().marks() : {};
+    Object.values(sc.actors).forEach(a => { if (!a.player && !a.pip) a.marker = !!marks[a.id]; });
+    if (cur === 'camp') { sc.hide('hero1023', !flags().ch8); sc.hide('hero500', !flags().ch8); }
+    if (cur === 'arena') sc.hide('hero500', !!flags().ch8);
+    if (cur === 'waystation') sc.actors.latency.marker = sc.actors.latency.marker || (A.open(7) && !flags().ch7);
+    if (SD.roadTalk && SD.roadTalk.cast) SD.roadTalk.cast(sc, cur);
+    const shop = road.labels.find(l => l.id === 'shop');
+    if (shop) shop.text = NR.shop && NR.shop.name ? NR.shop.name.toUpperCase() : 'CARD SHOP';
+  }
+  function go(key, at) {
+    if (sc) sc.stop();
+    cur = key;
+    const def = MAPS[key];
+    if (!scenes[key]) {
+      scenes[key] = SD.scene.create($('#north-canvas'), def);
+      scenes[key].onDoor = door; scenes[key].onTalk = talk;
+      const [x, y, f] = def.enter || def.back.S;
+      scenes[key].player(x, y, f);
+    }
+    sc = scenes[key];
+    if (at) { sc.place('you', at[0], at[1]); sc.face('you', at[2] || 'south'); }
+    cast(); hud(); sc.start();
+    AU.music(def.music);
+    if (AU.weather) AU.weather(def.weather === 'storm' && !flags().ch9 ? 'rain' : def.weather);
   }
 
   NR.enter = async function (fromRun) {
@@ -102,20 +259,15 @@
       return;
     }
     SD.main.show('north');
-    if (!sc) {
-      sc = SD.scene.create($('#north-canvas'), def);
-      sc.onDoor = door; sc.onTalk = talk;
-      sc.player(13, 20, 'north');
-    }
-    if (fromRun) sc.place('you', 13, 6); else sc.place('you', 13, 20);
-    cast(); hud(); sc.start();
-    AU.music('ch7');
+    // Back from a run: stand outside the dungeon you came out of.
+    if (fromRun && WHERE[fromRun]) { const k = WHERE[fromRun]; go(k, MAPS[k].back.D); }
+    else go('road', road.back.S);
     if (!flags().nrSeen) {
       flags().nrSeen = true; S.persist();
       await U.dialog([
         { s: 'uptima', e: 'happy', t: 'The North Road! Fresh map, fresh air, zero tickets. Probably zero tickets.' },
-        { s: 'latency', e: 'smug', t: '...Welcome... to my road. It... is slow. On purpose.' },
-        { s: 'uptima', t: 'Lord Latency is our guide now. He\'s reformed. Mostly. The dungeon up the road takes us north, one floor after another.' }
+        { s: 'uptima', t: 'Lord Latency runs a waystation down the first path on the left. The road north starts there, through the old tunnel.' },
+        { s: 'pip', t: 'There are people on this road! Real ones! With problems! I love problems!' }
       ]);
     }
   };
@@ -128,82 +280,103 @@
   async function door(d) {
     if (busy) return;
     busy = true; sc.pause();
-    AU.sfx(d === 'S' ? 'blip' : 'door');
+    AU.sfx('door');
+    let moved = false;
     try {
-      if (d === 'S') return NR.leave();
-      if (d === 'G') return await gate();
-      await place(d);
+      if (cur === 'road') {
+        if (d === 'S') { moved = true; return NR.leave(); }
+        if (d === 'C') return await shop();
+        const key = PLACE[d];
+        if (!A.open(MAPS[key].ch) || !SD.chapters[MAPS[key].ch]) return await closed(key);
+        moved = true; go(key, MAPS[key].enter);
+        if (!(flags().nrPlaces || []).includes(key)) { flags().nrPlaces = (flags().nrPlaces || []).concat(key); S.persist(); await arrive(key); }
+        return;
+      }
+      // Places: D is the chapter's dungeon; any other door goes back to the road.
+      if (d === 'D') return await dungeon(MAPS[cur].ch);
+      moved = true; go('road', road.back[ROAD_DOOR[cur]]);
     } finally {
       busy = false;
       // Step back off the door so walking away doesn't trigger it again.
-      if (!$('#screen-north').hidden && sc.P) { const t = sc.tile(sc.P.x, sc.P.y); if (def.doors[t]) sc.place('you', sc.P.x, sc.P.y + 1); hud(); cast(); sc.start(); }
+      if (!moved && !$('#screen-north').hidden && sc.P) {
+        const t = sc.tile(sc.P.x, sc.P.y), b = MAPS[cur].back[t];
+        if (b) { sc.place('you', b[0], b[1]); sc.face('you', b[2]); }
+        hud(); cast(); sc.start();
+      }
     }
   }
+  async function closed(key) {
+    const ch = MAPS[key].ch;
+    await U.dialog([{ s: 'uptima', e: 'confused', t: `The path to ${NAME[key]} is roped off. A sign says "Opens after chapter ${ch - 1}". Someone drew a frowny face on it.` }]);
+  }
+  // First visit to each place.
+  const ARRIVE = {
+    waystation: [{ s: 'latency', t: '...Welcome... to my waystation. The road north... starts in that tunnel. It is... dark. And slow. I approve.' },
+      { s: 'uptima', e: 'happy', t: 'Three floors, no going home in between. Lord Latency packed tea!' }],
+    arena: [{ s: 'gong', t: 'WELCOME, CHALLENGER! To the Tournament of Power Levels! I am Gong, master of this arena. I hit the gong. That is the job.' },
+      { s: 'pip', t: 'It\'s HUGE. There are more people in those stands than in all of Pingsby!' }],
+    camp: [{ s: 'uptima', e: 'confused', t: 'The heroes\' camp. Everyone here has died more times than I have filed tickets. That is a lot of times.' }],
+    exchange: [{ s: 'uptima', e: 'confused', t: 'The Exchange. Everything that goes down in Downtima gets traded here. I don\'t like how quiet it is.' }]
+  };
+  const arrive = key => U.dialog(ARRIVE[key]);
 
-  // The road's own dungeon gate: one button per open arc chapter.
-  async function gate() {
-    const sv = S.save;
+  // A chapter's dungeon entrance: start it, or resume the run you left open.
+  async function dungeon(ch) {
+    const sv = S.save, c = SD.chapters[ch];
     if (sv.run) {
+      const here = sv.run.ch === ch, rc = SD.chapters[sv.run.ch];
       return new Promise(res => {
-        const b = U.panel('<p>Your run is still open on the road.</p><div class="row"><button class="primary" id="ng-r">Resume run</button><button class="ghost" id="ng-x">Not yet</button></div>', { title: 'ROAD DUNGEON', onClose: res });
+        const b = U.panel(`<p>${here ? 'Your run is still open in here.' : `You still have a run open in ${U.esc(rc ? rc.name : 'another dungeon')}.`}</p>
+          <div class="row"><button class="primary" id="ng-r">Resume run</button><button class="ghost" id="ng-x">Not yet</button></div>`, { title: c.name.toUpperCase(), onClose: res });
         b.querySelector('#ng-x').onclick = () => { U.closePanel(); res(); };
-        b.querySelector('#ng-r').onclick = () => { U.closePanel(); res(); SD.run.resume(); };
+        b.querySelector('#ng-r').onclick = () => { U.closePanel(); res(); sc.stop(); SD.run.resume(); };
       });
     }
-    const open = A.chapters().filter(A.open);
-    const latest = open[open.length - 1];
-    const rows = open.slice().reverse().map(ch => {
-      const c = SD.chapters[ch];
-      return `<button class="opt${ch === latest ? ' on' : ''}" data-ch="${ch}"><b>Chapter ${ch} · ${c.rank}-Rank: ${U.esc(c.name.replace(/^the /, 'The '))}</b>${flags()['ch' + ch] ? ' · Cleared' : ''}<br>
-        <span class="small">${U.esc(c.blurb || '')}</span><br><span class="small muted">${(c.floors || []).length} floors, one after another. Death restarts the floor.</span></button>`;
-    }).join('');
     return new Promise(res => {
-      const b = U.panel(`<div class="opts">${rows}</div><p class="muted small">Max SLA ${S.maxSla()} · Heals between floors: ${SD.quests && SD.quests.status && SD.quests.status('lunch') === 'done' ? 'full' : 'half'}</p>
-        <div class="row"><button class="ghost" id="ng-x">Not yet</button></div>`, { title: 'ROAD DUNGEON', onClose: res });
+      const b = U.panel(`<div class="opts"><div class="opt on"><b>Chapter ${ch} · ${c.rank}-Rank: ${U.esc(c.name.replace(/^the /, 'The '))}</b>${flags()['ch' + ch] ? ' · Cleared' : ''}<br>
+        <span class="small">${U.esc(c.blurb || '')}</span><br><span class="small muted">${(c.floors || []).length} floors, one after another. Death restarts the floor.</span></div></div>
+        <p class="muted small">Max SLA ${S.maxSla()} · Heals between floors: ${A.healText ? A.healText() : 'half'}</p>
+        <div class="row"><button class="primary" id="ng-go">Go in</button><button class="ghost" id="ng-x">Not yet</button></div>`, { title: c.name.toUpperCase(), onClose: res });
       b.querySelector('#ng-x').onclick = () => { U.closePanel(); res(); };
-      b.querySelectorAll('[data-ch]').forEach(el => el.onclick = () => { U.closePanel(); res(); sc.stop(); SD.run.start(+el.dataset.ch); });
+      b.querySelector('#ng-go').onclick = () => { U.closePanel(); res(); sc.stop(); SD.run.start(ch); };
     });
   }
 
-  // Buildings: closed until their chapter opens, then a scene with whoever lives there.
-  const LINES = {
-    L: () => flags().ch7
-      ? [{ s: 'latency', e: 'smug', t: '...The waystation... is quieter... now. I... water the plants... very... slowly.' }]
-      : [{ s: 'latency', t: '...My waystation... Tea is brewing. It will be ready... eventually.' },
-        { s: 'uptima', e: 'happy', t: 'The road north starts at the dungeon gate up there. Three floors, no going home in between. I packed snacks!' }],
-    R: () => [{ s: 'uptima', e: 'happy', t: 'The tournament arena! Heroes from every loop fight here. Whoever wins gets a trophy, and also a lot of paperwork.' }],
-    K: () => [{ s: 'hero1023', t: 'You made it. Sit by the fire. Kyu used to sit right there, writing runbooks nobody read.' },
-      { s: 'hero500', t: 'I read one once. It was... actually good. Don\'t tell her.' }],
-    X: () => [{ s: 'uptima', e: 'confused', t: 'The Exchange. Everything that goes down in Downtima gets traded here. I don\'t like how quiet it is.' }]
-  };
-  async function place(d) {
-    const ch = PLACE[d];
-    if (!A.open(ch) || !SD.chapters[ch]) {
-      await U.dialog([{ s: 'uptima', e: 'confused', t: `${PLACE_NAME[d][0].toUpperCase() + PLACE_NAME[d].slice(1)} is closed. A sign on the door says "Opens after chapter ${ch - 1}". Someone drew a frowny face on it.` }]);
-      return;
-    }
-    await U.dialog(LINES[d]());
-    if (d === 'K' && ((flags().runbook || []).length || (flags().kyuFiles || []).length)) A.showRunbook();
+  // The card shop: its keeper and stock live elsewhere (NR.shop = { name, open(), ready() }, set by whoever runs it).
+  async function shop() {
+    if (NR.shop && (!NR.shop.ready || NR.shop.ready())) return NR.shop.open();
+    await U.dialog([{ s: 'pip', t: 'A sign in the window: "OPENING SOON. Cards, rare and less rare. Discounts for heroes who have died at least once." That\'s everyone!' }]);
   }
 
+  // ---------- Talking ----------
+  // Quest steps first (js/roadquests.js and js/quests.js), then each person's own lines.
   const TALK = {
     latency: () => flags().ch7
-      ? ['...You beat... the Wyrm... Well... Kyu did. You... helped.', '...The arena... opens now. Mind... the crowds. They are... fast.']
+      ? ['...You beat... the Wyrm... Well... Kyu did. You... helped.', '...The arena... is open now. Mind... the crowds. They are... fast.']
       : ['...The road north... is long. I will walk it... with you. Slowly.', '...Once per fight... I can delay... an incident\'s next move. It is... my one talent.'],
     seymour: () => flags().ch10
       ? ['Gary\'s back. Lunch break. I have questions I will never ask.']
       : ['Have you seen Gary? He\'s not at his spot. He\'s ALWAYS at his spot.', 'I\'m keeping notes. A missing Gary is either nothing, or the end of the world. There\'s no middle.'],
     hero1023: () => ['I\'ve died a thousand and twenty-three times. Kyu was there for most of them. She always looked so... tired.'],
-    hero500: () => ['Five hundred loops. Kyu fixed my sword once. Then she told me the sword was never the problem.']
+    hero500: () => flags().ch8 ? ['Five hundred loops. Kyu fixed my sword once. Then she told me the sword was never the problem.']
+      : ['I\'m in the tournament. I have a shield. Just the shield. It\'s a strategy.'],
+    gong: () => ['*GONNNNG.* Sorry. Reflex.', 'The crowd wants every punch live. The last arena master sent results by pigeon. He is now a pigeon.'],
+    v1: () => ['Is the tea always this slow here? ...It\'s good, though. It\'s really good.', 'GO HERO! I don\'t know which one. All of them!'],
+    v2: () => ['I walked here from three loops ago. My feet are still in the last one.'],
+    v3: () => ['I bet my whole pension on the guy with the shield. Don\'t tell my wife.', 'Prices only go up. Until they don\'t. Then they really don\'t.'],
+    v4: () => ['I\'m on a pilgrimage to the Exchange. I hear if you trade your worries there, you get them back with interest.']
   };
   let talkI = 0;
   async function talk(id) {
-    if (busy || !TALK[id]) return;
+    if (busy) return;
     busy = true; sc.pause();
     try {
-      const lines = TALK[id]();
+      if (QS() && QS().pending(id).length) { await QS().talk(id); AU.music(MAPS[cur].music); return; }
+      const own = SD.roadTalk && SD.roadTalk.lines[id];
+      const lines = (own && own()) || (TALK[id] && TALK[id]());
+      if (!lines) return;
       await U.dialog([{ s: id, t: lines[talkI++ % lines.length] }]);
-    } finally { busy = false; }
+    } finally { busy = false; if (sc && sc.active) { cast(); hud(); } }
   }
 
   // ---------- Hook-ups ----------
@@ -217,14 +390,15 @@
     el.hidden = true; if (sc) sc.stop();
     show(s);
   };
-  // An arc run ends back on the road, not in the village.
-  let fromRoad = false;
+  // An arc run ends back on the road, outside the dungeon it started in.
+  let fromRoad = 0;
   const start = SD.run.start, resume = SD.run.resume;
-  SD.run.start = function (ch) { fromRoad = !!(SD.chapters[ch || 1] && SD.chapters[ch || 1].arc); return start.apply(this, arguments); };
-  SD.run.resume = function () { const r = S.save.run; fromRoad = !!(r && SD.chapters[r.ch] && SD.chapters[r.ch].arc); return resume.apply(this, arguments); };
+  const arcCh = ch => SD.chapters[ch || 1] && SD.chapters[ch || 1].arc ? ch : 0;
+  SD.run.start = function (ch) { fromRoad = arcCh(ch); return start.apply(this, arguments); };
+  SD.run.resume = function () { const r = S.save.run; fromRoad = r ? arcCh(r.ch) : 0; return resume.apply(this, arguments); };
   const toHub = SD.main.toHub;
   SD.main.toHub = function (afterRun) {
-    if (fromRoad && A.open(7)) { fromRoad = false; NR.enter(true); if (afterRun) U.system('[SYSTEM] BACK ON THE ROAD', 'You respawned at the waystation. Lord Latency had tea ready. It was cold.'); return; }
+    if (fromRoad && A.open(7)) { const ch = fromRoad; fromRoad = 0; NR.enter(ch); if (afterRun) U.system('[SYSTEM] BACK ON THE ROAD', 'You respawned outside the dungeon. Lord Latency had tea ready. It was cold.'); return; }
     return toHub.apply(this, arguments);
   };
   // Preview builds get a shortcut from the title screen straight onto the road.
@@ -239,4 +413,6 @@
       $('#screen-title').appendChild(b);
     };
   }
+  NR.go = go;
+  NR.where = () => cur;
 })();

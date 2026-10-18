@@ -52,6 +52,7 @@
     kaito: 'the plaza (posing)', doug: 'the riverbank (east of the café)', uptima: 'the Goddess Temple', wen: 'the Cache Café', mio: "Mio's treehouse",
     seymour: "Seymour's bunker", gary: 'the plaza'
   };
+  QS.HOME = HOME;   // later maps add their people's homes (js/roadquests.js)
   const who = id => SD.cast[id] ? SD.cast[id].name : id;
 
   // ---------- The quests ----------
