@@ -63,7 +63,10 @@ Load after `quests.js` (and after any chapter files such as `ch4.js`), before `m
    already set (`SD.isles.WAVES = { 1: 3, 2: 4, 3: 5, 4: 8 }`). New-wave scenes play on the next visit.
 5. **Saves.** Everything is under `S.save.isles` (`chains`, `commissions`, `bridges`, `shells`, `keepsakes`,
    `tides`, `ferry`, `pos`, scene flags). Old saves need no migration: the object is created on first use.
-   Rewards that touch the main save are XP (`SD.run.gainXp`) and Memory Shards (`S.save.shards`).
+   Rewards that touch the main save are XP (`SD.run.gainXp`) and Memory Shards (`S.save.shards`). Shard amounts
+   live in one table, `SD.isles.REWARD` in `isles-kit.js`, sized for the new economy (the daily board's 100
+   shards, relics at 80 to 300, cards from 100): 60 per quest chain, 150 for a commission's first clear, 50 for
+   the daily ferry round, 40 per bridge, 200 for the festival, and 25 for every 10 shells. Retune them there.
 6. **Spaced review.** Isles concepts are normal entries in `SD.concepts` with `zone: 99`, so they use the same
    review boxes (`S.recordAnswer`) but stay out of the dungeon's question pools, the Cheat Sheet and the mind map
    (which filter by `zone <= chapter`). The Isles review them on their own tide posts and in the Isles log's Ideas

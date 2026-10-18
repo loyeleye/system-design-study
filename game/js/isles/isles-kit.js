@@ -137,6 +137,18 @@
     .isles-game table.il-t td, .isles-game table.il-t th { border:1.5px solid var(--line); padding:4px 6px; text-align:left; vertical-align:top; }
   `);
 
+  // Memory Shard rewards, sized for the main game's economy (the daily quest board pays 100 shards; Wen's relics
+  // cost 80 to 300 and cards 100 and up). Shells are the Isles' small change, traded at Leilani's.
+  I.REWARD = {
+    chain: 60,            // each Isles quest chain
+    commission: 150,      // first clear of a commission (a replay pays `commissionAgain`)
+    commissionAgain: 10,
+    ferryRound: 50,       // the daily ferry round (3 questions; the town board pays 100 for 5)
+    bridge: 40,           // each bridge built
+    festival: 200,        // once, when every bridge is built
+    shellTrade: [10, 25]  // 10 shells buy 25 shards
+  };
+
   // Waves: which main-game chapter clear opens which islands.
   I.WAVES = { 1: 3, 2: 4, 3: 5, 4: 8 };
   I.waveOpen = w => !!(SD.state.save.flags['ch' + I.WAVES[w]] || (I.dev && I.dev.all));

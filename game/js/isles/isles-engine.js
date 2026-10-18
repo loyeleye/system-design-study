@@ -142,7 +142,7 @@
     const st = I.st(), sv = S.save;
     s.done = true; s.items = [];
     const shells = c.shells || 5;
-    st.shells += shells; sv.shards += 2;
+    st.shells += shells; sv.shards += I.REWARD.chain;
     if (c.keepsake && !st.keepsakes.includes(c.id)) st.keepsakes.push(c.id);
     SD.run.gainXp(c.xp || 100);
     S.persist();
@@ -150,7 +150,7 @@
     const k = c.keepsake;
     await new Promise(res => {
       const b = U.panel(`<div class="verdict ok">ISLES QUEST COMPLETE!</div><p class="center"><b>${esc(c.title)}</b></p>
-        <div class="loot"><span>+${c.xp || 100} XP</span><span>+2 shards</span><span>+${shells} shells</span></div>
+        <div class="loot"><span>+${c.xp || 100} XP</span><span>+${I.REWARD.chain} shards</span><span>+${shells} shells</span></div>
         ${k ? `<div class="pd-get"><div class="pd-icon">${K.icon(k.icon)}</div><div><span class="q-ctx">Keepsake</span><b>${esc(k.name)}</b><p class="muted small"><i>${esc(k.text)}</i></p></div></div>` : ''}
         <button class="primary" id="il-done">Excellent</button>`, { title: 'QUEST COMPLETE', noClose: true });
       b.querySelector('#il-done').onclick = () => { U.closePanel(); res(); };
@@ -218,10 +218,11 @@
     }
     const st = I.st(), first = st.ferry !== today();
     st.ferry = today();
-    const shells = first ? 3 + right : 0;
-    st.shells += shells; S.persist();
+    const shells = first ? right : 0;
+    st.shells += shells; if (first) S.save.shards += I.REWARD.ferryRound;
+    S.persist();
     if (first) SD.run.gainXp(30);
-    await reward('FERRY ROUND', `${right}/${stops.length} right`, first ? [`+${shells} shells`, '+30 XP'] : [], first ? 'Mixing islands is harder than doing one at a time, and that is why it works.' : 'One paid round a day. Practice rounds still count for your reviews.');
+    await reward('FERRY ROUND', `${right}/${stops.length} right`, first ? [`+${I.REWARD.ferryRound} shards`, `+${shells} shells`, '+30 XP'] : [], first ? 'Mixing islands is harder than doing one at a time, and that is why it works.' : 'One paid round a day. Practice rounds still count for your reviews.');
     I.refresh();
     return { ok: true, right, shells };
   };
@@ -237,14 +238,15 @@
   // ---------- Shells ----------
   I.shellShop = async function () {
     const st = I.st();
-    await I.say('shellShop', [['leilani', 'Ten shells for a Memory Shard. The shards come from the bottom of the sea. Do not ask how.']]);
+    const [cost, gain] = I.REWARD.shellTrade;
+    await I.say('shellShop', [['leilani', `${cost} shells for ${gain} Memory Shards. The shards come from the bottom of the sea. Do not ask how.`]]);
     return new Promise(res => {
       const draw = () => {
         const b = U.panel(`<div class="shopkeep">${SD.art.portrait('leilani', 64)}<p>You have <b>${st.shells}</b> shells and <b>${S.save.shards}</b> Memory Shards.</p></div>
-          <div class="opts"><button class="opt" id="il-trade" ${st.shells < 10 ? 'disabled' : ''}>Trade 10 shells for 1 Memory Shard</button></div>
+          <div class="opts"><button class="opt" id="il-trade" ${st.shells < cost ? 'disabled' : ''}>Trade ${cost} shells for ${gain} Memory Shards</button></div>
           <p class="muted small">Shells come from tide reviews, the daily ferry round, quests and commissions.</p>`, { title: 'SHELL TRADE', onClose: () => res() });
         const t = b.querySelector('#il-trade');
-        t.onclick = () => { if (st.shells < 10) return; st.shells -= 10; S.save.shards += 1; S.persist(); AU.sfx('coin'); I.refresh(); draw(); };
+        t.onclick = () => { if (st.shells < cost) return; st.shells -= cost; S.save.shards += gain; S.persist(); AU.sfx('coin'); I.refresh(); draw(); };
       };
       draw();
     });
@@ -275,12 +277,12 @@
     const r = await SD.quiz.ask(qOf(b.ask), { title: 'BUILD A BRIDGE', context: `${A ? A.name : b.a} ↔ ${B ? B.name : b.b}` });
     if (B && r) S.recordAnswer(b.b, r.ok, r.conf, r.ms);
     if (!r.ok) { await I.say('bridgeRetry', [['leilani', 'Not quite. The planks are still here. Come back and try again whenever you like.']]); return { ok: false }; }
-    I.st().bridges.push(id); I.st().shells += 3; S.persist();
+    I.st().bridges.push(id); I.st().shells += 3; S.save.shards += I.REWARD.bridge; S.persist();
     AU.jingle && AU.jingle('victory', 'town');
     await I.say('bridgeBuilt', [['leilani', 'Built! Now you can walk it. Eventually everyone will.']]);
     await new Promise(res => {
       const p = U.panel(`<div class="verdict ok">BRIDGE BUILT</div><p class="center"><b>${esc(I.ISLANDS[b.islands[0]].name)}</b> ↔ <b>${esc(I.ISLANDS[b.islands[1]].name)}</b></p>
-        <p class="il-link">${esc(b.link || '')}</p><div class="loot"><span>+3 shells</span></div>
+        <p class="il-link">${esc(b.link || '')}</p><div class="loot"><span>+${I.REWARD.bridge} shards</span><span>+3 shells</span></div>
         <p class="muted small">It's on your concept map now (Isles log, Bridges). The map of the Isles is turning into a map of how the ideas connect.</p>
         <button class="primary" id="il-bb">Walk it</button>`, { title: 'BRIDGE', cls: 'isles-game', noClose: true });
       p.querySelector('#il-bb').onclick = () => { U.closePanel(); res(); };
@@ -289,8 +291,8 @@
     if (I.bridges.length && I.bridges.every(x => I.bridgeBuilt(x.id)) && !I.st().festival) {
       I.st().festival = true; S.persist();
       await I.say('festival', [['leilani', 'Every bridge is built. Tonight, the Isles hold a festival, with one guest list everyone agrees on.']]);
-      SD.run.gainXp(200); I.st().shells += 10; S.persist();
-      U.system('THE ISLES FESTIVAL', '+200 XP and +10 shells. The Isles agree. Eventually turned out to be today.', 'gold');
+      SD.run.gainXp(200); I.st().shells += 10; S.save.shards += I.REWARD.festival; S.persist();
+      U.system('THE ISLES FESTIVAL', `+200 XP, +${I.REWARD.festival} shards and +10 shells. The Isles agree. Eventually turned out to be today.`, 'gold');
     }
     return { ok: true };
   };
@@ -338,13 +340,14 @@
     const first = !(st.commissions[id] && st.commissions[id].done);
     st.commissions[id] = { done: true, best: Math.max(sla, (st.commissions[id] && st.commissions[id].best) || 0) };
     const xp = first ? (c.xp || 200) : 40, shells = first ? (c.shells || 10) : 2;
-    st.shells += shells; if (first) S.save.shards += 3;
+    const shards = first ? I.REWARD.commission : I.REWARD.commissionAgain;
+    st.shells += shells; S.save.shards += shards;
     SD.run.gainXp(xp); S.persist();
     AU.jingle && AU.jingle('victory', 'town');
     const k = c.keepsake;
     await new Promise(res => {
       const b = U.panel(`<div class="verdict ok">COMMISSION COMPLETE · SLA ${sla}%</div><p class="center"><b>${esc(c.title)}</b><br><span class="muted small">${esc(c.problem || '')}</span></p>
-        <div class="loot"><span>+${xp} XP</span><span>+${shells} shells</span>${first ? '<span>+3 shards</span>' : ''}</div>
+        <div class="loot"><span>+${xp} XP</span><span>+${shards} shards</span><span>+${shells} shells</span></div>
         ${first && k ? `<div class="pd-get"><div class="pd-icon">${K.icon(k.icon)}</div><div><span class="q-ctx">Keepsake</span><b>${esc(k.name)}</b><p class="muted small"><i>${esc(k.text)}</i></p></div></div>` : ''}
         <p class="muted small">Requirements, core entities, API, high-level design, deep dives: the same five steps work on any problem an interviewer gives you.</p>
         <button class="primary" id="il-cw">Excellent</button>`, { title: 'COMMISSION', cls: 'isles-game', noClose: true });

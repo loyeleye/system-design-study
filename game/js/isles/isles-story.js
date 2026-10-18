@@ -107,7 +107,7 @@
 
     // The shell trade.
     shellShop: [
-      ['leilani', "Shells! The Isles still trade in them. Ten shells buys you a Memory Shard.", 'happy'],
+      ['leilani', "Shells! The Isles still trade in them. Bring me ten and I'll give you a handful of Memory Shards.", 'happy'],
       ['leilani', "The shards wash up from the bottom of the sea. Don't ask how. Ruth asked once, and she's still counting.", 'neutral']
     ],
 
