@@ -64,6 +64,8 @@ These are the only edits to existing files. Each one is small, so a merge only n
 11. **`game/js/bestiary-data.js`**: interview notes for the chapter 9 and 10 enemies.
 12. **`game/index.html`**: `ch8.js`, `ch9.js`, `ch10.js` and `roadquests.js` after `ch7.js`; `sidequests.js` and `debug.js` after `northroad.js`.
 
+On the North Road (`northroad.js`), people pace near their spots and two travellers (a merchant and a courier) walk set routes along the road; anyone with a `route` loops it, and nobody moves while a conversation is open or you stand next to them. Character sheets from `tools/village_art.py` now carry PixelLab walk cycles, flagged `walk` so standing characters hold still. The Exchange is always under a thunderstorm (`storm` overlay: rain, lightning, thunder).
+
 `arc.js` also gained, in its own code: whistle ranks in the run HUD (`chapter.whistles`), floor rules (`floor.rule`: a HUD chip, and an intro scene before the floor's first fight; chapter 10's four Homunculus' Rules apply through `SD.meta` mods), a `finale` after the last boss (chapter 9's army, chapter 10's pager), `afterEnding` (chapter 10's credits), and boss chains (`floor.chain` with `floor.links` cutscenes between them; each boss after the first gets one framework step).
 
 ## Names other features rely on

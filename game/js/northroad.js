@@ -11,7 +11,7 @@
   const QS = () => SD.quests;
 
   // ---------- Map building ----------
-  // T trees, # solid footprints, ~ water, p dirt path, a arena sand, c cobbles. Doors are single letters (below).
+  // T trees, # solid footprints, b building footprints on grass, ~ water, p dirt path, a arena sand, c cobbles. Doors are single letters (below).
   function grid(W, H, edge) {
     const g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (edge && (x === 0 || y === 0 || x === W - 1 || y === H - 1)) ? 'T' : '.'));
     const put = (x, y, c) => { if (g[y] && x >= 0 && x < W) g[y][x] = c; };
@@ -34,16 +34,16 @@
     m.put(0, 13, 'K'); m.put(0, 14, 'K');
     m.put(14, 45, 'S'); m.put(15, 45, 'S');
     m.rect(1, 0, 28, 5, 'w'); m.rect(10, 1, 19, 6, '#'); m.put(14, 7, 'X'); m.put(15, 7, 'X');   // the city wall and gate
-    m.rect(5, 19, 9, 21, '#'); m.put(7, 22, 'C');
-    m.rect(5, 27, 8, 28, '#');                               // courier post
-    m.rect(19, 16, 23, 17, '#');                             // bard's stage
-    m.rect(18, 39, 22, 40, '#');                             // Marta's caravan
+    m.rect(5, 19, 9, 21, 'b'); m.put(7, 22, 'C');
+    m.rect(5, 27, 8, 28, 'b');                               // courier post
+    m.rect(19, 16, 23, 17, 'b');                             // bard's stage
+    m.rect(18, 39, 22, 40, 'b');                             // Marta's caravan
     m.rect(22, 30, 26, 32, '~'); m.rect(3, 40, 6, 42, '~');
     m.trees([[21, 9], [6, 10], [9, 8], [25, 11], [3, 17], [11, 18], [24, 20], [27, 16], [2, 24], [9, 25], [20, 22],
       [26, 21], [3, 31], [19, 33], [27, 35], [8, 38], [23, 36], [4, 44], [10, 43], [20, 44], [25, 42], [18, 11], [11, 11], [27, 29], [6, 33]]);
     return {
       map: m.rows(), terrain: { p: 'dirt', L: 'dirt', R: 'dirt', K: 'dirt', S: 'dirt', X: 'dirt', C: 'dirt', '~': 'water', w: 'd10', '#': 'd10' },
-      top: ['water', 'd10', 'dirt'], solid: 'T#~w', bg: '#5fbf5f',
+      top: ['water', 'd10', 'dirt'], solid: 'T#~wb', bg: '#5fbf5f',
       doors: { S: 'S', L: 'L', R: 'R', K: 'K', X: 'X', C: 'C' },
       doorFor: (x, y) => (x >= 10 && x <= 19 && y <= 7) ? [14, 8] : (x >= 5 && x <= 9 && y >= 17 && y <= 21) ? [7, 23] : null,
       objects: [
@@ -72,7 +72,10 @@
         lyra: { x: 18, y: 19, face: 'south', name: 'LYRA' },
         aigerim: { x: 9, y: 23, face: 'south', name: 'AIGERIM' },
         v2: { x: 13, y: 26, face: 'east', name: 'TRAVELLER' },
-        v4: { x: 17, y: 32, face: 'west', name: 'PILGRIM' }
+        v4: { x: 17, y: 32, face: 'west', name: 'PILGRIM' },
+        // Travellers walking the whole road, between Pingsby and the city gate.
+        v1: { x: 14, y: 42, face: 'north', name: 'MERCHANT', route: [[14, 38], [13, 38], [13, 29], [15, 29], [15, 17], [14, 17], [14, 9], [14, 17], [15, 17], [15, 29], [13, 29], [13, 38], [14, 38], [14, 43]] },
+        v3: { x: 15, y: 12, face: 'south', name: 'COURIER', route: [[15, 17], [16, 17], [16, 25], [27, 25], [16, 25], [16, 28], [12, 28], [12, 36], [2, 36], [12, 36], [12, 28], [16, 28], [16, 17], [15, 17], [15, 10]] }
       },
       // Where you stand when you come back through each door.
       back: { L: [1, 35, 'east'], R: [28, 25, 'west'], K: [1, 13, 'east'], X: [14, 8, 'south'], S: [14, 44, 'north'], C: [7, 23, 'south'] },
@@ -124,12 +127,10 @@
     m.rect(21, 30, 22, 30, '#');                                // statue
     m.rect(10, 12, 16, 12, '#'); m.rect(27, 12, 33, 12, '#'); m.rect(10, 26, 16, 26, '#'); m.rect(27, 26, 33, 26, '#');   // ring walls
     m.rect(8, 14, 8, 24, '#'); m.rect(35, 14, 35, 24, '#');
-    // The stands are blocks of seats with the crowd in them, tiled around the edge at the hero's scale.
+    // The stands are walled off: a ring of the ring walls around the edge, at the hero's scale.
     const SEATS = [];
-    const row = (xs, y, flip) => xs.forEach(x => SEATS.push({ name: 'ar-seats', x, y, flip }));
-    [1, 3.5].forEach(y => { row([5.6, 8.9, 12.2, 15.5], y); row([28, 31.3, 34.6, 37.9], y); });
-    [32.4, 34.9].forEach(y => { row([5.6, 8.9, 12.2, 15.5], y); row([28, 31.3, 34.6, 37.9], y); });
-    for (let y = 6.5; y < 32; y += 2.5) { row([1.4], y); row([41.6], y, true); }
+    [3, 9, 15, 28, 34, 40].forEach(x => { SEATS.push({ name: 'ar-wall', x: x - 0.5, y: 3 }, { name: 'ar-wall', x: x - 0.5, y: 32 }); });
+    for (let y = 8.5; y <= 31; y += 4.4) SEATS.push({ name: 'ar-wallv', x: 2.5, y }, { name: 'ar-wallv', x: 40.5, y });
     return {
       map: m.rows(), terrain: { a: 'd8', '#': 'd8', D: 'd8', S: 'd8' }, top: ['d8'], base: 'd8', solid: '#', bg: '#c9b48a', zoom: 32,
       doors: { D: 'D', S: 'S' },
@@ -185,6 +186,33 @@
     };
   })();
 
+  // The Exchange is always under a thunderstorm: rain streaks over the view, and every so often lightning
+  // whites out the screen and the thunder follows a moment later.
+  let boltAt = 0, nextBolt = 0;
+  function storm(ctx, t, vw, vh) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,215,255,0.35)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < 140; i++) {
+      const sx = (i * 97.3) % 1, sp = 0.8 + ((i * 53.1) % 1) * 0.6;
+      const x = (sx * (vw + 80) + t * 60) % (vw + 80) - 40, y = ((i * 0.618 + t * sp * 1.6) % 1) * (vh + 40) - 20;
+      ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 16);
+    }
+    ctx.stroke();
+    if (!nextBolt) nextBolt = t + 4 + Math.random() * 6;
+    if (t >= nextBolt) {
+      boltAt = t; nextBolt = t + 8 + Math.random() * 12;
+      setTimeout(() => AU.sfx('thunder'), 250 + Math.random() * 500);
+    }
+    const f = t - boltAt;
+    if (boltAt && f < 0.6) {
+      // Two quick flashes, like real lightning.
+      const a = f < 0.08 ? 0.75 : f < 0.16 ? 0.1 : f < 0.24 ? 0.55 : Math.max(0, 0.55 * (1 - (f - 0.24) / 0.36));
+      ctx.fillStyle = `rgba(235,240,255,${a})`; ctx.fillRect(0, 0, vw, vh);
+    }
+    ctx.restore();
+  }
+
   // ---------- The Exchange (chapter 10) ----------
   const exchange = (function () {
     const W = 34, H = 30, m = grid(W, H, false);
@@ -200,18 +228,19 @@
       doors: { D: 'D', S: 'S' },
       doorFor: (x, y) => (x >= 11 && x <= 22 && y <= 11) ? [16, 12] : null,
       sky: () => flags().ch9 ? 'dark' : 'dusk',
+      overlay: storm,
       objects: [
         { name: 'ex-townhouse', x: 1.8, y: 9 }, { name: 'ex-townhouse2', x: 4.9, y: 9 }, { name: 'ex-townhouse', x: 8, y: 9 },
         { name: 'ex-townhouse2', x: 25, y: 9 }, { name: 'ex-townhouse', x: 28.1, y: 9 }, { name: 'ex-townhouse2', x: 31.2, y: 9 },
         { name: 'ex-planter', x: 3, y: 12 }, { name: 'ex-planter', x: 30, y: 12 }, { name: 'ex-planter', x: 12, y: 20 }, { name: 'ex-planter', x: 21, y: 20 },
         { name: 'lamp', x: 10, y: 12 }, { name: 'lamp', x: 23, y: 12 }, { name: 'lamp', x: 3, y: 20 }, { name: 'lamp', x: 30, y: 20 },
-        { name: 'ex-tower', x: 16.5, y: 11 }, { name: 'ex-ticker', x: 7.5, y: 27 }, { name: 'ex-bull', x: 26.5, y: 16 }, { name: 'ex-fountain', x: 16.5, y: 19 },
+        { name: 'ex-tower', x: 16.5, y: 11 }, { name: 'ex-ticker', x: 7.5, y: 27 }, { name: 'ex-bull', x: 26.5, y: 16 }, { name: 'ex-firepit', x: 16.5, y: 19.4 },
         { name: 'ex-stall', x: 6.5, y: 17 }, { name: 'ex-stall', x: 8.5, y: 23 }, { name: 'ex-stall', x: 26.5, y: 24, flip: true },
         { name: 'd10a', x: 14, y: 15 }, { name: 'd10a', x: 19, y: 15 }, { name: 'd10a', x: 14, y: 25 }, { name: 'd10a', x: 19, y: 25 }, { name: 'd10b', x: 3, y: 26 }, { name: 'd10b', x: 30, y: 9 }
       ],
-      labels: [{ x: 16.5, y: 12.6, text: 'THE EXCHANGE' }, { x: 16.5, y: 28.6, text: 'ROAD ↓' }, { x: 16.5, y: 21.6, text: 'MARKET SQUARE' }],
+      labels: [{ x: 16.5, y: 12.6, text: 'THE EXCHANGE' }, { x: 16.5, y: 28.6, text: 'ROAD ↓' }, { x: 16.5, y: 21.6, text: 'THE FIRE PIT' }],
       actors: { v3: { x: 21, y: 21, face: 'west', name: 'TRADER' } },
-      back: { D: [16, 12, 'south'], S: [16, 28, 'north'] }, enter: [16, 28, 'north'], ch: 10, music: 'ch10', weather: 'storm'
+      back: { D: [16, 12, 'south'], S: [16, 28, 'north'] }, enter: [16, 28, 'north'], ch: 10, music: 'ch10', weather: 'rain'
     };
   })();
 
@@ -272,7 +301,7 @@
     if (at) { sc.place('you', at[0], at[1]); sc.face('you', at[2] || 'south'); }
     cast(); hud(); sc.start();
     AU.music(def.music);
-    if (AU.weather) AU.weather(def.weather === 'storm' && !flags().ch9 ? 'rain' : def.weather);
+    if (AU.weather) AU.weather(def.weather);
   }
 
   NR.enter = async function (fromRun) {
@@ -388,9 +417,10 @@
     hero500: () => flags().ch8 ? ['Five hundred loops. Kyu fixed my sword once. Then she told me the sword was never the problem.']
       : ['I\'m in the tournament. I have a shield. Just the shield. It\'s a strategy.'],
     gong: () => ['*GONNNNG.* Sorry. Reflex.', 'The crowd wants every punch live. The last arena master sent results by pigeon. He is now a pigeon.'],
-    v1: () => ['Is the tea always this slow here? ...It\'s good, though. It\'s really good.', 'GO HERO! I don\'t know which one. All of them!'],
+    v1: () => cur === 'road' ? ['Silk from Pingsby, spices from the Exchange. Everything goes up this road and comes back down more expensive.', 'Walk with me if you like. I don\'t stop, though. Stopping is how the bandits find you. And the tax collectors.']
+      : ['Is the tea always this slow here? ...It\'s good, though. It\'s really good.', 'GO HERO! I don\'t know which one. All of them!'],
     v2: () => ['I walked here from three loops ago. My feet are still in the last one.'],
-    v3: () => ['I bet my whole pension on the guy with the shield. Don\'t tell my wife.', 'Prices only go up. Until they don\'t. Then they really don\'t.'],
+    v3: () => cur === 'road' ? ['Courier! Coming through! Three letters for the arena, one for the waystation, and one that just says "GARY?"', 'Every letter delivered at least once. Sometimes twice. Seymour calls that "at-least-once delivery". I call it Tuesday.'] : ['I bet my whole pension on the guy with the shield. Don\'t tell my wife.', 'Prices only go up. Until they don\'t. Then they really don\'t.'],
     v4: () => cur === 'arena' ? ['Odds on the hero? Twelve to one. Odds on Kyu? I stopped taking bets on Kyu.'] : ['I\'m on a pilgrimage to the Exchange. I hear if you trade your worries there, you get them back with interest.']
   };
   let talkI = 0;
@@ -455,6 +485,39 @@
     if (a.hero3 && beat % 3 === 0) sc.emote('hero3', beat % 6 === 0 ? 'star' : 'dots', 0.8);
     if (a.hero12 && beat % 10 === 7) sc.emote('hero12', 'alert', 1.4);
   }, 700);
+  // People on the road don't stand still. Anyone with a `route` walks it, leg by leg, and loops; everyone else
+  // paces a tile or two from where they stand. Nobody moves while a conversation is open or while you are
+  // right next to them, so you can always catch someone to talk to. The sparring heroes have their own beat.
+  const STILL = { hero77: 1, hero256: 1, hero12: 1, hero404: 1, aigerim: 1, marta: 1 };
+  setInterval(() => {
+    if (!sc || !sc.active || busy || !document.getElementById('dialog').hidden) return;
+    const now = performance.now(), P = sc.P;
+    Object.values(sc.actors).forEach(a => {
+      if (a.player || a.pip || a.hidden || STILL[a.id] || a.path.length || a.moving || a.arrive) return;
+      if (P && Math.abs(P.x - a.x) + Math.abs(P.y - a.y) <= 2) return;
+      if (a.home == null) { a.home = [a.x, a.y]; a.nextStroll = now + 1000 + Math.random() * 4000; a.leg = 0; }
+      if (now < a.nextStroll) return;
+      if (a.route) {
+        const [x, y] = a.route[a.leg++ % a.route.length];
+        sc.walk(a.id, x, y, { speed: 1.8 });
+        a.nextStroll = now + (a.leg % a.route.length === 0 ? 3000 : 300);
+        return;
+      }
+      // Pace: one or two tiles along one axis, only over open ground, then back home next time.
+      const away = a.x !== a.home[0] || a.y !== a.home[1];
+      let tx = a.home[0], ty = a.home[1];
+      if (!away) {
+        const d = (Math.random() < 0.5 ? 1 : -1) * (1 + (Math.random() < 0.4 ? 1 : 0)), ax = Math.random() < 0.65;
+        tx = a.x + (ax ? d : 0); ty = a.y + (ax ? 0 : d);
+        for (let i = 1; i <= Math.abs(d); i++) {
+          const cx = a.x + (ax ? Math.sign(d) * i : 0), cy = a.y + (ax ? 0 : Math.sign(d) * i);
+          if (!sc.walkable(cx, cy)) { tx = a.x; ty = a.y; break; }
+        }
+      }
+      if (tx !== a.x || ty !== a.y) sc.walk(a.id, tx, ty, { speed: 1.4 }).then(() => { if (!a.path.length) sc.face(a.id, P ? (Math.abs(P.x - a.x) > Math.abs(P.y - a.y) ? (P.x > a.x ? 'east' : 'west') : (P.y > a.y ? 'south' : 'north')) : 'south'); });
+      a.nextStroll = now + 3500 + Math.random() * 5000;
+    });
+  }, 400);
   NR.go = go;
   NR.where = () => cur;
   NR.scene = () => sc;
