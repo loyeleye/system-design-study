@@ -155,6 +155,7 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .lw-pip { fill: #6fd6ff; stroke: var(--ink); stroke-width: 2.5; }
 .lw-say { display: flex; gap: 10px; align-items: center; margin-top: 10px; min-height: 84px; }
 .lw-say p { margin: 0; }
+.lw-say > :first-child { flex-shrink: 0; }
 .lw-dots { display: flex; gap: 6px; justify-content: center; margin: 8px 0; }
 .lw-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
 .lw-dots i.on { background: var(--blue); }
@@ -319,6 +320,12 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 .hb-kids, .bb-seys { grid-template-columns: repeat(5, 1fr); }
 .bb-seys .qd-rep.bb-left { background: #e3e9f7; border-style: dashed; }
 .tl-svg { width: 100%; max-width: 560px; display: block; margin: 8px auto; }
+.mg-meter { display: grid; grid-template-columns: 110px 1fr 84px; gap: 8px; align-items: center; font-size: 12px; margin: 5px 0; }
+.mg-meter .bar { height: 14px; border: 2px solid var(--ink); border-radius: 7px; background: #fff; overflow: hidden; }
+.mg-meter .bar i { display: block; height: 100%; background: var(--mint); } .mg-meter .bar i.hot { background: var(--red); }
+.mg-chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; font-size: 12px; }
+.mg-chain span { padding: 4px 8px; border: 2px solid var(--ink); border-radius: 8px; background: #f1edf7; } .mg-chain span.on { background: #dcf7e8; }
+.mg-alert svg { width: 44px; height: 44px; flex: none; color: var(--red); }
 .tl-lane { font: 600 12px var(--f-head); fill: var(--ink); }
 .tl-line { stroke: #c9c2d8; stroke-width: 3; }
 .tl-msg { stroke: #3b8bff; stroke-width: 2.5; stroke-dasharray: 5 4; }
@@ -752,6 +759,7 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
 <script src="js/minigames.js"></script>
 <script src="js/quests.js"></script>
 <script src="js/ch4.js"></script>
+<script src="js/ch5.js"></script>
 <script src="js/main.js"></script>
 <!-- @page-end -->
 </body>

@@ -195,7 +195,9 @@
     btree: 'pine-tree', lsm: 'book-pile', invindex: 'open-book', fanout: 'radio-tower', hybrid: 'megaphone', hold: 'armchair',
     waitroom: 'closed-doors', stream: 'river', sketch: 'histogram', heap: 'podium-winner', quorum: 'pie-chart', shed: 'dam',
     geo: 'position-marker', quad: 'checkbox-tree', socket: 'electrical-socket', pulse: 'heart-beats', vclock: 'cuckoo-clock', merge: 'linked-rings',
-    king: 'chess-king', fence: 'wooden-fence', saga: 'scroll-quill', ring: 'globe-ring', handoff: 'divert', gossip: 'conversation', calendar: 'calendar', stack: 'stack' };
+    king: 'chess-king', fence: 'wooden-fence', saga: 'scroll-quill', ring: 'globe-ring', handoff: 'divert', gossip: 'conversation', calendar: 'calendar', stack: 'stack',
+    signs: 'direction-signs', phonebook: 'rotary-phone', earth: 'earth-asia-oceania', earth2: 'earth-america', canary: 'bird-cage', toggles: 'toggles',
+    film: 'film-strip', ladder: 'stairs', satellite: 'satellite-communication', web: 'spider-web', hashprint: 'digital-trace', radar: 'radar-sweep', trace: 'path-distance', bell: 'ringing-bell' };
   A.icon = function (name, color) {
     const body = SD.icons && SD.icons[name];
     if (!body) return null;
@@ -224,7 +226,11 @@
     gremlin: { col: '#a6e070', anim: 'shake' }, phantom: { col: '#c9f2d8', anim: 'float' }, kings: { col: '#ffd86b', anim: 'shake' },
     vanish: { col: '#b9c4d6', anim: 'float' }, avalanche: { col: '#cfeeff', anim: 'squish' }, jobswarm: { col: '#ffb27a', anim: 'shake' },
     djinn: { col: '#8fb8ff', anim: 'float' }, basilisk: { col: '#a6e070', anim: 'float' }, scribes: { col: '#efeaff', anim: 'float' },
-    rider: { col: '#ff9a6b', anim: 'shake' }, chatwyrm: { col: '#8fdcff', anim: 'float' }, colossus: { col: '#c9b39a', anim: 'float' }
+    rider: { col: '#ff9a6b', anim: 'shake' }, chatwyrm: { col: '#8fdcff', anim: 'float' }, colossus: { col: '#c9b39a', anim: 'float' },
+    signpost: { col: '#c9a07a', anim: 'shake' }, wheel: { col: '#ff8fb0', anim: 'float' }, wisp: { col: '#dff4ff', anim: 'float' },
+    banshee: { col: '#ff8fa0', anim: 'shake' }, bigbang: { col: '#ff7a5a', anim: 'shake' }, spiders: { col: '#c9c9c9', anim: 'shake' },
+    pushimp: { col: '#ff6b6b', anim: 'shake' }, regioneater: { col: '#b98fff', anim: 'float' }, calendar: { col: '#b98fff', anim: 'float' },
+    revenant: { col: '#8fdcff', anim: 'float' }, streamer: { col: '#ff6b6b', anim: 'shake' }, crawlqueen: { col: '#ffd86b', anim: 'float' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   A.enemy = function (sprite, boss, hue) {

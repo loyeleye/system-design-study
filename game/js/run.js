@@ -552,7 +552,7 @@
     const sv = S.save;
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0);
-    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false;
+    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
@@ -600,12 +600,20 @@
     if (d.hb) C.hb = true;
     if (d.merge) C.merge = true;
     if (d.handoff) C.handoff = true;
+    if (d.failover) C.failover = true;
+    if (d.killswitch) C.killswitch = true;
+    // Distributed Trace: show every weakness and resistance of this incident.
+    if (d.reveal) { Object.keys(C.e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(C.e.resist).forEach(t => C.known.add('r:' + t)); saveKnown(); }
     if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
     if (d.pow) {
       const tags = d.tags || [];
       const wk = tags.find(t => C.e.weak[t]), rs = tags.find(t => C.e.resist[t]);
       if (wk) { mitigate(d.pow + up, 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); AU.sfx('crit'); }
-      else if (rs) { C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); AU.sfx('resist'); }
+      else if (rs) {
+        C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); AU.sfx('resist');
+        // Wen's Bottomless Mug: once a fight, a resisted card hands its Capacity back.
+        if (dev('mug') && !C.mugUsed) { C.energy += cost; C.mugUsed = true; C.log += ' The mug refilled your Capacity.'; }
+      }
       else { mitigate(Math.floor((d.pow + up) / 2), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
       saveKnown();
     }
@@ -648,7 +656,13 @@
     if (t === 'flood') return (curse('botswarm') ? 1.4 : 1) * (dev('dougbot') ? 0.7 : 1);
     if (t === 'retry') return (curse('echo') ? 1.4 : 1) * (dev('waxseal') ? 0.7 : 1);
     if (t === 'stampede' || t === 'burst' || t === 'rush') return (curse('gears') ? 1.4 : 1) * (dev('strawhat') && t !== 'rush' ? 0.7 : 1);
-    if (t === 'crash') return dev('hammer') ? 0.5 : 1;
+    if (t === 'crash') return (curse('bigrelease') ? 1.4 : 1) * (dev('hammer') ? 0.5 : 1);
+    // Chapter 5
+    if (t === 'deploybad') return curse('bigrelease') ? 1.4 : 1;
+    if (t === 'lookup') return (curse('wrongaddr') ? 1.4 : 1) * (dev('phonebook') ? 0.7 : 1);
+    if (t === 'hot') return (curse('wrongaddr') ? 1.4 : 1) * (dev('phonebook') ? 0.7 : 1) * (dev('ringlight') ? 0.85 : 1);
+    if (t === 'read') return (curse('viral') ? 1.25 : 1) * (dev('ringlight') ? 0.85 : 1);
+    if (t === 'write') return dev('spider') ? 0.85 : 1;
     if (t === 'partition') return (curse('rifts') ? 1.4 : 1) * (dev('gavel') ? 0.7 : 1);
     if (t === 'race') return (curse('drift') ? 1.4 : 1) * (dev('timer') ? 0.7 : 1) * (hasInfra('vclock') ? 0.7 : 1);
     if (t === 'collide') return (curse('dbook') ? 1.4 : 1) * (dev('fencing') ? 0.7 : 1);
@@ -657,20 +671,21 @@
   }
   const auditPer = () => dev('shield') ? 2 : curse('rifts') ? 4 : 3;
   // Escalate: +3 load, +2 with Cron's Almanac, and +2 more under the Many Kings curse.
-  const escUp = () => (dev('almanac') ? 2 : 3) + (curse('kings') ? 2 : 0);
+  // SLO burn-rate alerts take 1 off: you are paged while the fire is small.
+  const escUp = () => (dev('almanac') ? 2 : 3) + (curse('kings') ? 2 : 0) - (hasInfra('observe') ? 1 : 0);
   function resolveIntent(it) {
     const r = C.rage, m = C.mercyScale, sv = S.save;
     const sc = v => Math.round((v + r) * m);
     const READ = [['cache', 1], ['replica', 1], ['read', 1], ['any', 1]];
     let dmg = 0, note = '';
     switch (it.t) {
-      case 'read': { const n = sc(it.n) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, READ); if (hasInfra('cdn')) note = 'CDN took the edge off. '; break; }
-      case 'write': { const n = sc(it.n) * (hasInfra('shard') ? 0.5 : 1); dmg = absorb(n, [['write', 1], ['any', 1]]); if (hasInfra('shard')) note = 'Shards split the writes. '; break; }
+      case 'read': { const n = sc(it.n) * mods(it.t) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, READ); if (hasInfra('cdn')) note = 'CDN took the edge off. '; break; }
+      case 'write': { const n = sc(it.n) * mods(it.t) * (hasInfra('shard') ? 0.5 : 1); dmg = absorb(n, [['write', 1], ['any', 1]]); if (hasInfra('shard')) note = 'Shards split the writes. '; break; }
       case 'mixed': {
-        const rn = sc(it.read) * (hasInfra('cdn') ? 0.6 : 1), wn = sc(it.write) * (hasInfra('shard') ? 0.5 : 1);
+        const rn = sc(it.read) * mods('read') * (hasInfra('cdn') ? 0.6 : 1), wn = sc(it.write) * mods('write') * (hasInfra('shard') ? 0.5 : 1);
         dmg = absorb(rn, READ) + absorb(wn, [['write', 1], ['any', 1]]); break;
       }
-      case 'hot': { const n = sc(it.n) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1], ['replica', 0.5]]); note = 'A hot key: replicas only half as useful. '; break; }
+      case 'hot': { const n = sc(it.n) * mods(it.t) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1], ['replica', 0.5]]); note = 'A hot key: replicas only half as useful. '; break; }
       case 'stampede': {
         let n = sc(it.n) * mods(it.t);
         if (hasInfra('coalesce')) { n *= 0.25; note = 'Coalescing: one request refilled the cache. '; }
@@ -681,6 +696,7 @@
       }
       case 'crash': {
         if (hasInfra('lb')) { dmg = 0; note = 'Health checks rerouted around the dead server. '; break; }
+        if (dev('canary') && !C.canaryUsed) { C.canaryUsed = true; dmg = 0; note = 'The canary keeled over first, and you rolled back in time. '; break; }
         let n = sc(it.n) * (sv.spec === 'warden' ? 0.5 : 1) * mods(it.t);
         dmg = absorb(n, [['any', 1]]); note = 'A server died and nothing routed around it. '; break;
       }
@@ -804,6 +820,47 @@
         if (!note) note = 'A node vanished, nobody noticed, and its keys went dark. ';
         dmg = absorb(n, [['any', 1], ['replica', 1]]); break;
       }
+      // Chapter 5
+      case 'lookup': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('dns')) { n *= 0.4; note = 'GeoDNS answered from cache with the nearest healthy region. '; }
+        else note = 'Every lookup went all the way to the root, and some got the wrong address. ';
+        dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1]]); break;
+      }
+      case 'regionfail': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('region')) { n *= 0.4; note = 'The other regions picked up the traffic. '; }
+        if (hasInfra('dns')) { n *= 0.7; note += 'Health checks pulled the dead region out of DNS. '; }
+        if (C.failover) { n *= 0.5; note += 'You failed over to the standby. '; }
+        if (!note) note = 'A whole region went dark, and every user in it with it. ';
+        dmg = absorb(n, [['any', 1], ['replica', 1]]); break;
+      }
+      case 'deploybad': {
+        let n = sc(it.n) * mods(it.t);
+        if (C.killswitch) { dmg = 0; note = 'You flipped the flag off. The bad code is still deployed, and nobody can reach it. '; break; }
+        if (dev('canary') && !C.canaryUsed) { C.canaryUsed = true; dmg = 0; note = 'The canary keeled over first, and you rolled back in time. '; break; }
+        if (hasInfra('canary')) { n *= 0.4; note = 'Only the 1% canary got the bad build before the rollback. '; }
+        else note = 'The bad build went to every server at once. ';
+        dmg = absorb(n, [['any', 1]]); break;
+      }
+      case 'transcode': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('transcode')) { n *= 0.4; note = 'The video was split and transcoded on many workers at once. '; }
+        else note = 'One server tried to transcode a 4K upload by itself. ';
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      case 'crawltrap': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('frontier')) { n *= 0.5; note = 'The frontier capped the depth and kept its manners. '; }
+        else { C.stale += 1; note = 'The crawler followed the calendar to the year 3000 (+1 Stale). '; }
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      case 'notifyflood': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('notify')) { n *= 0.4; note = 'The fan-out queue sent at each provider\'s pace. '; }
+        else note = 'Ten million pushes, all at once, straight at the provider. ';
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
     }
     return { dmg, note };
   }
@@ -878,7 +935,7 @@
     const run = S.save.run, e = C.e;
     const it = C.e.pattern[C.ii % C.e.pattern.length];
     const shown = Object.assign({}, it);
-    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale * (k === 'n' ? mods(it.t) : 1)); });
+    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale * mods(k === 'n' ? it.t : k)); });
     if (it.t === 'audit') shown.per = auditPer();
     if (it.t === 'escalate') shown.up = escUp();
     const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
@@ -898,6 +955,8 @@
     if (C.hb) chips.push('<span class="chip">Heartbeats on</span>');
     if (C.merge) chips.push('<span class="chip">Merging</span>');
     if (C.handoff) chips.push('<span class="chip">Handoff ready</span>');
+    if (C.failover) chips.push('<span class="chip">Failover ready</span>');
+    if (C.killswitch) chips.push('<span class="chip">Kill switch armed</span>');
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
