@@ -604,7 +604,11 @@ SD.story = {
     ['You again! Did you die? You have the look of someone who died. It\'s in the eyes. Read the board, hero.'],
     ['I counted. You die a lot. That\'s fine! Each time you come back a little less bad at this.'],
     ['Seymour asked me to bless his 400th backup. I blessed it. It is now a holy backup. He cried.'],
-    ['Between us? I\'m not great at the goddess thing. But you\'re getting good at the hero thing. Keep going.']
+    ['Between us? I\'m not great at the goddess thing. But you\'re getting good at the hero thing. Keep going.'],
+    ['I tried to bless the well and now it gives sparkling water. Nobody asked for sparkling water. Read the board.'],
+    ['Seymour says I have "a single point of failure". He means me. I am the single point. I\'m choosing to take it as a compliment.'],
+    ['I wrote a prophecy about you! It says you will "probably be fine". I hedge all my prophecies now. Legal made me.'],
+    ['Do you think Gary would come to my temple if I put out croissants? ...Asking for a goddess.']
   ],
   uptimaNotebook: 'Wait. Is that my cheat sheet? That\'s MY handwriting. I haven\'t written those pages yet. Are you from a future loop?! I need to sit down. On a cloud.',
   mioByDrawing: [

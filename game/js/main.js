@@ -29,7 +29,8 @@
     $('#hud-snd').onclick = e => toggleSound(e.currentTarget);
     $('#hud-menu').onclick = menu;
     SD.hub.markers = {
-      A: sv.flags.primedLoop !== sv.loop, H: sv.mioVisitLoop !== sv.loop,
+      A: sv.flags.primedLoop !== sv.loop, H: sv.mioVisitLoop !== sv.loop || SD.lessons.hasNew('H'),
+      C: SD.lessons.hasNew('C'), W: SD.lessons.hasNew('W'),
       G: !!sv.run, B: sv.flags.dailyDate !== today()
     };
   };
@@ -210,7 +211,8 @@
         <div class="opts">${SD.metaShop.map(it => {
           const own = sv.relics.includes(it.id);
           return `<button class="opt" data-r="${it.id}" ${own || sv.shards < it.cost ? 'disabled' : ''}><b>${U.esc(it.name)}</b> · ${own ? 'Owned' : it.cost + ' shards'}<br><span class="small">${U.esc(it.text)}</span></button>`;
-        }).join('')}</div>`, { title: 'CACHE CAFÉ · KEEPSAKES' });
+        }).join('')}</div>${SD.lessons.buttons('C')}`, { title: 'CACHE CAFÉ · KEEPSAKES' });
+      SD.lessons.wire(b, id => { lesson = id; });
       b.querySelectorAll('[data-r]').forEach(el => el.onclick = () => {
         const it = SD.metaShop.find(x => x.id === el.dataset.r);
         if (sv.shards < it.cost) return;
@@ -218,8 +220,10 @@
         U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
       });
     };
+    let lesson = null;
     render();
     await waitClose();
+    if (lesson) await SD.lessons.play(lesson);
   }
 
   async function treehouse() {
@@ -237,6 +241,15 @@
       b.querySelector('#h-ok').onclick = U.closePanel;
       await waitClose();
     }
+    const btns = SD.lessons.buttons('H');
+    if (!btns) return;
+    let lesson = null;
+    const b = U.panel(`<div class="shopkeep">${SD.art.portrait('mio', 64)}<p>"Want to see how the Cloud works? I drew it! Pip helped. Pip mostly got lost."</p></div>${btns}
+      <button class="ghost" id="h-x">Maybe later</button>`, { title: "MIO'S TREEHOUSE" });
+    SD.lessons.wire(b, id => { lesson = id; });
+    b.querySelector('#h-x').onclick = U.closePanel;
+    await waitClose();
+    if (lesson) await SD.lessons.play(lesson);
   }
 
   async function bunker() {
@@ -252,11 +265,15 @@
         }).join('')}</div>
         ${sv.run ? '<p class="warn small">You can change Spec when no run is in progress.</p>' : ''}
         <p class="q-ctx">Cards you can find in Prod (${unlocked.length})</p><div class="cardgrid mini">${unlocked.map(id => U.cardHtml({ id })).join('')}</div>
-        ${locked.length ? `<p class="muted small">${locked.length} more cards unlock as your level rises.</p>` : ''}`, { title: "SEYMOUR'S BUNKER · SPECS", cls: 'wide' });
+        ${locked.length ? `<p class="muted small">${locked.length} more cards unlock as your level rises.</p>` : ''}
+        ${SD.lessons.buttons('W')}`, { title: "SEYMOUR'S BUNKER · SPECS", cls: 'wide' });
+      SD.lessons.wire(b, id => { lesson = id; });
       b.querySelectorAll('[data-s]').forEach(el => el.onclick = () => { sv.spec = el.dataset.s; S.persist(); render(); });
     };
+    let lesson = null;
     render();
     await waitClose();
+    if (lesson) await SD.lessons.play(lesson);
   }
 
   async function gary() {
@@ -298,6 +315,8 @@
       b.querySelector('#g-r').onclick = () => { U.closePanel(); SD.run.resume(); };
       return;
     }
+    // Once a loop, Uptima intercepts you at the gate with something she has broken.
+    if (SD.goddess.due()) await SD.goddess.oops();
     const primed = sv.flags.primedLoop === sv.loop;
     // Each cleared chapter opens the next dungeon; earlier ones stay open for practice.
     const open = Object.keys(SD.chapters).map(Number).filter(ch => ch === 1 || sv.flags['ch' + (ch - 1)]);

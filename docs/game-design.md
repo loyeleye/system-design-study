@@ -96,6 +96,7 @@ Recorded music and samples play when they load, with the original chiptune synth
 | Confusion compass | Sung | After a miss, you turn the confusion into a question ("When would sharding be the wrong choice?"). It is saved under Open questions for real study sessions. |
 | Concrete before abstract; analogies for newcomers | Oakley (metaphor and analogy), Sung (encoding through relation) | Every answer has an **ELI5** button that explains it through a game or anime (token buckets are Overwatch ability charges; replicas are a mirror a few seconds behind). **Huh???** explains the whole concept in game terms and defines the jargon that appears in that question. Text lives in `game/js/eli5.js`. |
 | Priming the gist before details | Sung (priming), Oakley (chunking) | Uptima's gist board at the temple shows tonight's goal and four concept chunks before you enter the dungeon. Pip nudges you if you skip it. |
+| Concrete experience before abstraction | Oakley (chunking), Sung (priming with structure) | Building lessons let you *do* the idea before the dungeon tests it: be the cache in Cache Rush, watch shelves overload in Shard Sorter, spam a token bucket, run a festival with and without a queue. |
 | Focused and diffuse modes; Pomodoro-sized sessions | Oakley | A run takes about 20 minutes. Campfires frame rest as diffuse mode, and the postmortem says how long you focused and suggests a five-minute break. |
 | Practise like you play | Sung (match challenge, level and cue) | Bosses follow the interview's real structure and cues. Estimation answers are typed, not chosen. |
 | Mindset: mistakes are the data | Sung | Dying is part of the joke. You keep XP, shards and knowledge; only the run resets. |
@@ -161,6 +162,8 @@ Chapters 1 and 2 match weeks 1 to 3 of the 10-week plan in `job-hunt-agent/inter
 - `game/js/hub.js` — the canvas village.
 - `game/js/run.js` — run map, combat, Gary, the tutorial, rewards, café, campfire, events, boss.
 - `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass, ELI5 and Huh???.
+- `game/js/goddess.js` — Uptima's Oopsies: once a loop she breaks something in town on your way to the gate; one question fixes it, and her reward is rolled from a mostly-junk loot table (rarely a shard).
+- `game/js/lessons.js` — building lessons that prime the next dungeon: Mio's illustrated walkthroughs (a request's journey, how a big file travels), Wen's mini-games (Cache Rush, Token Bucket) and Seymour's (Shard Sorter, Festival Queue).
 - `game/js/eli5.js` — plain-language help: a game analogy per question, a game-terms summary per concept, and a jargon glossary.
 - `game/js/ui.js`, `game/js/art.js`, `game/js/main.js` — UI helpers and dialogue, code-drawn art, boot, cold open and hub buildings.
 - `game/assets/` — icon subset, images (`img/`) and audio (`audio/`); see `game/CREDITS.md`.

@@ -139,6 +139,51 @@ button:disabled { cursor: default; opacity: .5; }
 .helpbox.huh { background: #e9fbf2; border-color: #7fd6a8; }
 .gloss { margin: 4px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; font-size: 13px; }
 .gloss dt { font-weight: 800; }
+/* Building lessons */
+.opt.lesson .pill { font-size: 11px; vertical-align: middle; }
+.lw { background: #fffdf6; border: 3px solid var(--ink); border-radius: 14px; padding: 6px; overflow: hidden; }
+.lw-svg { width: 100%; height: auto; display: block; }
+.lw-edge { stroke: var(--line); stroke-width: 4; stroke-dasharray: 6 6; }
+.lw-edge.on { stroke: var(--blue); stroke-dasharray: none; }
+.lw-node circle { fill: #fff; stroke: var(--ink); stroke-width: 3; }
+.lw-node .lw-ic { fill: var(--muted); color: var(--muted); }
+.lw-node text { font: 800 19px var(--f-body); fill: var(--muted); }
+.lw-node.on circle { fill: var(--sun); }
+.lw-node.on .lw-ic { fill: var(--ink); color: var(--ink); }
+.lw-node.on text { fill: var(--ink); }
+.lw-pip { fill: #6fd6ff; stroke: var(--ink); stroke-width: 2.5; }
+.lw-say { display: flex; gap: 10px; align-items: center; margin-top: 10px; min-height: 84px; }
+.lw-say p { margin: 0; }
+.lw-dots { display: flex; gap: 6px; justify-content: center; margin: 8px 0; }
+.lw-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.lw-dots i.on { background: var(--blue); }
+.cr-top, .tb-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.cr-order { font-size: 18px; margin: 12px 0 6px; }
+.cr-tray { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
+.cr-slot { display: grid; gap: 2px; place-items: center; min-height: 70px; border: 3px solid var(--ink); border-radius: 12px; background: #fff; font: 700 15px var(--f-head); padding: 6px; }
+.cr-slot small { font: 600 11px var(--f-body, sans-serif); color: var(--muted); }
+.cr-slot.empty { border-style: dashed; color: var(--muted); }
+.cr-slot.pick { background: #fff0f0; cursor: pointer; animation: noteIn .3s; }
+.ss-bars { display: flex; gap: 14px; justify-content: center; align-items: flex-end; height: 150px; margin: 8px 0 26px; }
+.ss-bar { position: relative; width: 70px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.ss-bar i { display: block; width: 100%; max-height: 100%; background: var(--blue); border: 3px solid var(--ink); border-radius: 8px 8px 0 0; }
+.ss-bar b { position: absolute; top: -2px; }
+.ss-bar span { position: absolute; bottom: -22px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.ss-move { height: 18px; border: 3px solid var(--ink); border-radius: 9px; overflow: hidden; background: #fff; margin: 6px 0 10px; }
+.ss-move i { display: block; height: 100%; background: var(--red, #ff5a5a); }
+.tb-bucket { display: flex; gap: 8px; justify-content: center; margin: 10px 0; padding: 12px; border: 3px solid var(--ink); border-radius: 0 0 24px 24px; border-top: none; background: #fffdf6; }
+.tb-bucket i { width: 34px; height: 34px; border-radius: 50%; border: 3px dashed var(--line); }
+.tb-bucket i.on { border: 3px solid var(--ink); background: var(--sun); }
+.tb-log { min-height: 3em; }
+.fq-stage { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; padding: 10px; border: 3px solid var(--ink); border-radius: 14px; background: #fffdf6; min-height: 90px; }
+.fq-lane, .fq-done { display: flex; flex-wrap: wrap; gap: 4px; align-content: center; }
+.fq-lane { justify-content: flex-end; }
+.fq-desk { display: grid; grid-template-columns: repeat(2, 22px); gap: 4px; padding: 6px; border: 3px solid var(--ink); border-radius: 10px; background: #fff7d6; }
+.fq-stage i { width: 14px; height: 14px; border-radius: 50%; background: #c9b8ff; border: 2px solid var(--ink); }
+.fq-desk i { width: 22px; height: 22px; background: #fff; border-style: dashed; }
+.fq-desk i.busy { background: var(--sun); border-style: solid; }
+.fq-done i.ok { background: #7ee0a8; }
+.fq-done i.x { background: #ff8a8a; }
 .gloss dd { margin: 0; }
 @media (max-width: 480px) { .gloss { grid-template-columns: 1fr; } .gloss dd { margin-bottom: 4px; } }
 .loot { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
@@ -511,7 +556,6 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
 
 <script src="assets/game-icons.js"></script>
 <script src="js/content.js"></script>
-<script src="js/eli5.js"></script>
 <script src="js/state.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/art.js"></script>
@@ -520,6 +564,9 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
 <script src="js/quiz.js"></script>
 <script src="js/hub.js"></script>
 <script src="js/run.js"></script>
+<script src="js/eli5.js"></script>
+<script src="js/goddess.js"></script>
+<script src="js/lessons.js"></script>
 <script src="js/main.js"></script>
 <!-- @page-end -->
 </body>
