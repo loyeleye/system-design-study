@@ -760,37 +760,53 @@
   // After his usual line, Gary offers a mock interview once chapter 1 is cleared.
   // Records live in the save (sv.mock); misses go to spaced review; rewards scale with the verdict.
   const REWARD = { strong: [120, 150], senior: [90, 100], mid: [60, 50], no: [30, 15] };
-  M.visit = async function () {
+  // Rewards for a finished round, written to this player's own save. Pair Mock (in the game) pays the same.
+  M.reward = function (res) {
+    const S = SD.state, U = SD.ui, sv = S && S.save;
+    if (!sv || !res || !REWARD[res.verdict]) return;
+    const P = SD.mock.problems.find(p => p.id === res.pid);
+    if (P) P.concepts.forEach(id => { if (SD.concepts[id]) S.seeConcept(id); });
+    (res.answers || []).forEach(a => { if (SD.concepts[a.c]) S.recordAnswer(a.c, a.ok, a.conf); });
+    const [xp, shards] = REWARD[res.verdict];
+    sv.flags.mockSenior = sv.flags.mockSenior || {};
+    const first = (res.verdict === 'senior' || res.verdict === 'strong') && !sv.flags.mockSenior[res.pid];
+    if (first) sv.flags.mockSenior[res.pid] = true;
+    if (SD.run && SD.run.gainXp) SD.run.gainXp(xp);
+    sv.shards += shards + (first ? 100 : 0);
+    S.persist();
+    U.system(first ? 'SENIOR OFFER!' : 'MOCK DONE', `+${xp} XP · +${shards + (first ? 100 : 0)} Memory Shards${first ? ' (first senior hire on this problem)' : ''}`, first ? 'gold' : undefined);
+  };
+
+  // Resolves once the game's panel is closed.
+  M.panelClosed = () => new Promise(res => {
+    const p = document.getElementById('panel');
+    if (!p) { res(); return; }
+    const obs = new MutationObserver(() => { if (p.hidden) { obs.disconnect(); res(); } });
+    obs.observe(p, { attributes: true, attributeFilter: ['hidden'] });
+  });
+
+  // The solo mock interview in the game: the problem list, the round and the debrief, with rewards.
+  // Callers do their own gating (Gary after chapter 1; the Eventual Isles NPC once the Isles are open).
+  //   await SD.mock.solo({ title })
+  M.solo = async function (o) {
+    o = o || {};
     const S = SD.state, U = SD.ui, AU = SD.audio, sv = S && S.save;
+    if (!sv || !U) return;
+    const root = U.panel('<div id="mi-root"></div>', { title: o.title || 'MOCK INTERVIEW WITH GARY', cls: 'wide' });
+    const store = { load: () => (sv.mock = sv.mock || {}), save: d => { sv.mock = d; S.persist(); } };
+    if (AU && AU.music) AU.music('quest');
+    M.menu(root.querySelector('#mi-root'), { store, open: p => !!sv.flags['ch' + p.ch], onResult: M.reward });
+    await M.panelClosed();
+    if (AU && AU.music) AU.music('town');
+  };
+
+  M.visit = async function () {
+    const S = SD.state, U = SD.ui, sv = S && S.save;
     if (!sv || !U || !sv.flags.ch1) return;
     const b = U.panel(`<div class="shopkeep">${SD.art.portrait('gary', 64)}<p>"I also run mock interviews. Forty-five minutes. Payment is one croissant. ...You don't have a croissant. It's fine."</p></div>
       <div class="row"><button class="primary" id="mi-go">Do a mock interview</button><button class="ghost" id="mi-x">Not now</button></div>`, { title: 'GARY' });
     const go = await new Promise(res => { b.querySelector('#mi-go').onclick = () => res(true); b.querySelector('#mi-x').onclick = () => res(false); });
     if (!go) { U.closePanel(); return; }
-    const root = U.panel('<div id="mi-root"></div>', { title: 'MOCK INTERVIEW WITH GARY', cls: 'wide' });
-    const store = { load: () => (sv.mock = sv.mock || {}), save: d => { sv.mock = d; S.persist(); } };
-    if (AU && AU.music) AU.music('quest');
-    M.menu(root.querySelector('#mi-root'), {
-      store, open: p => !!sv.flags['ch' + p.ch],
-      onResult(res) {
-        const P = SD.mock.problems.find(p => p.id === res.pid);
-        P.concepts.forEach(id => { if (SD.concepts[id]) S.seeConcept(id); });
-        res.answers.forEach(a => { if (SD.concepts[a.c]) S.recordAnswer(a.c, a.ok, a.conf); });
-        const [xp, shards] = REWARD[res.verdict];
-        sv.flags.mockSenior = sv.flags.mockSenior || {};
-        const first = (res.verdict === 'senior' || res.verdict === 'strong') && !sv.flags.mockSenior[res.pid];
-        if (first) sv.flags.mockSenior[res.pid] = true;
-        if (SD.run && SD.run.gainXp) SD.run.gainXp(xp);
-        sv.shards += shards + (first ? 100 : 0);
-        S.persist();
-        U.system(first ? 'SENIOR OFFER!' : 'MOCK DONE', `+${xp} XP · +${shards + (first ? 100 : 0)} Memory Shards${first ? ' (first senior hire on this problem)' : ''}`, first ? 'gold' : undefined);
-      }
-    });
-    await new Promise(res => {
-      const p = document.getElementById('panel');
-      const obs = new MutationObserver(() => { if (p.hidden) { obs.disconnect(); res(); } });
-      obs.observe(p, { attributes: true, attributeFilter: ['hidden'] });
-    });
-    if (AU && AU.music) AU.music('town');
+    await M.solo();
   };
 })();
