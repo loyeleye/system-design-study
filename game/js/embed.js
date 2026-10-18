@@ -29,7 +29,10 @@
     if (!loading) {
       loading = Promise.all([
         fetch(BASE + 'vocab.txt').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }),
+        // The published artifact only serves known file types, so it carries the table as base64 text instead.
         fetch(BASE + 'potion-base-8m.i8').then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+          .catch(() => fetch(BASE + 'potion-base-8m.i8.b64.txt').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+            .then(t => Uint8Array.from(atob(t.trim()), c => c.charCodeAt(0)).buffer))
       ]).then(([v, b]) => { E.init(v, b); return true; })
         .catch(() => { E.failed = true; return false; });
     }
