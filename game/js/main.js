@@ -25,6 +25,7 @@
       <span class="hud-chip">Shards <b>${sv.shards}</b></span>
       ${due ? `<span class="hud-chip due">${due} review${due > 1 ? 's' : ''} due</span>` : ''}
       <button class="ghost" id="hud-quests">Quests${newQ ? ` <b class="badge">${newQ}</b>` : ''}</button>
+      ${SD.journal ? SD.journal.button() : ''}
       <button class="ghost" id="hud-codex">Cheat sheet</button>
       <button class="ghost" id="hud-snd" aria-label="Sound on or off">${sndIcon()}</button>
       <button class="ghost" id="hud-menu" aria-label="Menu">☰</button>`;
@@ -33,6 +34,7 @@
     SD.hub.npcMarks = marks;
     $('#hud-snd').onclick = e => toggleSound(e.currentTarget);
     $('#hud-menu').onclick = menu;
+    if (SD.journal) SD.journal.wire($('#hud'));
     SD.hub.markers = {
       A: sv.flags.primedLoop !== sv.loop || SD.lessons.hasNew('A'), H: sv.mioVisitLoop !== sv.loop || SD.lessons.hasNew('H'),
       C: SD.lessons.hasNew('C'), W: SD.lessons.hasNew('W'),
@@ -420,12 +422,14 @@
     }).join('');
     const warnCurse = SD.quests.curses(latest).length;
     const b = U.panel(`<div class="gate-art"></div>
+      ${SD.ascension ? SD.ascension.dialHtml() : ''}
       <div class="opts">${dungeons}</div>
       ${primed ? '' : '<p class="warn small">Pip: "You haven\'t looked at Uptima\'s gist board this loop! One minute there makes the fights make sense. Also she gets lonely."</p>'}
       ${warnCurse ? '<p class="warn small">Pip: "That dungeon is cursed! Town quests earn Plot Devices that lift curses. Check <b>Quests</b>, then the Curses tab."</p>' : ''}
       <p class="muted small">Spec: ${U.esc(SD.specs[sv.spec].name)} · Max SLA ${S.maxSla()}</p>
       <div class="row"><button class="ghost" id="g-x">Not yet</button></div>`, { title: 'DUNGEON GATE' });
     b.querySelector('#g-x').onclick = U.closePanel;
+    if (SD.ascension) SD.ascension.wireDial(b);
     b.querySelectorAll('[data-ch]').forEach(el => el.onclick = () => { U.closePanel(); SD.run.start(+el.dataset.ch); });
     // Keep the village paused until the gate closes, so keys can't walk you around behind it.
     await waitClose();
