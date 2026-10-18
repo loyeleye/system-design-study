@@ -428,6 +428,8 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 
 /* Cutscene stage */
 #stage { position: fixed; inset: 0; z-index: 25; overflow: hidden; transition: background .6s; }
+/* A form opened during a cutscene (the cold open's Hero Registration Form) sits above the stage, not hidden behind it. */
+body.cut #panel { z-index: 28; }
 #stage[data-scene="office"] { background: radial-gradient(ellipse at 50% 40%, #3b3a5c, #15132a 75%); }
 #stage[data-scene="office"]::before { content: ""; position: absolute; left: 50%; top: 30%; width: min(48vw, 300px); aspect-ratio: 16 / 10; transform: translateX(-50%); border: 6px solid #0d0b1c; border-radius: 10px; background: linear-gradient(180deg, #1e3d7a, #102347); box-shadow: 0 0 60px rgba(90, 150, 255, .4); }
 #stage[data-scene="office"]::after { content: "git push origin main --force"; position: absolute; left: 50%; top: calc(30% + min(14vw, 86px)); transform: translateX(-50%); font: 700 clamp(10px, 2.4vw, 14px) ui-monospace, monospace; color: #9fe6a0; white-space: nowrap; }
@@ -466,6 +468,27 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 #stage[data-glow="3"] .actor .bust { filter: drop-shadow(0 0 18px #fff6c8) drop-shadow(0 0 46px #ffd76a) brightness(1.12); }
 #stage[data-glow="2"] .actor .bust { filter: drop-shadow(0 0 12px #fff6c8) drop-shadow(0 0 26px #ffd76a) brightness(1.05); }
 #stage[data-glow="1"] .actor .bust { filter: drop-shadow(0 0 6px #fff6c8) drop-shadow(0 8px 0 rgba(43, 35, 64, .3)); }
+/* Falling through The Cloud after the name form (U.fall in js/intro.js): wind streaks, puffs and the kingdom's data rush up past you. */
+#stage[data-scene="fall"] { background: linear-gradient(180deg, #4f9be8, #9fd3ff 55%, #e4f4ff); }
+#stage .fall { position: absolute; inset: 0; overflow: hidden; }
+#stage .fall .streak { position: absolute; top: 0; width: 3px; height: 26vh; border-radius: 2px; background: linear-gradient(rgba(255,255,255,0), rgba(255,255,255,.95)); animation: rushUp linear infinite; }
+#stage .fall .bit { position: absolute; top: 0; padding: 2px 9px; border: 2px solid var(--ink); border-radius: 8px; background: rgba(255,255,255,.85); color: #2b4f86; font: 700 clamp(12px, 2.3vw, 17px) ui-monospace, monospace; white-space: nowrap; animation: rushUp linear infinite; }
+#stage .fall .bit.e { padding: 0; border: 0; background: none; font-size: clamp(26px, 5vw, 42px); }
+#stage .fall .cloud.rush { top: 0; animation: rushUp 1.5s linear infinite; }
+#stage .fall .faller { position: absolute; left: 50%; top: 34%; width: 110px; height: 250px; margin-left: -55px; background: url(assets/img/village/c-you.webp) 0 0 / 500% 400% no-repeat; image-rendering: pixelated; filter: drop-shadow(0 4px 0 rgba(43,35,64,.35)); animation: fallIn .7s cubic-bezier(.2, 1.4, .4, 1), tumble .55s ease-in-out infinite alternate; }
+@keyframes rushUp { from { translate: 0 110vh; } to { translate: 0 -45vh; } }
+@keyframes fallIn { from { top: -40%; } }
+@keyframes tumble { from { rotate: -9deg; translate: -8px 0; } to { rotate: 9deg; translate: 8px 6px; } }
+.whiteout { position: fixed; inset: 0; z-index: 9000; background: #fff; opacity: 0; pointer-events: none; transition: opacity .45s ease; }
+.whiteout.on { opacity: 1; }
+/* Croissant crumbs on Uptima after the crunch (U.crumbs): flakes stuck round her mouth and, while 'falling', two showers dropping off her chin. The bust's ::before is Uptima's halo. */
+#stage[data-crumbs] .actor[data-who^="uptima"] .bust::after,
+#stage[data-crumbs="falling"] .actor[data-who^="uptima"]::before,
+#stage[data-crumbs="falling"] .actor[data-who^="uptima"]::after { content: ''; position: absolute; left: calc(48% - 36px); top: calc(47.5% - 17px); width: 72px; height: 53px; background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 44'><polygon points='16,13 20.5,11.5 22,15.5 18.5,17.5 15.5,16' fill='%23f2c66d' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='35,15.5 39.5,15 40,18.5 36,19.5' fill='%23e3a94a' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='25,25 30.5,24.5 31.5,28.5 27,30 24,28' fill='%23f2c66d' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='34,31 37.5,31.5 36,34.5' fill='%23e3a94a' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='47,4 51,5 50,8.5 46,7.5' fill='%23f2c66d' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/></svg>") center / contain no-repeat; pointer-events: none; z-index: 2; }
+#stage[data-crumbs="falling"] .actor[data-who^="uptima"]::before,
+#stage[data-crumbs="falling"] .actor[data-who^="uptima"]::after { left: calc(48% - 34px); top: calc(47.5% + 8px); width: 67px; height: 48px; background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 40'><polygon points='6,4 10,3 11,7 7,8' fill='%23f2c66d' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='24,1 28,2 27,5 23,4.5' fill='%23e3a94a' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='42,6 47,5.5 47.5,9.5 43,10' fill='%23f2c66d' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='15,20 18.5,19 19.5,22.5 16,23.5' fill='%23e3a94a' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='33,24 36,24.5 34.5,27.5' fill='%23f2c66d' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='48,30 52,30 51,33.5 47.5,33' fill='%23f2c66d' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/><polygon points='8,33 11.5,32 12,35.5' fill='%23e3a94a' stroke='%239a5a1c' stroke-width='.9' stroke-linejoin='round'/></svg>"); animation: crumbFall 1.6s ease-in infinite; }
+#stage[data-crumbs="falling"] .actor[data-who^="uptima"]::after { transform: scaleX(-1); animation-delay: .8s; opacity: 0; }
+@keyframes crumbFall { 0% { translate: 0 0; opacity: 1; } 75% { opacity: 1; } 100% { translate: 4px 150px; opacity: 0; } }
 /* Eyelids: they crack open on a blur of light, blink, then open properly as the heavens come into focus. */
 #stage .lids { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 #stage .lid { position: absolute; left: -15%; right: -15%; height: 54%; background: #0b0814; transition: transform 1.8s cubic-bezier(.45, 0, .2, 1); }
@@ -637,6 +660,35 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 @keyframes flashOut { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; } }
 @media (max-width: 520px) { .foe { width: 88px; height: 88px; } .stage .foe { width: 100px; height: 100px; } .bossfight .stage .foe { width: 124px; height: 124px; } .stage .hero { transform: scale(1.8); } .foe-name { font-size: 17px; } .card { width: 120px; } }
+/* Group fights (js/run.js): 2-3 incidents side by side; tap one to target it. */
+.stage.group .hero { left: 6%; }
+.stage.group .foe { right: var(--gx); width: 112px; height: 112px; cursor: pointer; transition: filter .2s, opacity .3s; }
+.stage.group .foe:focus-visible { outline: 3px dashed var(--sun); outline-offset: 2px; border-radius: 12px; }
+.stage.group .foe.tgt::before { content: '\25BC'; position: absolute; left: 50%; top: -14px; translate: -50% 0; color: var(--sun); font-size: 18px; text-shadow: 0 0 0 var(--ink), 1px 1px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); animation: bob 1.2s ease-in-out infinite; }
+.stage.group .foe.tgt::after { content: ''; position: absolute; left: 12%; right: 12%; bottom: 0; height: 8px; border-radius: 50%; border: 2px solid var(--sun); z-index: -1; }
+.stage.group .foe.elite { width: 136px; height: 136px; }
+.stage.group .foe.down { filter: grayscale(1) brightness(.8); opacity: .35; cursor: default; }
+.stage.group .foe.down::before, .stage.group .foe.down::after { display: none; }
+.gfoes { display: flex; gap: 8px; justify-content: center; } .gfoes .foe { width: 80px; height: 80px; cursor: pointer; } .gfoes .foe.down { opacity: .35; filter: grayscale(1); }
+.foe-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .foe-row.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.foe-card { display: grid; gap: 4px; align-content: start; min-width: 0; padding: 6px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; cursor: pointer; }
+.foe-card.tgt { background: #fff6dc; box-shadow: 0 0 0 3px var(--sun), 0 3px 0 var(--ink); }
+.foe-card:focus-visible { outline: 3px dashed var(--blue-d, #2b6cd6); outline-offset: 2px; }
+.foe-card.down { opacity: .45; background: #f4f1ea; cursor: default; }
+.fc-name { font-family: var(--f-head); font-weight: 700; font-size: 15px; line-height: 1.15; overflow-wrap: anywhere; }
+.fc-tgt { display: inline-block; font-family: var(--f-body); font-size: 9px; font-weight: 800; letter-spacing: .08em; padding: 1px 5px; margin-right: 4px; border: 2px solid var(--ink); border-radius: 8px; background: var(--sun); vertical-align: middle; }
+.foe-card .bar.sev { height: 16px; } .foe-card .bar.sev span { font-size: 11px; line-height: 12px; }
+.foe-card .intent { font-size: 12px; padding: 4px 6px; border-radius: 10px; line-height: 1.25; }
+.foe-card .intent .lbl { font-size: 10px; padding: 0 5px; margin-right: 3px; }
+.gfi .tags { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
+.chip.fuse { background: #ffd9b3; }
+@media (max-width: 520px) {
+  .stage.group .foe { width: 78px; height: 78px; } .stage.g3 .foe { width: 64px; height: 64px; } .stage.group .foe.elite { width: 96px; height: 96px; }
+  .stage.group .hero { transform: scale(1.5); left: 4%; }
+  .fc-name { font-size: 13px; } .foe-row.n3 .fc-name { font-size: 12px; }
+  .foe-card { padding: 5px; } .foe-card .intent { font-size: 11px; padding: 3px 5px; }
+  .foe-row.n3 .foe-card .intent .lbl { display: none; }
+}
 /* Phones: the hand wraps three to a row instead of scrolling sideways. */
 @media (max-width: 600px) {
   .hand { flex-wrap: wrap; justify-content: center; overflow: visible; gap: 14px 6px; padding: 12px 0 8px; scroll-snap-type: none; }
@@ -779,6 +831,8 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/main.js"></script>
 <script src="js/northroad.js"></script>
 <script src="js/sidequests.js"></script>
+<script src="js/roadfolk.js"></script>
+<script src="js/explodia.js"></script>
 <script src="js/ploy-quest.js"></script>
 <script src="js/saule-quest.js"></script>
 <!-- Debug start (testing only; remove before release) -->

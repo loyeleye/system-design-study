@@ -370,7 +370,7 @@
     // Each dungeon offers its own chapter's cards (weighted up), earlier chapters' cards, and the general pool.
     // From chapter 4 on, older incidents come back, so their answers have to be findable too.
     const ch = S.save.run.ch || 1;
-    const pool = S.unlockedCards().filter(id => { const c = SD.cards[id].ch; return !c || c === ch || (ch >= 4 && c < ch); });
+    const pool = S.unlockedCards().filter(id => { const c = SD.cards[id].ch; return !SD.cards[id].quest && (!c || c === ch || (ch >= 4 && c < ch)); });
     const focus = new Set(S.pickConcepts(5, Object.keys(SD.concepts).filter(id => SD.concepts[id].zone <= ch)));
     const weighted = [];
     pool.forEach(id => { const d = SD.cards[id]; const w = (d.concept && focus.has(d.concept) ? 3 : 1) + (d.ch === ch && ch > 1 ? 2 : 0); for (let i = 0; i < w; i++) weighted.push(id); });
@@ -522,20 +522,98 @@
       draw: opts.tutorial ? deck : Q.shuffle(deck), hand: [], disc: [], exh: [], infra: [],
       sh: zero(), stale: 0, jitter: false, choice: null, known: new Set(known), diagBonus: 0,
       elite: !!opts.elite, boss: !!opts.boss, done, deepAsked: false, mercyScale: run.firstFight ? 0.75 : 1, log: '',
-      budget: dev('halo') ? 5 : 0, whistled: false, breakerUsed: false, vuln: 0, carry: 0
+      budget: dev('halo') ? 5 : 0, whistled: false, breakerUsed: false, vuln: 0, carry: 0, fuses: []
     };
     // Deeper chapters hit harder; Form 27B takes 10% off bosses.
     const scale = (opts.sevScale || 1) * (opts.tutorial ? 1 : chap().sevMult || 1) * (opts.boss && dev('form27b') ? 0.9 : 1);
     C.sev = C.max = Math.round(e.sev * mod('sev', scale, C));
+    // Group fights: each member gets its own severity, intent, load and weakness notes (see SD.groupFights).
+    const extra = groupFor(eid, opts);
+    if (extra.length) {
+      const G = SD.groupFights.scale, n = extra.length + 1, knownBy = { [eid]: C.known };
+      C.foes = [eid].concat(extra).map((id, i) => {
+        const fe = SD.enemies[id], g = opts.elite ? (i ? G.minion : G.elite) : G[n] || G[3];
+        if (!knownBy[id]) knownBy[id] = new Set(S.save.flags.known[id] || []);
+        const max = Math.max(1, Math.round(fe.sev * mod('sev', scale * g.sev, C)));
+        return { eid: id, e: fe, sev: max, max, ii: 0, rage: 0, vuln: 0, known: knownBy[id], mercyScale: C.mercyScale * g.dmg, tier: opts.elite && !i ? 'elite' : 'incident' };
+      });
+      // Two of the same incident get a letter each.
+      C.foes.forEach(f => { const same = C.foes.filter(o => o.eid === f.eid); if (same.length > 1) f.tag = 'ABC'[same.indexOf(f)]; });
+      extra.forEach(id => { const c = SD.enemies[id].concept; S.seeConcept(c); run.log.concepts[c] = (run.log.concepts[c] || 0) + 1; });
+      C.fi = 0; load(0);
+    }
     if (opts.bonusEnergy) C.diagBonus += opts.bonusEnergy;
     if (opts.reveal) { Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t)); }
     if (opts.startCard) C.draw.unshift({ id: opts.startCard, up: false, uid: 999 });
     run.firstFight = false;
-    emit('fight', eid, C);
+    (C.foes ? C.foes.map(f => f.eid) : [eid]).forEach(id => emit('fight', id, C));
     const go = () => { beginTurn(); };
     if (opts.diagnose) diagnose(go); else go();
   }
   const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
+
+  // Who joins this fight, from SD.groupFights (content.js). Bosses and the tutorial always fight alone.
+  // Companions come from the chapter's normal pools, preferring the same tier as the first incident.
+  function groupFor(eid, opts) {
+    if (opts.group) return opts.group.filter(id => SD.enemies[id]);
+    const run = S.save.run, G = SD.groupFights, pools = chap() && chap().pools, e = SD.enemies[eid];
+    if (!G || !pools || !run || run.tutorial || opts.boss || opts.tutorial || opts.single || !e || e.boss || e.tutorial) return [];
+    const ch = run.ch || 1, force = SD.debug && SD.debug.forceGroup;
+    if (!G.odds[ch] && !force) return [];
+    const ok = id => SD.enemies[id] && !SD.enemies[id].boss && !SD.enemies[id].tutorial;
+    const all = [...new Set([1, 2, 3].flatMap(k => pools[k] || []))].filter(ok);
+    if (opts.elite) {
+      if (!force && Math.random() >= (G.elite[ch] || 0)) return [];
+      const minions = (pools[1] || []).filter(ok);
+      return [rnd(minions.length ? minions : all)].filter(Boolean);
+    }
+    if (!force && Math.random() >= G.odds[ch]) return [];
+    const size = force ? Math.max(2, Math.min(3, +force || 2)) : Math.random() < (G.trio[ch] || 0) ? 3 : 2;
+    const tier = [3, 2, 1].find(k => (pools[k] || []).includes(eid));
+    let cand = ((tier && pools[tier]) || []).filter(ok);
+    if (cand.length < size) cand = all;
+    const fresh = Q.shuffle(cand.filter(id => id !== eid));
+    const out = [];
+    for (let i = 0; i < size - 1; i++) out.push(fresh.length ? fresh.shift() : eid);
+    return out;
+  }
+  // In a group fight C.e, C.sev, C.ii, C.rage... always describe the targeted foe, and C.foes[i] keeps
+  // each foe's own copy. stash() writes the target back; load(i) swaps foe i in. Solo fights skip all this.
+  const FOE_KEYS = ['eid', 'e', 'sev', 'max', 'ii', 'rage', 'vuln', 'known', 'mercyScale'];
+  const grouped = () => !!(C && C.foes && C.foes.length > 1);
+  function stash() { if (grouped()) { const f = C.foes[C.fi]; FOE_KEYS.forEach(k => { f[k] = C[k]; }); } }
+  function load(i) { if (grouped()) { C.fi = i; const f = C.foes[i]; FOE_KEYS.forEach(k => { C[k] = f[k]; }); } }
+  const living = () => C.foes.map((f, i) => i).filter(i => !C.foes[i].dead);
+  const foeName = f => f.e.name + (f.tag ? ' ' + f.tag : '');
+  // Run fn with each living foe in turn as the target (once, on the only foe, in a solo fight).
+  function eachFoe(fn) {
+    if (!grouped()) return fn();
+    stash();
+    const t = C.fi;
+    for (const i of living()) { load(i); fn(i); stash(); }
+    load(t);
+  }
+  // After anything that mitigates: beaten foes drop out, the target moves on, and the fight is won when none are left.
+  function settle() {
+    if (!grouped()) { if (C.sev <= 0) { win(); return true; } return false; }
+    stash();
+    const down = [];
+    C.foes.forEach(f => { if (!f.dead && f.sev <= 0) { f.dead = true; down.push(f); emit('foeDown', f.eid, C); } });
+    const left = living();
+    if (!left.length) { win(); return true; }
+    if (C.foes[C.fi].dead) load(left[0]);
+    if (down.length) C.log = `${down.map(foeName).join(' and ')} resolved! ${left.length} to go.`;
+    return false;
+  }
+  function target(i) {
+    if (!grouped() || C.over || C.busy || !C.foes[i] || C.foes[i].dead || i === C.fi) return;
+    stash(); load(i);
+    C.log = `Targeting ${foeName(C.foes[i])}.`;
+    AU.sfx('card');
+    renderCombat();
+  }
+  const foeSel = () => grouped() ? `#run .foe[data-fi="${C.fi}"]` : '.foe';
+  const foeEl = () => $(foeSel()) || $('.foe');
 
   async function diagnose(go) {
     const e = C.e;
@@ -580,7 +658,7 @@
       + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry;
     C.energy = Math.max(0, mod('energy', C.energy, C));
     C.carry = 0;
-    if (C.vuln) C.vuln--;
+    if (grouped()) { stash(); C.foes.forEach(f => { if (f.vuln) f.vuln--; }); load(C.fi); } else if (C.vuln) C.vuln--;
     // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
     if (!C.infra.some(c => SD.cards[c.id].keepSh)) C.sh = zero();
     if (C.turn === 1 && rel('standby')) C.sh.any += 8;
@@ -591,7 +669,7 @@
       if (d.eachStale) C.stale += d.eachStale;
       if (d.eachMit) mitigate(d.eachMit + (c.up ? 2 : 0), '', 'hit');
     });
-    if (C.sev <= 0) return win();
+    if (settle()) return;
     drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0));
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();
@@ -601,7 +679,7 @@
   function mitigate(n, why, cls) {
     n = Math.max(0, Math.round(n * (C.vuln ? 1.5 : 1)));
     C.sev = Math.max(0, C.sev - n);
-    if (n > 0) { U.float($('.foe'), '-' + n, cls || 'hit'); U.burst($('.foe'), cls === 'crit'); heroAnim('cast'); flash('.foe', 'hitflash'); if (cls === 'crit') U.shake('.stage'); }
+    if (n > 0) { U.float(foeEl(), '-' + n, cls || 'hit'); U.burst(foeEl(), cls === 'crit'); heroAnim('cast'); flash(foeSel(), 'hitflash'); if (cls === 'crit') U.shake('.stage'); }
     if (why) C.log = why;
   }
 
@@ -658,22 +736,29 @@
     if (d.slam) mitigate(boost(Object.values(C.sh).reduce((a, b) => a + b, 0) + up), '', 'crit');
     if (d.rca) { mitigate(boost(C.stale * 4 + up), C.stale ? `Root cause found in ${C.stale} wrong answers.` : 'No Stale to learn from.', 'hit'); C.stale = 0; }
     if (d.upHand) C.hand.forEach(h => { h.up = true; });
-    if (d.mit) mitigate(boost(d.mit + up - (sv.spec === 'warden' ? 2 : 0)), '', 'hit');
-    if (d.vuln) C.vuln = Math.max(C.vuln, d.vuln);
-    if (d.pow) {
-      const tags = d.tags || [];
-      const rs = tags.find(t => C.e.resist[t]);
-      // The Oracle's rare card is always effective: it names the incident's first weakness.
-      const wk = d.wild ? Object.keys(C.e.weak)[0] : tags.find(t => C.e.weak[t]);
-      if (wk) { mitigate(boost(d.pow + up), 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); AU.sfx('crit'); }
-      else if (rs) {
-        C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); AU.sfx('resist');
-        // Wen's Bottomless Mug: once a fight, a resisted card hands its Capacity back.
-        if (dev('mug') && !C.mugUsed) { C.energy += cost; C.mugUsed = true; C.log += ' The mug refilled your Capacity.'; }
+    // Everything below hits the target, or, for a card with `all: true`, every incident still standing.
+    // Keepsake boosts (badge, whistle) still count once per card, on the first foe hit.
+    const hit = () => {
+      if (d.mit) mitigate(boost(d.mit + up - (sv.spec === 'warden' ? 2 : 0)), d.all && grouped() ? 'It hit every incident at once.' : '', 'hit');
+      if (d.vuln) C.vuln = Math.max(C.vuln, d.vuln);
+      if (d.pow) {
+        const tags = d.tags || [];
+        const rs = tags.find(t => C.e.resist[t]);
+        // The Oracle's rare card is always effective: it names the incident's first weakness.
+        const wk = d.wild ? Object.keys(C.e.weak)[0] : tags.find(t => C.e.weak[t]);
+        if (wk) { mitigate(boost(d.pow + up), 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake(foeSel()); AU.sfx('crit'); }
+        else if (rs) {
+          C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float(foeEl(), 'RESISTED', 'res'); AU.sfx('resist');
+          // Wen's Bottomless Mug: once a fight, a resisted card hands its Capacity back.
+          if (dev('mug') && !C.mugUsed) { C.energy += cost; C.mugUsed = true; C.log += ' The mug refilled your Capacity.'; }
+        }
+        else { mitigate(boost(Math.floor((d.pow + up) / 2)), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
+        saveKnown();
       }
-      else { mitigate(boost(Math.floor((d.pow + up) / 2)), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
-      saveKnown();
-    }
+    };
+    if (d.all) eachFoe(hit); else hit();
+    // A fuse (the Error Budget Bomb) goes off at the end of your turn, `turns` turns from now, on every incident.
+    if (d.fuse) C.fuses.push({ id: c.id, left: d.fuse.turns, mit: d.fuse.mit });
     if (d.concept) S.seeConcept(d.concept);
     if (d.kind === 'infra') {
       if (C.infra.length >= 4) C.disc.push(C.infra.shift());
@@ -683,7 +768,7 @@
     } else if (d.exhaust) C.exh.push(c); else C.disc.push(c);
     if (d.draw) drawN(d.draw);
     if (msg) C.log = msg;
-    if (C.sev <= 0) return win();
+    if (settle()) return;
     if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {
       C.deepAsked = true;
       renderCombat();
@@ -692,7 +777,7 @@
       const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."' });
       if (r.ok) { mitigate(16, `DEEP DIVE LANDED! ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
       else C.log = `The deep dive slipped. ${C.e.short} cackles and presses on.`;
-      if (C.sev <= 0) return win();
+      if (settle()) return;
     }
     renderCombat();
   }
@@ -965,40 +1050,69 @@
 
   function endTurn() {
     if (C.over || C.busy) return;
-    const it = C.e.pattern[C.ii % C.e.pattern.length];
     // Pinned Tabs keeps your hand; the Leftover Croissant keeps unspent Capacity.
     if (!rel('pinned')) { C.disc.push(...C.hand); C.hand = []; }
     if (rel('croissant')) C.carry = C.energy;
-    const held = hook('intent', C, it);
-    let { dmg, note } = held || resolveIntent(it);
     const run = S.save.run;
-    dmg = mod('dmg', dmg, C);
-    // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
-    if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
-    if (dmg > 0 && rel('breaker') && !C.breakerUsed) { C.breakerUsed = true; dmg = 0; note += 'The circuit breaker tripped: nothing got through. '; }
-    if (dmg > 1 && dmg <= 5 && rel('torii')) { dmg = 1; note += 'The torii charm made it a scratch. '; }
+    // Fuses burn down at the end of your turn; one that reaches 0 hits every incident before they act.
+    let boom = '';
+    (C.fuses || []).forEach(f => {
+      if (--f.left > 0) return;
+      const d = SD.cards[f.id];
+      eachFoe(() => mitigate(f.mit, '', 'crit'));
+      boom += `${d.name} went off: ${f.mit} to every incident! `;
+    });
+    if (boom) {
+      C.fuses = C.fuses.filter(f => f.left > 0);
+      C.log = boom; U.shake('.stage'); AU.sfx('crit');
+      if (settle()) return;
+    }
+    // Each incident still standing acts in turn, left to right, with its own intent and load.
+    const group = grouped(), tgt = C.fi, hold = C.llHold;
+    let total = 0, notes = boom;
+    const act = () => {
+      if (group) C.llHold = hold;   // Lord Latency's raised hand stops the whole group, not just the first
+      const it = C.e.pattern[C.ii % C.e.pattern.length];
+      const held = hook('intent', C, it);
+      let { dmg, note } = held || resolveIntent(it);
+      dmg = mod('dmg', dmg, C);
+      // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
+      if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
+      if (dmg > 0 && rel('breaker') && !C.breakerUsed) { C.breakerUsed = true; dmg = 0; note += 'The circuit breaker tripped: nothing got through. '; }
+      if (dmg > 1 && dmg <= 5 && rel('torii')) { dmg = 1; note += 'The torii charm made it a scratch. '; }
+      total += dmg;
+      notes += group ? `${foeName(C.foes[C.fi])}: ${note}${dmg ? `-${dmg}. ` : ''}` : note;
+      if (!(held && held.hold)) C.ii++;
+    };
+    eachFoe(act);
+    if (group) { C.llHold = false; if (C.foes[tgt].dead) load(living()[0]); }
+    const dmg = total;
     run.sla -= dmg; C.taken = (C.taken || 0) + dmg;
-    C.log = note + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
+    C.log = notes + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
     if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); } else AU.sfx('shield');
     if (run.sla <= 0 && !run.mercy && mod('mercy', true, C)) {
       run.sla = 1; run.mercy = true;
       U.system('LAST UPTIME', 'Pip throws himself in front of the request. You hold at 1 SLA. He is fine. Probably. Once a run.', 'red');
     }
-    if (!(held && held.hold)) C.ii++;
     S.persist();
     if (run.sla <= 0) { C.over = true; renderCombat(); return setTimeout(() => endRun(false, 'The ' + C.e.name), 700); }
+    // Turn-end rules that raise the load (ascension 10) raise it for every incident in a group.
+    const rage0 = C.rage;
     emit('turnEnd', C);
+    if (group && C.rage !== rage0) { const dr = C.rage - rage0; C.foes.forEach((f, i) => { if (i !== C.fi) f.rage += dr; }); }
     beginTurn();
   }
 
   function win() {
     if (C.over) return;
+    // A group is won all at once when Gary (or the debug panel) ends it early: the rest go down too.
+    if (grouped()) { stash(); C.foes.forEach(f => { if (!f.dead) { f.dead = true; f.sev = 0; emit('foeDown', f.eid, C); } }); C.sev = 0; }
     C.over = true;
     emit('win', C);
     const run = S.save.run;
     renderCombat();
     $('#run').querySelector('.combat').classList.add('won');
-    U.float($('.foe'), 'RESOLVED!', 'crit');
+    U.float(foeEl(), 'RESOLVED!', 'crit');
     if (!C.boss) AU.jingle('victory', 'explore');
     setTimeout(() => rewards({ elite: C.elite, boss: C.boss }, C.done), 650);
     run.log.won = (run.log.won || 0) + 1;
@@ -1021,11 +1135,38 @@
   const flashing = cls => performance.now() - (flashes[cls] || -1e9) < 250 ? ' ' + cls : '';
   function stageHtml(e, foeCol) {
     const A = BA(), ch = artCh(A && A.backdrops);
-    const foe = `<div class="foe${flashing('hitflash')}" style="--foe:${foeCol}">${SD.art.enemy(e.sprite, C.boss, e.hue)}</div>`;
-    if (!A) return foe;
+    // A group stands side by side, first to act nearest you; tap one to target it.
+    const GX = { 2: [36, 6], 3: [54, 30, 6] };
+    const foe = grouped() ? C.foes.map((f, i) => `<div class="foe gfoe${f.tier === 'elite' ? ' elite' : ''}${i === C.fi ? ' tgt' + flashing('hitflash') : ''}${f.dead ? ' down' : ''}" data-fi="${i}" style="--foe:${SD.art.enemyColor(f.e.sprite)};--gx:${GX[C.foes.length][i]}%"${f.dead ? '' : ` tabindex="0" role="button" aria-pressed="${i === C.fi}" aria-label="Target ${U.esc(foeName(f))}"`}>${SD.art.enemy(f.e.sprite, false, f.e.hue)}</div>`).join('')
+      : `<div class="foe${flashing('hitflash')}" style="--foe:${foeCol}">${SD.art.enemy(e.sprite, C.boss, e.hue)}</div>`;
+    if (!A) return grouped() ? `<div class="gfoes">${foe}</div>` : foe;
     const h = A.hero;
-    return `<div class="stage" style="background-image:url(assets/img/battle/bg-${ch}.webp)">
+    return `<div class="stage${grouped() ? ' group g' + C.foes.length : ''}" style="background-image:url(assets/img/battle/bg-${ch}.webp)">
       <div class="hero${flashing('hurtflash')}" role="img" aria-label="You" style="--hw:${h.w}px;--hh:${h.h}px"></div>${foe}</div>`;
+  }
+  // The NEXT line for a foe: the intent's numbers with its load (rage), its damage share and curses applied.
+  function intentLine(e, ii, rage, ms) {
+    const it = e.pattern[ii % e.pattern.length];
+    const shown = Object.assign({}, it);
+    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + rage) * ms * mods(k === 'n' ? it.t : k)); });
+    if (it.t === 'audit') shown.per = auditPer();
+    if (it.t === 'escalate') shown.up = escUp();
+    return SD.intentText[it.t](shown);
+  }
+  // Group fights: one small card per foe (name, severity, next move), the target outlined.
+  function groupInfoHtml() {
+    stash();
+    const e = C.e, tn = U.esc(foeName(C.foes[C.fi]));
+    const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
+    const res = Object.keys(e.resist).filter(t => C.known.has('r:' + t));
+    return `<div class="foe-info gfi">
+      <div class="foe-row n${C.foes.length}">${C.foes.map((f, i) => `<div class="foe-card${i === C.fi ? ' tgt' : ''}${f.dead ? ' down' : ''}" data-fi="${i}" style="--foe:${SD.art.enemyColor(f.e.sprite)}"${f.dead ? '' : ` tabindex="0" role="button" aria-pressed="${i === C.fi}" aria-label="Target ${U.esc(foeName(f))}"`}>
+        <div class="fc-name">${i === C.fi && !f.dead ? '<span class="fc-tgt">TARGET</span>' : ''}${U.esc(foeName(f))}${f.tier === 'elite' ? ' <span class="tier elite">ELITE</span>' : ''}</div>
+        <div class="bar sev"><i style="width:${Math.max(0, f.sev) / f.max * 100}%"></i><span>${f.dead ? 'Resolved' : `${f.sev}/${f.max}`}</span></div>
+        ${f.dead ? '' : `<div class="intent"><span class="lbl">NEXT</span> ${U.esc(intentLine(f.e, f.ii, f.rage, f.mercyScale))}</div>`}
+      </div>`).join('')}</div>
+      <div class="tags">${weak.length ? `<span>${tn} weak to: <b>${weak.map(U.esc).join(', ')}</b></span>` : ''}${res.length ? `<span>Resists: <b>${res.map(U.esc).join(', ')}</b></span>` : ''}${!weak.length && !res.length ? `<span class="muted">${tn}: weaknesses unknown.</span>` : ''}<span class="muted">Tap an incident to target it.</span></div>
+    </div>`;
   }
   (function tick() {
     const el = document.querySelector('#run .hero'), A = BA();
@@ -1039,11 +1180,6 @@
   })();
   function renderCombat() {
     const run = S.save.run, e = C.e;
-    const it = C.e.pattern[C.ii % C.e.pattern.length];
-    const shown = Object.assign({}, it);
-    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale * mods(k === 'n' ? it.t : k)); });
-    if (it.t === 'audit') shown.per = auditPer();
-    if (it.t === 'escalate') shown.up = escUp();
     const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
     const res = Object.keys(e.resist).filter(t => C.known.has('r:' + t));
     const foeCol = SD.art.enemyColor(e.sprite);
@@ -1067,19 +1203,20 @@
     if (C.streaming) chips.push('<span class="chip">Streaming</span>');
     if (C.sandbox) chips.push('<span class="chip">Tools sandboxed</span>');
     if (C.steplimit) chips.push('<span class="chip">Step limit</span>');
+    (C.fuses || []).forEach(f => chips.push(`<span class="chip fuse" title="${U.esc(SD.cards[f.id].text)}">${U.esc(SD.cards[f.id].name)}: ${f.mit} to all in ${f.left}</span>`));
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
         <div class="foe-zone">
           ${stageHtml(e, foeCol)}
-          <div class="foe-info">
+          ${grouped() ? groupInfoHtml() : `<div class="foe-info">
             <div class="foe-name">${U.esc(e.name)} ${C.boss ? '<span class="tier boss">BOSS</span>' : C.elite ? '<span class="tier elite">ELITE</span>' : '<span class="tier">INCIDENT</span>'}</div>
             ${e.flavor ? `<div class="foe-flavor">${U.esc(e.flavor)}</div>` : ''}
             <div class="bar sev"><i style="width:${C.sev / C.max * 100}%"></i><span>Severity ${C.sev}/${C.max}</span></div>
-            <div class="intent"><span class="lbl">NEXT</span> ${U.esc(SD.intentText[it.t](shown))}</div>
+            <div class="intent"><span class="lbl">NEXT</span> ${U.esc(intentLine(e, C.ii, C.rage, C.mercyScale))}</div>
             ${C.turn === 1 && dev('walkie') && e.pattern.length > 1 ? `<div class="intent then"><span class="lbl">THEN</span> ${U.esc(SD.intentText[e.pattern[(C.ii + 1) % e.pattern.length].t](Object.assign({}, e.pattern[(C.ii + 1) % e.pattern.length])))}</div>` : ''}
             <div class="tags">${weak.length ? `<span>Weak to: <b>${weak.map(U.esc).join(', ')}</b></span>` : ''}${res.length ? `<span>Resists: <b>${res.map(U.esc).join(', ')}</b></span>` : ''}${!weak.length && !res.length ? '<span class="muted">Weaknesses unknown. Diagnose or experiment.</span>' : ''}</div>
-          </div>
+          </div>`}
         </div>
         <div class="clog${C.coach ? ' coach' : ''}" aria-live="polite">${U.esc(C.log || 'Your turn. Play cards, then end the turn to face the next intent.')}</div>
         <div class="me-zone">
@@ -1099,6 +1236,10 @@
       el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); playCard(+el.dataset.i); } };
     });
     $('#end-turn').onclick = endTurn;
+    $('#run').querySelectorAll('.foe[data-fi], .foe-card[data-fi]').forEach(el => {
+      el.onclick = () => target(+el.dataset.fi);
+      el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); target(+el.dataset.fi); } };
+    });
     hook('combatWire', C, $('#run'), renderCombat);
   }
 
@@ -1296,5 +1437,5 @@
     };
   }
   // The pieces js/arc.js builds chapter runs from.
-  R.api = { fight, rewards, cardChoices, cafe, campfire, eventNode, whiteboard, pickCard, findNode, endRun, gateFx, win, mitigate, absorb, hasInfra, combat: () => C };
+  R.api = { fight, target, groupFor, rewards, cardChoices, cafe, campfire, eventNode, whiteboard, pickCard, findNode, endRun, gateFx, win, mitigate, absorb, hasInfra, combat: () => C };
 })();

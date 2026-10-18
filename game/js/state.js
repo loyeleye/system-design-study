@@ -113,7 +113,8 @@
     for (const ch in SD.chapterCards) if (S.chapterReached(+ch)) out.push(...SD.chapterCards[ch]);
     // A chapter's rare card is the prize for clearing it.
     for (const ch in SD.chapters) if (SD.chapters[ch].rareCard && S.save.flags['ch' + ch]) out.push(SD.chapters[ch].rareCard);
-    return out;
+    // Quest cards (`quest: true`, like the Error Budget Bomb) are only ever handed out by their quest.
+    return out.filter(id => SD.cards[id] && !SD.cards[id].quest);
   };
 
   // ---- Concept mastery (path to mastery: accuracy, then consistency, then fluency) ----

@@ -9,14 +9,17 @@
   // ---------- Tracking ----------
   const foe = id => { const f = M.st().foes; return (f[id] = f[id] || { seen: 0, won: 0 }); };
   M.on('fight', (eid, C) => { if (!C.tutorial) foe(eid).seen++; });
-  M.on('win', C => {
-    if (C.tutorial) return;
-    const f = foe(C.eid);
+  const beat = (id, C) => {
+    if (C.tutorial || !SD.enemies[id]) return;
+    const f = foe(id);
     f.won++;
     if (!C.taken) f.flaw = true;
     f.best = Math.min(f.best || 99, C.turn);
-    if (f.won === 1) U.system('BESTIARY PAGE ADDED', `${esc(C.e.name)} · open the Journal to study it.`);
-  });
+    if (f.won === 1) U.system('BESTIARY PAGE ADDED', `${esc(SD.enemies[id].name)} · open the Journal to study it.`);
+  };
+  // A group fight (js/run.js) reports each member as it goes down; the closing 'win' would count one twice.
+  M.on('win', C => { if (!(C.foes && C.foes.length > 1)) beat(C.eid, C); });
+  M.on('foeDown', (id, C) => beat(id, C));
   // Saves from before the bestiary: incidents you studied in combat count as seen, beaten bosses as beaten.
   B.backfill = function () {
     const sv = S.save, known = (sv.flags && sv.flags.known) || {};

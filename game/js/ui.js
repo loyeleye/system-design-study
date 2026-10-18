@@ -79,7 +79,7 @@
     const st = $('#stage');
     document.body.classList.toggle('cut', !!scene);
     document.body.classList.remove('slides');
-    delete st.dataset.slide;
+    delete st.dataset.slide; delete st.dataset.glow; delete st.dataset.crumbs;
     if (!scene) { st.hidden = true; st.innerHTML = ''; return; }
     st.dataset.scene = scene; st.hidden = false;
     st.innerHTML = scene === 'office' ? '' : Array.from({ length: 5 }, (_, i) => `<div class="cloud" style="top:${8 + i * 14}%;animation-delay:${-i * 6}s;transform:scale(${0.6 + (i % 3) * 0.3})"></div>`).join('');

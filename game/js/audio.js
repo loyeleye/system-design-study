@@ -177,10 +177,10 @@
   // ---------- Recorded music and samples ----------
   const BASE = 'assets/audio/';
   // mapN is chapter N's dungeon map; chapters without one use explore.
-  const SONG = { title: 'm-opening', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild',
+  const SONG = { title: 'm-opening', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild', journey: 'm-journey',
     map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5' };
   // Songs without a synth version fall back to this one if the file fails to load.
-  const FALLBACK = { quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore' };
+  const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore' };
   // Per-song loudness: the piano is gentle on purpose, and the chapter maps are mastered hotter than explore.
   const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
@@ -296,7 +296,11 @@
       tone({ wave: 'square', f: 90, f2: 30, t, dur: 0.6, vol: 0.18, r: 0.4 });
     },
     alarm: t => [0, 1, 2].forEach(i => { tone({ wave: 'square', f: 880, t: t + i * 0.28, dur: 0.13, vol: 0.07 }); tone({ wave: 'square', f: 660, t: t + i * 0.28 + 0.14, dur: 0.13, vol: 0.07 }); }),
-    whoosh: t => hiss({ t, dur: 0.35, vol: 0.2, type: 'bandpass', f: 300, f2: 3000 })
+    whoosh: t => hiss({ t, dur: 0.35, vol: 0.2, type: 'bandpass', f: 300, f2: 3000 }),
+    // Explodia's EXPLOSION: a crack, a low thump and a long rolling rumble.
+    boom: t => { hiss({ t, dur: 0.12, vol: 0.5, f: 2500 }); tone({ wave: 'sine', f: 120, f2: 30, t, dur: 0.6, vol: 0.9, r: 0.4 }); hiss({ t: t + 0.03, dur: 1.6, vol: 0.55, type: 'lowpass', f: 900, f2: 60 }); },
+    // Synth thunder for when the recorded claps haven't loaded.
+    thunder: t => { hiss({ t, dur: 0.08, vol: 0.35, f: 3000 }); hiss({ t: t + 0.05, dur: 2.2, vol: 0.45, type: 'lowpass', f: 500, f2: 50 }); }
   };
   // `pitch` lets each speaker have their own typewriter voice, as in classic JRPGs.
   A.sfx = function (name, pitch) {
@@ -307,6 +311,12 @@
       // Crits keep the synth sparkle on top of the recorded slash.
       if (name === 'crit') [1047, 1319, 1568, 2093].forEach((f, i) => tone({ wave: 'square', f, t: t + 0.04 + i * 0.045, dur: 0.07, vol: 0.05 }));
       return;
+    }
+    // Thunder prefers a recorded clap (the storm's, loaded on first use) over the synth.
+    if (name === 'thunder') {
+      const clap = AMB['clap' + (1 + Math.floor(Math.random() * 3))];
+      loadBuf(AMB.clap1); loadBuf(AMB.clap2); loadBuf(AMB.clap3);
+      if (playBuf(clap, sfxBus, 0.9)) return;
     }
     if (FX[name]) FX[name](t);
   };

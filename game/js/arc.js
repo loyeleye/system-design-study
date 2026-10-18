@@ -36,21 +36,25 @@
   // neutral, smug (sinister), happy (soft), angry (snapped), confused (dumbfounded) and laugh (used once).
   const PAINTED = { kyu: ['neutral', 'smug', 'happy', 'angry', 'confused', 'laugh'], latency: ['neutral', 'smug', 'sad'],
     marta: ['neutral'], fen: ['neutral'], lyra: ['neutral'], gong: ['neutral'],
-    suzu: ['neutral'], zen: ['neutral'], explodia: ['neutral'], hypewagon: ['neutral'], akane: ['neutral'] };
+    suzu: ['neutral'], zen: ['neutral'], explodia: ['neutral', 'happy', 'smug', 'sad', 'angry'], hypewagon: ['neutral'], akane: ['neutral'],
+    v1: ['neutral'], v2: ['neutral'], v3: ['neutral'], v4: ['neutral'] };
+  // People who share a sprite (the road's merchant and the arena's fan are both v1) name it in their cast entry's `pic`.
+  const pic = who => (SD.cast[who] && SD.cast[who].pic) || who;
   const ALIAS = { sad: 'neutral', blush: 'happy', blank: 'confused' };
   const art = { portrait: SD.art.portrait, painted: SD.art.painted, mood: SD.art.mood, enemy: SD.art.enemy, enemyColor: SD.art.enemyColor };
-  SD.art.painted = who => !!PAINTED[who] || art.painted(who);
+  SD.art.painted = who => !!PAINTED[pic(who)] || art.painted(who);
   SD.art.mood = function (who, text, e) {
-    const m = PAINTED[who];
+    const m = PAINTED[pic(who)];
     if (!m) return art.mood(who, text, e);
     if (e) return m.includes(e) ? e : m.includes(ALIAS[e]) ? ALIAS[e] : 'neutral';
     if (/UP-TI-MA|DOWNTIMA|!!/.test(text || '')) return m.includes('angry') ? 'angry' : 'neutral';
     return 'neutral';
   };
   SD.art.portrait = function (who, size, mood) {
-    if (!PAINTED[who]) return art.portrait(who, size, mood);
-    const m = PAINTED[who].includes(mood) ? mood : 'neutral';
-    return `<span class="bust b-${who}" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/${who}-${m}.webp" alt="" draggable="false"></span>`;
+    const p = pic(who);
+    if (!PAINTED[p]) return art.portrait(who, size, mood);
+    const m = PAINTED[p].includes(mood) ? mood : 'neutral';
+    return `<span class="bust b-${p}" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/${p}-${m}.webp" alt="" draggable="false"></span>`;
   };
   // Arc monsters (tools/arc_art.py → js/arc-battle-art.js) are drawn like the PixelLab ones in js/art.js.
   const MON = () => (SD.arcBattleArt && SD.arcBattleArt.monsters) || {};
@@ -91,7 +95,7 @@
   S.unlockedCards = function () {
     const out = unlocked();
     A.chapters().forEach(ch => { if (A.open(ch) && SD.chapterCards[ch]) SD.chapterCards[ch].forEach(id => { if (!out.includes(id)) out.push(id); }); });
-    return out;
+    return out.filter(id => !(SD.cards[id] && SD.cards[id].quest));
   };
 
   // ---------- Node types the arc adds to the map ----------

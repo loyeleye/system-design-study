@@ -4,9 +4,9 @@
   const U = SD.ui, S = SD.state, Q = SD.quiz, AU = SD.audio;
   const $ = U.$;
 
-  M.show = function (screen) {
+  M.show = function (screen, keepMusic) {
     ['title', 'hub', 'run'].forEach(s => { $('#screen-' + s).hidden = s !== screen; });
-    if (screen === 'hub') { SD.hub.start(); M.hud(); AU.music('town'); } else SD.hub.stop();
+    if (screen === 'hub') { SD.hub.start(); M.hud(); if (!keepMusic) AU.music('town'); } else SD.hub.stop();
   };
 
   const sndIcon = () => AU.muted() ? '🔇' : '🔊';
@@ -141,20 +141,28 @@
     if (fx === 'wake') { U.stage('sky'); U.heaven(3); U.eyes('closed'); setTimeout(() => U.eyes('crack'), 500); AU.music('heaven'); }
     if (fx === 'blink') U.eyes('half');
     if (fx === 'open') { U.eyes('open'); AU.sfx('levelup'); }
-    if (fx === 'glow2') { U.heaven(2); AU.sfx('hit'); }
-    if (fx === 'glow1') { U.heaven(1); AU.stop(); AU.sfx('static'); }
-    if (fx === 'glow0') { U.heaven(0); AU.music('goddess'); }
+    if (fx === 'glow2') { U.heaven(2); U.crumbs('falling'); AU.sfx('hit'); }
+    if (fx === 'glow1') { U.heaven(1); U.crumbs('stuck'); AU.stop(); AU.sfx('static'); }
+    if (fx === 'glow0') { U.heaven(0); AU.music('journey'); }
     if (fx === 'alarm') { AU.sfx('alarm'); AU.music('battle'); }
     if (fx === 'gary') AU.jingle('gary', null);
   };
+  M.coldOpen = coldOpen;  // the debug panel's "Play the intro" (js/debug.js)
   async function coldOpen() {
     const sv = S.save;
     AU.stop();
     await U.dialog(SD.story.intro);
     await new Promise(res => askName(() => { U.closePanel(); res(); }));
-    U.stage('plaza');
-    await U.dialog(SD.story.introAfterName);
+    // Down through The Cloud (js/intro.js), then out of its mouth onto the plaza (js/hub.js).
+    await U.dialog(SD.story.introDrop);
+    await U.fall();
     U.stage(null);
+    SD.hub.placeAt(5, 7);
+    M.show('hub', true);
+    U.whiteout(false);
+    await SD.hub.drop();
+    AU.music('town');
+    await U.dialog(SD.story.introAfterName);
     sv.flags.prologue = true; S.persist();
     SD.run.tutorial(async () => {
       M.toHub(false);
