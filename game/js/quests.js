@@ -663,7 +663,8 @@
     if (a.game) {
       AU.music('quest');
       // Every quest mini-game can be left with the ✕; the step stays where it was, so you can try again later.
-      const r = await Promise.race([SD.games[a.game](a.def), new Promise(res => { U.quitGame = () => res(QUIT); })]);
+      const quit = new Promise(res => { U.quitGame = () => res(QUIT); }); // set before the game draws its first panel
+      const r = await Promise.race([SD.games[a.game](a.def), quit]);
       U.quitGame = null;
       U.closePanel();
       if (r === QUIT) throw QUIT;

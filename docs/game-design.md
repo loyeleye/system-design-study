@@ -100,7 +100,7 @@ Every quest still teaches. Each has a signature mini-game, one or two whiteboard
 | After clearing chapter 3 (Clockwork Spire) | 11–15 | 5 |
 | After clearing chapter 4 (Sky Harbour) | 16–20 | 5 |
 
-Quests 1–15 are built. Quests 16–20 come with chapter 4, since they teach that chapter's material and lift its curses. Every quest mini-game has a ✕ Leave button: leaving pauses the quest at that step, and talking to the villager again restarts it.
+Quests 1–15 are built. Quests 16–20 come with chapter 4, since they teach that chapter's material and lift its curses. Every quest mini-game has a ✕ Leave button: leaving pauses the quest at that step, and talking to the villager again restarts it. Rebuild the Recipe also has a Give up button next to Start over.
 
 ### Built quests (1–10)
 
@@ -207,7 +207,7 @@ Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `
 
 Recorded music and samples play when they load, with the original chiptune synth in `game/js/audio.js` as the fallback. Sources and licenses are in `game/CREDITS.md`.
 
-- **Music** (`game/assets/audio/m-*.mp3`): an anime-opening style title theme ("Determination"), a cosy town theme ("Hot Springs Town"), a light puzzle theme for quests, mini-games and lessons, a piano theme for sad story moments, and a bustling festival track for the Adventurers' Guild. Comedic Kevin MacLeod tracks stay for the office (elevator music), Uptima's entrance ("Fluffing a Duck") and the dungeon map ("Sneaky Snitch"), with a JRPG rock battle theme and an epic looping boss theme. Songs stream through `<audio>` elements routed into the Web Audio music bus, so mute and fades still work. If a quest, story or guild track fails to load, the town theme plays instead.
+- **Music** (`game/assets/audio/m-*.mp3`): an anime-opening style title theme ("Determination"), a cosy town theme ("Hot Springs Town"), a light puzzle theme for quests, mini-games and lessons, a piano theme for sad story moments, and a bustling festival track for the Adventurers' Guild. The dungeon map plays an epic orchestral overworld theme ("Beyond the Clouds" by Matthew Pablo). Comedic Kevin MacLeod tracks stay for the office (elevator music) and Uptima's entrance ("Fluffing a Duck"), with a JRPG rock battle theme and an epic looping boss theme. Songs stream through `<audio>` elements routed into the Web Audio music bus, so mute and fades still work. If a quest, story or guild track fails to load, the town theme plays instead.
 - **Why not real anime OSTs:** Ladi suggested a YouTube playlist of anime soundtracks. Those are copyrighted, and this repo and the published game are public, so every track is CC0 or CC BY and credited in `game/CREDITS.md`.
 - **Jingles:** Kenney's saxophone jingles for victory, defeat and Gary.
 - **Sound effects:** Kenney's interface and RPG sounds for clicks, confirms, errors, card flips, slashes, coins and doors. The synth still voices the typewriter blips (each speaker has a pitch; Lord Latency types slowly), the truck horn, the crash and the alarm.

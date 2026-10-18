@@ -30,18 +30,18 @@ Smudge's rebuild-the-diagram loop is inspired by InterviewReady's [The Joy of Sy
 | "Determination - Anime Style Music" | HydroGene, https://opengameart.org/content/determination-anime-style-music | CC0 | Title |
 | "Local Forecast - Elevator" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The office (first 64 s, faded) |
 | "Fluffing a Duck" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Uptima's arrival |
-| "Sneaky Snitch" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The dungeon map |
 | "Hot Springs Town" | Kistol, https://opengameart.org/content/hot-springs-town | CC0 | The village |
 | "Cozy Puzzle In-Game 1" | MintoDog, https://opengameart.org/content/cozy-puzzle-in-game-1 | CC0 | Town quests, mini-games and lessons |
 | "Emotional Piano" | Centurion_of_war, https://opengameart.org/content/emotional-piano-0 | CC0 | Story moments in quests |
 | "Enchanted Festival" (the author's looped version) | Matthew Pablo (http://www.matthewpablo.com), https://opengameart.org/content/enchanted-festival | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | The Adventurers' Guild |
+| "Beyond the Clouds" (orchestral theme) | Matthew Pablo (http://www.matthewpablo.com), https://opengameart.org/content/beyond-the-clouds-orchestral-theme | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | The dungeon map |
 | "JRPG Epic Rock Battle Theme #1" | HydroGene, https://opengameart.org/content/jrpg-epic-rock-battle-theme-1 | CC0 | Battles |
 | "Epic Boss Battle [Seamlessly Looping]" | Juhani Junkala (SubspaceAudio), https://opengameart.org/content/boss-battle-music | CC0 | Boss |
 | Music Jingles (SAX set) | Kenney, via OpenGameArt | CC0 | Victory, defeat and Gary jingles |
 
-Kevin MacLeod credit line: "Local Forecast - Elevator", "Fluffing a Duck", "Sneaky Snitch" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
+Kevin MacLeod credit line: "Local Forecast - Elevator" and "Fluffing a Duck" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
 
-Matthew Pablo credit line: "Enchanted Festival" by Matthew Pablo (http://www.matthewpablo.com), licensed under CC BY 3.0, https://creativecommons.org/licenses/by/3.0/, via https://opengameart.org/content/enchanted-festival
+Matthew Pablo credit line: "Enchanted Festival" and "Beyond the Clouds" by Matthew Pablo (http://www.matthewpablo.com), licensed under CC BY 3.0, https://creativecommons.org/licenses/by/3.0/, via https://opengameart.org/content/enchanted-festival and https://opengameart.org/content/beyond-the-clouds-orchestral-theme
 
 The music is anime-flavoured on purpose, but none of it comes from an anime soundtrack: commercial OSTs are copyrighted and this repo is public, so every track here is CC0 or CC BY.
 

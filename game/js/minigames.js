@@ -358,7 +358,7 @@
           ${skipped.size ? `<p class="muted small">Skipped: ${[...skipped].map(i => '#' + def.entries[i].seq).join(', ')}</p>` : ''}</div></div>
           <p class="q-ctx">Changes found around town (${left.length} left to decide)</p>
           <div class="rp-pool">${left.map(i => { const e = def.entries[i]; return `<div class="rp-e${hint === i ? ' rp-hint' : ''}"><span class="rp-src">Change #${e.seq} · from the ${esc(e.src)}</span><span>${esc(e.text)}</span><span class="row"><button class="ghost" data-add="${i}">Replay</button><button class="ghost" data-skip="${i}">Skip</button></span></div>`; }).join('') || '<p class="muted small">Every change is decided. Check the card, then bake it.</p>'}</div>
-          <div class="row"><button class="ghost" id="rp-undo" ${moves.length ? '' : 'disabled'}>Undo</button><button class="ghost" id="rp-hint" ${left.length ? '' : 'disabled'}>Hint</button><button class="ghost" id="rp-reset">Start over</button><button class="primary" id="rp-go" ${left.length ? 'disabled' : ''}>Bake it</button></div>`, { title: def.title, cls: 'wide', noClose: true });
+          <div class="row"><button class="ghost" id="rp-undo" ${moves.length ? '' : 'disabled'}>Undo</button><button class="ghost" id="rp-hint" ${left.length ? '' : 'disabled'}>Hint</button>${U.quitGame ? '<button class="ghost" id="rp-quit">Give up</button>' : ''}<button class="ghost" id="rp-reset">Start over</button><button class="primary" id="rp-go" ${left.length ? 'disabled' : ''}>Bake it</button></div>`, { title: def.title, cls: 'wide', noClose: true });
         const move = (i, add) => { hint = null; moves.push(i); if (add) picked.push(i); else skipped.add(i); };
         b.querySelectorAll('[data-add]').forEach(el => el.onclick = () => { move(+el.dataset.add, true); sfx('card'); render(); });
         b.querySelectorAll('[data-skip]').forEach(el => el.onclick = () => { move(+el.dataset.skip, false); sfx('blip'); render(); });
@@ -370,6 +370,7 @@
             : `Hint: change #${e.seq} comes after the snapshot and you haven't applied it yet, so <b>Replay</b> it.`;
           render();
         };
+        const quit = b.querySelector('#rp-quit'); if (quit) quit.onclick = () => U.quitGame();
         b.querySelector('#rp-reset').onclick = () => { picked = []; skipped = new Set(); moves = []; hint = null; render(); };
         b.querySelector('#rp-go').onclick = go;
       };
