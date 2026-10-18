@@ -22,6 +22,7 @@
     sv.run.bossId = rnd(fresh.length ? fresh : all);
     sv.run.sla = S.maxSla();   // after the run exists, so this dungeon's curses apply
     sv.stats.runs++;
+    sv.flags['entered' + (ch || 1)] = true;
     S.persist();
     SD.main.show('run');
     gateFx(() => R.showMap(), ch);
@@ -607,7 +608,9 @@
     if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
     if (d.pow) {
       const tags = d.tags || [];
-      const wk = tags.find(t => C.e.weak[t]), rs = tags.find(t => C.e.resist[t]);
+      const rs = tags.find(t => C.e.resist[t]);
+      // The Oracle's rare card is always effective: it names the incident's first weakness.
+      const wk = d.wild ? Object.keys(C.e.weak)[0] : tags.find(t => C.e.weak[t]);
       if (wk) { mitigate(d.pow + up, 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); AU.sfx('crit'); }
       else if (rs) {
         C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); AU.sfx('resist');
@@ -1154,8 +1157,11 @@
     sv.lastRun = { won, mins, at: Date.now() };
     const ch = run.ch || 1, boss = run.bossId || SD.chapters[ch].boss;
     if (won) {
+      const firstClear = !sv.flags['ch' + ch];
       sv.stats.wins++; sv.flags['ch' + ch] = true; sv.flags['beat-' + boss] = true;
-      if (SD.chapters[ch + 1] && (sv.chapter || 1) < ch + 1) sv.chapter = ch + 1;
+      S.syncChapter();
+      const rare = SD.chapters[ch].rareCard;
+      if (rare && firstClear) setTimeout(() => U.system('RARE CARD UNLOCKED', `${U.esc(SD.cards[rare].name)} can now turn up in rewards and shops, in every dungeon.`, 'gold'), 400);
     }
     sv.run = null;
     U.lastIncident = incident || 'A cascade';

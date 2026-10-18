@@ -22,7 +22,7 @@
       if (raw) S.save = Object.assign(fresh(), JSON.parse(raw));
     } catch (e) { /* storage blocked: play without a local save */ }
     // Saves from before a chapter existed: clearing the chapter before it opens it.
-    for (let ch = 1; SD.chapters[ch + 1]; ch++) if (S.save.flags['ch' + ch] && (S.save.chapter || 1) < ch + 1) S.save.chapter = ch + 1;
+    S.syncChapter();
     connectCloud();
   };
 
@@ -85,10 +85,26 @@
     const curse = Q && sv.run && sv.run.ch && Q.curses(sv.run.ch).includes('damp') ? 12 : 0;
     return 60 + (sv.level - 1) * 4 + (sv.relics.includes('lantern') ? 10 : 0) + (sv.spec === 'warden' ? 15 : 0) + dev - curse;
   };
+  // Chapter gates. A main chapter opens when the main chapter before it is cleared. An optional chapter
+  // (chapter 6) opens when the chapter in its `after` is cleared, and closes once you first enter the chapter
+  // in its `until`. Closing only hides the dungeon: its cards stay in the reward pools.
+  S.prevMain = ch => { for (let k = ch - 1; k >= 1; k--) if (SD.chapters[k] && !SD.chapters[k].optional) return k; return 0; };
+  S.chapterReached = function (ch) {
+    const c = SD.chapters[ch], f = S.save.flags;
+    if (!c) return false;
+    return c.optional ? !!f['ch' + c.after] : ch === 1 || !!f['ch' + S.prevMain(ch)];
+  };
+  S.chapterOpen = ch => S.chapterReached(ch) && !(SD.chapters[ch].optional && SD.chapters[ch].until && S.save.flags['entered' + SD.chapters[ch].until]);
+  // sv.chapter is the deepest chapter reached; it decides which concepts reviews and quizzes draw from.
+  S.syncChapter = function () {
+    for (const k in SD.chapters) if (S.chapterReached(+k) && (S.save.chapter || 1) < +k) S.save.chapter = +k;
+  };
   S.unlockedCards = function () {
     const out = [];
     for (const lvl in SD.cardUnlocks) if (S.save.level >= +lvl) out.push(...SD.cardUnlocks[lvl]);
-    for (const ch in SD.chapterCards) if (S.save.flags['ch' + (ch - 1)]) out.push(...SD.chapterCards[ch]);
+    for (const ch in SD.chapterCards) if (S.chapterReached(+ch)) out.push(...SD.chapterCards[ch]);
+    // A chapter's rare card is the prize for clearing it.
+    for (const ch in SD.chapters) if (SD.chapters[ch].rareCard && S.save.flags['ch' + ch]) out.push(SD.chapters[ch].rareCard);
     return out;
   };
 

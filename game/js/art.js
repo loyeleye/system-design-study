@@ -197,7 +197,9 @@
     geo: 'position-marker', quad: 'checkbox-tree', socket: 'electrical-socket', pulse: 'heart-beats', vclock: 'cuckoo-clock', merge: 'linked-rings',
     king: 'chess-king', fence: 'wooden-fence', saga: 'scroll-quill', ring: 'globe-ring', handoff: 'divert', gossip: 'conversation', calendar: 'calendar', stack: 'stack',
     signs: 'direction-signs', phonebook: 'rotary-phone', earth: 'earth-asia-oceania', earth2: 'earth-america', canary: 'bird-cage', toggles: 'toggles',
-    film: 'film-strip', ladder: 'stairs', satellite: 'satellite-communication', web: 'spider-web', hashprint: 'digital-trace', radar: 'radar-sweep', trace: 'path-distance', bell: 'ringing-bell' };
+    film: 'film-strip', ladder: 'stairs', satellite: 'satellite-communication', web: 'spider-web', hashprint: 'digital-trace', radar: 'radar-sweep', trace: 'path-distance', bell: 'ringing-bell',
+    aigpu: 'cpu', aikv: 'microchip', aibubble: 'chat-bubble', airouter: 'compass', aishelf: 'bookshelf', aichunk: 'tied-scroll', airank: 'podium',
+    aieval: 'checklist', aijudge: 'scales', aiguard: 'checked-shield', aicage: 'cage', aibrain: 'brain', aicoins: 'coins', aistop: 'stop-sign', aioracle: 'all-seeing-eye' };
   A.icon = function (name, color) {
     const body = SD.icons && SD.icons[name];
     if (!body) return null;
@@ -230,7 +232,10 @@
     signpost: { col: '#c9a07a', anim: 'shake' }, wheel: { col: '#ff8fb0', anim: 'float' }, wisp: { col: '#dff4ff', anim: 'float' },
     banshee: { col: '#ff8fa0', anim: 'shake' }, bigbang: { col: '#ff7a5a', anim: 'shake' }, spiders: { col: '#c9c9c9', anim: 'shake' },
     pushimp: { col: '#ff6b6b', anim: 'shake' }, regioneater: { col: '#b98fff', anim: 'float' }, calendar: { col: '#b98fff', anim: 'float' },
-    revenant: { col: '#8fdcff', anim: 'float' }, streamer: { col: '#ff6b6b', anim: 'shake' }, crawlqueen: { col: '#ffd86b', anim: 'float' }
+    revenant: { col: '#8fdcff', anim: 'float' }, streamer: { col: '#ff6b6b', anim: 'shake' }, crawlqueen: { col: '#ffd86b', anim: 'float' },
+    glutton: { col: '#b98bff', anim: 'shake' }, mirage: { col: '#ffd9a0', anim: 'float' }, whisper: { col: '#ff8f8f', anim: 'float' }, regress: { col: '#a8b8a0', anim: 'shake' },
+    looper: { col: '#ffc46b', anim: 'shake' }, billgoblin: { col: '#9fe08a', anim: 'shake' }, staleindex: { col: '#c9a07a', anim: 'shake' }, jester: { col: '#ff7ad9', anim: 'float' },
+    furnace: { col: '#ff9a4d', anim: 'shake' }, judge: { col: '#c8b48a', anim: 'float' }, oracle: { col: '#7ef0e0', anim: 'float' }, helpdesk: { col: '#ffcf6b', anim: 'shake' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   A.enemy = function (sprite, boss, hue) {

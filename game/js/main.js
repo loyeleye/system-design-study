@@ -395,13 +395,15 @@
     // Once a loop, Uptima intercepts you at the gate with something she has broken.
     if (SD.goddess.due()) await SD.goddess.oops();
     const primed = sv.flags.primedLoop === sv.loop;
-    // Each cleared chapter opens the next dungeon; earlier ones stay open for practice.
-    const open = Object.keys(SD.chapters).map(Number).filter(ch => ch === 1 || sv.flags['ch' + (ch - 1)]);
-    const latest = open[open.length - 1];
+    // Each cleared chapter opens the next dungeon; earlier ones stay open for practice. Optional ones
+    // (chapter 6) sit beside the main path and are never the default.
+    const open = Object.keys(SD.chapters).map(Number).filter(S.chapterOpen);
+    const latest = open.filter(ch => !SD.chapters[ch].optional).pop();
     const dungeons = open.slice().reverse().map(ch => {
       const c = SD.chapters[ch];
       const cursed = SD.quests.curses(ch), all = c.curses || [];
-      return `<button class="opt${ch === latest ? ' on' : ''}" data-ch="${ch}"><b>${c.rank}-Rank Dungeon: ${U.esc(c.name.replace(/^the /, 'The '))}</b>${sv.flags['ch' + ch] ? ' · Cleared' : ''}<br><span class="small">${U.esc(c.blurb)}</span>
+      const until = c.optional && c.until ? ` Open until you first enter chapter ${c.until}.` : '';
+      return `<button class="opt${ch === latest ? ' on' : ''}" data-ch="${ch}"><b>${c.optional ? 'Optional ' : ''}${c.rank}-Rank Dungeon: ${U.esc(c.name.replace(/^the /, 'The '))}</b>${sv.flags['ch' + ch] ? ' · Cleared' : ''}<br><span class="small">${U.esc(c.blurb)}${c.optional ? U.esc(until) : ''}</span>
         ${all.length ? `<br><span class="small ${cursed.length ? 'warn' : 'good'}">${cursed.length ? `☠ Cursed: ${cursed.map(id => U.esc(SD.curses[id].name)).join(', ')}` : '✓ Every curse lifted'}</span>` : ''}</button>`;
     }).join('');
     const warnCurse = SD.quests.curses(latest).length;
