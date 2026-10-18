@@ -426,7 +426,7 @@
     const who = sc.actors[id];
     if (who && sc.P && !STILL[id]) { if (who.path.length) { who.path = []; if (who.route && who.leg) who.leg--; } sc.face(id, toward(who, sc.P)); }
     try {
-      // Explodia runs her own Explosion Academy (js/explodia.js), quest steps included; the road's ordinary
+      // Explodia runs her own Blast Academy (js/explodia.js), quest steps included; the road's ordinary
       // people are in js/roadfolk.js.
       if (id === 'explodia' && SD.explodia) { await SD.explodia.talk(); AU.music(MAPS[cur].music); return; }
       if (QS() && QS().pending(id).length) { await QS().talk(id); AU.music(MAPS[cur].music); return; }

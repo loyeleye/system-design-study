@@ -302,7 +302,7 @@
     // A slime landing: a wet little plop.
     splat: t => { tone({ wave: 'sine', f: 420, f2: 120, t, dur: 0.16, vol: 0.14 }); hiss({ t, dur: 0.12, vol: 0.12, type: 'lowpass', f: 1200, f2: 200 }); },
     poof: t => { hiss({ t, dur: 0.3, vol: 0.16, type: 'lowpass', f: 1800, f2: 300 }); tone({ wave: 'sine', f: 520, f2: 880, t: t + 0.03, dur: 0.12, vol: 0.06 }); },
-    // Explodia's EXPLOSION: a crack, a low thump and a long rolling rumble.
+    // Explodia's blast: a crack, a low thump and a long rolling rumble.
     boom: t => { hiss({ t, dur: 0.12, vol: 0.5, f: 2500 }); tone({ wave: 'sine', f: 120, f2: 30, t, dur: 0.6, vol: 0.9, r: 0.4 }); hiss({ t: t + 0.03, dur: 1.6, vol: 0.55, type: 'lowpass', f: 900, f2: 60 }); },
     // Synth thunder for when the recorded claps haven't loaded.
     thunder: t => { hiss({ t, dur: 0.08, vol: 0.35, f: 3000 }); hiss({ t: t + 0.05, dur: 2.2, vol: 0.45, type: 'lowpass', f: 500, f2: 50 }); }
