@@ -246,15 +246,17 @@ Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `
 Ladi asked (2026-10-18) for more to buy with Memory Shards, rank-gated keepsakes in the spirit of Slay the Spire relics, a card shop, and bigger shard rewards.
 
 - **Earning:** quests pay 50 + 15 per unlock step (65 to 350), the daily quest board 100, Mio's drawing 10, blueprint stars 10 each, Uptima's loot 20 or 40, map pickups 5, and incidents 5, 15 or 40. Prices rose about twentyfold, so old saves multiply their balance by 20 once (`econ: 2` in `state.js`).
-- **Wen's keepsakes** (`SD.metaShop`, 80–400 shards) sit on shelves that open with Guild rank:
+- **Wen's keepsakes** (`SD.metaShop`, 80–600 shards) sit on shelves that open with Guild rank:
 
 | Shelf | Keepsakes (price) | Slay the Spire inspiration |
 |---|---|---|
 | Counter (E) | Pip's Monocle 80, Bottomless Teapot 90, Lucky Rubber Duck 100, Grandma's Thermos 120, Bag of Holding 150 | Early relics: Regal Pillow, Strawberry, Lantern, Question Card |
 | C-Rank | Lucky Bit 110 (+25% bits), Postmortem Notebook 140 (heal 5 after each incident), First Responder's Whistle 160 (first mitigating card each fight +8), Dog-Eared Runbook 180 (draw 2 more on turn 1) | Golden Idol, Burning Blood, Akabeko, Bag of Preparation |
 | B-Rank | Torii Gate Charm 190 (losses of 5 or less become 1), Warm Standby 200 (start with 8 Any absorb), Circuit Breaker 220 (first SLA loss each fight is zero), Coffee Drip 230 (+1 Capacity every third turn) | Torii, Anchor, Fossilized Helix, Happy Flower |
-| A-Rank | Guild Membership Card 240 (dungeon shops 40% off), Principal Engineer's Badge 260 (+3 to every mitigation), Rubber Stamp of Approval 270 (every 5th mitigating card in a run doubles) | Membership Card, Vajra, Pen Nib |
-| S-Rank | Pinned Tabs 300 (keep your hand between turns), Leftover Croissant 400 (unspent Capacity carries over; Ladi moved it up because Ice Cream is one of the strongest relics) | Runic Pyramid, Ice Cream |
+| A-Rank | Guild Membership Card 315 (dungeon shops 40% off), Rubber Stamp of Approval 380 (every 5th mitigating card in a run doubles), Principal Engineer's Badge 410 (+3 to every mitigation) | Membership Card, Pen Nib, Vajra |
+| S-Rank | Pinned Tabs 450 (keep your hand between turns), Leftover Croissant 600 (unspent Capacity carries over; Ladi moved it up because Ice Cream is one of the strongest relics) | Runic Pyramid, Ice Cream |
+
+Ladi raised the top two shelves (2026-10-18, evening): A-Rank by 75–150 and S-Rank by 150–200, scaled by strength. The shop discount gets the smallest rise and the Badge and Croissant the largest. Aigerim's Rare Shelf prices stay as they were.
 
 - **Aigerim's cards** (`js/peddler.js`, `SD.cardShop`, 150–400 shards, priced by expected value: Root Cause Analysis 150 is situational, Persistent Volumes 400 anchors an absorb engine). Ladi moved the card shop from Ayo to a new character (2026-10-18). From chapter 3 Aigerim roams Pingsby (a different spot each loop) with only the four cheapest cards, at full price. Once the North Road opens (`flags.ch5` and the road exists) she leaves town; the road places her and calls `SD.peddler.open({ full: true })`: all twelve cards, two unowned ones half price each loop (`flags.aigSales`). Bought cards join the starting deck of every future run; the "Your cards" tab benches or restores them. The cards borrow Slay the Spire effects: Defense in Depth and Graceful Degradation (Defend variants), Flow State (Adrenaline-like draw), Root Cause Analysis (scales with Stale), Backpressure Slam (Body Slam), Load Test (Vulnerable), All-Nighter (Offering), Autoscaling (Entrench), Hotfix Storm (an X-cost Whirlwind), Refactor Everything (Apotheosis), SRE Rotation (Demon Form, gently) and Persistent Volumes (Barricade).
 
