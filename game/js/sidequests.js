@@ -7,7 +7,7 @@
 //   Lord Latency (ch 7): backpressure at the Cache Café sink (The Devil is a Part-Timer).
 //   Suzu (ch 8): on-call rotations, SLOs and error budgets (The Melancholy of Haruhi Suzumiya).
 //   Zen (ch 8): the Ticketmaster design, seat holds and a waiting room (Demon Slayer's Zenitsu).
-//   Explodia (ch 8): fan-out on write vs read and the celebrity problem, DDIA chapter 1 (KonoSuba's Megumin).
+//   Explodia (ch 8): fan-out on write vs read and the celebrity problem, DDIA chapter 1 (a demolitions mage).
 //   Hypewagon (ch 9): the web crawler, politely (JoJo's Bizarre Adventure's Speedwagon).
 //   President Akane (ch 9): distributed locks and fencing tokens, DDIA chapter 8 (Kaguya-sama: Love Is War).
 //   Hero #12 (ch 9): idempotent purchases, a teaser for chapter 10's payments (Durarara!!'s vending machine).
@@ -26,7 +26,7 @@
   Object.assign(SD.cast, {
     suzu: { name: 'Suzu', title: 'Brigade Chief · S.O.S. (Service-level Objectives Society)', hue: 45, hair: 'bob', eye: '#7a4a1a' },
     zen: { name: 'Zen', title: 'Thunder Breathing (First Form Only) · Brave Only When Asleep', hue: 48, hair: 'short', eye: '#c08a20' },
-    explodia: { name: 'Explodia', title: 'Arch-Wizard · One Explosion Per Day', hue: 0, hair: 'short', eye: '#d0202a' },
+    explodia: { name: 'Explodia', title: 'Demolitions Mage · One Scheduled Blast a Day (Allegedly)', hue: 175, hair: 'long', eye: '#e8a020' },
     hypewagon: { name: 'Robert E.O. Hypewagon', title: 'Gentleman · Explains Everything, Loudly', hue: 40, hair: 'short', eye: '#3a6ea5' },
     akane: { name: 'President Akane', title: 'Student Council · Has Never Confessed First', hue: 350, hair: 'long', eye: '#a0203a' }
   });
@@ -348,22 +348,22 @@
       ]
     },
 
-    // ---- Explodia: One Explosion Per Day ----
+    // ---- Explodia: One Blast Per Day ----
     {
-      id: 'explosion', title: 'One Explosion Per Day', giver: 'explodia', unlock: 7, shards: 300, xp: 150, concepts: ['fanout', 'celebrity'],
-      blurb: 'Explodia casts one explosion a day, then falls over. She wants all ten million of her followers to see it the moment it happens.',
+      id: 'explosion', title: 'One Blast Per Day', giver: 'explodia', unlock: 7, shards: 300, xp: 150, concepts: ['fanout', 'celebrity'],
+      blurb: 'Explodia casts one blast a day (allegedly), then sits in the smoke to write about it. She wants all ten million of her followers to see it the moment it happens.',
       steps: [
         { at: 'explodia', hint: 'Talk to Explodia by the bard\'s stage on the North Road.', do: [
-          { say: [['explodia', 'Behold! I am Explodia, greatest arch-wizard of the North Road, mistress of the one true magic: EXPLOSION!', 'happy'],
-            ['narr', 'She casts it. A crater appears where a tree was. She falls face down in the dirt.'],
+          { say: [['explodia', 'Stand back. Further. FURTHER! I am Explodia, demolitions mage of the North Road, and this is today\'s blast. KA-BOOM, ON SCHEDULE!', 'happy'],
+            ['narr', 'A crater appears where a tree was. Her hat catches fire. She pats it out without looking and starts writing in a little notebook.'],
             ['explodia', '...I can only do that once a day. And when I do, ten million followers should see it at once. Instead, the news reaches them over three days. Some heard about Tuesday\'s on Friday!'],
-            ['explodia', 'Lyra the bard sings each one to every follower, house by house. Ask her what\'s wrong. I can\'t move my legs.']] }] },
+            ['explodia', 'Lyra the bard sings each one to every follower, house by house. Ask her what\'s wrong. I have a postmortem to write.']] }] },
         { at: 'lyra', hint: 'Ask Lyra at the bard\'s stage how Explodia\'s news is spread.', do: [
-          { say: [['lyra', 'Every morning I write "EXPLOSION!" into the songbook of every single follower. Ten million songbooks. By hand. Before anyone wakes up.', 'neutral'],
+          { say: [['lyra', 'Every morning I write "KA-BOOM!" into the songbook of every single follower. Ten million songbooks. By hand. Before anyone wakes up.', 'neutral'],
             ['lyra', 'For most people that\'s lovely: they open their own songbook and it\'s already there. But for Explodia, it never finishes.'],
             ['pip', 'That\'s fan-out on write! Twitter did that for home timelines. It\'s great until one account has ten million followers.']] },
           { game: 'roadRounds', def: {
-            title: 'ONE EXPLOSION PER DAY · THE SONGBOOKS', who: 'lyra', win: 'EVERYONE SAW THE EXPLOSION!',
+            title: 'ONE BLAST PER DAY · THE SONGBOOKS', who: 'lyra', win: 'EVERYONE SAW THE BLAST!',
             intro: 'Two ways to deliver news. Let\'s pick, for each poster, which one fits.',
             rounds: [
               { type: 'choose', q: 'Fan-out on write means:', opts: [
@@ -385,10 +385,10 @@
             done: '<p>Fan out on write for most accounts so reading is cheap, pull celebrities\' posts at read time, and measure the tail (p99), not the average. That is the Twitter timeline from DDIA chapter 1.</p>' } }] },
         { at: 'explodia', hint: 'Tell Explodia how to reach every follower at once.', do: [
           { ask: { id: 'sq-explosion', c: 'celebrity', type: 'mc', q: 'One account has 10 million followers and posts once a day. Most accounts have a few hundred. How should home timelines work?', opts: ['Fan out on write for normal accounts; merge celebrity posts in at read time', 'Fan out on write for everyone', 'Fan out on read for everyone', 'Email each follower'], a: 0, why: 'Pushing to 10 million timelines per post is the bottleneck; pulling for everyone makes every read slow. The hybrid keeps both cheap.' } },
-          { say: [['explodia', 'EXPLOSION! ...And they saw it! Ten million people saw it the moment they looked! I am FAMOUS. Again. But faster!', 'happy'],
-            ['narr', 'She falls over. Pip pokes her with a stick. She gives you a thumbs up from the ground.'],
+          { say: [['explodia', 'KA-BOOM, ON SCHEDULE! ...And they saw it! Ten million people saw it the moment they looked! I am FAMOUS. Again. But faster!', 'happy'],
+            ['narr', 'Her eyebrows are smoking. She gives you a sooty thumbs up and writes "worked" in her notebook, underlined twice.'],
             ['explodia', 'The woman in the hoodie, Kyu, she watches every one. She is my only follower who leaves a comment. It always says "Nice. Fix the tail latency."'],
-            ['explodia', 'Take these shards. I have no use for money. Only for EXPLOSION.']] }] }
+            ['explodia', 'Take these shards. I have no use for money. Money doesn\'t explode. I checked.']] }] }
       ]
     },
 
@@ -640,7 +640,7 @@
   const lines = {
     suzu: () => QS.status('sosbrigade') === 'done' ? ['The brigade meets at dawn! Attendance is mandatory! There is no attendance list! That\'s also mandatory!', 'I sent Kyu her membership card. She sent back a sticky note: "Thank you." The brigade has a fan!'] : null,
     zen: () => QS.status('saleends') === 'done' ? ['Seat 14! I\'ve been practising my cheer. It\'s mostly screaming. Hana-sama will understand.', 'People say I\'m strongest when I\'m asleep. Kyu hasn\'t slept in ten thousand years. Imagine how strong she\'d be after one nap.'] : ['Don\'t look at me! I\'m not crying! The arena is just very dusty and I am very scared of dust!'],
-    explodia: () => QS.status('explosion') === 'done' ? ['EXPLOSION! ...I need a minute.', 'Ten million followers. One of them comments "fix the tail latency". It\'s my favourite comment.'] : null,
+    explodia: () => QS.status('explosion') === 'done' ? ['KA-BOOM! ...Hang on, I need to write that down.', 'Ten million followers. One of them comments "fix the tail latency". It\'s my favourite comment.'] : null,
     hypewagon: () => QS.status('crawler') === 'done' ? ['THE SCROLLS ARE INDEXED! The runbooks can be FOUND!', 'I narrate because nobody else does. Somebody should have narrated Kyu\'s ten thousand years!'] : null,
     akane: () => QS.status('loveiswar') === 'done' ? ['Today\'s battle: I did not lose. Note that I also did not win.', 'Fencing tokens. Rising numbers. How unbearably elegant.'] : null,
     hero12: () => QS.status('vending') === 'done' ? ['One press, one croissant! Want one? Three shards! I\'ll only charge you once!', 'Sometimes I miss flying through the air at Uptima. Is that weird? It\'s weird.'] : ['*bzzzt* Out of order! Kidding! I\'m in order. I\'m just sad.'],
