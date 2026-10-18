@@ -44,7 +44,8 @@
   PATHS.forEach(([x, y]) => { if (MAP[y][x] === '.') MAP[y] = MAP[y].slice(0, x) + 'p' + MAP[y].slice(x + 1); });
   // Villagers stand by their doors; talking to one is the same as walking in. Sprites are in assets/img/village.
   const NPCS = [
-    { id: 'gary', name: 'GARY', x: 22, y: 6 },
+    // Gary leaves Pingsby at the end of chapter 9 (js/ch9.js) and is back once chapter 10 is cleared.
+    { id: 'gary', name: 'GARY', x: 22, y: 6, roam: () => SD.state.save.flags.garyGone && !SD.state.save.flags.ch10 ? null : [22, 6] },
     { id: 'uptima', name: 'UPTIMA', x: 3, y: 6, door: 'A', emo: 'star' },
     { id: 'wen', name: 'WEN', x: 28, y: 6, door: 'C', emo: 'heart' },
     { id: 'mio', name: 'MIO', x: 3, y: 14, door: 'H', emo: 'idea' },

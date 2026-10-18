@@ -304,6 +304,8 @@
     // A finale after the last boss (chapter 9's army, chapter 10's pager) runs once, then comes back here.
     if (c.finale && !r.arc.finaleDone) { r.arc.finaleDone = true; S.persist(); return c.finale(() => finish()); }
     if (c.ending) await A.cutscene(c.ending);
+    // Chapter 10's credits roll.
+    if (c.afterEnding) await c.afterEnding();
     if (c.downtime != null) flags().downtime = Math.max(flags().downtime || 0, c.downtime);
     // First clear pays like a quest board job (the shard economy: quests ~100, Wen's relics 80-300, cards 100+).
     if (!flags()['ch' + r.ch] && c.clearShards) { sv().shards += c.clearShards; U.system('CHAPTER CLEARED!', `+${c.clearShards} shards. Wen will want to hear about this.`, 'gold'); }
