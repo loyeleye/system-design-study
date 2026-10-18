@@ -919,9 +919,10 @@ Object.assign(SD.cards, {
   persist: { name: 'Persistent Volumes', cost: 3, kind: 'infra', keepSh: true, tags: ['ops'], text: 'Infra. While it stands, your absorb is no longer cleared at the start of each turn.', art: 'cyl', rarity: 'rare', shop: true }   // Barricade
 });
 SD.cardShop = [
-  { id: 'defdepth', cost: 100 }, { id: 'graceful', cost: 100 }, { id: 'flowstate', cost: 120 }, { id: 'rca', cost: 130 },
-  { id: 'slam', cost: 160 }, { id: 'loadtest', cost: 170 }, { id: 'allnighter', cost: 180 }, { id: 'autoscale', cost: 200 },
-  { id: 'hotfixstorm', cost: 210 }, { id: 'refactorall', cost: 220 }, { id: 'sre', cost: 250 }, { id: 'persist', cost: 280 }
+  // Priced by expected value over a run: situational and one-off cards are cheap, engines that pay every turn are dear.
+  { id: 'rca', cost: 150 }, { id: 'graceful', cost: 160 }, { id: 'defdepth', cost: 170 }, { id: 'flowstate', cost: 190 },
+  { id: 'allnighter', cost: 220 }, { id: 'loadtest', cost: 230 }, { id: 'autoscale', cost: 240 }, { id: 'slam', cost: 250 },
+  { id: 'refactorall', cost: 270 }, { id: 'hotfixstorm', cost: 300 }, { id: 'sre', cost: 360 }, { id: 'persist', cost: 400 }
 ];
 
 SD.ranks = ['E', 'D', 'C', 'B', 'A', 'S'];
