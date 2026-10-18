@@ -35,7 +35,8 @@
   // Painted PixelLab busts for the arc cast (tools/pixel_portraits.py). Kyu's six moods follow the doc:
   // neutral, smug (sinister), happy (soft), angry (snapped), confused (dumbfounded) and laugh (used once).
   const PAINTED = { kyu: ['neutral', 'smug', 'happy', 'angry', 'confused', 'laugh'], latency: ['neutral', 'smug', 'sad'],
-    marta: ['neutral'], fen: ['neutral'], lyra: ['neutral'], gong: ['neutral'] };
+    marta: ['neutral'], fen: ['neutral'], lyra: ['neutral'], gong: ['neutral'],
+    suzu: ['neutral'], zen: ['neutral'], explodia: ['neutral'], hypewagon: ['neutral'], akane: ['neutral'] };
   const ALIAS = { sad: 'neutral', blush: 'happy', blank: 'confused' };
   const art = { portrait: SD.art.portrait, painted: SD.art.painted, mood: SD.art.mood, enemy: SD.art.enemy, enemyColor: SD.art.enemyColor };
   SD.art.painted = who => !!PAINTED[who] || art.painted(who);
@@ -154,6 +155,12 @@
     },
     node(n, done) {
       const r = run(), c = chap(), fl = c.floors[r.arc.floor];
+      // A floor rule explains itself before the floor's first fight.
+      if ((n.type === 'fight' || n.type === 'elite') && fl.rule && !(r.arc.rules || {})[fl.rule.id]) {
+        r.arc.rules = Object.assign({}, r.arc.rules, { [fl.rule.id]: true }); S.persist();
+        U.dialog(fl.rule.intro || []).then(() => { U.system('⚖ ' + fl.rule.name.toUpperCase(), U.esc(fl.rule.text), 'gold'); A.hooks.node(n, done); });
+        return true;
+      }
       if (n.type === 'fight') { api().fight(rnd(fl.pool || c.pools[Math.min(3, r.arc.floor + 1)]), { diagnose: Math.random() < 0.45 }, done); return true; }
       if (n.type === 'elite') { api().fight(rnd(fl.elite || c.pools.elite), { diagnose: true, elite: true, sevScale: SD.quests.has('arenagong') ? 0.9 : 1 }, done); return true; }
       const own = (c.nodes && c.nodes[n.type]) || A.nodes[n.type];
@@ -176,8 +183,11 @@
       const dt = flags().downtime || 0;
       const pages = (flags().runbook || []).length;
       const wh = c.whistles && c.whistles[Math.min(r.arc.floor, c.whistles.length - 1)];
+      // A floor rule (chapter 10's homunculi): the chapter file applies it; the chip says what it is.
+      const fr = c.floors[r.arc.floor] && c.floors[r.arc.floor].rule;
       return `<span class="hud-chip arc-floor">Floor <b>${r.arc.floor + 1}/${r.arc.floors}</b></span>`
         + (wh ? `<span class="hud-chip arc-whistle" title="Your whistle rank on this layer">🎖 ${wh}</span>` : '')
+        + (fr ? `<span class="hud-chip arc-rule" title="${U.esc(fr.text)}">⚖ ${U.esc(fr.name)}</span>` : '')
         + (c.death === 'tape' ? `<span class="hud-chip arc-tape" title="Seymour's one backup tape">📼 ${r.arc.tapeUsed ? 'used' : 'ready'}</span>` : '')
         + (dt ? `<span class="hud-chip arc-meter" title="Kyu's anger meter">Downtime <b>${dt}%</b></span>` : '')
         + (pages ? `<button class="hud-chip arc-rb" data-arc="runbook">Runbook <b>${pages}</b></button>` : '');

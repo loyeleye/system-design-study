@@ -6,7 +6,7 @@
 //   Aigerim (ch 7): crypto-shredding in an append-only log. Opens the Rare Shelf in her shop (js/peddler.js).
 //   Lord Latency (ch 7): backpressure at the Cache Café sink (The Devil is a Part-Timer).
 //   Suzu (ch 8): on-call rotations, SLOs and error budgets (The Melancholy of Haruhi Suzumiya).
-//   Baldwin (ch 8): the Ticketmaster design, seat holds and a waiting room (One Punch Man).
+//   Zen (ch 8): the Ticketmaster design, seat holds and a waiting room (Demon Slayer's Zenitsu).
 //   Explodia (ch 8): fan-out on write vs read and the celebrity problem, DDIA chapter 1 (KonoSuba's Megumin).
 //   Hypewagon (ch 9): the web crawler, politely (JoJo's Bizarre Adventure's Speedwagon).
 //   President Akane (ch 9): distributed locks and fencing tokens, DDIA chapter 8 (Kaguya-sama: Love Is War).
@@ -25,13 +25,13 @@
   // ---------- New people ----------
   Object.assign(SD.cast, {
     suzu: { name: 'Suzu', title: 'Brigade Chief · S.O.S. (Service-level Objectives Society)', hue: 45, hair: 'bob', eye: '#7a4a1a' },
-    baldwin: { name: 'Baldwin', title: 'Hero for Fun · Beats Anything in One Punch', hue: 50, hair: 'bald', eye: '#2b2340' },
+    zen: { name: 'Zen', title: 'Thunder Breathing (First Form Only) · Brave Only When Asleep', hue: 48, hair: 'short', eye: '#c08a20' },
     explodia: { name: 'Explodia', title: 'Arch-Wizard · One Explosion Per Day', hue: 0, hair: 'short', eye: '#d0202a' },
     hypewagon: { name: 'Robert E.O. Hypewagon', title: 'Gentleman · Explains Everything, Loudly', hue: 40, hair: 'short', eye: '#3a6ea5' },
     akane: { name: 'President Akane', title: 'Student Council · Has Never Confessed First', hue: 350, hair: 'long', eye: '#a0203a' }
   });
   if (QS.HOME) Object.assign(QS.HOME, {
-    suzu: 'the arena, off the North Road', baldwin: 'the arena, off the North Road', explodia: 'the North Road, by the bard\'s stage',
+    suzu: 'the arena, off the North Road', zen: 'the arena, off the North Road', explodia: 'the North Road, by the bard\'s stage',
     hypewagon: "the heroes' camp, off the North Road", akane: "the heroes' camp, off the North Road", hero12: "the heroes' camp (the vending machine)",
     latency: "Lord Latency's waystation", aigerim: 'her card shop on the North Road'
   });
@@ -79,7 +79,8 @@
   });
 
   // ---------- A timed sorting mini-game ----------
-  // def: { title, who, intro, bins: [{ k, label }], items: [{ t, k, why }], secs, done }
+  // def: { title, who, intro, bins: [{ k, label }], items: [{ t, k, why }], secs, firstSecs, done }
+  // firstSecs (optional) gives the first item longer, while the player is still reading the bins.
   // Items arrive one at a time with a timer; tap the bin each belongs in before the bar runs out.
   SD.games.rushSort = function (def) {
     return new Promise(res => {
@@ -112,7 +113,7 @@
         timer = setInterval(() => {
           // Left with the ✕ (or the panel was replaced): stop the clock.
           if (!bar || !document.body.contains(bar) || $('#panel').hidden) return clearInterval(timer);
-          const f = Math.max(0, 1 - (performance.now() - t0) / (secs * 1000));
+          const f = Math.max(0, 1 - (performance.now() - t0) / ((k === 0 && def.firstSecs || secs) * 1000));
           if (bar) bar.style.width = (f * 100) + '%';
           if (f <= 0) answer(null);
         }, 50);
@@ -308,38 +309,42 @@
       ]
     },
 
-    // ---- Baldwin: Sale Ends at Five ----
+    // ---- Zen: Thunderclap at Noon ----
     {
-      id: 'saleends', title: 'Sale Ends at Five', giver: 'baldwin', unlock: 7, shards: 280, xp: 150, concepts: ['booking', 'queue'],
-      blurb: 'Baldwin beats any monster in one punch. He cannot beat the ticket line for the arena\'s final. Also, the supermarket closes at five.',
+      id: 'saleends', title: 'Thunderclap at Noon', giver: 'zen', unlock: 7, shards: 280, xp: 150, concepts: ['booking', 'queue'],
+      blurb: 'Zen is terrified of everything except, when he is asleep, monsters. Tickets for Princess Hana\'s arena concert go on sale at noon, and he has refreshed the booth four thousand times.',
       steps: [
-        { at: 'baldwin', hint: 'Talk to Baldwin at the arena.', do: [
-          { say: [['baldwin', 'Oh. Hey. I punched a dragon this morning. It was fine.', 'neutral'],
-            ['baldwin', 'Problem is, tickets for the final went on sale at noon. Two hundred thousand people tried to buy them at once. The booth sold seat 14 to eleven people.'],
-            ['baldwin', 'And the supermarket has leeks on sale until five. I can\'t be in two lines. I\'m strong, but I\'m one guy.'],
-            ['gong', 'I\'ll hold the gong for you! I mean, I will hold your place. I mean... please fix the booth. Seat 14 is now a riot.']] }] },
+        { at: 'zen', hint: 'Talk to Zen at the arena.', do: [
+          { say: [['zen', 'HERO! HERO, PLEASE! You have to help me or I will DIE! I will actually die! Today!', 'angry'],
+            ['zen', 'Princess Hana is singing at the arena. PRINCESS HANA. Her voice is like a cache hit. Tickets went on sale at noon and the booth sold seat 14 to eleven people. ELEVEN!'],
+            ['zen', 'So I pressed refresh. Then I pressed it again. Four thousand times. Now the booth is on fire and it\'s probably my fault and Princess Hana will never know my name!'],
+            ['uptima', 'Have you tried pressing it a four thousand and first time? Persistence is a virtue! I read that on a mug.', 'happy'],
+            ['gong', 'Please do not press it again. I will hold your place. I mean, I will hold the gong. I mean... please fix the booth.']] }] },
         { at: 'gong', hint: 'Help Gong run the ticket booth at the arena.', do: [
-          { say: [['gong', 'They\'re coming! Every one of them clicked "buy" the moment the clock struck noon! What do I do with each request?']] },
+          { say: [['gong', 'They\'re coming! Every fan clicked "buy" at 12:00:00, and half of them are clicking again every second like Zen! What do I do with each request?']] },
           { game: 'rushSort', def: {
-            title: 'SALE ENDS AT FIVE · THE TICKET BOOTH', who: 'gong', win: 'NO SEAT SOLD TWICE!', secs: 7,
+            title: 'THUNDERCLAP AT NOON · THE TICKET BOOTH', who: 'gong', win: 'NO SEAT SOLD TWICE!', secs: 7,
             intro: 'Two hundred thousand fans, twenty thousand seats. Every request needs an answer, fast.',
             bins: [{ k: 'room', label: 'Waiting room' }, { k: 'hold', label: 'Hold the seat (10 min)' }, { k: 'book', label: 'Confirm the booking' }, { k: 'no', label: 'Sorry, it\'s taken' }],
             items: [
               { t: '180,000 fans arrive at 12:00:00 sharp.', k: 'room', why: 'A virtual waiting room lets them in at a rate the booking system can take, in a fair order.' },
+              { t: 'Zen, refreshing for the 4,001st time.', k: 'room', why: 'Retries are traffic too. The waiting room keeps his place, so refreshing gains nothing, and a retry storm stops hitting the booking database.' },
               { t: 'A fan from the waiting room picks seat 14. Nobody holds it.', k: 'hold', why: 'Reserve it with a short hold (a TTL) while they pay, so nobody else can take it.' },
               { t: 'The fan holding seat 14 has paid, within their 10 minutes.', k: 'book', why: 'Payment confirmed inside the hold: turn the hold into a booking.' },
               { t: 'A second fan clicks seat 14 while it is held.', k: 'no', why: 'A held seat is not available. That is the whole point: no double booking.' },
-              { t: 'A fan held seat 22 and wandered off to buy leeks. The 10 minutes ran out.', k: 'no', why: 'The hold expired and the seat went back to the pool; this fan has to choose again. (The next fan in line can hold it now.)' },
-              { t: 'Baldwin, who punched the queue. It is fine, the queue is fine.', k: 'room', why: 'Even Baldwin waits in the waiting room. Fairness is the feature.' },
+              { t: 'A fan held seat 22, saw a bee, screamed and ran away. The 10 minutes ran out.', k: 'no', why: 'The hold expired and the seat went back to the pool; this fan has to choose again. (The next fan in line can hold it now.)' },
               { t: 'A fan picks seat 30. It is free, and nobody holds it.', k: 'hold', why: 'Hold first, then take the payment. Never charge for a seat you haven\'t reserved.' }
             ],
-            done: '<p>A waiting room meters the crowd, a seat hold with a TTL (in a fast store like Redis, or a status column with an expiry) stops double booking while people pay, and the booking is confirmed only when payment succeeds. Search and seat maps come from read replicas and caches, not the booking database.</p>' } },
+            done: '<p>A waiting room meters the crowd and absorbs the refresh storm, a seat hold with a TTL (in a fast store like Redis, or a status column with an expiry) stops double booking while people pay, and the booking is confirmed only when payment succeeds. Search and seat maps come from read replicas and caches, not the booking database.</p>' } },
           { ask: { id: 'sq-sale', c: 'booking', type: 'mc', q: 'Two people try to book the last seat at the same moment. How do you make sure only one gets it?', opts: ['Reserve the seat atomically (a hold with a TTL, or a conditional update on its status) before taking payment', 'Charge both and refund one later', 'Let the faster browser win', 'Lock the whole event table for every booking'], a: 0, why: 'One atomic check-and-set on the seat decides the winner; the TTL frees seats from people who walk away. Locking the whole table works but serialises every booking for the event.' } }] },
-        { at: 'baldwin', hint: 'Tell Baldwin the booth is fixed.', do: [
-          { say: [['baldwin', 'Seat 14. Just me. That\'s nice.', 'neutral'],
-            ['baldwin', 'And I made the supermarket. Leeks were half price. Today was a good day.', 'happy'],
-            ['baldwin', 'Hey, the woman with the long hair who one-punched Kaito. I fought her once. It was a draw. Her punches looked... tired. Like she\'d been throwing them for ten thousand years and nobody ever said thanks.'],
-            ['baldwin', 'Here, shards. I don\'t really need them. I just need leeks.']] }] }
+        { at: 'zen', hint: 'Tell Zen the booth is fixed.', do: [
+          { say: [['narr', 'Zen is asleep in the waiting room, sitting perfectly straight. When his turn comes, his eyes stay closed.'],
+            ['zen', 'Thunder Breathing, First Form. Hold. Pay. Confirm.', 'neutral'],
+            ['narr', 'Seat 14 is booked in one clean strike. Nobody else is charged. The booth stops smoking.'],
+            ['zen', '...Huh? Why is everyone staring? Did I sleepwalk again? Did I hurt someone? I DIDN\'T HURT ANYONE, I SWEAR!', 'confused'],
+            ['zen', 'Seat 14?! It says my name! PRINCESS HANA WILL SEE MY HEAD FROM THE STAGE! I\'m going to cry. I\'m crying. This is happy crying, mostly.', 'happy'],
+            ['zen', 'Oh! The tall lady with the long hair. I fought her once, I think. I was asleep. When I woke up she\'d said "thank you" to me, very quietly. I don\'t think anyone ever says it back to her.'],
+            ['zen', 'Here, take shards. Take all of them. No, keep some for me. I need a lightstick.']] }] }
       ]
     },
 
@@ -627,14 +632,14 @@
     const add = (map, id, a) => { if (NR.maps[map] && !NR.maps[map].actors[id]) NR.maps[map].actors[id] = a; };
     const has = id => !!(SD.arcArt && SD.arcArt.chars[id]);
     add('arena', 'suzu', { x: 14, y: 16, face: 'east', name: 'SUZU', sprite: has('suzu') ? 'suzu' : 'v1' });
-    add('arena', 'baldwin', { x: 28, y: 22, face: 'west', name: 'BALDWIN', sprite: has('baldwin') ? 'baldwin' : 'v3' });
+    add('arena', 'zen', { x: 28, y: 22, face: 'west', name: 'ZEN', sprite: has('zen') ? 'zen' : 'v3' });
     add('road', 'explodia', { x: 23, y: 19, face: 'west', name: 'EXPLODIA', sprite: has('explodia') ? 'explodia' : 'v2' });
     add('camp', 'hypewagon', { x: 19, y: 13, face: 'south', name: 'HYPEWAGON', sprite: has('hypewagon') ? 'hypewagon' : 'v4' });
     add('camp', 'akane', { x: 24, y: 11, face: 'west', name: 'PRESIDENT AKANE', sprite: has('akane') ? 'akane' : 'v1' });
   }
   const lines = {
     suzu: () => QS.status('sosbrigade') === 'done' ? ['The brigade meets at dawn! Attendance is mandatory! There is no attendance list! That\'s also mandatory!', 'I sent Kyu her membership card. She sent back a sticky note: "Thank you." The brigade has a fan!'] : null,
-    baldwin: () => QS.status('saleends') === 'done' ? ['Leeks were half price. I bought forty.', 'Every fight\'s over in one punch. Nobody ever asks if I\'m tired. Kyu would get it, I think.'] : ['Ok.'],
+    zen: () => QS.status('saleends') === 'done' ? ['Seat 14! I\'ve been practising my cheer. It\'s mostly screaming. Hana-sama will understand.', 'People say I\'m strongest when I\'m asleep. Kyu hasn\'t slept in ten thousand years. Imagine how strong she\'d be after one nap.'] : ['Don\'t look at me! I\'m not crying! The arena is just very dusty and I am very scared of dust!'],
     explodia: () => QS.status('explosion') === 'done' ? ['EXPLOSION! ...I need a minute.', 'Ten million followers. One of them comments "fix the tail latency". It\'s my favourite comment.'] : null,
     hypewagon: () => QS.status('crawler') === 'done' ? ['THE SCROLLS ARE INDEXED! The runbooks can be FOUND!', 'I narrate because nobody else does. Somebody should have narrated Kyu\'s ten thousand years!'] : null,
     akane: () => QS.status('loveiswar') === 'done' ? ['Today\'s battle: I did not lose. Note that I also did not win.', 'Fencing tokens. Rising numbers. How unbearably elegant.'] : null,

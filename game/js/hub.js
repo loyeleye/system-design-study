@@ -263,6 +263,8 @@
     const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) drawCorner(x, y, t);
     drawGroundDeco();
+    // Chapter files can draw on the ground here (js/ch10.js: Gary's cold coffee while he is missing).
+    if (H.groundExtra) H.groundExtra(ctx, ts, t);
     const sv = SD.state.save;
     PAGE_SPOTS.forEach(([x, y], i) => {
       if (pageVisible(i) && !sv.pickups.includes('spot' + i + '-loop' + sv.loop)) drawSparkle(x * ts + ts / 2, y * ts + ts / 2 - 4 + Math.sin(t * 2) * 3, t);

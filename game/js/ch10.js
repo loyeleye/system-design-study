@@ -6,7 +6,7 @@
 // Cosmic Burnout Mode, who can't drop below 10% until you rebuild her as a hot standby against the clock. Then her old
 // pager goes rogue (the finale), a toilet flushes, Gary makes ONE COMMIT, and the credits roll (flags.credits).
 (function () {
-  const A = SD.arc, R = SD.run, U = SD.ui, AU = SD.audio;
+  const A = SD.arc, R = SD.run, U = SD.ui, AU = SD.audio, S = SD.state;
   const api = () => R.api;
   const rnd = a => a[Math.floor(Math.random() * a.length)];
   const sc = (C, v) => Math.round((v + C.rage) * (C.mercyScale || 1));
@@ -395,6 +395,80 @@
     { id: 'k10c', page: 'rb-exchange', rejected: 'Kyu\'s proposal, year 9,999: "A hot standby for me." Uptima: "You ARE the standby. And the primary. Efficient!"', q: { c: 'exchange', type: 'mc', q: 'The matching engine is one machine everyone depends on. How do you remove the single point of failure without breaking determinism?', opts: ['Run a hot-warm standby that replays the same sequenced input and can take over at once', 'Run two engines that match independently', 'Make the one machine bigger', 'Back it up nightly'], a: 0, why: 'Deterministic replay of one sequence keeps primary and standby identical; two independent matchers would disagree.' } }
   ];
 
+  // ---------- The Homunculus' Rules: each sin's floor bends combat one way ----------
+  // Each rule is a real system design rule, taken a little too literally. The chip on the HUD says which is on.
+  const RULES = {
+    overbook: { id: 'overbook', name: 'The Overbooking Rule', text: 'Gluttony\'s inn sells 110% of its rooms. Every hit on you is 10% bigger, but the 10% who never show up leave you +1 Capacity on turn 1.',
+      intro: [{ s: 'narr', t: 'A brass sign over the inn door: "WE SELL 110% OF OUR ROOMS. SOME GUESTS NEVER COME. THIS IS A BUSINESS RULE, NOT A RACE CONDITION."' },
+        { s: 'uptima', e: 'happy', t: 'Ooh, 110%! That\'s more than all of it! I always give 110%.' },
+        { s: 'pip', t: 'You give 0% and say 110%. That\'s a different rule.' }] },
+    exchange: { id: 'exchange', name: 'The Rule of Equivalent Exchange', text: 'Every debit needs a matching credit. Whenever you take SLA damage, half of it is credited against the incident.',
+      intro: [{ s: 'narr', t: 'Chalk circles cover the Counting House floor. In the middle, in neat letters: "NOTHING IS TAKEN WITHOUT SOMETHING BEING GIVEN. DOUBLE-ENTRY, ALWAYS."' },
+        { s: 'pip', t: 'Double-entry bookkeeping. Every hit we take is a debit, so the incident has to book the credit. Greed hates this rule.' },
+        { s: 'uptima', e: 'confused', t: 'So if I get hit, the monster gets hit too? Then I should get hit a lot! For the team!' },
+        { s: 'pip', t: 'Half. It credits half. Please don\'t.' }] },
+    reconcile: { id: 'reconcile', name: 'The Rule of Reconciliation', text: 'Every third turn, Envy\'s mirror wallets are checked against the ledger. The double charges are found and refunded: heal 3 SLA.',
+      intro: [{ s: 'narr', t: 'Every mirror in the hall shows a different balance. A clock on the wall chimes every third turn, and an accountant in a tiny visor checks them all against one ledger.' },
+        { s: 'pip', t: 'A reconciliation job. The wallet balance is only a cache; the ledger is the truth. Every few turns, the difference gets refunded.' },
+        { s: 'uptima', e: 'happy', t: 'I reconcile too! Every time a number looks wrong, I restart it.' }] },
+    oneline: { id: 'oneline', name: 'The Rule of One Line', text: 'Every order stands in one line, and Uptima is always first. Turn 1: -1 Capacity, because her order goes first. Turn 2: +1 Capacity, because her order was croissants and she has left the line to eat them.',
+      intro: [{ s: 'narr', t: 'One line of orders runs the length of the Exchange, through the doors and out into the street. At the front, holding ticket number 0, stands Uptima.' },
+        { s: 'uptima', e: 'happy', t: 'First! I\'m first! What am I first for?' },
+        { s: 'pip', t: 'A sequencer. Everything goes through one ordered log, so every replica sees the same order. You\'re event 0. You ordered... croissants.' },
+        { s: 'uptima', e: 'happy', t: 'Deterministically delicious!' }] }
+  };
+  const ruleOn = C => {
+    const r = S.save.run;
+    if (!C || C.tutorial || !r || r.ch !== 10 || !r.arc) return null;
+    const fl = SD.chapters[10].floors[r.arc.floor];
+    return fl && fl.rule ? fl.rule.id : null;
+  };
+  // js/meta.js loads after the chapter files, so the rules register once the page has loaded.
+  const rules = () => {
+    if (!SD.meta || !SD.meta.on) return;
+    SD.meta.addMod('dmg', (v, C) => ruleOn(C) === 'overbook' && v > 0 ? Math.ceil(v * 1.1) : v);
+    SD.meta.addMod('energy', (v, C) => {
+      const id = ruleOn(C);
+      if (id === 'overbook' && C.turn === 1) return v + 1;
+      if (id === 'oneline' && C.turn === 1) return Math.max(0, v - 1);
+      if (id === 'oneline' && C.turn === 2) return v + 1;
+      return v;
+    });
+    SD.meta.on('fight', (eid, C) => { if (ruleOn(C)) C.ruleTaken = 0; });
+    SD.meta.on('turnEnd', C => {
+      const id = ruleOn(C), r = S.save.run;
+      if (id === 'exchange') {
+        const debit = (C.taken || 0) - (C.ruleTaken || 0);
+        C.ruleTaken = C.taken || 0;
+        const credit = Math.floor(debit / 2);
+        if (credit > 0 && C.sev > 0) { C.sev = Math.max(0, C.sev - credit); C.log += ` Equivalent Exchange: the incident books a ${credit} credit.`; }
+      } else if (id === 'reconcile' && C.turn % 3 === 0 && r.sla > 0) {
+        const n = Math.min(3, S.maxSla() - r.sla);
+        if (n > 0) { r.sla += n; C.log += ` Reconciliation: the ledger found ${n} double charge${n === 1 ? '' : 's'}. +${n} SLA.`; }
+      }
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', rules); else rules();
+
+  // Pingsby goes grey while the Cloud is down: from Gary leaving (chapter 9's end) until chapter 10 is cleared.
+  // The hub calls groundExtra every frame, so the class follows the save without other changes to js/hub.js.
+  // Gary's cold coffee, left where he always stands (22, 6), until he comes back.
+  if (SD.hub) SD.hub.groundExtra = (ctx, ts) => {
+    const f = flags(), grey = !!(f.garyGone && !f.ch10);
+    if (document.body.classList.contains('pingsby-grey') !== grey) document.body.classList.toggle('pingsby-grey', grey);
+    if (!grey) return;
+    const x = 22 * ts + ts / 2, y = 6 * ts + ts * 0.78, s = ts / 32;
+    ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = '#2b2340';
+    ctx.fillStyle = 'rgba(43,35,64,.18)'; ctx.beginPath(); ctx.ellipse(x, y + 7 * s, 8 * s, 2.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f4efe6'; ctx.fillRect(x - 5 * s, y - 6 * s, 10 * s, 12 * s); ctx.strokeRect(x - 5 * s, y - 6 * s, 10 * s, 12 * s);
+    ctx.fillStyle = '#4a2c1a'; ctx.fillRect(x - 4 * s, y - 5 * s, 8 * s, 2.5 * s);
+    ctx.beginPath(); ctx.arc(x + 6.5 * s, y, 3 * s, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+    ctx.restore();
+  };
+  const greyCss = document.createElement('style');
+  greyCss.textContent = 'body.pingsby-grey #hub-canvas{filter:grayscale(.92) brightness(.9) contrast(.95);transition:filter 1.2s}';
+  document.head.appendChild(greyCss);
+
   // ---------- The chapter ----------
   SD.chapters[10] = {
     n: 10, arc: true, northRoad: true, after: 9,
@@ -406,12 +480,12 @@
     pools: { 1: ['doublebook', 'shadowhero'], 2: ['chargeback', 'doublebook', 'shadowhero'], 3: ['forgedcoin', 'chargeback', 'shadowhero', 'orderflood'], elite: ['homunculus'] },
     plan: [['fight', 'sighting', 'event'], ['fight', 'elite', 'cafe'], ['sighting', 'fight', 'camp'], ['fight', 'event', 'fight']],
     floors: [
-      { boss: 'gluttony', gate: 'FLOOR 1 · GLUTTONY · THE INN THAT IS ALWAYS FULL', pool: ['doublebook', 'shadowhero'], before: 'c10dawn', after: 'c10f1after', page: 'rb-hotel',
+      { boss: 'gluttony', gate: 'FLOOR 1 · GLUTTONY · THE INN THAT IS ALWAYS FULL', pool: ['doublebook', 'shadowhero'], before: 'c10dawn', after: 'c10f1after', page: 'rb-hotel', rule: RULES.overbook,
         again: ['Gluttony burps. Somewhere, a room is released.'] },
-      { boss: 'greed', gate: 'FLOOR 2 · GREED · THE COUNTING HOUSE', pool: ['chargeback', 'shadowhero'], after: 'c10f2after', reveal: 'g8', page: 'rb-pay' },
-      { boss: 'envy', gate: 'FLOOR 3 · ENVY · THE HALL OF MIRRORS', pool: ['forgedcoin', 'chargeback', 'shadowhero'], after: 'c10f3after', page: 'rb-wallet' },
+      { boss: 'greed', gate: 'FLOOR 2 · GREED · THE COUNTING HOUSE', pool: ['chargeback', 'shadowhero'], after: 'c10f2after', reveal: 'g8', page: 'rb-pay', rule: RULES.exchange },
+      { boss: 'envy', gate: 'FLOOR 3 · ENVY · THE HALL OF MIRRORS', pool: ['forgedcoin', 'chargeback', 'shadowhero'], after: 'c10f3after', page: 'rb-wallet', rule: RULES.reconcile },
       { boss: 'marketopen', chain: ['marketopen', 'pride', 'kyuburnout'], links: { marketopen: 'c10toPride', pride: 'c10toKyu' },
-        gate: 'FLOOR 4 · KYU\'S EXCHANGE', pool: ['orderflood', 'shadowhero', 'forgedcoin'], reveal: 'g9', page: 'rb-exchange',
+        gate: 'FLOOR 4 · KYU\'S EXCHANGE', pool: ['orderflood', 'shadowhero', 'forgedcoin'], reveal: 'g9', page: 'rb-exchange', rule: RULES.oneline,
         plan: [['fight', 'sighting', 'fight'], ['elite', 'camp', 'event'], ['fight', 'kyu', 'fight'], ['cafe', 'fight', 'camp']] }
     ],
     // After Kyu: the pager goes rogue. Five RETRYING cards, a flush, ONE COMMIT.
@@ -435,7 +509,7 @@
 
   // ---------- Kyu, Cosmic Burnout Mode: she can't go below 10% until you rebuild her as a hot standby ----------
   const REBUILD = {
-    title: 'REBUILD: HOT STANDBY', who: 'kyu', secs: 7,
+    title: 'REBUILD: HOT STANDBY', who: 'kyu', secs: 7, firstSecs: 15,
     intro: 'She\'s at 10% and won\'t go lower. Sort each piece of the fix before the clock runs out: what the standby needs, and what would break it.',
     bins: [{ k: 'yes', label: 'Part of the fix' }, { k: 'no', label: 'Would break it' }],
     items: [
