@@ -46,8 +46,8 @@ Gary is a bald, plain-looking Principal Engineer who is mostly interested in hal
 
 The old intro was a wall of text. The new one follows "show, don't tell" and gets you fighting in about a minute.
 
-1. **A manga slideshow** (`game/js/intro.js`). Ladi asked for the intro to be "very visual", like a slideshow of the truck crashing in, rather than text. Seven framed panels, each with a caption: the office at 4:59 pm on a Friday (elevator music), a close-up of the Enter key with a CLICK, the deploy going green (WEEKEND!!), a stroll home as headlights grow, Truck-kun charging straight at the camera with a HOOOOONK, the KRA-KOOM with servers flying, and a Dark Souls-style YOU DIED. No image generator was reachable, so the panels combine Kenney's toon hero poses with scenes and a truck drawn in SVG and CSS.
-2. **The sky stage.** Uptima, the self-titled Goddess of Five Nines, admits she broke her Cloud and needs a hero. A SYSTEM window pops up, then the Hero Registration Form asks for your name.
+1. **Waking up in the heavens** (`game/js/intro.js`). Ladi asked (2026-10-18) to drop the truck slideshow and start when you first meet Uptima. The screen opens like your eyes do: black eyelids crack open on a blur of gold light, blink, then open properly as the heavens come into focus, with god rays, drifting sparkles and feathers, and a harp.
+2. **The heavens fade as Uptima turns out to be Uptima.** She starts grand and formal ("Rise, child of the mortal realm") and explains you died, hit by a truck delivering servers. Then a croissant crunch dims the light, the harp turns out to be a speaker on a cable, and by the time she admits the maid outfit is for her café job, the stage is an ordinary sky. A SYSTEM window pops up, then the Hero Registration Form asks for your name. The lines step the eyelids and the glow with `fx` (`wake`, `blink`, `open`, `glow2`, `glow1`, `glow0` in `main.js`).
 3. **The plaza.** Pip, a lost packet, introduces himself as an alarm goes off.
 4. **Tutorial fight.** A scripted Read Surge fight teaches one card (Cache-Aside) with coach text. On turn 2 the slime winds up a 99-damage stampede you cannot block. Gary walks in, does ONE COMMIT, and explains the fix in one line.
 5. **The village.** You land in Pingsby with a quest pointing at Uptima's temple.
@@ -363,7 +363,7 @@ Topic coverage is cross-checked against the public outline of Educative's *Grokk
 - `game/js/content.js` — concepts, links, cards, incidents, questions, events, specs, cast and story. Most new content goes here.
 - `game/js/state.js` — save data, levels, spaced review and mastery.
 - `game/js/audio.js` — recorded music and samples, with the synth as fallback.
-- `game/js/intro.js` — the manga slideshow panels and the truck.
+- `game/js/intro.js` — the cold open's eyelids and heavenly glow.
 - `game/js/hub.js` — the canvas village, including the east district (Guild, Forge, Pigeon Post, Grand Library, Cron's farm) and quest markers.
 - `game/js/run.js` — run map, combat, Gary, the tutorial, rewards, café, break room, events, boss.
 - `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass, ELI5 and Huh???.

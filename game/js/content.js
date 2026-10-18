@@ -942,21 +942,23 @@ SD.cast = {
 };
 
 SD.story = {
-  // Cold open. `fx` lines trigger a sound or a screen effect; `tutorial` hands over to the first fight.
+  // Cold open (js/intro.js): you open your eyes in the heavens, and the heavens fade to an ordinary sky as Uptima
+  // turns out to be Uptima. `fx` lines move the eyelids and the glow (js/main.js).
   intro: [
-    { slide: 'office', fx: 'office', s: 'narr', t: 'Friday. 4:59 PM. A perfectly normal office.' },
-    { slide: 'office', s: 'you', t: 'One tiny deploy to production before the weekend. What could possibly go wrong?' },
-    { slide: 'enter', fx: 'enter', s: 'narr', t: 'You press Enter.' },
-    { slide: 'deployed', fx: 'deployed', s: 'narr', t: 'Deploy successful. Zero alerts. You have never felt so alive.' },
-    { slide: 'street', s: 'narr', t: 'You stroll out into the evening, humming. Then you notice the headlights.' },
-    { slide: 'truck', fx: 'truck', s: 'narr', t: 'HOOOOONK!' },
-    { slide: 'crash', fx: 'crash', s: 'narr', t: 'You are hit by a truck delivering servers. The irony is not lost on anyone.' },
-    { slide: 'dead', fx: 'dead', s: 'narr', t: 'You died.' },
-    { slide: 'dead', s: 'narr', t: '...Or did you?' },
-    { s: 'uptima', e: 'confused', t: 'Oh! You\'re early. Hold on, I\'m mid-snack.', fx: 'sky' },
-    { s: 'uptima', e: 'happy', t: '*ahem* WELCOME, CHOSEN ONE! I am Uptima, Goddess of Five Nines! You died. Very sad. Anyway!' },
+    { fx: 'wake', s: 'narr', t: '...' },
+    { s: 'narr', t: 'Warmth. Light. Somewhere very far away, a harp is playing.' },
+    { fx: 'blink', s: 'narr', t: 'Your eyelids are heavy. Everything is gold and soft and blurred.' },
+    { fx: 'open', s: 'narr', t: 'You open your eyes.' },
+    { s: 'uptima', e: 'neutral', t: 'Rise, child of the mortal realm. Be not afraid.' },
+    { s: 'uptima', e: 'happy', t: 'Thy life hath ended, but thy story hath only begun. I am Uptima, Goddess of Five Nines, Keeper of the Cloud. And I have chosen thee.' },
+    { s: 'narr', t: 'You remember a Friday deploy to production. Then headlights. A lot of headlights.' },
+    { s: 'uptima', e: 'sad', t: 'Yes. A truck delivering servers. The heavens wept. Truly, a tragic and very ironic end.' },
+    { fx: 'glow2', s: 'narr', t: 'A loud crunch echoes through the heavens. The goddess is eating a croissant.' },
+    { s: 'uptima', e: 'confused', t: '...Sorry. You\'re early. I was mid-snack. Where was I? Chosen. Heavens. Weeping. Right.' },
+    { s: 'uptima', e: 'happy', t: '*ahem* WELCOME, CHOSEN ONE! You died. Very sad. Anyway!' },
+    { fx: 'glow1', s: 'narr', t: 'The harp stops. It was a speaker. You can see the cable. It runs to a power strip behind a cloud.' },
     { s: 'uptima', e: 'blush', t: 'Yes, this is a maid outfit. Goddessing doesn\'t pay. I have a part-time job at the Cache Café. Don\'t look at me.' },
-    { s: 'uptima', e: 'neutral', t: 'My kingdom runs on the Cloud. An actual cloud. It holds everything: quest logs, bakery orders, love letters, cat pictures.' },
+    { fx: 'glow0', s: 'uptima', e: 'neutral', t: 'My kingdom runs on the Cloud. An actual cloud. It holds everything: quest logs, bakery orders, love letters, cat pictures.' },
     { s: 'uptima', e: 'sad', t: 'And it keeps breaking. My last hero tried to fix it with a sword. Please do not use a sword.' },
     { s: 'system', t: '[SYSTEM] You have been isekai\'d. Class: Junior Engineer. Please rate your death from 1 to 5 stars.' }
   ],

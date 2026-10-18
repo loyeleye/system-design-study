@@ -78,7 +78,7 @@
       <ul class="links small">
         <li><b>Portraits:</b> "Character Portrait ~ Maid" by Jupiter's Daughter; "LPC Anime Portrait #2" and "Sara, Trevor, Puck Anime Portrait and Expressions" by ZaPaper, commissioned through ZeNeRIA29; "Maid YOYO" and "boy" by Aeihu; "Brown haired hero" by Ironthunder, with thanks to Markeus Brumfield and Frank Ni (all CC BY 3.0, OpenGameArt). "Animated Nordic Warrior Sprite + Bust" by Sevarihk and "Kuudere VIsual novel Sprite" by LisadiKaprio (CC BY 4.0). "Business Man" by Grahhhhh (CC0).</li>
         <li><b>Music:</b> "Local Forecast - Elevator" and "Fluffing a Duck" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0. "Enchanted Festival" by Matthew Pablo (www.matthewpablo.com), CC BY 3.0. "Kokoro no Yume" and "Kaze no Kioku" by Paul Winter (kaazoom), via Pixabay. "JRPG Epic Rock Battle Theme #1" by HydroGene, "Hot Springs Town" by Kistol, "Cozy Puzzle In-Game 1" by MintoDog, "Emotional Piano" by Centurion_of_war and "Epic Boss Battle" by Juhani Junkala (CC0).</li>
-        <li><b>Village, monsters, intro hero, emotes, particles, jingles and sound effects:</b> Kenney (www.kenney.nl), CC0.</li>
+        <li><b>Village, monsters, emotes, particles, jingles and sound effects:</b> Kenney (www.kenney.nl), CC0.</li>
         <li><b>Icons:</b> Game-icons.net by Lorc, Delapouite and contributors (CC BY 3.0).</li>
         <li><b>Fonts:</b> Fredoka and Nunito (SIL Open Font License).</li></ul>`, { title: 'CREDITS', cls: 'wide' });
   }
@@ -126,15 +126,15 @@
     else $('#t-new').onclick = coldOpen;
   };
 
-  // The cold open: an office, a truck, a goddess, then straight into a fight that Gary finishes.
+  // The cold open: you wake in the heavens (js/intro.js), the heavens fade as you meet Uptima, then straight into a
+  // fight that Gary finishes.
   U.onFx = function (fx) {
-    if (fx === 'office') AU.music('office');
-    if (fx === 'enter') AU.sfx('enter');
-    if (fx === 'deployed') { AU.sfx('levelup'); }
-    if (fx === 'truck') { AU.stop(); AU.sfx('truck'); setTimeout(() => U.shake('#stage'), 700); }
-    if (fx === 'crash') { AU.sfx('punch'); U.flash(); U.shake('#stage'); }
-    if (fx === 'dead') AU.jingle('defeat', null);
-    if (fx === 'sky') { U.stage('sky'); U.flash(); AU.music('goddess'); }
+    if (fx === 'wake') { U.stage('sky'); U.heaven(3); U.eyes('closed'); setTimeout(() => U.eyes('crack'), 500); AU.music('heaven'); }
+    if (fx === 'blink') U.eyes('half');
+    if (fx === 'open') { U.eyes('open'); AU.sfx('levelup'); }
+    if (fx === 'glow2') { U.heaven(2); AU.sfx('hit'); }
+    if (fx === 'glow1') { U.heaven(1); AU.stop(); AU.sfx('static'); }
+    if (fx === 'glow0') { U.heaven(0); AU.music('goddess'); }
     if (fx === 'alarm') { AU.sfx('alarm'); AU.music('battle'); }
     if (fx === 'gary') AU.jingle('gary', null);
   };

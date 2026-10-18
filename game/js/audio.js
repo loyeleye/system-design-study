@@ -134,6 +134,13 @@
     defeat: { bpm: 76, once: true, ch: [
       { wave: 'sawtooth', vol: 0.18, lp: 1300, vib: true, n: 'G3 - F#3 - F3 - E3 - - - - - . .' }
     ] },
+    // The cold open's heavens: harp arpeggios over a slow-swelling pad (Cmaj7, Am7, Fmaj7, G).
+    heaven: { bpm: 72, ch: [
+      { wave: 'triangle', vol: 0.09, n: 'C5 E5 G5 B5 C6 B5 G5 E5 A4 C5 E5 G5 A5 G5 E5 C5 F4 A4 C5 E5 F5 E5 C5 A4 G4 B4 D5 G5 B5 G5 D5 B4' },
+      { wave: 'sine', vol: 0.07, a: 0.9, r: 0.8, n: 'E4 - - - - - - - E4 - - - - - - - C4 - - - - - - - D4 - - - - - - -' },
+      { wave: 'sine', vol: 0.06, a: 0.9, r: 0.8, n: 'G4 - - - - - - - C5 - - - - - - - A4 - - - - - - - B4 - - - - - - -' },
+      { wave: 'sine', vol: 0.16, a: 0.4, r: 0.6, n: 'C3 - - - - - - - A2 - - - - - - - F2 - - - - - - - G2 - - - - - - -' }
+    ] },
     gary: { bpm: 92, once: true, ch: [
       { wave: 'sawtooth', vol: 0.12, lp: 1600, n: 'D3 . D3 . D3 - - - - - . . . . . .' },
       { wave: 'sawtooth', vol: 0.1, lp: 1600, n: 'A3 . A3 . A3 - - - - - . . . . . .' },
@@ -170,7 +177,7 @@
   // ---------- Recorded music and samples ----------
   const BASE = 'assets/audio/';
   // mapN is chapter N's dungeon map; chapters without one use explore.
-  const SONG = { title: 'm-opening', office: 'm-office', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild',
+  const SONG = { title: 'm-opening', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild',
     map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5' };
   // Songs without a synth version fall back to this one if the file fails to load.
   const FALLBACK = { quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore' };
@@ -230,7 +237,7 @@
         T.ch.forEach(c => {
           if (c.drums) { const k = c.drums[step % c.drums.length]; if (k !== '.') drum(k, next, gain); return; }
           const e = c.ev[step % c.len];
-          if (e && e.f) tone({ wave: c.wave, f: e.f, t: next, dur: e.len * stepDur * 0.92, vol: c.vol, bus: gain, lp: c.lp, vib: c.vib, r: 0.04 });
+          if (e && e.f) tone({ wave: c.wave, f: e.f, t: next, dur: e.len * stepDur * 0.92, vol: c.vol, bus: gain, lp: c.lp, vib: c.vib, a: c.a, r: c.r || 0.04 });
         });
         step++; next += stepDur;
       }
@@ -288,12 +295,6 @@
       hiss({ t, dur: 0.9, vol: 0.6, type: 'lowpass', f: 3000, f2: 120 });
       tone({ wave: 'square', f: 90, f2: 30, t, dur: 0.6, vol: 0.18, r: 0.4 });
     },
-    truck: t => {
-      [233, 277].forEach(f => tone({ wave: 'square', f, t, dur: 0.7, vol: 0.08, vib: true, lp: 2200, r: 0.05 }));
-      hiss({ t: t + 0.75, dur: 0.8, vol: 0.7, type: 'lowpass', f: 4000, f2: 100 });
-      drum('k', t + 0.75, sfxBus);
-    },
-    enter: t => { hiss({ t, dur: 0.03, vol: 0.3, f: 3000 }); tone({ wave: 'square', f: 1200, t, dur: 0.02, vol: 0.04 }); },
     alarm: t => [0, 1, 2].forEach(i => { tone({ wave: 'square', f: 880, t: t + i * 0.28, dur: 0.13, vol: 0.07 }); tone({ wave: 'square', f: 660, t: t + i * 0.28 + 0.14, dur: 0.13, vol: 0.07 }); }),
     whoosh: t => hiss({ t, dur: 0.35, vol: 0.2, type: 'bandpass', f: 300, f2: 3000 })
   };
