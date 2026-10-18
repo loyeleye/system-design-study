@@ -4,7 +4,7 @@
   // The east district (Guild, Forge, Pigeon Post, Grand Library and Cron's farm) opens up the town for quests.
   const MAP = [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'T..............................................T',
+    'T..................#N#.........................T',
     'T.#######......L.......#######....#########....T',
     'T.#######..............#######....#########.###T',
     'T.#######....,,,,,,....#######....#########.###T',
@@ -30,9 +30,10 @@
     A: { name: 'GODDESS TEMPLE' }, C: { name: 'CACHE CAFÉ' },
     H: { name: "MIO'S TREEHOUSE" }, W: { name: "SEYMOUR'S BUNKER" },
     G: { name: 'DUNGEON (PROD)' }, B: { name: 'QUEST BOARD' },
-    U: { name: "ADVENTURERS' GUILD" }, F: { name: 'FORGE' }, P: { name: 'PIGEON POST' }, K: { name: 'GRAND LIBRARY' }
+    U: { name: "ADVENTURERS' GUILD" }, F: { name: 'FORGE' }, P: { name: 'PIGEON POST' }, K: { name: 'GRAND LIBRARY' },
+    N: { name: 'NORTH ROAD' }
   };
-  const DOORS = 'ACHWGUFPK';
+  const DOORS = 'ACHWGUFPKN';
   // Dirt paths from each door to the plaza and the bridge (drawn as stepping stones, walkable).
   const PATHS = [[5, 6], [26, 6], ...[5, 6, 7, 8, 9, 10, 11, 12].map(x => [x, 7]), ...[19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 7]),
     ...[10, 11, 12, 13].map(y => [15, y]), ...[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 14]),

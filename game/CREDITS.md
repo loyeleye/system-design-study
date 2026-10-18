@@ -1,5 +1,7 @@
 # Credits and licenses
 
+Chapters 7 to 10 (the North Road arc) are credited in [CREDITS-arc.md](CREDITS-arc.md).
+
 ## Art
 
 | Asset | Author and source | License | Used for |

@@ -176,6 +176,7 @@
       if (c === 'B') await board();
       if (c === 'gary') await gary();
       if (c === 'G') await gate();
+      if (c === 'N') await SD.northRoad.enter();
     } finally {
       atDoor = false;
       if (!$('#screen-hub').hidden) { SD.hub.stepOffDoor(); SD.hub.start(); M.hud(); }
@@ -396,7 +397,7 @@
     if (SD.goddess.due()) await SD.goddess.oops();
     const primed = sv.flags.primedLoop === sv.loop;
     // Each cleared chapter opens the next dungeon; earlier ones stay open for practice.
-    const open = Object.keys(SD.chapters).map(Number).filter(ch => ch === 1 || sv.flags['ch' + (ch - 1)]);
+    const open = Object.keys(SD.chapters).map(Number).filter(ch => !SD.chapters[ch].arc && (ch === 1 || sv.flags['ch' + (ch - 1)]));
     const latest = open[open.length - 1];
     const dungeons = open.slice().reverse().map(ch => {
       const c = SD.chapters[ch];

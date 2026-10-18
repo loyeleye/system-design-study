@@ -1,0 +1,2 @@
+// Made by tools/village_art.py: sizes of the art and where each terrain tile sits.
+SD.arcArt = {"objects": {"nr-dungeon": [88, 129], "nr-cart": [45, 42], "nr-gate": [94, 82], "nr-waystation": [141, 137], "nr-arena": [164, 120], "nr-signpost": [24, 44], "nr-exchange": [176, 201], "nr-rock": [44, 30], "nr-camp": [134, 120], "nr-milestone": [38, 44]}, "terrain": {}, "chars": {"kyu": {"w": 22, "h": 53, "n": [4, 0, 0, 0]}, "latency": {"w": 28, "h": 55, "n": [4, 0, 0, 0]}, "hero1023": {"w": 20, "h": 52, "n": [4, 0, 0, 0]}, "hero500": {"w": 30, "h": 54, "n": [4, 0, 0, 0]}}};
