@@ -28,7 +28,7 @@ SD.wb.parts = {
   notify: { name: 'Push Notifications', pl: true, icon: 'megaphone', concept: 'queue', does: 'wake up phones that are offline with a push message', mix: ['socket', 'queue'] },
   transcode: { name: 'Transcoders', pl: true, icon: 'clockwork', concept: 'blob', does: 'turn one uploaded video into many resolutions and formats', mix: ['worker', 'cdn'] },
   stream: { name: 'Stream Processor', icon: 'histogram', concept: 'streams', does: 'counts events in time windows as they arrive', mix: ['queue', 'sql'] },
-  hold: { name: 'Seat Holds', pl: true, icon: 'padlock', concept: 'booking', does: 'reserve one seat for one fan for a few minutes, atomically, then lets it go', mix: ['cache', 'sql'] },
+  hold: { name: 'Seat Holds', pl: true, icon: 'padlock', concept: 'booking', does: 'reserve one seat for one fan for a few minutes, atomically, then let it go', mix: ['cache', 'sql'] },
   waitroom: { name: 'Waiting Room', icon: 'hourglass', concept: 'backpressure', does: 'lines visitors up and admits them at a rate the system can handle', mix: ['limiter', 'lb'] }
 };
 

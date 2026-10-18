@@ -1347,6 +1347,14 @@
   }
 
   // ---------- Bosses: the Goblin King of Links (URL shortener), Lord Latency (rate limiter) ----------
+  // Design Board (js/board.js): draw the design yourself, trace its flows and defend a box before the fight.
+  // Returns null when this boss has no board, else { ok } after adding its buffs.
+  async function boardStep(eid, buffs) {
+    if (!SD.board || !SD.board.forBoss(eid)) return null;
+    const b = await SD.board.bossStep(eid);
+    buffs.sevScale *= b.sevMult; buffs.bonusEnergy += b.bonusEnergy;
+    return b;
+  }
   async function boss(done) {
     if (hook('boss', bossId(), done)) return;
     if ((S.save.run.ch || 1) === 2) return boss2(done);
@@ -1367,13 +1375,15 @@
     if (r1.ok) { buffs.sevScale = 0.85; U.system('SCOPE LOCKED!', 'Clear requirements: the Goblin King starts 15% weaker.', 'gold'); }
     const r2 = await Q.ask({ c: 'estimation', type: 'num', q: 'Step 2, Estimation. 1 billion redirects a day. Average redirect QPS?', unit: 'QPS', lo: 8000, hi: 15000, ans: '~11,600 (10^9 / 86,400)', why: 'About 10^4 QPS average, so peaks of 20-30k. That says: cache the hot codes, and run many stateless redirect servers.' }, { title: '[BOSS] ESTIMATION', context: 'Delivery framework · 2 of 3' });
     if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND!', '+1 Capacity on turn 1.', 'gold'); }
-    const api = ['POST /urls {long_url} → {short_code}; GET /{code} → 302 to long_url', 'GET /create?url=…; POST /{code} to follow it', 'PUT /urls/{long_url} → returns the page', 'POST /redirect {code} → 200 with the long URL in JSON'];
-    const r3 = await Q.ask({ c: 'delivery', type: 'mc', q: 'Step 3, API. Which API fits?', opts: api, a: 0, why: 'Creating is a POST that returns the code. Following a link is a plain GET answered with a redirect, so browsers just work.' }, { title: '[BOSS] API', context: 'Delivery framework · 3 of 3' });
+    const api = ['POST /urls {long_url} → {code}; GET /{code} → 302 to long_url', 'GET /urls?long_url=… → {code}; GET /{code} → 302 to long_url', 'POST /urls {long_url} → {code}; GET /{code} → 200 {long_url}', 'POST /graphql: a createUrl mutation and a resolveCode query'];
+    const apiNo = [null, 'GET must be safe: link previewers, crawlers and caches call it freely and would create links nobody asked for. Creating is a POST.', 'A browser would just show the JSON. Following a link needs a redirect status (302) with a Location header.', 'GraphQL suits clients querying flexible, related data. A clicked link sends a plain GET to /{code}, which a GraphQL POST cannot answer.'];
+    const r3 = await Q.ask({ c: 'delivery', type: 'mc', q: 'Step 3, API. Which API fits?', opts: api, a: 0, no: apiNo, why: 'Creating is a POST that returns the code. Following a link is a plain GET answered with a 302 redirect, so browsers just work.' },{ title: '[BOSS] API', context: 'Delivery framework · 3 of 3' });
     if (r3.ok) { buffs.startCard = 'counter'; U.system('DESIGN READY!', 'Counter Ranges + Base62 starts in your hand.', 'gold'); }
-    S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok };
+    const bd = await boardStep('ledger', buffs);
+    S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok, board: bd && bd.ok };
     S.persist();
     U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now build it under load. At half severity, expect a deep dive.', 'gold');
-    fight('ledger', { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
+    fight('ledger', { boss: true, reveal: r1.ok || r3.ok || !!(bd && bd.ok), sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
   }
   async function boss2() {
     AU.music('boss');
@@ -1392,13 +1402,15 @@
     if (r1.ok) { buffs.sevScale = 0.85; U.system('SCOPE LOCKED!', 'Clear requirements: Lord Latency starts 15% weaker.', 'gold'); }
     const r2 = await Q.ask(SD.questions.find(q => q.id === 'e5'), { title: '[BOSS] ESTIMATION', context: 'Delivery framework · 2 of 3' });
     if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND!', '+1 Capacity on turn 1.', 'gold'); }
-    const algos = ['Token bucket per user', 'Fixed window counter per user', 'Sliding window log per user', 'Leaky bucket per user'];
-    const r3 = await Q.ask({ c: 'ratelimit', type: 'mc', q: 'Step 3, Design. Clients may burst a little but must average 100 requests a minute. Which algorithm?', opts: algos, a: 0, why: 'A token bucket allows short bursts up to its size and enforces the average with its refill rate. Fixed windows let 2x through at the edges, a sliding log stores every timestamp, and a leaky bucket smooths output instead of allowing bursts.' }, { title: '[BOSS] DESIGN', context: 'Delivery framework · 3 of 3' });
+    const algos = ['Token bucket per user', 'Fixed window counter per user', 'Concurrency limit per user', 'Leaky bucket per user'];
+    const algosNo = [null, 'Its burst is the whole quota at once, and up to 2x across a window edge. You cannot tune a small burst apart from the rate.', 'It caps requests in flight at once, which protects slow backends, but fast sequential calls never hit it.', 'It drains at a fixed rate, so bursts queue or drop instead of passing. Use it when the downstream needs a smooth flow.'];
+    const r3 = await Q.ask({ c: 'ratelimit', type: 'mc', q: 'Step 3, Design. Clients may burst a little but must average 100 requests a minute. Which algorithm?', opts: algos, a: 0, no: algosNo, why: 'A token bucket allows short bursts up to its size and enforces the average with its refill rate. A fixed window lets 2x through at the edges, and a leaky bucket smooths output instead of allowing bursts.' },{ title: '[BOSS] DESIGN', context: 'Delivery framework · 3 of 3' });
     if (r3.ok) { buffs.startCard = 'tokenbucket'; U.system('DESIGN READY!', 'Token Bucket starts in your hand.', 'gold'); }
-    S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok };
+    const bd = await boardStep('latencyboss', buffs);
+    S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok, board: bd && bd.ok };
     S.persist();
     U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now hold the line under his legions. At half severity, expect a deep dive.', 'gold');
-    fight('latencyboss', { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
+    fight('latencyboss', { boss: true, reveal: r1.ok || r3.ok || !!(bd && bd.ok), sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
   }
 
   // Chapter 3 onwards: each boss's framework steps live in SD.bossDesign (content.js).
@@ -1413,7 +1425,9 @@
     const est = typeof d.est === 'string' ? SD.questions.find(q => q.id === d.est) : Object.assign({ type: 'num' }, d.est);
     const r2 = await Q.ask(est, { title: '[BOSS] ESTIMATION', context: 'Delivery framework · 2 of 3' });
     if (r2.ok) { buffs.bonusEnergy = 1; U.system('NUMBERS IN HAND!', '+1 Capacity on turn 1.', 'gold'); }
-    const r3 = await Q.ask(Object.assign({ type: 'mc' }, d.design), { title: '[BOSS] DESIGN', context: 'Delivery framework · 3 of 3' });
+    // With a Design Board the player draws the design; otherwise the boss's multiple choice design question.
+    const bd = await boardStep(eid, buffs);
+    const r3 = bd || await Q.ask(Object.assign({ type: 'mc' }, d.design), { title: '[BOSS] DESIGN', context: 'Delivery framework · 3 of 3' });
     if (r3.ok) { buffs.startCard = d.startCard; U.system('DESIGN READY!', `${U.esc(SD.cards[d.startCard].name)} starts in your hand.`, 'gold'); }
     S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok };
     S.persist();

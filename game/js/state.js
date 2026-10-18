@@ -179,6 +179,13 @@
     return Object.keys(S.save.concepts).filter(id => SD.concepts[id] && SD.concepts[id].zone <= ch && S.save.concepts[id].seen && S.save.concepts[id].due <= now).length;
   };
   S.pickQuestion = function (conceptId, avoid) {
+    // Typed answers (js/explain-data.js): about one time in three, once you've answered the concept right before,
+    // explain it in your own words instead of picking an option. Menu > Typed answers turns them off.
+    const typed = (SD.explain || []).filter(q => q.c === conceptId && !(avoid || []).includes(q.id));
+    const c = S.save.concepts[conceptId];
+    if (typed.length && S.save.typed !== false && c && c.hist.some(h => h.ok) && Math.random() < 1 / 3) {
+      return typed[Math.floor(Math.random() * typed.length)];
+    }
     const qs = SD.questions.filter(q => q.c === conceptId && !(avoid || []).includes(q.id));
     const list = qs.length ? qs : SD.questions.filter(q => q.c === conceptId);
     return list[Math.floor(Math.random() * list.length)];

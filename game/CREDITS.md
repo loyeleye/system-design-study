@@ -20,6 +20,12 @@ The other portraits are cut by `tools/portraits.py`. Everything else (Gary, Pip,
 
 Smudge's rebuild-the-diagram loop is inspired by InterviewReady's [The Joy of System Design](https://github.com/InterviewReady/joy-of-system-design) (MIT); its diagrams, text and code are written fresh for this game.
 
+## Model
+
+| Asset | Author and source | License | Used for |
+| --- | --- | --- | --- |
+| potion-base-8M (`assets/model`, quantized to int8) | [MinishLab](https://github.com/MinishLab/model2vec), https://huggingface.co/minishlab/potion-base-8M | MIT (`assets/model/LICENSE`) | Checking typed answers on your device (`js/embed.js`); see `assets/model/README.md` |
+
 ## Music
 
 | Track | Author and source | License | Plays |
