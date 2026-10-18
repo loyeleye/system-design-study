@@ -113,7 +113,8 @@
             done: '<p class="small"><b>Back-of-the-envelope estimation</b> tells you which problems are real. Hundreds of reads a second and a couple of hundred gigabytes: one good database with a cache in front, not forty servers.</p>'
           } },
           { say: [['bru', 'Two hundred views a second and a hundred and eighty gigabytes. One good server and a cache! The Guild Master owes me lunch.'],
-            ['bru', 'And you are officially registered! Rank E. Everyone starts at E. Except Kaito, who started at E and insists it stands for Excellent.']] }] }
+            ['bru', () => S.rank() === 'E' ? 'And you are officially registered! Rank E. Everyone starts at E. Except Kaito, who started at E and insists it stands for Excellent.'
+              : `And you are officially registered! Rank ${S.rank()}?! Everyone starts at E. You skipped the paperwork AND the queue. Kaito is going to be unbearable.`]] }] }
       ]
     },
     {
@@ -660,7 +661,7 @@
   const QUIT = {};
   async function act(q, s, a) {
     if (a.music) AU.music(a.music);
-    if (a.say) await U.dialog(a.say.map(([w, t, e]) => ({ s: w, t, e })));
+    if (a.say) await U.dialog(a.say.map(([w, t, e]) => ({ s: w, t: typeof t === 'function' ? t() : t, e })));
     if (a.item) { s.items.push(a.item); AU.sfx('coin'); U.system('ITEM GET!', esc(q.items[a.item])); }
     if (a.take) s.items = s.items.filter(x => x !== a.take);
     if (a.game) {
@@ -755,8 +756,14 @@
   };
 
   // ---------- Villagers with nothing quest-related to say ----------
+  // Bru reads your rank off the Guild ledger, so her line keeps up with it. A line can be a function of the save.
+  const RANK_PUN = {
+    E: 'E for... Effort! That is what I tell everyone.', D: 'D for Diligent! Not Delayed. I checked.',
+    C: 'C for Capable! Kaito is C too. He says it stands for Champion. It does not.', B: 'B for Brave! Or Busy. You are definitely Busy.',
+    A: 'A for Ace! The Guild Master wants your autograph. On a form, in triplicate.', S: 'S for... Sir? Ma\'am? Legend! I have never stamped an S before. My hand is shaking.'
+  };
   const IDLE = {
-    bru: ['Welcome back! The quest board is right here. Please do not refresh it ten thousand times a minute.', 'Your rank is E! E for... Effort! That is what I tell everyone.', 'Kaito asked if the Guild offers an S-rank for "vision". It does not.'],
+    bru: ['Welcome back! The quest board is right here. Please do not refresh it ten thousand times a minute.', () => `Your rank is ${S.rank()}! ${RANK_PUN[S.rank()]}`, 'Kaito asked if the Guild offers an S-rank for "vision". It does not.'],
     ayo: ['One anvil. Several apprentices now. Don\'t make it weird.', 'HA! Sword #212 bent this morning. The post-mortem is pinned by the door. Blameless, of course. It was the sword\'s fault.', 'My fire runs on-prem. When the Cloud goes down, come and warm your hands.', "Mio's class works hard. They also hit everything. Including each other. With buckets.", 'Plot Devices? I polish them for you. Free. Don\'t tell anyone.'],
     coo: ['Coo. Every letter numbered, every repeat ignored. The Post has never been calmer.', 'The Dead Letter Box has three letters to "undefined" today. Undefined never writes back.', 'Coo-ah. Priority post to Heaven is two snacks extra.'],
     lexi: ['Silence in the library! Unless you are asking about the Forbidden Index. Then speak freely.', 'The Index has two columns: title and author. They are the strongest columns.', 'Kaito borrowed his own memoir again.'],
@@ -769,7 +776,8 @@
     const k = 'idle-' + who, i = sv.flags[k] || 0;
     sv.flags[k] = i + 1; S.persist();
     const lines = IDLE[who] || ['...'];
-    await U.dialog([{ s: who, t: lines[i % lines.length] }]);
+    const l = lines[i % lines.length];
+    await U.dialog([{ s: who, t: typeof l === 'function' ? l() : l }]);
   };
 
   // The Adventurers' Guild: Bru's desk and the quest log.
