@@ -772,14 +772,32 @@
     if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {
       C.deepAsked = true;
       renderCombat();
-      // Pick the id once: a rnd() inside find() rolls again for every question and can match none.
-      const id = rnd(C.e.deep), q = SD.questions.find(x => x.id === id);
-      const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."' });
-      if (r.ok) { mitigate(16, `DEEP DIVE LANDED! ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
-      else C.log = `The deep dive slipped. ${C.e.short} cackles and presses on.`;
+      if (C.e.chain) await deepChain(C.e.chain);
+      else {
+        // Pick the id once: a rnd() inside find() rolls again for every question and can match none.
+        const id = rnd(C.e.deep), q = SD.questions.find(x => x.id === id);
+        const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."' });
+        if (r.ok) { mitigate(16, `DEEP DIVE LANDED! ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
+        else C.log = `The deep dive slipped. ${C.e.short} cackles and presses on.`;
+      }
       if (settle()) return;
     }
     renderCombat();
+  }
+
+  // A boss's counter-question chain: the opening question, then follow-ups that push on your answer ("and if Redis
+  // restarts?"), the way interviewers probe. A wrong answer ends the chain; each right one hits harder.
+  async function deepChain(chain) {
+    let right = 0;
+    for (let i = 0; i < chain.length; i++) {
+      const r = await Q.ask(chain[i], { title: '[BOSS] DEEP DIVE', context: i ? `Counter-question ${i} of ${chain.length - 1}: the interviewer pushes on your answer.` : 'The interviewer leans in: "Go deeper."' });
+      if (!r.ok) break;
+      right++;
+    }
+    const all = right === chain.length;
+    if (!right) C.log = `The deep dive slipped. ${C.e.short} cackles and presses on.`;
+    else if (all) { mitigate(8 * right + 6, `DEEP DIVE LANDED! You held up to every counter-question. ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
+    else { mitigate(8 * right, `${right} of ${chain.length} deep-dive answers held before a counter-question caught you.`, 'hit'); AU.sfx('hit'); }
   }
 
   function absorb(n, order) {
