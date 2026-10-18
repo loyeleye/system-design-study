@@ -61,7 +61,9 @@ for name, key in (json.load(open(CHARS)).items() if os.path.exists(CHARS) else [
     rows = []
     frames = meta['states'][0]['frames'] if 'states' in meta else meta['frames']
     anims = frames.get('animations', {})
-    anim = next(iter(anims.values()), {})
+    # A walk cycle wins over an idle one; the manifest says which it is, so standing walkers stand still.
+    walk = next((k for k in anims if 'walk' in k.lower()), None)
+    anim = anims[walk] if walk else next(iter(anims.values()), {})
     for dr in DIRS:
         row = [Image.open(os.path.join(d, frames['rotations'][dr])).convert('RGBA')]
         row += [Image.open(os.path.join(d, f)).convert('RGBA') for f in anim.get(dr, [])]
@@ -81,7 +83,7 @@ for name, key in (json.load(open(CHARS)).items() if os.path.exists(CHARS) else [
         for ci, im in enumerate(r):
             out.alpha_composite(im.crop((x0, box[1], x1, box[3])), (ci * fw, ri * fh))
     save(out, 'c-' + name)
-    manifest['chars'][name] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows]}
+    manifest['chars'][name] = dict({'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows]}, **({'walk': 1} if walk else {}))
 
 VAR = sys.argv[4] if len(sys.argv) > 4 else 'villageArt'
 open(sys.argv[3], 'w').write('// Made by tools/village_art.py: sizes of the art and where each terrain tile sits.\nSD.' + VAR + ' = ' + json.dumps(manifest) + ';\n')

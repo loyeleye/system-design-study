@@ -24,7 +24,7 @@ The story and the design decisions live in the "Chapters 7–10" Claude Doc. Thi
 | `game/js/northroad.js` | The North Road overworld and its screen |
 | `game/js/ch8.js`, `ch9.js`, `ch10.js` | Chapters 8 (the Tournament of Power Levels), 9 (the Abyss Beneath the Temple) and 10 (the Promised Day), in the same shape as `ch7.js` |
 | `game/js/roadquests.js` | North Road quests with Plot Devices that work on the road |
-| `game/js/sidequests.js` | Chapter 7-10 side quests that pay shards: Aigerim's Rare Shelf quest, five new characters (Suzu, Baldwin, Explodia, Hypewagon, President Akane), Hero #12's vending machine, Uptima's Purification Consulting, Wen's Packed Lunch and Missing, One Gary. Also the timed sorting minigame (`SD.games.rushSort`) and the Cryptic Note's effect |
+| `game/js/sidequests.js` | Chapter 7-10 side quests that pay shards: Aigerim's Rare Shelf quest, five new characters (Suzu, Zen, Explodia, Hypewagon, President Akane), Hero #12's vending machine, Uptima's Purification Consulting, Wen's Packed Lunch and Missing, One Gary. Also the timed sorting minigame (`SD.games.rushSort`) and the Cryptic Note's effect |
 | `game/js/debug.js` | **Testing only; remove it and its script tag before release.** `?debug&ch=9&rank=A&at=run&floor=3&quests=done` starts on any chapter, rank, place or floor, on a separate save. In the published game, where the link can't change, **Menu > Debug start** switches it on or off (a localStorage key) and reloads; then the 🐞 button picks the chapter and rank |
 | `game/js/arc-art.js`, `arc-dungeon-art.js`, `arc-battle-art.js` | Art manifests (made by `tools/village_art.py` and `tools/arc_art.py`) |
 | `game/tools/arc_art.py` | Builds the arc's monsters, backdrops and `arc-battle-art.js` from PixelLab downloads |
@@ -59,11 +59,14 @@ These are the only edits to existing files. Each one is small, so a merge only n
    - `complete()` pays `q.shards` when set, and a quest without a `device` shows its `payoff` instead of a Plot Device.
    - The completed list shows shards for device-less quests, and the devices tab lists only quests with a device.
 8. **`game/js/peddler.js`**: Aigerim's six Ancient cards and the Rare Shelf (one rare or Ancient card a loop, 500 or 750 shards), opened by `flags.aigShelf` from her quest.
-9. **`game/js/hub.js`**: Gary's villager entry gets `roam`, so he is gone from Pingsby from the end of chapter 9 (`flags.garyGone`) until chapter 10 is cleared.
-10. **`game/js/bestiary-data.js`**: interview notes for the chapter 9 and 10 enemies.
-11. **`game/index.html`**: `ch8.js`, `ch9.js`, `ch10.js` and `roadquests.js` after `ch7.js`; `sidequests.js` and `debug.js` after `northroad.js`.
+9. **`game/js/hub.js`**: Gary's villager entry gets `roam`, so he is gone from Pingsby from the end of chapter 9 (`flags.garyGone`) until chapter 10 is cleared. `draw()` also calls an optional `H.groundExtra(ctx, ts, t)` after the ground decorations; `ch10.js` uses it to leave Gary's cold coffee where he stood.
+10. **Pingsby goes grey** through the same `H.groundExtra` hook: `ch10.js` sets `body.pingsby-grey` (a greyscale filter on `#hub-canvas`) from `flags.garyGone` until `flags.ch10`.
+11. **`game/js/bestiary-data.js`**: interview notes for the chapter 9 and 10 enemies.
+12. **`game/index.html`**: `ch8.js`, `ch9.js`, `ch10.js` and `roadquests.js` after `ch7.js`; `sidequests.js` and `debug.js` after `northroad.js`.
 
-`arc.js` also gained, in its own code: whistle ranks in the run HUD (`chapter.whistles`), a `finale` after the last boss (chapter 9's army, chapter 10's pager), `afterEnding` (chapter 10's credits), and boss chains (`floor.chain` with `floor.links` cutscenes between them; each boss after the first gets one framework step).
+On the North Road (`northroad.js`), people pace near their spots and two travellers (a merchant and a courier) walk set routes along the road; anyone with a `route` loops it, and nobody moves while a conversation is open or you stand next to them. Character sheets from `tools/village_art.py` now carry PixelLab walk cycles, flagged `walk` so standing characters hold still. The Exchange is always under a thunderstorm (`storm` overlay: rain, lightning, thunder).
+
+`arc.js` also gained, in its own code: whistle ranks in the run HUD (`chapter.whistles`), floor rules (`floor.rule`: a HUD chip, and an intro scene before the floor's first fight; chapter 10's four Homunculus' Rules apply through `SD.meta` mods), a `finale` after the last boss (chapter 9's army, chapter 10's pager), `afterEnding` (chapter 10's credits), and boss chains (`floor.chain` with `floor.links` cutscenes between them; each boss after the first gets one framework step).
 
 ## Names other features rely on
 
@@ -87,7 +90,4 @@ None of those files needed edits.
 
 ## Left to build
 
-- Pingsby going grey building by building during chapter 10 (the cutscene says so; the hub map doesn't change yet).
-- Gary's cold coffee cup on the plaza bench while he is missing.
-- Portraits for the five new side-quest characters (their dialogue uses the village-style bust for now).
 - Arc curses.

@@ -227,7 +227,9 @@
       if (!c) return;
       const im = pic(c.src); if (!ok(im)) return;
       const row = ROW[a.face] || 0, n = c.n[row];
-      const col = n ? 1 + Math.floor(t * (a.moving ? 8 : 5)) % n : 0;
+      // Walk cycles play only while walking; idle cycles (breathing) play standing still.
+      const going = a.moving || (a.path && a.path.length);
+      const col = n && (going || !c.walk) ? 1 + Math.floor(t * (going ? 8 : 5)) % n : 0;
       const bob = a.moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
       const k = a.scale || 1, w = c.w * ts / 32 * k, h = c.h * ts / 32 * k;
       ctx.save();
