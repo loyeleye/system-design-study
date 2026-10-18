@@ -1,10 +1,10 @@
 // Journal preview: for reviewing the bestiary, achievements and ascension only. Remove this file and its script
 // tag in index.html before release (the debug start in js/debug.js covers testing once it is merged).
-// Turn it on with ?journal in the URL. It keeps its own save ('last-uptime-save-journal', never the cloud save)
-// and starts from a game that has just rolled the credits: every main chapter cleared, part of the bestiary
-// filled in, and Ascension 1 open at the dungeon gate.
+// Turn it on with ?journal in the URL, or set window.SD_JOURNAL_DEMO = true before the scripts (the preview link
+// does). It keeps its own save ('last-uptime-save-journal', never the cloud save) and starts from a game that has
+// just rolled the credits: every main chapter cleared, part of the bestiary filled in, and Ascension 1 open.
 (function () {
-  if (!/[?&]journal\b/.test(location.search)) return;
+  if (!/[?&]journal\b/.test(location.search) && !window.SD_JOURNAL_DEMO) return;
   const S = SD.state, M = SD.meta;
   const KEY = 'last-uptime-save-journal';
 
