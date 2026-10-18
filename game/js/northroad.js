@@ -117,6 +117,8 @@
     m.rect(35, 9, 38, 11, '#');                                 // booth
     m.rect(5, 9, 9, 11, '#');                                   // bracket board
     m.rect(21, 30, 22, 30, '#');                                // statue
+    m.rect(10, 12, 16, 12, '#'); m.rect(27, 12, 33, 12, '#'); m.rect(10, 26, 16, 26, '#'); m.rect(27, 26, 33, 26, '#');   // ring walls
+    m.rect(8, 14, 8, 24, '#'); m.rect(35, 14, 35, 24, '#');
     return {
       map: m.rows(), terrain: { a: 'd8', '#': 'd8', D: 'd8', S: 'd8' }, top: ['d8'], base: 'd8', solid: '#', bg: '#c9b48a', zoom: 32,
       doors: { D: 'D', S: 'S' },
@@ -128,6 +130,7 @@
         { name: 'ar-stand', x: 10, y: 35 }, { name: 'ar-stand', x: 33, y: 35 },
         { name: 'ar-booth', x: 36.5, y: 11 }, { name: 'ar-bracket', x: 7, y: 11 }, { name: 'ar-statue', x: 21.5, y: 30 },
         { name: 'ar-wall', x: 13, y: 12 }, { name: 'ar-wall', x: 30, y: 12 }, { name: 'ar-wall', x: 13, y: 26 }, { name: 'ar-wall', x: 30, y: 26 },
+        { name: 'ar-wallv', x: 8, y: 19 }, { name: 'ar-wallv', x: 8, y: 24 }, { name: 'ar-wallv', x: 35, y: 19 }, { name: 'ar-wallv', x: 35, y: 24 },
         { name: 'd8a', x: 9, y: 12 }, { name: 'd8a', x: 34, y: 12 }, { name: 'd8a', x: 9, y: 26 }, { name: 'd8a', x: 34, y: 26 },
         { name: 'd8a', x: 21, y: 12 }, { name: 'd8a', x: 22, y: 26 }, { name: 'd8a', x: 16, y: 31 }, { name: 'd8a', x: 27, y: 31 },
         { name: 'd8b', x: 17, y: 7 }, { name: 'd8b', x: 26, y: 7 }, { name: 'd8b', x: 19, y: 33 }, { name: 'd8b', x: 24, y: 33 }
@@ -135,7 +138,7 @@
       labels: [{ x: 21.5, y: 7.6, text: "FIGHTERS' GATE" }, { x: 7, y: 12.1, text: 'THE BRACKET' }, { x: 21.5, y: 19.5, text: 'THE RING' }, { x: 21.5, y: 34.6, text: 'ROAD ↓' }],
       actors: {
         gong: { x: 34, y: 13, face: 'south', name: 'GONG' },
-        v3: { x: 9, y: 14, face: 'north', name: 'FAN' }, v1: { x: 30, y: 29, face: 'west', name: 'FAN' }, v2: { x: 12, y: 29, face: 'east', name: 'FAN' }, v4: { x: 37, y: 22, face: 'west', name: 'BOOKIE' },
+        v3: { x: 6, y: 16, face: 'east', name: 'FAN' }, v1: { x: 30, y: 29, face: 'west', name: 'FAN' }, v2: { x: 12, y: 29, face: 'east', name: 'FAN' }, v4: { x: 37, y: 22, face: 'west', name: 'BOOKIE' },
         hero500: { x: 26, y: 15, face: 'west', name: 'HERO #500', hidden: true }
       },
       back: { D: [21, 7, 'south'], S: [21, 34, 'north'] }, enter: [21, 34, 'north'], ch: 8, music: 'ch8', weather: 'sun'
