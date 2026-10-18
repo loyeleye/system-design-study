@@ -98,7 +98,7 @@ the village's style (68px characters, low top-down, black outline; map objects a
 | Landmarks: office, school, bank, mill (with `sails` turning on it and `planks`), tower, three fish stalls, shop, the twin halls, the lighthouse (its beam is drawn in code) | `<name>.webp` | `PIXEL` in `isles-map.js` |
 | Props: Kwame's `ferry`, the harbour queue's `boat`s and `pilings`, dock `bollard`s, the `tide` post, the Keeper's `note` | `<name>.webp` | `isles-map.js` |
 | Ploy's cove: the Game Club house, the game `gtable` and Arjun's `umbrella` | `club.webp`, `gtable.webp`, `umbrella.webp` | `PIXEL` in `isles-map.js` |
-| Valentin's and Ren's town sheets (village scale, ~50px), copied where Pingsby and the North Road look | `assets/img/village/c-valentin.webp`, `assets/img/arc/c-ren.webp` | `hub.js`, `scene.js` |
+| Dieynaba's (id `valentin`) and Ren's town sheets (village scale, ~50px), copied where Pingsby and the North Road look | `assets/img/village/c-valentin.webp`, `assets/img/arc/c-ren.webp` | `hub.js`, `scene.js` |
 
 The ground is Pingsby's own terrain (textured grass, brown dirt paths, plaza stones and water from `SD.villageArt`), so the Isles match the town and the North Road.
 
@@ -124,12 +124,12 @@ Landing, so it opens with the Isles after chapter 3.
   Alchemist's Izumi Curtis, the strict, warm teacher. Her busts are listed in `isles-data.js`'s `BUSTS`, because her
   looks are added after that file loads.
 - **Game Night of the Gods** (`js/ploy-quest.js`, after chapter 5) is a town quest (`js/quests.js`) with steps on the
-  Isles, in Pingsby and on the North Road: Ploy, Nok, Kai, Arjun, Meron, Uptima, **Valentin** (Pingsby, outside the Cache
+  Isles, in Pingsby and on the North Road: Ploy, Nok, Kai, Arjun, Meron, Uptima, **Dieynaba** (Pingsby, outside the Cache
   Café; Haven't You Heard? I'm Sakamoto), Aigerim, Ploy, **Ren** (North Road, by the courier post; Death Note's L),
   Uptima and Ploy. It teaches event sourcing and CQRS (concept `eventsrc`, zone 98). The Isles map sends its
   islanders' talk to `SD.quests` first and shows the town quests' markers.
 - **Reward**: 400 shards, 220 XP and a pick of one of three rare cards (`gnDance`, `gnLog`, `gnAsleep`), added to
   `S.save.cardLib` so it starts in the deck on every run (bench it in Aigerim's shop). They are in no reward pool.
-- Shared-file hooks: one `NPCS` entry in `hub.js` (Valentin, shown from chapter 5 via `SD.cove.inTown`), one line in
+- Shared-file hooks: one `NPCS` entry in `hub.js` (Dieynaba, shown from chapter 5 via `SD.cove.inTown`), one line in
   `main.js`'s `door()` for his idle talk, and the `js/ploy-quest.js` script tag in `index.html` after
   `sidequests.js`. Ren is added to `SD.northRoad.maps.road.actors` from `ploy-quest.js`, as `sidequests.js` does.

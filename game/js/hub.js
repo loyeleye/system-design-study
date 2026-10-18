@@ -59,8 +59,8 @@
     { id: 'doug', name: 'DOUG', x: 34, y: 10, emo: 'dots' },
     // Aigerim (js/peddler.js) turns up somewhere new each loop from chapter 3, until she moves to the North Road.
     { id: 'aigerim', name: 'AIGERIM', x: -1, y: -1, emo: 'heart', roam: () => SD.peddler && SD.peddler.spot() },
-    // Valentin (js/ploy-quest.js) stands outside the Cache Café from chapter 5.
-    { id: 'valentin', name: 'VALENTIN', x: 31, y: 5, emo: 'star', roam: () => SD.cove && SD.cove.inTown('valentin') },
+    // Dieynaba (js/ploy-quest.js; id 'valentin') stands outside the Cache Café from chapter 5.
+    { id: 'valentin', name: 'DIEYNABA', x: 31, y: 5, emo: 'star', roam: () => SD.cove && SD.cove.inTown('valentin') },
     // Road blockers, standing on the last path tile before each exit until the story moves them (js/main.js says why).
     // The Isles barricade's sign can't agree with itself: eventual consistency, in wood.
     { id: 'boulder', name: 'LOADING... 99%', x: 20, y: 1, block: 'boulder', roam: () => H.exitOpen('N') ? null : [20, 1] },
