@@ -175,7 +175,9 @@
       const c = SD.chapters[r.ch];
       const dt = flags().downtime || 0;
       const pages = (flags().runbook || []).length;
+      const wh = c.whistles && c.whistles[Math.min(r.arc.floor, c.whistles.length - 1)];
       return `<span class="hud-chip arc-floor">Floor <b>${r.arc.floor + 1}/${r.arc.floors}</b></span>`
+        + (wh ? `<span class="hud-chip arc-whistle" title="Your whistle rank on this layer">🎖 ${wh}</span>` : '')
         + (c.death === 'tape' ? `<span class="hud-chip arc-tape" title="Seymour's one backup tape">📼 ${r.arc.tapeUsed ? 'used' : 'ready'}</span>` : '')
         + (dt ? `<span class="hud-chip arc-meter" title="Kyu's anger meter">Downtime <b>${dt}%</b></span>` : '')
         + (pages ? `<button class="hud-chip arc-rb" data-arc="runbook">Runbook <b>${pages}</b></button>` : '');
@@ -220,11 +222,12 @@
     const e = SD.enemies[eid], d = SD.bossDesign[eid], fl = c.floors[f];
     const first = !flags()['beat-' + eid];
     AU.music('boss');
-    if (fl.before && first) await A.cutscene(fl.before);
+    if (fl.before && first && !(fl.chain && fl.chain.indexOf(eid) > 0)) await A.cutscene(fl.before);
     await U.dialog(first ? SD.story[e.intro] : [{ s: 'narr', t: rnd(e.rematch || [`${e.name} again. It remembers you. You remember it.`]) }]);
     d.concepts.forEach(id => S.seeConcept(id));
     const buffs = { sevScale: 1, bonusEnergy: SD.quests.has('ballad') ? 1 : 0, startCard: null };
-    const steps = last ? ['req', 'est', 'design'] : [fl.step || (f === 0 ? 'req' : f === 1 ? 'est' : 'design')];
+    const link = fl.chain ? fl.chain.indexOf(eid) : -1;
+    const steps = link > 0 ? [['req', 'est', 'design'][link % 3]] : last ? ['req', 'est', 'design'] : [fl.step || (f === 0 ? 'req' : f === 1 ? 'est' : 'design')];
     const ok = {};
     for (let i = 0; i < steps.length; i++) {
       const s = steps[i], ctx = `Delivery framework · ${i + 1} of ${steps.length}`;
@@ -253,6 +256,13 @@
     const first = !flags()['beat-' + eid];
     flags()['beat-' + eid] = true;
     S.persist();
+    // A boss chain (chapter 10's last floor): the next boss comes straight after, with its own short scene.
+    const next = fl.chain && fl.chain[fl.chain.indexOf(eid) + 1];
+    if (next) {
+      const cut = fl.links && fl.links[eid];
+      if (cut && (first || !fl.linksOnce)) await A.cutscene(cut);
+      return bossFight(next);
+    }
     // First clears carry the big beats; rematches get a short new line.
     if (first && fl.after) await A.cutscene(fl.after);
     else if (!first && fl.again) await U.dialog([{ s: 'narr', t: rnd(fl.again) }]);
@@ -291,6 +301,8 @@
   }
   async function finish() {
     const r = run(), c = chap();
+    // A finale after the last boss (chapter 9's army, chapter 10's pager) runs once, then comes back here.
+    if (c.finale && !r.arc.finaleDone) { r.arc.finaleDone = true; S.persist(); return c.finale(() => finish()); }
     if (c.ending) await A.cutscene(c.ending);
     if (c.downtime != null) flags().downtime = Math.max(flags().downtime || 0, c.downtime);
     // First clear pays like a quest board job (the shard economy: quests ~100, Wen's relics 80-300, cards 100+).
