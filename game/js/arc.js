@@ -18,7 +18,7 @@
   const clone = o => JSON.parse(JSON.stringify(o));
 
   // Preview builds (?arc in the URL) open the arc without clearing chapter 5 first.
-  A.preview = /[?&]arc\b/.test(location.search);
+  A.preview = /[?&]arc\b/.test(location.search) || location.hash === '#arc' || !!window.SD_ARC_PREVIEW;
   // Chapter 7 opens once chapter 5 is cleared (chapter 6 stays optional); each later chapter needs the one before.
   A.open = ch => ch === 7 ? !!(flags().ch5 || A.preview || flags().arcOpen) : !!flags()['ch' + (ch - 1)];
   A.chapters = () => Object.keys(SD.chapters).map(Number).filter(ch => SD.chapters[ch].arc);

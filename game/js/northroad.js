@@ -227,4 +227,16 @@
     if (fromRoad && A.open(7)) { fromRoad = false; NR.enter(true); if (afterRun) U.system('[SYSTEM] BACK ON THE ROAD', 'You respawned at the waystation. Lord Latency had tea ready. It was cold.'); return; }
     return toHub.apply(this, arguments);
   };
+  // Preview builds get a shortcut from the title screen straight onto the road.
+  if (A.preview) {
+    const title = SD.main.title;
+    SD.main.title = function () {
+      title.apply(this, arguments);
+      if ($('#nr-jump')) return;
+      const b = document.createElement('button');
+      b.id = 'nr-jump'; b.className = 'ghost nr-jump'; b.type = 'button'; b.textContent = 'Preview: walk the North Road';
+      b.onclick = () => { if (AU.unlock) AU.unlock(); NR.enter(); };
+      $('#screen-title').appendChild(b);
+    };
+  }
 })();
