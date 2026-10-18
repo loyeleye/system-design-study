@@ -12,8 +12,14 @@
         "Both lock the rows they read, so that no writer can change those rows until the reader has finished",
         "Both read the data as of a version: a transaction reads its snapshot, a replica its log position",
         "They are unrelated: replicas are about many machines, and snapshots only about one",
-        "Both always return the newest committed data, which is what makes them consistent"
+        "Both return the newest committed data, which is what makes them consistent"
       ], a: 1,
+      no: [
+        "That is two-phase locking. MVCC snapshots and replicas both let readers see an older version without blocking writers.",
+        null,
+        "The machine count differs, but the idea is the same: a follower at log position N holds the database as of N, just like a snapshot.",
+        "Neither does: a snapshot shows the data as of when it was taken, and a follower lags its leader. Both promise a consistent version, not the newest."
+      ],
       why: "MVCC keeps old row versions and gives each transaction a snapshot as of a version number. A follower that has applied the log up to position N holds exactly the database as of N. Neither promises the newest data; both promise a consistent version of it." },
     link: 'A replica is a snapshot at its log position, and snapshot isolation gives each transaction its own version to read. Both read the data as of some version.'
   });
@@ -22,11 +28,17 @@
     id: 'landing-mill', islands: ['landing', 'mill'], a: 'replag', b: 'lsm',
     ask: { id: 'il-bridge-landing-mill', c: 'replag', type: 'mc', q: "Ferry Landing's followers and Mang Tomas's LSM mill. What do they have in common?",
       opts: [
-        "Both update records in place on disk, so the newest value of each record is always in one known spot",
-        "Both keep all of their data in memory, so nothing ever has to be written to disk, which is why they're fast",
-        "Both take a lock on every record before writing it, so writes never conflict",
-        "Both are built on an append-only log: followers replay the leader's, an LSM store sorts files from its own"
+        "Both update records in place on disk, so each record's newest value sits in one known spot",
+        "Both keep their data in memory and skip the disk, which is where their speed comes from",
+        "Both lock each record before writing it, so concurrent writes cannot conflict",
+        "Both are built on an append-only log, which followers and LSM stores replay to rebuild state"
       ], a: 3,
+      no: [
+        "Updating in place is the B-tree way. Followers append the leader's log, and an LSM store appends to its log and writes immutable sorted files.",
+        "Both write to disk: followers persist the log, and an LSM store logs each write before acknowledging it. Their speed comes from appending, not from skipping disk.",
+        "Neither locks records to write: a follower applies the leader's log in order, and an LSM store appends new versions and lets the newest win.",
+        null
+      ],
       why: "Appending is fast and safe, and replaying a log rebuilds state anywhere: on a follower, or in an LSM store after a crash (its write-ahead log refills the memtable). Nothing is edited in place; the log is the truth, and everything else is built from it." },
     link: "Followers replay the leader's log, and an LSM store is a log plus sorted files. In both, the log is the truth and everything else is rebuilt from it."
   });
@@ -63,10 +75,16 @@
     ask: { id: 'il-bridge-mill-carto', c: 'lsm', type: 'mc', q: "A table has partition key = customer and sort key = order date. Why is 'all of one customer's orders this month' cheap?",
       opts: [
         "The database caches the result of every query, so repeated reads come straight from memory",
-        "Sort keys are hashed, which spreads one customer's orders over many nodes so they can be read in parallel",
-        "Inside a partition, SSTables store rows in sort-key order, so the month is one sequential range read",
-        "LSM stores keep every row in memory, so any query is cheap no matter how the key is designed"
+        "Sort keys are hashed, spreading a customer's orders over many nodes to read in parallel",
+        "Rows in a partition are stored in sort-key order, so the month is one range read",
+        "LSM stores serve reads from the memtable in memory, so key design barely affects cost"
       ], a: 2,
+      no: [
+        "A query cache only helps repeats, and MySQL even dropped its query cache in 8.0. The first read is cheap because rows sit in sort-key order.",
+        "Only the partition key is hashed. Sort keys stay in order, which is what makes a range read possible; hashed sort keys would scatter the month.",
+        null,
+        "Only recent writes sit in the memtable; most data lives in SSTables on disk. Key design decides whether a read is one range or a scan of everything."
+      ],
       why: "The partition key picks the node; the sort key orders rows inside the memtable and every SSTable flushed from it. A range on the sort key is one seek plus a sequential scan. Hashing is for partition keys, which is why ranges across partitions are expensive." },
     link: 'The partition key picks where rows live; the sort key decides their order inside the SSTables, which is why partition-plus-range queries are cheap.'
   });
@@ -88,11 +106,17 @@
     id: 'carto-fish', islands: ['carto', 'fish'], a: 'keydesign', b: 'windows',
     ask: { id: 'il-bridge-carto-fish', c: 'keydesign', type: 'mc', q: "How does Minh's key design connect to Ruth's stream windows?",
       opts: [
-        "Key the stream by boat id so each boat's events stay in order; hot keys skew streams and batches alike",
-        "Streams are partitioned at random to balance the load, so key design does not matter for them at all",
-        "Keys only matter for databases, and windows only matter for time, so the two never meet",
+        "Key by boat so each boat's events stay in order; a hot key skews streams and batches alike",
+        "Streams spread events evenly over partitions at random, so key choice only matters in databases",
+        "Windows group events by time, so the key only shapes storage, not stream processing",
         "Partitioning by key keeps every event in the whole stream in order, across all keys and partitions"
       ], a: 0,
+      no: [
+        null,
+        "Random spreading only applies to events with no key. With a key, Kafka hashes it to a partition, and order holds only within that partition.",
+        "The key decides which worker sees which events, so a per-boat window needs each boat's events on one partition. Kafka Streams repartitions by key for this.",
+        "Kafka orders events within a partition only. A total order across partitions needs a single partition, which caps throughput at one consumer."
+      ],
       why: "Kafka keeps order within a partition, not across partitions, so the key decides which events stay ordered. The same choice decides load: one huge key (a giant boat, a celebrity) lands on one partition and one worker, in a stream or a batch job alike. Splitting or salting hot keys helps both." },
     link: "Partition a stream by key to keep each key's events in order; a hot key skews stream and batch jobs just like a hot database partition."
   });

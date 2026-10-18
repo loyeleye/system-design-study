@@ -279,7 +279,7 @@
           ['haeun', 'Concurrently.', 'happy']] }] }
     ],
     school: { c: 'multileader', q: 'Each mayor counted the lanterns they hung, and the counts were added up. A small hand goes up: "But why not just keep the bigger number?"',
-      opts: ['Because the bigger number might be a mistake, and adding them checks it', 'Because the bigger number was counted first, so it is out of date', 'Because keeping the bigger number would count some lanterns twice', 'Because each mayor only counted their own lanterns, so one number loses the other island\'s'],
+      opts: ['Because the bigger number might be a mistake, and adding them up checks it', 'Because the bigger number was counted first, so by now it is out of date', 'Because keeping only the bigger number would count some lanterns twice', 'Because each mayor only counted their own lanterns, so one number loses the other island\'s'],
       a: 3, no: ['Adding is not a check. Both counts are right; each covers different lanterns, so you need both.', 'Neither count is out of date: each is a full count of a different island\'s lanterns.', 'It is the other way round: keeping one number misses lanterns. Adding is safe because no lantern is in both counts.', null],
       why: 'Each count only knew its own lanterns, so you need both. In grown-up words: a counter CRDT keeps one entry per replica and adds them up.',
       cheer: 'Ohhh! Like counting sweets in two bags! You have to count both bags! I have two bags. They are both empty now.' }

@@ -19,8 +19,9 @@
 
   I.addQuestions([
     { id: 'il-schemaevo-1', c: 'schemaevo', type: 'mc', q: 'Your service writes Protobuf events to Kafka. In one release a teammate deletes field 4 (nickname) and adds loyalty_tier, reusing tag 4. What breaks?',
-      opts: ['Nothing: Protobuf matches fields by name', 'Only the build: the compiler rejects a reused tag', 'Old events still in the topic get their nickname read as a loyalty tier, and consumers on the old schema read loyalty tiers as nicknames, mostly with no error at all', 'Only new events are affected, so it is safe once every consumer restarts'], a: 2,
-      why: 'On the wire, a field is just its tag number. Reusing one makes old data and old code silently misread the new meaning. Mark retired tags as reserved and give every new field a fresh number.' },
+      opts: ['Nothing: Protobuf matches fields by name, so the new name is safe', 'The build fails: protoc rejects a tag number used in the past', 'Nicknames get read as loyalty tiers and vice versa, mostly silently', 'Only new events are affected, so it is safe once consumers upgrade'], a: 2,
+      no: ['Names never travel on the wire; only tag numbers do. That is why renaming a field is safe and reusing a tag is not.', 'protoc only sees the current file, so it cannot know tag 4 was used before. Mark retired tags reserved, and then it does refuse.', null, 'Old events stay in the topic for the retention period, and replays read them with the new schema. Kafka data outlives your deploys.'],
+      why: 'On the wire, a field is just its tag number. Old events still in the topic get their nickname read as a loyalty tier, and consumers on the old schema read loyalty tiers as nicknames, mostly with no error at all. Mark retired tags as reserved and give every new field a fresh number.' },
     { id: 'il-schemaevo-2', c: 'schemaevo', type: 'order', q: 'Rename the column fishCount to catch (and switch it from a count to kilograms) on a live system with rolling deploys and no downtime. Put the steps in order.',
       items: ['Add catch as a new, optional column', 'Deploy writers that fill in both fishCount and catch', 'Backfill catch for the old rows', 'Switch reads to catch', 'Stop writing fishCount', 'Drop fishCount'],
       why: 'Expand, migrate, contract. Every step keeps old and new code working at the same time, and each one can be rolled back until the final drop.' },
@@ -285,8 +286,9 @@
           ['lucia', 'For you. My fourth dictionary. It is blank, for whatever the islands say next.', 'happy']] }] }
     ],
     school: { c: 'schemaevo', q: "But WHY can't Professora Lúcia give everyone the new dictionary at the same time?",
-      opts: ['Because dictionaries are too heavy to carry', 'Because the ferries take days, so some islands get the new one later and old letters keep arriving, and every letter still has to make sense', 'Because forward-compatible deserialisation requires monotonic schema version negotiation', 'Because the old dictionary is always right'], a: 1,
-      why: 'The islands cannot all switch at once, so old and new letters travel together for a while, and both kinds have to be readable.',
+      opts: ['Because the new dictionary might have mistakes, so only a few islands should try it first', 'Because the ferries take days, so old and new letters mix, and both must make sense', 'Because each island speaks a different language and needs its own dictionary', 'Because the islands would all have to stop writing letters while they switched'], a: 1,
+      no: ['Trying a change on a few islands first is a canary release, a good habit. Even all at once, the ferries could not reach every island together.', null, 'They share one language; it is the dictionary that is changing. The trouble is that the change cannot reach every island at once.', 'Stopping everyone to switch is the downtime a rolling upgrade avoids. And even then, the ferries could not deliver it everywhere at once.'],
+      why: 'The islands cannot all switch at once, so old and new letters travel together for a while, and both kinds have to be readable. In grown-up words: a rolling upgrade needs encodings that are backward and forward compatible.',
       cheer: 'So old letters and new letters both have to work for a while! Like my grandma still writing in curly writing, and me still reading it!' }
   });
 })();
