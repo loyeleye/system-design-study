@@ -1,4 +1,4 @@
-// A run down into Prod: branching map, incidents, shops, campfires, Gary, the boss.
+// A run down into Prod: branching map, incidents, shops, break rooms, Gary, the boss.
 (function () {
   const R = SD.run = {};
   const U = SD.ui, S = SD.state, Q = SD.quiz, AU = SD.audio;
@@ -62,10 +62,16 @@
     ];
     const floors = plan.map((types, f) => Q.shuffle(types).map((type, lane) => ({ id: f + '-' + lane, f, lane, type, next: [] })));
     floors.push([{ id: '7-1', f: 7, lane: 1, type: 'boss', next: [] }]);
+    // Trails, not a lattice: every room leads straight on, and some also fork to a neighbouring lane
+    // (never two forks crossing), so the map reads like paths through a landscape.
     for (let f = 0; f < 7; f++) {
+      if (f === 6) { floors[f].forEach(n => { n.next = ['7-1']; }); continue; }
+      const forks = [];
       floors[f].forEach(n => {
-        if (f === 6) { n.next = ['7-1']; return; }
-        n.next = floors[f + 1].filter(m => Math.abs(m.lane - n.lane) <= 1).map(m => m.id);
+        n.next = [f + 1 + '-' + n.lane];
+        const to = n.lane + Q.shuffle([-1, 1])[0];
+        const crosses = forks.some(([a, b]) => a === to && b === n.lane);
+        if (to >= 0 && to <= 2 && !crosses && Math.random() < 0.55) { n.next.push(f + 1 + '-' + to); forks.push([n.lane, to]); }
       });
     }
     return { floors };
@@ -73,7 +79,7 @@
   function findNode(id) { for (const fl of S.save.run.map.floors) for (const n of fl) if (n.id === id) return n; return null; }
   const NODE = {
     fight: { l: 'Incident', g: 'crossed-swords' }, elite: { l: 'Elite', g: 'horned-skull' }, board: { l: 'Whiteboard', g: 'notebook' },
-    cafe: { l: 'Café', g: 'coffee-cup' }, camp: { l: 'Campfire', g: 'campfire' }, event: { l: 'Event', g: 'card-random' }, boss: { l: 'BOSS', g: 'crowned-skull' }
+    cafe: { l: 'Café', g: 'coffee-cup' }, camp: { l: 'Break Room', g: 'coffee-cup' }, event: { l: 'Event', g: 'card-random' }, boss: { l: 'BOSS', g: 'crowned-skull' }
   };
 
   R.showMap = function () {
@@ -85,11 +91,15 @@
     const visited = new Set(run.visited || []);
     const rows = floors.length;
     let svg = `<svg class="map-lines" viewBox="0 0 300 ${rows * 100}" preserveAspectRatio="none" aria-hidden="true">`;
-    const xy = n => [((n.lane + 0.5) / 3) * 300, (rows - 1 - n.f) * 100 + 50];
+    // Rooms sit a little off the grid (stable per run) and trails bend, like a hand-drawn map.
+    const seed = run.startedAt || 1;
+    const jit = (id, k) => { let h = seed ^ (k * 2654435761); for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 2246822519) >>> 0; return (h % 1000) / 1000 - 0.5; };
+    const xy = n => n.type === 'boss' ? [150, 50] : [((n.lane + 0.5) / 3) * 300 + jit(n.id, 1) * 44, (rows - 1 - n.f) * 100 + 50 + jit(n.id, 2) * 26];
+    const bend = (n, m) => { const [x1, y1] = xy(n), [x2, y2] = xy(m), k = jit(n.id + m.id, 3) * 46; return [x1, y1, (x1 + x2) / 2 + k, (y1 + y2) / 2, x2, y2]; };
     floors.forEach(fl => fl.forEach(n => n.next.forEach(id => {
-      const m = findNode(id); const [x1, y1] = xy(n), [x2, y2] = xy(m);
-      const on = visited.has(n.id) && (visited.has(m.id) || reach.includes(m.id) && run.pos === n.id);
-      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${on ? 'on' : ''}" vector-effect="non-scaling-stroke"/>`;
+      const m = findNode(id), [x1, y1, cx, cy, x2, y2] = bend(n, m);
+      const on = visited.has(n.id) && visited.has(m.id), next = reach.includes(m.id) && (run.pos === n.id);
+      svg += `<path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" class="${on ? 'on' : next ? 'next' : ''}" vector-effect="non-scaling-stroke"/>`;
     })));
     svg += '</svg>';
     let nodes = '';
@@ -104,9 +114,9 @@
       <div class="run-hud">${hud()}</div>
       <div class="map-wrap"><div class="map-title">${U.esc(chap().name.replace(/^the /, '').toUpperCase())} · ${chap().rank}-RANK <span class="muted">Pick a path. ${U.esc(SD.enemies[bossId()].name)} waits at the end.</span>
         ${curseChips()}</div>
-      <div class="map" style="height:${rows * 78}px"><canvas class="map-bg" aria-hidden="true"></canvas>${svg}${nodes}</div></div>
+      <div class="map" style="height:${rows * 118}px"><canvas class="map-bg" aria-hidden="true"></canvas>${svg}${nodes}</div></div>
       <div class="run-foot"><button class="ghost" id="deck-btn">Deck (${run.deck.length})</button><button class="ghost" id="codex-btn2">Cheat sheet</button><button class="ghost danger" id="abandon">Abandon run</button></div>`;
-    paintMap($('#run .map'), floors, xy, rows);
+    paintMap($('#run .map'), floors, xy, bend, rows, cur);
     $('#run').querySelectorAll('.node.can').forEach(b => b.onclick = () => enterNode(findNode(b.dataset.n)));
     $('#deck-btn').onclick = showDeck;
     $('#codex-btn2').onclick = () => U.codex();
@@ -132,17 +142,25 @@
   function nodeIcon(type) {
     return dArt() && dArt().objects[type] ? `<img class="node-art" src="assets/img/dungeon/${type}.webp" alt="">` : SD.art.glyph(NODE[type].g, 'currentColor');
   }
-  function paintMap(el, floors, xy, rows) {
+  // Animated bits per chapter: Prod's torches flicker, the Archives' scrolls bob on the flood,
+  // the Spire's gears turn and its vents puff steam. Everything else is painted once.
+  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam' };
+  function paintMap(el, floors, xy, bend, rows, cur) {
     const A = dArt(), cv = el && el.querySelector('.map-bg');
     if (!A || !cv) return;
     const run = S.save.run, ch = String(((((run && run.ch) || 1) - 1) % 3) + 1);
     const W = el.clientWidth, H = el.clientHeight, ts = 24;
-    const draw = () => paintMap(el, floors, xy, rows);
-    cv.width = W; cv.height = H;
-    const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
-    const P = n => { const [x, y] = xy(n); return [x / 300 * W, y / (rows * 100) * H]; };
+    const again = () => { if (el.isConnected) paintMap(el, floors, xy, bend, rows, cur); };
+    const P = (x, y) => [x / 300 * W, y / (rows * 100) * H];
+    // Trails as short segments along each curve, so the worn path follows the drawn bend
     const segs = [], pts = [];
-    floors.forEach(fl => fl.forEach(n => { pts.push(P(n)); n.next.forEach(id => segs.push([P(n), P(findNode(id))])); }));
+    floors.forEach(fl => fl.forEach(n => {
+      pts.push(P(...xy(n)));
+      n.next.forEach(id => {
+        const [x1, y1, cx, cy, x2, y2] = bend(n, findNode(id)); let prev = P(x1, y1);
+        for (let k = 1; k <= 12; k++) { const t = k / 12, u = 1 - t, q = P(u * u * x1 + 2 * u * t * cx + t * t * x2, u * u * y1 + 2 * u * t * cy + t * t * y2); segs.push([prev, q]); prev = q; }
+      });
+    }));
     const near = (x, y, d) => pts.some(([px, py]) => Math.hypot(x - px, y - py) < d * 2) || segs.some(([[ax, ay], [bx, by]]) => {
       const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
       return Math.hypot(x - ax - t * dx, y - ay - t * dy) < d;
@@ -150,21 +168,71 @@
     const cols = Math.ceil(W / ts) + 1, rws = Math.ceil(H / ts) + 1;
     const path = [];
     for (let j = 0; j <= rws; j++) { path.push([]); for (let i = 0; i <= cols; i++) path[j].push(near(i * ts, j * ts, ts * 0.6)); }
-    const sheet = dPic('t-' + ch, draw), at = A.terrain[ch];
+    const sheet = dPic('t-' + ch, again), at = A.terrain[ch];
+    if (!sheet.complete) return;
+    // Static layer: floor, worn trails, shade, still props
+    const base = document.createElement('canvas'); base.width = W; base.height = H;
+    const b = base.getContext('2d'); b.imageSmoothingEnabled = false;
     const hash = (i, j) => ((i * 73856093) ^ (j * 19349663) ^ (+ch * 83492791)) >>> 0;
     for (let j = 0; j < rws; j++) for (let i = 0; i < cols; i++) {
       const k = path[j][i] << 3 | path[j][i + 1] << 2 | path[j + 1][i] << 1 | path[j + 1][i + 1];
-      if (sheet.complete && at[k]) ctx.drawImage(sheet, at[k][0], at[k][1], 32, 32, i * ts, j * ts, ts, ts);
+      if (at[k]) b.drawImage(sheet, at[k][0], at[k][1], 32, 32, i * ts, j * ts, ts, ts);
     }
-    // Dim the floor a little so the room icons stand out
-    ctx.fillStyle = 'rgba(24,16,44,.28)'; ctx.fillRect(0, 0, W, H);
-    // A few props per chapter, only on open floor away from the rooms
+    b.fillStyle = 'rgba(24,16,44,.22)'; b.fillRect(0, 0, W, H);
+    const props = [], glints = [];
     for (let j = 0; j < rws - 1; j++) for (let i = 0; i < cols - 1; i++) {
-      const h = hash(i, j);
-      if (h % 7 || (i + j) % 2 || near(i * ts + ts, j * ts + ts, ts * 1.4)) continue;
-      const name = 'd' + ch + (h % 2 ? 'a' : 'b'), im = dPic(name, draw), sz = A.objects[name];
-      if (im.complete && sz) ctx.drawImage(im, i * ts + ts - sz[0] / 2, j * ts + ts * 1.4 - sz[1], sz[0], sz[1]);
+      const h = hash(i, j), x = i * ts + ts, y = j * ts + ts;
+      if (near(x, y, ts * 1.3)) continue;
+      if (h % 5 === 0 && (i + j) % 2 === 0) props.push({ name: 'd' + ch + (h % 3 ? 'a' : 'b'), x, y: y + ts * 0.4, ph: (h % 628) / 100 });
+      else if (h % 3 === 0) glints.push([x + (h % 11) - 5, y + ((h >> 5) % 11) - 5, (h % 97) / 97]);
     }
+    props.forEach(p => {
+      const im = dPic(p.name, again), sz = A.objects[p.name];
+      if (!im.complete || !sz || LIVE[p.name]) return;
+      b.drawImage(im, p.x - sz[0] / 2, p.y - sz[1], sz[0], sz[1]);
+    });
+    const live = props.filter(p => LIVE[p.name] && A.objects[p.name] && dPic(p.name).complete);
+    // You, standing where you are (or at the entrance), from the village sprite sheet
+    const you = SD.villageArt && SD.villageArt.chars && SD.villageArt.chars.you, youPic = you && dPic('../village/c-you', again);
+    const [hx, hy] = cur ? P(...xy(cur)) : [W / 2, H - 8];
+    const motes = Array.from({ length: 18 }, (_, k) => [hash(k, 7) % W, hash(7, k) % H, 0.2 + (hash(k, k) % 50) / 100]);
+    const ctx = cv.getContext('2d');
+    cv.width = W; cv.height = H; ctx.imageSmoothingEnabled = false;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const frame = now => {
+      if (!el.isConnected || cv.width !== W) return;
+      const t = now / 1000;
+      ctx.drawImage(base, 0, 0);
+      // Water glints in the Archives, crystal twinkles in Prod, rivet glints in the Spire
+      const tint = { 1: '200,150,255', 2: '255,255,255', 3: '255,224,140' }[ch];
+      glints.forEach(([x, y, o]) => { const k = (t * 0.5 + o) % 1; if (k < 0.35) { ctx.fillStyle = `rgba(${tint},${0.8 * Math.sin(k / 0.35 * Math.PI)})`; ctx.fillRect(x, y, ch === '2' ? 5 : 2, 2); } });
+      live.forEach(p => {
+        const im = dPic(p.name), [w, h] = A.objects[p.name], kind = LIVE[p.name];
+        if (kind === 'spin') { ctx.save(); ctx.translate(p.x, p.y - h / 2); ctx.rotate(t * 0.6 + p.ph); ctx.drawImage(im, -w / 2, -h / 2, w, h); ctx.restore(); return; }
+        const dy = kind === 'bob' ? Math.sin(t * 1.6 + p.ph) * 2 : 0;
+        ctx.drawImage(im, p.x - w / 2, p.y - h + dy, w, h);
+        if (kind === 'torch') {
+          const f = 0.55 + 0.25 * Math.sin(t * 9 + p.ph) + 0.15 * Math.sin(t * 23 + p.ph);
+          const g = ctx.createRadialGradient(p.x, p.y - h + 6, 1, p.x, p.y - h + 6, 26);
+          g.addColorStop(0, `rgba(255,190,90,${0.55 * f})`); g.addColorStop(1, 'rgba(255,190,90,0)');
+          ctx.fillStyle = g; ctx.fillRect(p.x - 26, p.y - h - 20, 52, 52);
+        }
+        if (kind === 'steam') for (let k = 0; k < 3; k++) {
+          const s2 = (t * 0.5 + k / 3 + p.ph) % 1;
+          ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - s2)})`;
+          ctx.beginPath(); ctx.arc(p.x + Math.sin(s2 * 6 + k) * 3, p.y - h - s2 * 22, 3 + s2 * 5, 0, 7); ctx.fill();
+        }
+      });
+      // Dust motes drifting up through the dungeon air
+      motes.forEach(([x, y, v]) => { const yy = (y - t * 12 * v) % H, a = 0.25 + 0.2 * Math.sin(t * 2 + x); ctx.fillStyle = `rgba(255,246,214,${a})`; ctx.fillRect((x + Math.sin(t * v + y) * 6 + W) % W, (yy + H) % H, 2, 2); });
+      if (you && youPic.complete) {
+        const k = 1.1, bob = Math.abs(Math.sin(t * 3)) * 2;
+        ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(hx - 30, hy + 14, 9, 3, 0, 0, 7); ctx.fill();
+        ctx.drawImage(youPic, 0, 0, you.w, you.h, hx - 30 - you.w * k / 2, hy + 14 - you.h * k - bob, you.w * k, you.h * k);
+      }
+      if (!still) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
   }
   function curseChips() {
     const list = SD.quests.curses(S.save.run.ch || 1);
@@ -248,7 +316,7 @@
     b.querySelector('#skip').onclick = () => { U.closePanel(); done(); };
   }
 
-  // ---------- Whiteboard, café, campfire, events ----------
+  // ---------- Whiteboard, café, break room, events ----------
   async function whiteboard(done) {
     const res = await Q.session(2, { title: 'WHITEBOARD' });
     const run = S.save.run;
@@ -297,13 +365,13 @@
   function campfire(done) {
     const run = S.save.run;
     const heal = Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0)));
-    const b = U.panel(`<p>A cosy campfire between floors. Pip roasts a marshmallow and drops it. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
+    const b = U.panel(`<p>A quiet break room between floors: a squashy sofa, a humming vending machine, and Pip burning popcorn in the microwave. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
       <p class="muted small">Diffuse mode: stepping back is part of learning. Choose one.</p>
       <div class="opts">
         <button class="opt" id="g-rest"><b>Rest</b> · Recover ${heal} SLA</button>
         <button class="opt" id="g-forge"><b>Refactor</b> · Upgrade a card (+3 to its numbers)</button>
         <button class="opt" id="g-reflect"><b>Reflect</b> · Connect two ideas for XP and a notebook link</button>
-      </div>`, { title: 'CAMPFIRE', noClose: true });
+      </div>`, { title: 'BREAK ROOM', noClose: true });
     b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); AU.sfx('heal'); S.persist(); U.closePanel(); done(); };
     b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => campfire(done), c => !c.up && SD.cards[c.id].rarity);
     b.querySelector('#g-reflect').onclick = () => reflect(done);

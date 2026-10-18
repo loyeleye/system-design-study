@@ -171,7 +171,7 @@
       body += '</div>';
     } else if (tab === 'map') {
       body += U.mindMap();
-      body += `<p class="muted small">Lines are connections you have reflected on at a Campfire. Relating ideas, not repeating them, is what makes them stick.</p>`;
+      body += `<p class="muted small">Lines are connections you have reflected on in a Break Room. Relating ideas, not repeating them, is what makes them stick.</p>`;
       const known = SD.links.filter(l => sv.links.includes(l.id));
       body += known.length ? `<ul class="links">${known.map(l => `<li><b>${U.esc(SD.concepts[l.a].name)} ↔ ${U.esc(SD.concepts[l.b].name)}</b>: ${U.esc(l.text)}</li>`).join('')}</ul>` : '<p class="muted">No connections yet.</p>';
     } else if (tab === 'questions') {

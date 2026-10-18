@@ -190,7 +190,7 @@ SD.concepts = {
   }
 };
 
-// Codex links: relational notes between concepts. Unlocked by Reflecting at a Campfire.
+// Codex links: relational notes between concepts. Unlocked by Reflecting in a Break Room.
 SD.links = [
   { id: 'cache-replication', a: 'cache', b: 'replication', text: 'Both serve reads from copies, so both can return stale data.' },
   { id: 'cache-herd', a: 'cache', b: 'herd', text: 'A stampede is the cost of a hot cache entry expiring all at once.' },
@@ -881,7 +881,7 @@ SD.metaShop = [
   { id: 'lantern', name: 'Lucky Rubber Duck', cost: 5, text: '+10 max SLA. You explain your bugs to it.' },
   { id: 'pipeye', name: "Pip's Monocle", cost: 4, text: 'Diagnoses show one wrong answer crossed out.' },
   { id: 'satchel', name: 'Bag of Holding (Cards)', cost: 7, text: 'Card rewards offer 4 choices instead of 3.' },
-  { id: 'teapot', name: 'Bottomless Teapot', cost: 5, text: 'Campfires heal 15% more.' }
+  { id: 'teapot', name: 'Bottomless Teapot', cost: 5, text: 'Break rooms heal 15% more.' }
 ];
 
 SD.ranks = ['E', 'D', 'C', 'B', 'A', 'S'];

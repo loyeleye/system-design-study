@@ -23,7 +23,7 @@
     hammer: { name: "Apprentice's Hammer", icon: 'spanner', text: 'Crash intents deal half damage. Add Server absorbs +3 more.', flavor: 'Bram has several now. He will not admit he likes having help.' },
     waxseal: { name: 'Idempotent Wax Seal', icon: 'envelope', text: 'Retry intents deal 30% less and never add Stale.', flavor: 'Stamp anything with it and it can arrive a thousand times but only counts once.' },
     dougbot: { name: "Kevin, Doug's Confiscated Bot", icon: 'robot-golem', text: 'Flood intents deal 30% less.', flavor: 'Kevin is rate limited now. Kevin is at peace.' },
-    recipe: { name: "Hiro's Recipe Card", icon: 'croissant', text: '+8 max SLA. Campfires heal 10% more.', flavor: 'Three copies: one for the café, one for Mio, one for you.' },
+    recipe: { name: "Hiro's Recipe Card", icon: 'croissant', text: '+8 max SLA. Break rooms heal 10% more.', flavor: 'Three copies: one for the café, one for Mio, one for you.' },
     bookmark: { name: "Lexi's Bookmark", icon: 'notebook', text: 'A correct diagnosis gives +2 Capacity instead of +1.', flavor: 'Forbidden technique: knowing exactly where to look.' },
     strawhat: { name: "Cron's Straw Hat", icon: 'sun', text: 'Stampede and Burst intents deal 30% less.', flavor: 'It has seen forty years of midnights. It smells like it, too.' },
     cluster: { name: "Kaito's Spare Cluster", icon: 'server-rack', text: 'Draw 1 extra card on the first turn of every fight.', flavor: '"I-it\'s not like I had too many. I had exactly enough, times forty."' },
