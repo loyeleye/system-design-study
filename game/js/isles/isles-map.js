@@ -56,7 +56,7 @@
   // Islanders stand by their landmarks. The keeper is a note pinned to the lighthouse door.
   const PEOPLE = [
     { id: 'ploy', x: 16, y: 43 }, { id: 'kai', x: 19, y: 44 }, { id: 'nok', x: 21, y: 44 }, { id: 'arjun', x: 26, y: 45 },
-    { id: 'leilani', x: 10, y: 19 }, { id: 'kwame', x: 12, y: 22 }, { id: 'kids', x: 10, y: 28 },
+    { id: 'leilani', x: 10, y: 19 }, { id: 'kwame', x: 12, y: 22 }, { id: 'kids', x: 10, y: 28 }, { id: 'saule', x: 5, y: 30 },
     { id: 'farida', x: 24, y: 8 }, { id: 'mutex', x: 26, y: 10 },
     { id: 'tomas', x: 22, y: 31 }, { id: 'bloom', x: 25, y: 31 },
     { id: 'lucia', x: 36, y: 19 }, { id: 'ruth', x: 48, y: 7 }, { id: 'minh', x: 47, y: 31 },
