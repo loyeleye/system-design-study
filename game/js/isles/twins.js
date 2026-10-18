@@ -101,46 +101,50 @@
             const wrongs = FIELDS.filter(f => !!f.lost !== picked.has(f.k)).length;
             mistakes += wrongs; checked = true; K.sfx(wrongs ? 'wrong' : 'right');
             S.say(`${wrongs ? `${wrongs} line${wrongs === 1 ? '' : 's'} misjudged, but you see it now. ` : 'Exactly. '}Three changes vanished and nobody was told. Last-write-wins always converges. It converges by throwing work in the sea.`);
-            render(); S.b.scrollTop = 0;
+            render(); $('.tw-merged').scrollIntoView({ block: 'start' });
           };
           if ($('#tw-next')) $('#tw-next').onclick = () => { K.sfx('ok'); done(); };
         };
         render();
       });
 
-      // Round 2: version vectors flag the real conflicts; the player resolves them.
+      // Round 2: version vectors flag the real conflicts; the player resolves them. Feedback sits inside each row.
       await new Promise(done => {
         const S = stage('haeun', 'Our old ferry clerk kept a little tally on every item: how many of my edits and how many of his it had seen. Let us use it properly this time.');
-        const call = {}, pick = {}, wrongCall = {}, wrongPick = {};
-        let fb = '', fbNo = false;
+        const call = {}, pick = {}, wrongCall = {}, wrongPick = {}, rowFb = {};
+        const conflicts = FIELDS.filter(f => f.vv === 'both');
+        const fbHtml = id => rowFb[id] ? `<div class="ah-fb${rowFb[id].no ? ' no' : ''}">${rowFb[id].html}</div>` : '';
         const render = () => {
           const allCalled = FIELDS.every(f => call[f.k]);
-          const conflicts = FIELDS.filter(f => f.vv === 'both');
           let h = `<p class="q-ctx">Round 2 of 3 · Version vectors</p>
             <p class="small">Each copy counts the edits it has seen from each mayor: <b>E</b> for Ha-eun, <b>W</b> for Ha-jin. If one copy's numbers are all at least as big as the other's, it has seen everything the other has, so it simply replaces it. If each is bigger somewhere, neither saw the other's edit: a real conflict.</p>
-            <div class="tw-rows">${FIELDS.map(f => `<div class="tw-row${call[f.k] ? ' done' : ''}"><div class="tw-rh">${f.n}</div>
+            <div class="tw-rows">${FIELDS.map(f => `<div class="tw-row${call[f.k] ? ' done' : ''}" data-row="${f.k}"><div class="tw-rh">${f.n}</div>
               <div class="tw-vs"><span>East: ${f.E} ${VV(f.vE)}</span><span>West: ${f.W} ${VV(f.vW)}</span></div>
               ${call[f.k] ? `<div class="tw-verdict">${{ E: 'Ha-eun\'s is newer', W: 'Ha-jin\'s is newer', both: 'Real conflict' }[f.vv]}</div>`
-                : `<div class="tw-btns">${[['E', 'East newer'], ['W', 'West newer'], ['both', 'Conflict']].map(([v, l]) => `<button class="ghost${(wrongCall[f.k] || []).includes(v) ? ' struck' : ''}" data-c="${f.k}:${v}" ${(wrongCall[f.k] || []).includes(v) ? 'disabled' : ''}>${l}</button>`).join('')}</div>`}</div>`).join('')}</div>`;
+                : `<div class="tw-ask">Which wins?</div><div class="tw-btns">${[['E', 'East'], ['W', 'West'], ['both', 'Conflict']].map(([v, l]) => `<button class="ghost${(wrongCall[f.k] || []).includes(v) ? ' struck' : ''}" data-c="${f.k}:${v}" ${(wrongCall[f.k] || []).includes(v) ? 'disabled' : ''}>${l}</button>`).join('')}</div>`}
+              ${fbHtml('c:' + f.k)}</div>`).join('')}</div>`;
           if (allCalled) {
-            h += `<p><b>Three real conflicts. Resolve each one.</b></p><div class="tw-rows">${conflicts.map(f => `<div class="tw-row${pick[f.k] ? ' done' : ''}"><div class="tw-rh">${f.n}</div>
-              <div class="opts">${RESOLVE[f.k].map((o, i) => `<button class="opt${pick[f.k] === i + 1 ? ' on' : ''}${(wrongPick[f.k] || []).includes(i) ? ' struck' : ''}" data-r="${f.k}:${i}" ${pick[f.k] || (wrongPick[f.k] || []).includes(i) ? 'disabled' : ''}>${o.t}</button>`).join('')}</div></div>`).join('')}</div>`;
+            h += `<p id="tw-resolve"><b>Three real conflicts. Resolve each one.</b></p><div class="tw-rows">${conflicts.map(f => `<div class="tw-row${pick[f.k] ? ' done' : ''}"><div class="tw-rh">${f.n}</div>
+              <div class="opts">${RESOLVE[f.k].map((o, i) => `<button class="opt${pick[f.k] === i + 1 ? ' on' : ''}${(wrongPick[f.k] || []).includes(i) ? ' struck' : ''}" data-r="${f.k}:${i}" ${pick[f.k] || (wrongPick[f.k] || []).includes(i) ? 'disabled' : ''}>${o.t}</button>`).join('')}</div>
+              ${fbHtml('r:' + f.k)}</div>`).join('')}</div>`;
           }
-          if (fb) h += `<div class="ah-fb${fbNo ? ' no' : ''}">${fb}</div>`;
           if (allCalled && conflicts.every(f => pick[f.k])) h += '<div class="row"><button class="primary" id="tw-next">Try CRDTs</button></div>';
           S.el.innerHTML = h;
           S.el.querySelectorAll('[data-c]').forEach(el => el.onclick = () => {
             const [k, v] = el.dataset.c.split(':'), f = FIELDS.find(x => x.k === k);
-            if (v === f.vv) { call[k] = v; fb = `<b>${f.n}:</b> ${VV_WHY[k]}`; fbNo = false; K.sfx('right'); }
-            else { mistakes++; (wrongCall[k] = wrongCall[k] || []).push(v); fb = `<b>${f.n}:</b> not quite. Compare the numbers one letter at a time: is one copy at least as big in both E and W?`; fbNo = true; K.sfx('wrong'); }
-            if (FIELDS.every(x => call[x.k])) S.say('There. The fish stall and the banner were never conflicts. Only three things really need deciding.');
-            render(); const box = S.el.querySelector('.ah-fb'); if (box) box.scrollIntoView({ block: 'nearest' });
+            if (v === f.vv) { call[k] = v; rowFb['c:' + k] = { html: VV_WHY[k] }; K.sfx('right'); }
+            else { mistakes++; (wrongCall[k] = wrongCall[k] || []).push(v); rowFb['c:' + k] = { no: true, html: 'Not quite. Compare the numbers one letter at a time: is one copy at least as big in both E and W? If so, it wins. If each is bigger somewhere, it is a conflict.' }; K.sfx('wrong'); }
+            const all = FIELDS.every(x => call[x.k]);
+            if (all) S.say('There. The fish stall and the banner were never conflicts. Only three things really need deciding.');
+            render();
+            if (all && v === f.vv) S.el.querySelector('#tw-resolve').scrollIntoView({ block: 'start' });
           });
           S.el.querySelectorAll('[data-r]').forEach(el => el.onclick = () => {
             const [k, i] = el.dataset.r.split(':'), o = RESOLVE[k][+i];
-            if (o.ok) { pick[k] = +i + 1; fb = o.why; fbNo = false; K.sfx('right'); }
-            else { mistakes++; (wrongPick[k] = wrongPick[k] || []).push(+i); fb = o.why; fbNo = true; K.sfx('wrong'); }
-            render(); const box = S.el.querySelector('.ah-fb'); if (box) box.scrollIntoView({ block: 'nearest' });
+            if (o.ok) { pick[k] = +i + 1; K.sfx('right'); } else { mistakes++; (wrongPick[k] = wrongPick[k] || []).push(+i); K.sfx('wrong'); }
+            rowFb['r:' + k] = { no: !o.ok, html: o.why };
+            render();
+            const nx = S.el.querySelector('#tw-next'); if (nx) nx.scrollIntoView({ block: 'nearest' });
           });
           const nx = S.el.querySelector('#tw-next');
           if (nx) nx.onclick = () => { K.sfx('ok'); done(); };
@@ -167,7 +171,7 @@
         render();
       });
       await crdt('haeun', 'Better: lanterns that count themselves. Each island keeps its own tally on the same board, and only ever adds to its own line.',
-        `<div class="tw-plans"><div class="tw-plan tw-e"><b>Ha-eun's copy</b><ul><li><span>East</span>9</li><li><span>West</span>6</li></ul></div><div class="tw-plan tw-w"><b>Ha-jin's copy</b><ul><li><span>East</span>4</li><li><span>West</span>14</li></ul></div></div>
+        `<div class="tw-plans"><div class="tw-plan tw-e"><b>Ha-eun's copy</b><table class="tw-tally"><tr><td>East's line</td><td>9</td></tr><tr><td>West's line</td><td>6</td></tr><tr class="tot"><td>Total</td><td>15</td></tr></table></div><div class="tw-plan tw-w"><b>Ha-jin's copy</b><table class="tw-tally"><tr><td>East's line</td><td>4</td></tr><tr><td>West's line</td><td>14</td></tr><tr class="tot"><td>Total</td><td>18</td></tr></table></div></div>
           <p><b>The plans split at East 4, West 6. How does the lantern counter merge?</b></p>`,
         [{ t: 'Add everything: 9 + 6 + 4 + 14 = 33', ok: false, why: 'That counts lanterns twice: West\'s 6 is inside Ha-jin\'s 14, and East\'s 4 is inside Ha-eun\'s 9.' },
           { t: 'Keep the copy saved last: 4 + 14 = 18', ok: false, why: 'That is last-write-wins again, and Ha-eun\'s five lanterns vanish.' },
@@ -194,6 +198,11 @@
   };
 
   K.css('twins', `
+    .isles-game .tw-board { margin-top:10px; }
+    .isles-game .tw-tally { width:100%; border-collapse:collapse; font-size:13px; }
+    .isles-game .tw-tally td { padding:2px 0; border-bottom:1px dashed var(--line); }
+    .isles-game .tw-tally td:last-child { text-align:right; font:700 15px var(--f-head); }
+    .isles-game .tw-tally tr.tot td { border-bottom:0; font-weight:800; }
     .isles-game .tw-plans { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
     .isles-game .tw-plan { border:3px solid var(--ink); border-radius:12px; padding:6px 8px; font-size:12.5px; min-width:0; }
     .isles-game .tw-plan.tw-e { background:#ffe8eb; } .isles-game .tw-plan.tw-w { background:#e6eeff; }
@@ -205,7 +214,7 @@
     .isles-game .tw-merged { display:grid; gap:6px; margin:8px 0; }
     .isles-game .tw-line { display:grid; gap:1px; text-align:left; padding:8px 10px; border:2px solid var(--ink); border-radius:12px; background:#fff; box-shadow:0 3px 0 var(--ink); }
     .isles-game .tw-line span { font:600 11px var(--f-head); text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
-    .isles-game .tw-line.on { background:#ffe1e1; border-color:#c0392b; }
+    .isles-game .tw-line.on { background:#ffe1e1; border-color:#c0392b; box-shadow:0 3px 0 #c0392b; }
     .isles-game .tw-line.bad { background:#ffe1e1; } .isles-game .tw-line.good { background:#dcf7e8; }
     .isles-game .tw-line:disabled { opacity:1; cursor:default; }
     .isles-game .tw-line small { font-size:12.5px; margin-top:2px; }
@@ -215,7 +224,8 @@
     .isles-game .tw-row.done { background:#f0fbf5; }
     .isles-game .tw-rh { font:700 14px var(--f-head); }
     .isles-game .tw-vs { display:grid; gap:2px; font-size:12.5px; margin:4px 0; }
-    .isles-game .tw-btns { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:6px; }
+    .isles-game .tw-ask { font:600 11px var(--f-head); text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-top:6px; }
+    .isles-game .tw-btns { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:4px; }
     .isles-game .tw-btns button { padding:6px 4px; font-size:13px; border-radius:10px; }
     .isles-game .tw-verdict { font-weight:800; color:#1f8a4c; }
     .isles-game .tw-row .opts { margin:6px 0 0; }
