@@ -15,7 +15,7 @@
 // SD.icons and SD.audio when the main game has loaded them.
 //   SD.mock.interview(root, { pid, pace, think, store }) -> Promise<result>
 //   SD.mock.menu(root, { store, open, onResult })        -> the problem list, settings and history
-//   SD.mock.visit()                                      -> the main game's entry from Gary in the village
+//   SD.mock.solo()                                       -> the main game's entry (the Eventual Isles NPC, after chapter 3)
 (function () {
   const M = SD.mock = SD.mock || {};
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -786,27 +786,18 @@
   });
 
   // The solo mock interview in the game: the problem list, the round and the debrief, with rewards.
-  // Callers do their own gating (Gary after chapter 1; the Eventual Isles NPC once the Isles are open).
+  // Offered by the Eventual Isles NPC, and unlocked once chapter 3 is cleared (when the Isles open).
   //   await SD.mock.solo({ title })
+  M.unlocked = () => !!(SD.state && SD.state.save && SD.state.save.flags.ch3);
   M.solo = async function (o) {
     o = o || {};
     const S = SD.state, U = SD.ui, AU = SD.audio, sv = S && S.save;
-    if (!sv || !U) return;
+    if (!sv || !U || !M.unlocked()) return;
     const root = U.panel('<div id="mi-root"></div>', { title: o.title || 'MOCK INTERVIEW WITH GARY', cls: 'wide' });
     const store = { load: () => (sv.mock = sv.mock || {}), save: d => { sv.mock = d; S.persist(); } };
     if (AU && AU.music) AU.music('quest');
     M.menu(root.querySelector('#mi-root'), { store, open: p => !!sv.flags['ch' + p.ch], onResult: M.reward });
     await M.panelClosed();
     if (AU && AU.music) AU.music('town');
-  };
-
-  M.visit = async function () {
-    const S = SD.state, U = SD.ui, sv = S && S.save;
-    if (!sv || !U || !sv.flags.ch1) return;
-    const b = U.panel(`<div class="shopkeep">${SD.art.portrait('gary', 64)}<p>"I also run mock interviews. Forty-five minutes. Payment is one croissant. ...You don't have a croissant. It's fine."</p></div>
-      <div class="row"><button class="primary" id="mi-go">Do a mock interview</button><button class="ghost" id="mi-x">Not now</button></div>`, { title: 'GARY' });
-    const go = await new Promise(res => { b.querySelector('#mi-go').onclick = () => res(true); b.querySelector('#mi-x').onclick = () => res(false); });
-    if (!go) { U.closePanel(); return; }
-    await M.solo();
   };
 })();

@@ -61,7 +61,7 @@ XP and Memory Shards by verdict: strong hire 120 XP and 150 shards, senior hire 
 - `game/js/mock.js` — the round, the debrief and the menu. Self-contained: it injects its own styles under `.mi` and needs only `SD.mock` and `SD.wb.parts` (from `whiteboard-data.js`, so the parts palette shares names and icons with Smudge). It uses `SD.art`, `SD.cast`, `SD.concepts`, `SD.icons` and `SD.audio` when they are loaded.
   - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, concepts, spent, mins, cut }`.
   - `SD.mock.menu(root, { store, open, onResult, pid })` shows the problem list and runs rounds.
-  - `SD.mock.visit()` is the main game's entry: Gary's offer, the panel, the save-backed store (`sv.mock`), spaced review and rewards.
+  - `SD.mock.solo()` is the main game's entry: the panel, the save-backed store (`sv.mock`), spaced review and rewards. The new Eventual Isles NPC offers it, and it stays locked until chapter 3 is cleared. Gary no longer offers it.
 - `game/mock.html` — the standalone page.
 
 ## Hook-ups in shared files
@@ -69,7 +69,7 @@ XP and Memory Shards by verdict: strong hire 120 XP and 150 shards, senior hire 
 Two small edits, both on this branch:
 
 1. `game/index.html`: load `js/mock-data.js` and `js/mock.js` right after `js/whiteboard.js`.
-2. `game/js/main.js`, in `gary()`: after Gary's usual line, `if (SD.mock && SD.mock.visit) await SD.mock.visit();`. `visit()` returns at once until chapter 1 is cleared.
+2. The Eventual Isles NPC calls `SD.mock.solo()`. Gary's hook in `main.js` was removed.
 
 New save fields, created on first use: `sv.mock` (`{ pace, think, best, runs }`) and `sv.flags.mockSenior` (problems with a senior hire, for the one-time bonus).
 
