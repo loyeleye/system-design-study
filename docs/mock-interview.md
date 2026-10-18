@@ -1,8 +1,8 @@
 # Mock interview mode
 
-A timed 45-minute system design round with Gary as the interviewer, scored on a senior-level rubric. Ladi picked it on 2026-10-18 from a list of ideas for the game ("the closest thing to the real interview").
+A timed 45-minute system design round with Ploy, the Eventual Isles game-club president, as the interviewer, scored on a senior-level rubric. Ladi picked it on 2026-10-18 from a list of ideas for the game ("the closest thing to the real interview").
 
-To play it on its own, serve `game/` (for example `python3 -m http.server` inside `game/`) and open `mock.html`. `mock.html?p=chat` opens one problem straight away. In the main game, talk to Gary in the village once chapter 1 is cleared.
+To play it on its own, serve `game/` (for example `python3 -m http.server` inside `game/`) and open `mock.html`. `mock.html?p=chat` opens one problem straight away. In the main game, talk to Ploy in her cove on the Eventual Isles once chapter 3 is cleared.
 
 ## The round
 
@@ -10,11 +10,11 @@ It follows Hello Interview's delivery order, which the bosses already use, with 
 
 | Phase | Budget | What you do | What it scores |
 | --- | --- | --- | --- |
-| Requirements | 5 min | Ask clarifying questions (each costs a minute; bad ones get written down), then sort statements into feature, quality or out of scope. Gary corrects the scope before you move on. | Problem navigation |
+| Requirements | 5 min | Ask clarifying questions (each costs a minute; bad ones get written down), then sort statements into feature, quality or out of scope. The interviewer corrects the scope before you move on. | Problem navigation |
 | Entities & API | 5 min | Pick the core entities, then the API. | Solution design |
 | Estimate | 3 min | Choose what to estimate (the number that changes the design, everything for 10 years, or nothing), then type the number. | Trade-offs (the choice), Technical depth (the number) |
-| High-level design | 12 min | For each of two flows, pick the parts from a palette and watch the request path draw itself. A missing part gets one nudge, phrased as a scenario ("One server dies at lunch. Who stops sending it traffic?"). Extra machinery counts against you. Then Gary asks why the key part is there. | Solution design, Trade-offs |
-| Deep dives | 15 min | You pick the first dive from four topics: the real bottleneck, two fair ones, and a bikeshed ("the colour of the Copy link button"). Gary picks the second. Each dive is a question, a nudge and retry if you miss, then "what does that cost you?". | Navigation (the pick), Technical depth, Trade-offs |
+| High-level design | 12 min | For each of two flows, pick the parts from a palette and watch the request path draw itself. A missing part gets one nudge, phrased as a scenario ("One server dies at lunch. Who stops sending it traffic?"). Extra machinery counts against you. Then the interviewer asks why the key part is there. | Solution design, Trade-offs |
+| Deep dives | 15 min | You pick the first dive from four topics: the real bottleneck, two fair ones, and a bikeshed ("the colour of the Copy link button"). The interviewer picks the second. Each dive is a question, a nudge and retry if you miss, then "what does that cost you?". | Navigation (the pick), Technical depth, Trade-offs |
 | Your questions | 5 min | "Any questions for me?" | Trade-offs & communication (small bonus) |
 
 At 45:00 the round ends wherever you are, and anything you didn't reach scores zero.
@@ -25,7 +25,7 @@ At 45:00 the round ends wherever you are, and anything you didn't reach scores z
 
 ## The rubric and the verdict
 
-Five lines, each scored 1 (strong no) to 4 (strong hire): Problem navigation, Solution design, Technical depth, Trade-offs & communication, and Time management. Each line lists Gary's notes, the specific things he saw, good and bad.
+Five lines, each scored 1 (strong no) to 4 (strong hire): Problem navigation, Solution design, Technical depth, Trade-offs & communication, and Time management. Each line lists the interviewer's notes, the specific things they saw, good and bad.
 
 | Verdict | Rule |
 | --- | --- |
@@ -57,7 +57,7 @@ XP and Memory Shards by verdict: strong hire 120 XP and 150 shards, senior hire 
 
 ## Files
 
-- `game/js/mock-data.js` — phases and budgets, the rubric, Gary's nudges per part, the wrap-up questions, and the six problems (`SD.mock.problems`).
+- `game/js/mock-data.js` — phases and budgets, the rubric, the nudges per part, the wrap-up questions, and the six problems (`SD.mock.problems`).
 - `game/js/mock.js` — the round, the debrief and the menu. Self-contained: it injects its own styles under `.mi` and needs only `SD.mock` and `SD.wb.parts` (from `whiteboard-data.js`, so the parts palette shares names and icons with Smudge). It uses `SD.art`, `SD.cast`, `SD.concepts`, `SD.icons` and `SD.audio` when they are loaded.
   - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, concepts, spent, mins, cut }`.
   - `SD.mock.menu(root, { store, open, onResult, pid })` shows the problem list and runs rounds.
@@ -77,4 +77,10 @@ New save fields, created on first use: `sv.mock` (`{ pace, think, best, runs }`)
 
 - Problems for chapters 6 to 10 (the ChatGPT-style service, the key-value store, the notification service, the web crawler, and whatever the North Road arcs teach).
 - A Plot Device for passing every unlocked problem at senior level (it would go in `SD.devices` in `quests.js`, which another thread owns).
-- An interview room backdrop and a seated Gary sprite in the PixelLab pass. For now Gary is his code-drawn portrait, which suits the joke.
+- An interview room backdrop in the PixelLab pass.
+
+## Interviewers
+
+`SD.mock.interviewers` holds each interviewer's name, intro, verdict lines and phase lines (`lines.clock`, `lines.scope`, `lines.diveOk` and so on). `SD.mock.interviewer` picks the default, which is `'ploy'`. `SD.mock.interview(root, problem, { interviewer: 'gary' })` overrides it for one round. A line an interviewer leaves out falls back to Ploy's. The debrief shows the interviewer who ran the round (`res.who`).
+
+Ploy's face is `SD.art.portrait('ploy', size, mood)` once the Isles code registers `SD.cast.ploy`. In the debrief she looks happy unless the verdict is a no, when she looks confused. On the standalone `mock.html`, which doesn't load the Isles, her face is a badge with her initial.

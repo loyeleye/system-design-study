@@ -7,9 +7,13 @@
   const net = SD.net;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const GAMES = {
-    pair: { name: 'Pair Mock', players: '2 players', blurb: 'One of you plays Gary\'s 45-minute system design round. The other is the interviewer, with Gary\'s packet, and scores you.', play: (root, hub, code, o) => SD.pair.play(root, hub, code, o) },
+    pair: { name: 'Pair Mock', players: '2 players', blurb: 'One of you plays the 45-minute system design round. The other is the interviewer, with the answer packet, and scores you.', play: (root, hub, code, o) => SD.pair.play(root, hub, code, o) },
+    raid: { name: 'Incident Raid', players: '2 players (up to 4)', blurb: 'Co-op card battle. You each bring your own deck and hand against one boss, with a shared SLA and shared infra. Plan it out loud: every third turn the boss hits reads and writes at once.', play: (root, hub, code, o) => SD.raid.play(root, hub, code, o), ok: () => !!(SD.raid && SD.raid.available()) },
     show: { name: 'Whiteboard Showdown', players: '2 to 8 players', blurb: 'Smudge erases half a design and the whole table rebuilds it at once, betting on how sure they are. Then a vote on each stress test.', play: (root, hub, code, o) => SD.show.play(root, hub, code, o) }
   };
+
+  // A mode that needs the game's own cards and styles (Incident Raid) shows only inside the game.
+  const on = k => !GAMES[k].ok || GAMES[k].ok();
 
   function css() {
     if (document.getElementById('gh-css')) return;
@@ -47,7 +51,7 @@
     if (opts.inGame && /^Hero /.test(hub.me.nick) && SD.state && SD.state.save && SD.state.save.name) hub.setNick(SD.state.save.name);
     const lobby = hub.lobby;
     let at = null;
-    const tables = () => lobby.peers().filter(p => !p.isMe && p.presence && p.presence.kind === 'table' && GAMES[p.presence.game] && net.cleanCode(p.presence.code).length >= 4);
+    const tables = () => lobby.peers().filter(p => !p.isMe && p.presence && p.presence.kind === 'table' && GAMES[p.presence.game] && on(p.presence.game) && net.cleanCode(p.presence.code).length >= 4);
     lobby.presence({ kind: 'idle', nick: hub.me.nick });
 
     async function sit(game, code, create) {
@@ -74,7 +78,7 @@
           <p class="mi-small">Practise with friends. Talk on your own call, and use these tables as the shared whiteboard. Nothing here is saved: close the page and the table is gone.</p>
           ${hub.mode === 'local' ? (opts.inGame ? `<p class="gh-note"><b>Only this browser for now.</b> This copy of the game can't reach other players yet, so tables only reach your other tabs. To play a friend, use the <a href="${G.URL}" target="_blank" rel="noopener">Guild Hall page</a>.</p>` : '<p class="gh-note"><b>Practice mode.</b> This copy isn\'t on claude.ai, so tables only reach other tabs of this browser. Open the page in a second tab to try both seats.</p>') : '<p class="gh-note">Friends need <b>Contributor</b> access to this page (Share menu) to play. Viewers can open it but can\'t take a seat.</p>'}
           <div class="gh-nick"><label for="gh-nick"><b>Your name at the table</b></label><input id="gh-nick" maxlength="24" autocomplete="off" value="${esc(hub.me.nick)}"><button class="mi-btn sm" type="button" id="gh-save">Save</button></div></div>
-        <div class="gh-games">${Object.keys(GAMES).map(k => `<div class="mi-card gh-game"><span class="mi-tag">${esc(GAMES[k].players)}</span><h3>${esc(GAMES[k].name)}</h3><p class="mi-small">${esc(GAMES[k].blurb)}</p>
+        <div class="gh-games">${Object.keys(GAMES).filter(on).map(k => `<div class="mi-card gh-game"><span class="mi-tag">${esc(GAMES[k].players)}</span><h3>${esc(GAMES[k].name)}</h3><p class="mi-small">${esc(GAMES[k].blurb)}</p>
           <div class="mi-row"><button class="mi-btn go" type="button" data-new="${k}">Open a table</button></div>
           <div class="mi-row gh-join"><input id="gh-code-${k}" maxlength="8" placeholder="CODE" autocomplete="off" aria-label="${esc(GAMES[k].name)} table code"><button class="mi-btn" type="button" data-join="${k}">Join</button></div></div>`).join('')}</div>
         <div class="mi-card"><h3>Tables open now</h3>${seen.size ? `<ul class="gh-tables">${[...seen.values()].map(p => `<li><span><b>${esc(GAMES[p.presence.game].name)}</b> · ${esc(net.clean(p.presence.nick, 24) || 'A hero')} · ${esc(net.cleanCode(p.presence.code).toUpperCase())}</span><button class="mi-btn sm" type="button" data-sit="${esc(p.presence.game)}" data-code="${esc(net.cleanCode(p.presence.code))}">Join</button></li>`).join('')}</ul>` : '<p class="mi-small mi-muted">No one is playing right now. Open a table and send a friend the code.</p>'}</div></div>`;

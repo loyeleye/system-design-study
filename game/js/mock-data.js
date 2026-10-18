@@ -1,18 +1,18 @@
-// Mock interview mode: the problems Gary asks, phase by phase.
+// Mock interview mode: the problems the interviewer asks, phase by phase.
 // A 45-minute design round in Hello Interview's delivery order: requirements (with clarifying questions),
 // core entities and API, a targeted estimate, high-level design, two deep dives, then "any questions for me?".
 // Every prompt, answer and explanation here is written fresh for this game.
 //
 // Per problem:
-//   clarify  questions you may ask first. good ones reveal facts; bad ones cost time and show up in Gary's notes.
+//   clarify  questions you may ask first. good ones reveal facts; bad ones cost time and show up in the interviewer's notes.
 //   req      statements to sort into functional (f), non-functional (nf) or out of scope (out).
 //   entities core entities to pick. ok: true needed, 'opt' fine either way, false wrong.
 //   api      one multiple-choice pick (a = index of the right one).
 //   est      what to estimate (pick: best, slow = time sink, skip), then a typed number within lo..hi.
 //   hld      flows to build from the parts palette (SD.wb.parts ids). need = groups of alternatives,
 //            ok = fine to include, anything else in the palette is overengineering for this problem.
-//            why = Gary's "why is that there?" question on the key choice.
-//   dives    deep dive topics. One is the bottleneck, one is a bikeshed trap. You pick the first dive; Gary picks the second.
+//            why = the interviewer's "why is that there?" question on the key choice.
+//   dives    deep dive topics. One is the bottleneck, one is a bikeshed trap. You pick the first dive; the interviewer picks the second.
 //            Each has a question (q, opts, a, why, nudge) and a trade-off follow-up (f).
 window.SD = window.SD || {};
 SD.mock = SD.mock || {};
@@ -37,7 +37,7 @@ SD.mock.rubric = [
 ];
 SD.mock.scoreNames = ['', 'Strong no', 'Lean no', 'Lean hire', 'Strong hire'];
 
-// Gary's nudges when a flow is missing a part. Real interviewers hint with a scenario, not the answer.
+// The interviewer's nudges when a flow is missing a part. Real interviewers hint with a scenario, not the answer.
 SD.mock.nudges = {
   lb: 'One server dies at lunch. Who stops sending it traffic?',
   gateway: 'Where do auth and routing happen before any service sees the call?',
@@ -369,7 +369,7 @@ SD.mock.problems = [
       { q: 'How long can a fan hold a seat while paying?', good: true, a: 'About ten minutes.' },
       { q: 'Do browsing and booking need the same consistency?', good: true, a: 'Browsing can be a little stale. Two people must never get the same seat.' },
       { q: 'Do we process card payments ourselves?', good: true, a: 'No, use a payment provider like Stripe.' },
-      { q: 'Should the tickets be NFTs?', good: false, a: '...', note: 'Proposed NFTs. Gary stared for four seconds.' },
+      { q: 'Should the tickets be NFTs?', good: false, a: '...', note: 'Proposed NFTs. The interviewer stared for four seconds.' },
       { q: 'Which CSS framework should the seat map use?', good: false, a: 'Any.', note: 'Asked about front-end styling in a backend round.' }
     ],
     req: [

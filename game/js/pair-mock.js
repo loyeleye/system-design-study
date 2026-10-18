@@ -1,8 +1,8 @@
 // Pair Mock: the mock interview with a friend as the interviewer.
-// The candidate plays Gary's round (js/mock.js) as usual. Every move goes to the interviewer as a small event,
-// and the interviewer sees it live next to Gary's packet: the facts behind each clarifying question, the
+// The candidate plays the mock round (js/mock.js, run by Ploy) as usual. Every move goes to the interviewer as a small event,
+// and the interviewer sees it live next to the interviewer's packet: the facts behind each clarifying question, the
 // expected answers, the nudges, the real bottleneck. They can type a line to the candidate, send a nudge, and
-// score the rubric themselves. The debrief shows Gary's scores and the interviewer's side by side.
+// score the rubric themselves. The debrief shows Ploy's scores and the human interviewer's side by side.
 //
 // No host: each role owns its own data. The candidate owns the event log (and replays it to an interviewer who
 // joins late or reloads); the interviewer owns their scores. Presence carries each player's role and nickname.
@@ -18,6 +18,8 @@
   const fmt = m => { const s = Math.max(0, Math.floor((+m || 0) * 60)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
   const prob = id => M.problems.find(p => p.id === id);
   const valid = id => !!prob(id);
+  // The round's own interviewer (Ploy), as opposed to the friend in the interviewer's seat.
+  const AI = () => M.who().name;
 
   function css() {
     M.css();
@@ -54,7 +56,7 @@
     const conf = ev.conf != null ? ` · said “${CONF[ev.conf] || '?'}”` : '';
     switch (ev.k) {
       case 'phase': return { cls: 'ph', t: (M.phases.find(p => p.id === ev.id) || {}).name || ev.id };
-      case 'ask': { const c = P.clarify[ev.i]; if (!c) return null; return { cls: c.good ? 'ok' : 'bad', t: `Asked: “${c.q}”`, s: c.good ? `Good question. Gary's answer: ${c.a}` : `Gary would note: ${c.note}` }; }
+      case 'ask': { const c = P.clarify[ev.i]; if (!c) return null; return { cls: c.good ? 'ok' : 'bad', t: `Asked: “${c.q}”`, s: c.good ? `Good question. ${AI()}'s answer: ${c.a}` : `${AI()} would note: ${c.note}` }; }
       case 'req': {
         const wrong = (ev.picks || []).filter(([i, k]) => P.req[i] && P.req[i].k !== k);
         return { cls: wrong.length ? 'bad' : 'ok', t: `Sorted the scope: ${(ev.picks || []).length - wrong.length} of ${(ev.picks || []).length} right`, s: wrong.map(([i, k]) => `“${P.req[i].t}” as ${k === 'f' ? 'a feature' : k === 'nf' ? 'a quality' : 'out of scope'}`).join('; ') };
@@ -80,16 +82,16 @@
         const extra = [...sel].filter(id => !F.need.some(g => g.includes(id)) && !(F.ok || []).includes(id));
         return { cls: miss.length || extra.length ? 'bad' : 'ok', t: `${ev.after ? 'After the nudge, ' : ''}“${F.name}”: ${[...sel].map(id => part(id).name).join(' → ') || 'nothing'}`, s: [miss.length ? 'Missing ' + miss.map(g => g.map(id => part(id).name).join(' or ')).join(', ') : '', extra.length ? 'Not needed: ' + extra.map(id => part(id).name).join(', ') : ''].filter(Boolean).join('. ') };
       }
-      case 'nudge': return { cls: '', t: `Gary nudged: “${ev.text}”` };
-      case 'dive': { const d = P.dives.find(x => x.id === ev.id); if (!d) return null; return { cls: d.kind === 'bikeshed' ? 'bad' : 'ok', t: `Chose to go deep on: ${d.title}`, s: d.kind === 'bottleneck' ? 'The real bottleneck. Senior signal.' : d.kind === 'bikeshed' ? 'A bikeshed. Gary steers them to the bottleneck.' : 'A fair pick, but not the main risk.' }; }
+      case 'nudge': return { cls: '', t: `${AI()} nudged: “${ev.text}”` };
+      case 'dive': { const d = P.dives.find(x => x.id === ev.id); if (!d) return null; return { cls: d.kind === 'bikeshed' ? 'bad' : 'ok', t: `Chose to go deep on: ${d.title}`, s: d.kind === 'bottleneck' ? 'The real bottleneck. Senior signal.' : d.kind === 'bikeshed' ? `A bikeshed. ${AI()} steers them to the bottleneck.` : 'A fair pick, but not the main risk.' }; }
       case 'divenow': { const d = P.dives.find(x => x.id === ev.id); return d ? { cls: 'ph', t: 'Deep dive: ' + d.title } : null; }
       case 'wrap': { const w = M.wrap[ev.i]; return w ? { cls: w.good ? 'ok' : 'bad', t: `Asked you: “${w.t}”` } : null; }
-      case 'end': return { cls: 'ph', t: `Round over at ${ev.mins} min${ev.cut ? ' (out of time)' : ''}. Gary's verdict: ${VERDICT[ev.verdict] || '?'}` };
+      case 'end': return { cls: 'ph', t: `Round over at ${ev.mins} min${ev.cut ? ' (out of time)' : ''}. ${AI()}'s verdict: ${VERDICT[ev.verdict] || '?'}` };
       default: return null;
     }
   }
 
-  // Gary's packet: everything the interviewer needs to answer and judge, phase by phase.
+  // The packet: everything the interviewer needs to answer and judge, phase by phase.
   function packet(P) {
     const li = a => a.map(x => `<li>${x}</li>`).join('');
     const bott = P.dives.find(d => d.kind === 'bottleneck');
@@ -136,7 +138,7 @@
       if (!role && taken) { role = taken === 'candidate' ? 'interviewer' : 'candidate'; pres(); }
       const P = prob(settings.pid);
       root.innerHTML = `<div class="mi"><div class="mi-card"><span class="mi-tag">Pair Mock · table ${esc(code.toUpperCase())}</span><h2>Mock interview with a friend</h2>
-        <p class="mi-small">One of you is the candidate and plays Gary's round. The other is the interviewer, with Gary's packet: what to answer, what to expect, and when to nudge. Talk on your own call; this page is the shared whiteboard.</p>
+        <p class="mi-small">One of you is the candidate and plays ${esc(AI())}'s round. The other is the interviewer, with ${esc(AI())}'s packet: what to answer, what to expect, and when to nudge. Talk on your own call; this page is the shared whiteboard.</p>
         <div class="mi-row"><span class="mi-small"><b>Your role</b></span><div class="mi-pick" role="group" aria-label="Your role">${['candidate', 'interviewer'].map(r => `<button type="button" data-role="${r}" class="${role === r ? 'on' : ''}" ${taken === r ? 'disabled' : ''}>${r === 'candidate' ? 'Candidate' : 'Interviewer'}<small>${r === 'candidate' ? 'you answer' : 'you ask and score'}</small></button>`).join('')}</div></div>
         <div class="mi-row"><span class="mi-small"><b>Problem</b></span>${o.create ? `<select id="pm-pid" class="pm-say">${M.problems.map(x => `<option value="${x.id}" ${x.id === settings.pid ? 'selected' : ''}>${esc(x.name)} (like ${esc(x.like)})</option>`).join('')}</select>` : `<b>${esc(P.name)}</b>`}</div>
         <div class="mi-row"><span class="mi-small"><b>Pace</b></span>${o.create ? `<div class="mi-pick" role="group" aria-label="Pace">${Object.keys(PACES).map(k => `<button type="button" data-pace="${k}" class="${settings.pace === k ? 'on' : ''}">${PACES[k]}</button>`).join('')}</div>` : `<b>${PACES[settings.pace]}</b>`}</div>
@@ -175,12 +177,12 @@
       const first = root.querySelector('.mi .mi-card');
       if (first) first.after(host);
     }
-    // Gary's scores beside the interviewer's.
+    // The round's scores beside the human interviewer's.
     function cmp(g, s, who) {
       return `<div class="mi-card"><h3>${s ? `${esc(who)}'s scores` : `Waiting for ${esc(who)}'s scores…`}</h3>
-        <table class="pm-cmp"><thead><tr><th>Rubric line</th><th>Gary</th><th>${esc(who)}</th></tr></thead><tbody>${M.rubric.map(r => `<tr><td>${esc(r.name)}</td><td>${g && g[r.id] ? g[r.id] + '/4' : '–'}</td><td>${s && s.grades[r.id] ? s.grades[r.id] + '/4' : '–'}</td></tr>`).join('')}</tbody></table>
+        <table class="pm-cmp"><thead><tr><th>Rubric line</th><th>${esc(AI())}</th><th>${esc(who)}</th></tr></thead><tbody>${M.rubric.map(r => `<tr><td>${esc(r.name)}</td><td>${g && g[r.id] ? g[r.id] + '/4' : '–'}</td><td>${s && s.grades[r.id] ? s.grades[r.id] + '/4' : '–'}</td></tr>`).join('')}</tbody></table>
         ${s && s.verdict ? `<p><b>${esc(who)}'s call:</b> ${esc(VERDICT[s.verdict] || '')}</p>` : ''}${s && s.note ? `<div class="pm-quote"></div>` : ''}
-        <p class="mi-small mi-muted">Where you and Gary disagree is the interesting part. Talk it through.</p></div>`;
+        <p class="mi-small mi-muted">Where you and ${esc(AI())} disagree is the interesting part. Talk it through.</p></div>`;
     }
 
     // ---------- Interviewer ----------
@@ -202,13 +204,13 @@
       if (last && last.id === 'dive' && curDive) { const d = P.dives.find(x => x.id === curDive.id); if (d && d.nudge) nudges.push(d.nudge); }
       root.innerHTML = `<div class="mi"><div class="mi-card"><div class="mi-row" style="justify-content:space-between;margin:0"><div><span class="mi-tag">Pair Mock · you're the interviewer · table ${esc(code.toUpperCase())}</span><h2>${esc(P.name)}</h2></div>
           <div class="mi-clock"><span>${c && c.presence.clock != null ? fmt(c.presence.clock) : '0:00'}</span><small>${esc(nickOf(c))}'s clock · ${esc(PACES[settings.pace])}</small></div></div>
-        <div class="pm-say" style="margin-top:8px"><input id="pm-line" maxlength="200" placeholder="Say something to ${esc(nickOf(c))} (it shows under Gary's bubble)" autocomplete="off"><button class="mi-btn sm go" type="button" id="pm-send">Send</button></div>
+        <div class="pm-say" style="margin-top:8px"><input id="pm-line" maxlength="200" placeholder="Say something to ${esc(nickOf(c))} (it shows under ${esc(AI())}'s bubble)" autocomplete="off"><button class="mi-btn sm go" type="button" id="pm-send">Send</button></div>
         ${nudges.length ? `<div class="mi-row"><span class="mi-small"><b>Nudge:</b></span>${nudges.slice(0, 4).map((t, i) => `<button class="mi-btn sm" type="button" data-nudge="${i}" title="${esc(t)}">${esc(t.length > 48 ? t.slice(0, 46) + '…' : t)}</button>`).join('')}</div>` : ''}
         <div class="mi-row"><button class="mi-btn sm" type="button" data-say="Let's move on.">Let's move on</button><button class="mi-btn sm" type="button" data-say="Why that choice?">Why?</button><button class="mi-btn sm" type="button" data-say="What does that cost you?">What does it cost?</button><button class="mi-btn sm" type="button" data-say="Good. Keep going.">Good, keep going</button></div></div>
         <div class="pm-grid"><div class="mi-card"><h3>What they're doing</h3><div class="pm-feed" id="pm-feed">${items.length ? items.map(e => `<div class="pm-ev ${e.cls}">${esc(e.t)}${e.s ? `<small>${esc(e.s)}</small>` : ''}</div>`).join('') : `<p class="mi-small mi-muted">Waiting for ${esc(nickOf(c))} to start the round.</p>`}</div></div>
-          <div class="mi-card"><h3>Gary's packet</h3>${packet(P)}</div></div>
-        <div class="mi-card"><h3>Your scores</h3><p class="mi-small mi-muted">Score what you saw and heard, not just the clicks. 1 is a strong no, 4 a strong hire.${gary ? ` Gary's verdict: <b>${esc(VERDICT[gary.verdict] || '')}</b>.` : ''}</p>
-          <div class="pm-score">${M.rubric.map(r => `<div><span>${esc(r.name)}${gary && gary.grades && gary.grades[r.id] ? ` <span class="mi-muted mi-small">(Gary: ${gary.grades[r.id]})</span>` : ''}</span><div class="mi-pick" role="group" aria-label="${esc(r.name)}">${[1, 2, 3, 4].map(n => `<button type="button" data-g="${r.id}" data-n="${n}" class="${mine.grades[r.id] === n ? 'on' : ''}">${n}</button>`).join('')}</div></div>`).join('')}
+          <div class="mi-card"><h3>${esc(AI())}'s packet</h3>${packet(P)}</div></div>
+        <div class="mi-card"><h3>Your scores</h3><p class="mi-small mi-muted">Score what you saw and heard, not just the clicks. 1 is a strong no, 4 a strong hire.${gary ? ` ${esc(AI())}'s verdict: <b>${esc(VERDICT[gary.verdict] || '')}</b>.` : ''}</p>
+          <div class="pm-score">${M.rubric.map(r => `<div><span>${esc(r.name)}${gary && gary.grades && gary.grades[r.id] ? ` <span class="mi-muted mi-small">(${esc(AI())}: ${gary.grades[r.id]})</span>` : ''}</span><div class="mi-pick" role="group" aria-label="${esc(r.name)}">${[1, 2, 3, 4].map(n => `<button type="button" data-g="${r.id}" data-n="${n}" class="${mine.grades[r.id] === n ? 'on' : ''}">${n}</button>`).join('')}</div></div>`).join('')}
             <div><span>Your call</span><div class="mi-pick" role="group" aria-label="Your call">${Object.keys(VERDICT).map(k => `<button type="button" data-v="${k}" class="${mine.verdict === k ? 'on' : ''}">${esc(VERDICT[k])}</button>`).join('')}</div></div></div>
           <textarea class="pm-notes" id="pm-notes" maxlength="600" placeholder="Notes for the candidate: what went well, what to work on"></textarea>
           <div class="mi-row mi-end">${sent ? '<span class="mi-small pm-good">Sent. You can change and send again.</span>' : ''}<button class="mi-btn" type="button" id="pm-leave">Leave</button><button class="mi-btn go" type="button" id="pm-score" ${Object.keys(mine.grades).length === M.rubric.length ? '' : 'disabled'}>Send my scores</button></div></div></div>`;
