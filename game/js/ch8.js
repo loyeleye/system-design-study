@@ -340,7 +340,7 @@
 
   // The Scouter: severity reads as a power level, and elites and bosses read "IT'S OVER 9000!" when the fight starts.
   function scouterHud(C, root) {
-    const s = root.querySelector('.bar.sev span');
+    const s = root.querySelector('.foe-card.tgt .bar.sev span') || root.querySelector('.bar.sev span');
     if (s) s.textContent = `Power level ${C.sev.toLocaleString()}/${C.max.toLocaleString()}`;
     if ((C.elite || C.boss) && !C.over9000 && !C.over) {
       C.over9000 = true;
