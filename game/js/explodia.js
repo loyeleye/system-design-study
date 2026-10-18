@@ -303,8 +303,8 @@
         { type: 'choose', q: 'An SLO of 99.9% availability over 30 days allows about how much downtime?', opts: [
           { t: 'About 43 minutes', ok: true, why: '30 days is 43,200 minutes; 0.1% of that is 43.2.' },
           { t: 'About 4 minutes', why: 'That\'s 99.99%. Each extra nine divides the budget by ten.' },
-          { t: 'About 7 hours', why: 'That\'s about 99%.' },
-          { t: 'None at all', why: 'That\'s 100%, which no real system meets.' }] },
+          { t: 'About 7.2 hours', why: 'That\'s 99%.' },
+          { t: 'About 26 seconds', why: 'That\'s 99.999%, five nines.' }] },
         { type: 'sort', q: 'SLI, SLO or SLA?', bins: [{ k: 'sli', label: 'SLI (measure)' }, { k: 'slo', label: 'SLO (target)' }, { k: 'sla', label: 'SLA (contract)' }], items: [
           { t: 'The share of explosions that land within 300 ms of the chant', k: 'sli', why: 'A measurement users feel: an SLI.' },
           { t: '99.9% of explosions land on time each month', k: 'slo', why: 'A target for an SLI: an SLO.' },
@@ -318,19 +318,19 @@
           { t: 'Spell-check for chants', cost: 5, value: 1 }, { t: 'Follower notifications', cost: 18, value: 4 }],
           why: 'The budget exists to be spent: ship the most valuable changes whose risk fits, and skip the one big risky change worth little.' },
         { type: 'choose', q: 'Ten days into the month, the error budget is gone. What does the SRE Book say happens next?', opts: [
-          { t: 'Freeze risky launches and spend the time on reliability until the budget recovers', ok: true, why: 'The budget turns a fight between devs and ops into a rule both agreed on in advance.' },
-          { t: 'Keep launching, but carefully', why: 'That\'s how a month becomes a quarter of outages.' },
-          { t: 'Raise the SLO to 100% so it never happens again', why: 'A stricter target makes the budget smaller, not bigger.' },
-          { t: 'Blame whoever launched last', why: 'Blame doesn\'t refill a budget. Policy does.' }] },
+          { t: 'Freeze risky launches; spend the time on reliability work', ok: true, why: 'The budget turns a fight between devs and ops into a rule both agreed on in advance.' },
+          { t: 'Keep launching, but add a canary stage to every release', why: 'Canaries shrink the blast radius, but the budget is already spent: the agreed policy is to stop risky change.' },
+          { t: 'Raise the SLO target so the team takes reliability seriously', why: 'A stricter SLO makes the budget smaller; it doesn\'t refill it.' },
+          { t: 'Add more on-call engineers so incidents end faster', why: 'Faster response helps, but launches keep burning a budget that\'s already gone.' }] },
         { type: 'choose', q: 'Why not aim for 100% reliability?', opts: [
-          { t: 'Users can\'t tell 99.999% from 100% over their own flaky Wi-Fi, and chasing it means never changing anything', ok: true, why: 'Past a point, each nine costs a fortune and buys users nothing.' },
-          { t: 'Because 100% is easy and boring', why: 'It\'s impossible, actually. And boring.' },
-          { t: 'Because outages are good for morale', why: 'They are not. Ask Kyu.' }] }
+          { t: 'Users can\'t tell it from 99.99%, and it would freeze all change', ok: true, why: 'Their own Wi-Fi fails more often than that. Past a point each nine costs a fortune and buys users nothing.' },
+          { t: 'Hardware fails, so it needs more replicas than money allows', why: 'Replicas get you close. The real problem is that the last nines buy users nothing and stop every change.' },
+          { t: 'Contracts (SLAs) legally forbid promising more than 99.9%', why: 'No such rule: SLAs are looser than SLOs by choice, to leave room.' }] }
       ],
       recall: { type: 'choose', q: 'From memory: what is an error budget?', opts: [
-        { t: 'One minus the SLO: the amount of unreliability you may spend on change before you must slow down', ok: true, why: 'Budget = 1 − SLO. Spend it on launches; protect it when it runs low.' },
-        { t: 'The money set aside for fixing bugs', why: 'It\'s measured in failures, not shards.' },
-        { t: 'The number of engineers on call', why: 'That\'s a rotation.' }] },
+        { t: 'The failure the SLO allows (1 − SLO), spent on change', ok: true, why: 'Budget = 1 − SLO. Spend it on launches; protect it when it runs low.' },
+        { t: 'Shards set aside each quarter to pay customers SLA refunds', why: 'That\'s an SLA penalty. The error budget is counted in failures, not money.' },
+        { t: 'The hours on-call engineers may spend fighting incidents', why: 'That\'s a limit on on-call load, not an error budget.' }] },
       done: '<p><b>SLI</b> measures, <b>SLO</b> targets, <b>SLA</b> promises with a penalty. The <b>error budget</b> (1 − SLO) is for spending on change; when it\'s gone, reliability work comes first.</p>'
     },
     {
@@ -356,9 +356,9 @@
           { t: 'A certificate expires in 20 days', k: 'ticket', why: 'Fix it this week, not at 3 a.m.' },
           { t: 'A nightly batch ran 2 minutes slower', k: 'dash', why: 'Interesting, not actionable.' }] },
         { type: 'choose', q: 'Which alert is better?', opts: [
-          { t: '"Users are getting errors on checkout" (a symptom)', ok: true, why: 'Symptoms catch every cause, including ones you didn\'t predict.' },
-          { t: '"Database CPU above 80%" (a cause)', why: 'It might be fine, and it misses the failures with other causes.' },
-          { t: '"Something changed"', why: 'Everything is always changing. That pages forever.' }] },
+          { t: '"Checkout requests are failing for users"', ok: true, why: 'A symptom: it catches every cause, including ones you didn\'t predict.' },
+          { t: '"Database CPU above 80% for ten minutes"', why: 'A cause: it may be harmless, and it misses failures with other causes.' },
+          { t: '"Disk on db-3 will be full in six days"', why: 'Real, but not urgent: a ticket, not a page.' }] },
         { type: 'tap', q: 'Tap everything a page should be.', chips: [{ t: 'Urgent', ok: true }, { t: 'Actionable', ok: true }, { t: 'About real user pain', ok: true }, { t: 'Needs human judgement', ok: true }, { t: 'A daily FYI' }, { t: 'Something a script could fix' }, { t: 'Loud' }],
           why: 'If a script could handle it, automate it; if it\'s not urgent, ticket it; if nobody can act, delete it.' }
       ],
@@ -381,9 +381,9 @@
         { type: 'tap', q: 'Which of these make a task toil?', chips: [{ t: 'Manual', ok: true }, { t: 'Repetitive', ok: true }, { t: 'Automatable', ok: true }, { t: 'No lasting value', ok: true }, { t: 'Grows with the service', ok: true }, { t: 'Hard' }, { t: 'Boring to me' }, { t: 'Done by juniors' }],
           why: 'Toil is about the shape of the work, not how hard or dull it feels.' },
         { type: 'choose', q: 'Kyu spends 90% of every day on toil. What does the SRE Book recommend?', opts: [
-          { t: 'Cap toil at about 50% and spend the rest automating it away', ok: true, why: 'Without the cap, toil grows with the service until no engineering happens at all.' },
-          { t: 'Hire more people to do the toil', why: 'Then toil grows linearly with headcount. That\'s the trap.' },
-          { t: 'Ignore it; toil is just the job', why: 'Toil left alone eats the whole job.' }] },
+          { t: 'Cap toil near 50% and spend the rest automating it', ok: true, why: 'Without the cap, toil grows with the service until no engineering happens at all.' },
+          { t: 'Hire more operators so each one does less toil', why: 'Then toil grows with headcount and nothing gets engineered away.' },
+          { t: 'Write better runbooks so the toil goes faster', why: 'Runbooks help, but the work is still manual and still grows.' }] },
         { type: 'order', q: 'Put the evolution of automation in order, from worst to best.', chips: ['Done by hand from a runbook', 'A script one person keeps on their laptop', 'A shared, maintained tool anyone can run', 'The system does it itself, no human needed'],
           why: 'Each step removes a human from the loop. The best automation is a system that doesn\'t need the task at all.' },
         { type: 'match', q: 'Link each chore to what demolishes it.', pairs: [['Restarting a leaky server weekly', 'Fix the leak (or auto-restart on a health check)'], ['Approving every disk resize', 'Automatic resizing within safe limits'], ['Copy-pasting deploy steps', 'A deploy pipeline'], ['Resetting passwords by ticket', 'Self-service reset']],
@@ -413,16 +413,19 @@
           why: 'Overload spreads. Cut the work (shed, degrade), stop the multiplier (retry budgets, backoff, jitter), and drop dead work (deadlines).' },
         { type: 'choose', q: 'A request passes through 3 layers, and each layer retries a failure up to 3 times. Worst case, how many attempts reach the database?', opts: [
           { t: '64 (4 × 4 × 4)', ok: true, why: 'Each layer turns 1 attempt into 4. Retries multiply. Retry at one layer only, with a budget.' },
-          { t: '9', why: 'Retries multiply across layers, they don\'t add.' }, { t: '4', why: 'Only if a single layer retries.' }, { t: '3', why: 'That\'s just the layers.' }] },
+          { t: '27 (3 × 3 × 3)', why: 'That forgets each layer\'s first try: 1 + 3 = 4 attempts per layer.' },
+          { t: '12 (3 × 4)', why: 'Retries multiply layer by layer: 4 × 4 × 4.' }, { t: '10 (3 + 3 + 3 + 1)', why: 'Retries multiply across layers; they don\'t add.' }] },
         { type: 'choose', q: 'The client gave up after 2 seconds. The backend is still working on its request at 5 seconds. What should it do?', opts: [
-          { t: 'Stop: the deadline travels with the request, and work past it is wasted', ok: true, why: 'Propagated deadlines stop dead work from eating the capacity live requests need.' },
-          { t: 'Finish it, in case they come back', why: 'They won\'t. And the next request waits behind it.' }, { t: 'Retry it', why: 'Now it\'s wasted twice.' }] },
+          { t: 'Stop: the deadline passed, so nobody wants the answer', ok: true, why: 'Propagated deadlines stop dead work from eating the capacity live requests need.' },
+          { t: 'Finish it and cache the result for the next caller', why: 'Caching helps repeat reads, but this work still holds capacity that live requests need.' },
+          { t: 'Hand it to a less busy replica to finish faster', why: 'Load balancing doesn\'t help when nobody is waiting for the answer.' }] },
         { type: 'tap', q: 'Tap everything that helps stop a cascade.', chips: [{ t: 'Load shedding', ok: true }, { t: 'Per-client quotas', ok: true }, { t: 'Circuit breakers', ok: true }, { t: 'Retry budgets with jitter', ok: true }, { t: 'Graceful degradation', ok: true }, { t: 'Unbounded queues' }, { t: 'Instant retries forever' }, { t: 'Restarting everything together' }],
           why: 'Protect capacity and stop the multipliers. Unbounded queues and synchronized retries feed the fire.' }
       ],
       recall: { type: 'choose', q: 'From memory: why do instant retries make an overload worse?', opts: [
-        { t: 'Each failure sends more requests to servers that are already overloaded, so failures multiply', ok: true, why: 'Retries are load. Back off, add jitter and budget them.' },
-        { t: 'They don\'t; retries always help', why: 'They help a blip, and turn an overload into a cascade.' }, { t: 'Retries are slow to type', why: 'The computer types them. Very fast. That\'s the problem.' }] },
+        { t: 'Each failure adds load to servers already overloaded', ok: true, why: 'Retries are load. Back off, add jitter and budget them.' },
+        { t: 'Retries reorder requests, so writes apply out of order', why: 'Ordering can matter, but the overload comes from the multiplied load.' },
+        { t: 'Retries skip the cache, so every one hits the database', why: 'Not necessarily. The problem is the extra load, wherever it lands.' }] },
       done: '<p>Cascades spread overload server to server. <b>Shed</b> and <b>degrade</b> to cut work, use <b>retry budgets with backoff and jitter</b> and <b>circuit breakers</b> to stop multipliers, and propagate <b>deadlines</b> so dead requests stop.</p>'
     },
     {
@@ -437,13 +440,17 @@
         { type: 'order', q: 'Put the troubleshooting loop in order.', chips: ['Triage: how bad, and stop the bleeding', 'Examine: look at the telemetry and logs', 'Diagnose: form hypotheses', 'Test: try to prove each one wrong', 'Treat: fix it and confirm it\'s fixed'],
           why: 'Triage first, then evidence, hypotheses, tests and the cure. Writing it up comes after.' },
         { type: 'choose', q: 'The arena scoreboard broke right after a release. What first?', opts: [
-          { t: 'Roll back the release to stop the damage, then find out why', ok: true, why: 'Mitigation first. Root cause can wait until users stop hurting.' },
-          { t: 'Debug the new code live until you find the bug', why: 'Users suffer the whole time you\'re debugging.' }, { t: 'Write the postmortem', why: 'Postmortems come after the fire is out.' }] },
+          { t: 'Roll back the release, then investigate why', ok: true, why: 'Mitigation first. Root cause can wait until users stop hurting.' },
+          { t: 'Attach a debugger in production and find the bug', why: 'Users suffer the whole time you\'re debugging.' },
+          { t: 'Write the postmortem while the details are fresh', why: 'Postmortems come after the fire is out.' },
+          { t: 'Add more scoreboard servers to absorb the errors', why: 'More copies of broken code just break in more places.' }] },
         { type: 'tap', q: 'What belongs in a blameless postmortem?', chips: [{ t: 'Timeline', ok: true }, { t: 'Impact on users', ok: true }, { t: 'Root causes and triggers', ok: true }, { t: 'Action items with owners', ok: true }, { t: 'What went well, and where we got lucky', ok: true }, { t: 'Who to blame' }, { t: 'A list of people to fire' }],
           why: 'Blameless means the fix lands on the system. People who fear blame hide what happened.' }
       ],
       recall: { type: 'choose', q: 'From memory: in an outage, what comes before finding the root cause?', opts: [
-        { t: 'Mitigating the impact: stop the bleeding', ok: true, why: 'Restore service first; understand it second.' }, { t: 'The postmortem', why: 'That\'s last.' }, { t: 'Assigning blame', why: 'Never. Not first, not last.' }] },
+        { t: 'Stopping the bleeding (mitigation)', ok: true, why: 'Restore service first; understand it second.' },
+        { t: 'Writing the blameless postmortem', why: 'That\'s last, once the fire is out.' },
+        { t: 'Finding the exact line of code at fault', why: 'That\'s the root cause. It comes after users stop hurting.' }] },
       done: '<p>Clear <b>roles</b> (commander, operations, comms, planning), <b>mitigate before you diagnose</b>, troubleshoot as triage → examine → diagnose → test → treat, and finish with a <b>blameless postmortem</b>.</p>'
     },
     {
@@ -457,7 +464,7 @@
         { type: 'match', q: 'Link each idea to what it leads to.', pairs: [['An SLO of 99.9%', 'An error budget of 0.1%'], ['The budget runs out', 'A freeze on risky launches'], ['Toil over 50%', 'Automate it away'], ['Retries at every layer', 'A retry budget with backoff and jitter'], ['A big incident', 'An incident commander and clear roles'], ['Users feel pain', 'Page someone (a symptom alert)']],
           why: 'Each idea is the cause or the fix of another. That web is the SRE Book.' },
         { type: 'choose', q: 'An SLO of 99.99% over 30 days allows about how much downtime?', opts: [
-          { t: 'About 4.3 minutes', ok: true, why: '0.01% of 43,200 minutes.' }, { t: 'About 43 minutes', why: 'That\'s 99.9%.' }, { t: 'About 26 seconds', why: 'That\'s 99.999%.' }] },
+          { t: 'About 4 minutes', ok: true, why: '0.01% of 43,200 minutes is 4.3.' }, { t: 'About 43 minutes', why: 'That\'s 99.9%.' }, { t: 'About 26 seconds', why: 'That\'s 99.999%.' }] },
         { type: 'sort', q: 'Which chapter\'s fix is this?', bins: [{ k: 'mon', label: 'Monitoring' }, { k: 'toil', label: 'Toil' }, { k: 'over', label: 'Overload' }, { k: 'inc', label: 'Incidents' }], per: 6, items: [
           { t: 'Page on errors users see, not on CPU', k: 'mon', why: 'Symptom-based alerting.' },
           { t: 'Script the weekly restart, then fix the leak', k: 'toil', why: 'Climbing the automation ladder.' },
@@ -486,8 +493,9 @@
           why: 'Budgets, bounded toil, actionable pages, blameless learning. No 100%, no retry storms, mitigation first.' }
       ],
       recall: { type: 'choose', q: 'From memory: what single idea ties the whole SRE Book together?', opts: [
-        { t: 'Reliability is a feature with a target (the SLO), and the budget below it lets you move fast without breaking trust', ok: true, why: 'Measure what users feel, set a target, and spend the difference on change. The rest is how.' },
-        { t: 'Never change anything', why: 'That\'s the 100% trap.' }, { t: 'Explosions', why: '...Fine. Also explosions.' }] },
+        { t: 'Set a reliability target users feel; spend what\'s left on change', ok: true, why: 'Measure what users feel, set a target, and spend the difference on change. The rest is how.' },
+        { t: 'Automate every operational task until no human is needed', why: 'Automation is one chapter. Without a target you don\'t know what to automate first.' },
+        { t: 'Prevent every outage by adding redundancy to every layer', why: 'That\'s the 100% trap: it costs a fortune and freezes change.' }] },
       done: '<p>You mixed every chapter and kept the budget. That\'s the SRE Book: <b>SLOs and error budgets</b>, <b>golden signals</b>, <b>bounded toil</b>, <b>overload control</b> and <b>calm incident command</b>, joined up.</p>'
     }
   ];
@@ -525,17 +533,17 @@
               { type: 'tap', q: 'What made the permits, the gong and the certificates toil?', chips: [{ t: 'Manual', ok: true }, { t: 'Repetitive', ok: true }, { t: 'Automatable', ok: true }, { t: 'Grew with every explosion', ok: true }, { t: 'They were hard' }, { t: 'They were important' }],
                 why: 'Important work can still be toil. What matters is that it repeats, a machine could do it, and it scales with the service.' },
               { type: 'choose', q: 'Lord Latency\'s standing approval reads only unusual permits. Which step of the automation ladder is that?', opts: [
-                { t: 'The system handles the routine case itself, and humans only see exceptions', ok: true, why: 'Near the top of the ladder: the machine does the normal path.' },
-                { t: 'Still doing it by hand', why: 'He no longer reads the routine ones.' },
-                { t: 'Hiring a second Lord Latency', why: 'Two slow stampers is still toil, twice.' }] },
+                { t: 'The routine case is automated; people handle exceptions', ok: true, why: 'Near the top of the ladder: the machine does the normal path.' },
+                { t: 'A shared script that any clerk can run by hand each day', why: 'Still run by a person every time. The standing approval needs nobody for the routine case.' },
+                { t: 'A second stamper, so the permits move twice as fast', why: 'That doubles the toil instead of removing it.' }] },
               { type: 'choose', q: 'Why does the SRE Book cap toil at about half of an engineer\'s time?', opts: [
-                { t: 'So the other half goes into engineering that removes toil, instead of toil growing until it fills every day', ok: true, why: 'Toil grows with the service. Without a cap it wins.' },
-                { t: 'Because toil is fun in moderation', why: 'It isn\'t, in any amount.' },
-                { t: 'So people have time for meetings', why: 'Meetings are overhead, not engineering.' }] }
+                { t: 'So the other half can go into removing the toil', ok: true, why: 'Toil grows with the service. Without a cap it wins.' },
+                { t: 'So engineers always have spare time for on-call', why: 'On-call is mostly operations work itself; the cap protects engineering time.' },
+                { t: 'Because past 50% the toil can\'t be measured', why: 'It measures fine. The cap is about keeping time for engineering.' }] }
             ],
             done: '<p>Toil is <b>manual, repetitive, automatable work that grows with the service</b>. Automate the routine path, keep humans for the exceptions, and keep toil under half your time.</p>' } }] },
         { at: 'explodia', hint: 'Tell Explodia her paperwork is automated.', do: [
-          { ask: { id: 'sq-sretoil', c: 'sretoil', type: 'mc', q: 'Which of these is toil?', opts: ['Approving the same standard request by hand every day', 'Designing a new storage system', 'Investigating a never-before-seen outage', 'Writing the script that approves standard requests'], a: 0, why: 'Toil is manual, repetitive and automatable. New design and novel incidents need a human; writing the automation is the cure.' } },
+          { ask: { id: 'sq-sretoil', c: 'sretoil', type: 'mc', q: 'Which of these is toil?', opts: ['Approving the same standard request by hand every day', 'Designing a new storage system for the realm\'s scrolls', 'Investigating an outage nobody has ever seen before', 'Writing the script that approves standard requests'], a: 0, why: 'Toil is manual, repetitive and automatable. New design and novel incidents need a human; writing the automation is the cure.' } },
           { say: [['narr', 'The gong rings itself. The permit stamps itself. Three certificates copy themselves, and Seymour checks them with a single tear.'],
             ['explodia', 'EXPLOSIOOOOON!', 'happy'],
             ['narr', 'A crater blooms by the bard\'s stage, exactly where the permit said it would. Explodia falls over, perfectly on schedule.'],
@@ -571,15 +579,15 @@
               { type: 'tap', q: 'Which of these should still page Explodia?', chips: [{ t: 'Explosions land 5 minutes late for everyone', ok: true }, { t: 'Half the followers can\'t see her explosions', ok: true }, { t: 'A leaf fell' }, { t: 'The mana pool is 70% full' }, { t: 'A certificate expires next month' }],
                 why: 'Page on user-visible symptoms that need action now. Capacity trends and expiring certificates are tickets.' },
               { type: 'choose', q: 'Her SLO budget is burning ten times faster than normal. Why page on that, rather than on a single error?', opts: [
-                { t: 'A fast burn rate means the month\'s budget will be gone soon, while one error is noise the SLO already allows', ok: true, why: 'Burn-rate alerts page when the SLO is truly at risk, and stay quiet for blips.' },
-                { t: 'Single errors should page too, to be safe', why: 'That\'s how you get four hundred pages before lunch.' },
-                { t: 'Burn rates are prettier', why: 'They are, but that\'s not the reason.' }] },
+                { t: 'A fast burn means the month\'s budget is at real risk', ok: true, why: 'Burn-rate alerts page when the SLO is truly at risk, and stay quiet for blips the SLO already allows.' },
+                { t: 'Each single error is a bug that must be fixed tonight', why: 'The SLO already allows some errors. Paging on each one is how you get four hundred pages before lunch.' },
+                { t: 'Burn-rate alerts are cheaper for the monitoring system', why: 'Cost isn\'t the reason. Burn rate tracks real risk to the SLO.' }] },
               { type: 'order', q: 'Put a healthy on-call week in order.', chips: ['Hand over: read the last shift\'s notes', 'Get paged only for urgent, actionable symptoms', 'Mitigate with the runbook', 'Write up each page', 'Hand over to the next person'],
                 why: 'Rotations end, notes travel, every page leaves a record so the alert can be improved.' }
             ],
             done: '<p>Page on <b>symptoms users feel</b> and on <b>fast SLO burn</b>; ticket what can wait; keep pages per shift low, rotate, and fix noisy alerts instead of tiring people out.</p>' } }] },
         { at: 'explodia', hint: 'Tell Explodia her pager is fixed.', do: [
-          { ask: { id: 'sq-srepager', c: 'srealert', type: 'mc', q: 'Which alert should wake someone at 3 a.m.?', opts: ['Users are seeing errors and the error budget is burning fast', 'CPU on one server is at 75%', 'A disk will be full next week', 'A deploy finished successfully'], a: 0, why: 'Pages are for urgent, user-visible problems that need a human now. The rest can wait for a ticket or a dashboard.' } },
+          { ask: { id: 'sq-srepager', c: 'srealert', type: 'mc', q: 'Which alert should wake someone at 3 a.m.?', opts: ['Users see errors and the error budget is burning fast', 'CPU on one database server has been at 75% for an hour', 'A disk on the backup server will be full next week', 'A deploy to every region finished successfully tonight'], a: 0, why: 'Pages are for urgent, user-visible problems that need a human now. The rest can wait for a ticket or a dashboard.' } },
           { say: [['narr', 'Explodia sleeps for fourteen hours. Nothing pages her. The pager is so quiet that Pip checks it twice.'],
             ['explodia', 'I am RESTORED. And my explosion today was... EXPLOSIOOOON!', 'happy'],
             ['narr', 'The crater is the biggest yet. Lyra sings one short song about it. It has a chorus.'],
@@ -616,8 +624,9 @@
             intro: 'Each person gave us one tool. Let\'s put them in the right places.',
             rounds: [
               { type: 'choose', q: 'Hero #12 retried every failed press instantly, three times. What should he do instead?', opts: [
-                { t: 'Retry a few times at most, with exponential backoff and random jitter, under a retry budget', ok: true, why: 'Spread out and capped, retries help a blip without feeding an overload.' },
-                { t: 'Retry ten times instead', why: 'More fuel on the fire.' }, { t: 'Never retry anything', why: 'One careful retry fixes plenty of blips.' }] },
+                { t: 'Retry a few times with backoff, jitter and a budget', ok: true, why: 'Spread out and capped, retries help a blip without feeding an overload.' },
+                { t: 'Send every retry to a different oven, chosen at random', why: 'Spreading balances the load, but the retries still multiply it.' },
+                { t: 'Queue every press until an oven is free, however long', why: 'An unbounded queue holds the overload until every request times out.' }] },
               { type: 'tap', q: 'Which tools stop a cascade?', chips: [{ t: 'Load shedding (Akane)', ok: true }, { t: 'Deadlines that travel with requests (Lord Latency)', ok: true }, { t: 'Backoff with jitter (Zen)', ok: true }, { t: 'Graceful degradation (day-old croissants)', ok: true }, { t: 'Instant triple retries (Hero #12, before)' }, { t: 'Restart every oven at once' }],
                 why: 'Cut the work, stop the multipliers, drop dead work, and serve something cheaper rather than nothing.' },
               { type: 'order', q: 'Put the cascade in the order it happened.', chips: ['One oven fails', 'Its load moves to the others', 'Instant retries add even more load', 'The next oven overloads and fails', 'Repeat until no ovens are left'],
@@ -625,7 +634,7 @@
             ],
             done: '<p>A <b>cascading failure</b> passes overload from server to server. <b>Shed load</b>, <b>degrade gracefully</b>, <b>propagate deadlines</b> and use <b>backoff, jitter and retry budgets</b> to stop it.</p>' } }] },
         { at: 'explodia', hint: 'Tell Explodia how to stop her explosions echoing.', do: [
-          { ask: { id: 'sq-srecascade', c: 'srecascade', type: 'mc', q: 'One of four ovens fails and the rest are near capacity. Which response helps most?', opts: ['Shed low-priority orders and make clients back off with jitter', 'Have every client retry instantly three times', 'Restart all the ovens at once', 'Queue every order forever'], a: 0, why: 'Less work and fewer synchronized retries keep the survivors under capacity. The others add load exactly when there\'s none to spare.' } },
+          { ask: { id: 'sq-srecascade', c: 'srecascade', type: 'mc', q: 'One of four ovens fails and the rest are near capacity. Which response helps most?', opts: ['Shed low-priority orders; clients back off with jitter', 'Have every client retry instantly, up to three times each', 'Restart all the ovens at the same moment to clear them', 'Put every order in one big queue so none are refused'], a: 0, why: 'Less work and fewer synchronized retries keep the survivors under capacity. The others add load exactly when there\'s none to spare.' } },
           { say: [['narr', 'The ovens are rebuilt. Hero #12 now waits, politely and randomly, between presses. Akane declines eleven requests before breakfast.'],
             ['explodia', 'Watch this. EXPLOSION! ...And only the target exploded. One crater. No echoes. Contained!', 'happy'],
             ['explodia', 'You have done all three quests. When you have also mastered my five games, come back. I will challenge you to the GRAND EXPLOSION.', 'smug']] }] }
@@ -685,7 +694,7 @@
     U.quitGame = null; U.closePanel();
     if (r === 'quit') return;
     const first = r.ok && !rec.passed;
-    rec.plays++; rec.last = Date.now(); rec.best = Math.max(rec.best, Math.round(r.score * 100));
+    rec.plays = (rec.plays || 0) + 1; rec.last = Date.now(); rec.best = Math.max(rec.best || 0, Math.round(r.score * 100));
     if (r.ok) rec.passed = true;
     const shards = first ? (g.final ? 0 : 80) : r.ok && today ? 20 : 0;
     if (shards) { S.save.shards += shards; SD.run.gainXp(first ? 40 : 10); }
