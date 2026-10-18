@@ -195,6 +195,47 @@
     // You, standing where you are (or at the entrance), from the village sprite sheet
     const you = SD.villageArt && SD.villageArt.chars && SD.villageArt.chars.you, youPic = you && dPic('../village/c-you', again);
     const [hx, hy] = cur ? P(...xy(cur)) : [W / 2, H - 8];
+    // Weather: early chapters get sun rays and leaves on the wind, later ones rain and thunderstorms.
+    const stormy = ((run && run.ch) || 1) >= 3;
+    const leaves = Array.from({ length: 16 }, (_, k) => ({ x: hash(k, 3) % W, y: hash(3, k) % H, v: 0.6 + (hash(k, 9) % 60) / 100, c: ['#8fd16a', '#e8b04a', '#d9783f', '#b6e07a'][k % 4], r: (hash(k, 5) % 628) / 100 }));
+    const drops = Array.from({ length: 140 }, (_, k) => [hash(k, 11) % W, hash(11, k) % H, 0.8 + (hash(k, 13) % 40) / 100]);
+    let bolt = null;
+    function weather(c, t, W, H) {
+      if (!stormy) {
+        // Slanted sun rays that breathe slowly
+        for (let k = 0; k < 4; k++) {
+          const a = 0.07 + 0.05 * Math.sin(t * 0.6 + k * 1.7), x = W * (0.1 + k * 0.27);
+          const g = c.createLinearGradient(x, 0, x - H * 0.35, H);
+          g.addColorStop(0, `rgba(255,236,170,${a * 1.6})`); g.addColorStop(1, 'rgba(255,236,170,0)');
+          c.fillStyle = g; c.beginPath(); c.moveTo(x - 18, 0); c.lineTo(x + 30, 0); c.lineTo(x + 30 - H * 0.35, H); c.lineTo(x - 70 - H * 0.35, H); c.closePath(); c.fill();
+        }
+        // Leaves tumbling across on the wind
+        leaves.forEach(l => {
+          const x = (l.x + t * 40 * l.v) % (W + 40) - 20, y = (l.y + t * 18 * l.v + Math.sin(t * 1.5 + l.r) * 14) % (H + 20) - 10;
+          c.save(); c.translate(x, y); c.rotate(t * 2 * l.v + l.r); c.scale(1, Math.abs(Math.sin(t * 3 + l.r)) * 0.8 + 0.2);
+          c.fillStyle = l.c; c.beginPath(); c.ellipse(0, 0, 6.5, 3.2, 0, 0, 7); c.fill(); c.restore();
+        });
+        return;
+      }
+      // Rain: a dark sky, slanted streaks, and now and then lightning with a flash
+      c.fillStyle = 'rgba(10,14,40,.28)'; c.fillRect(0, 0, W, H);
+      c.strokeStyle = 'rgba(200,220,255,.6)'; c.lineWidth = 1.4; c.beginPath();
+      drops.forEach(([x, y, v]) => { const yy = (y + t * 420 * v) % H, xx = (x - t * 90 * v % W + W) % W; c.moveTo(xx, yy); c.lineTo(xx - 4, yy + 12); });
+      c.stroke();
+      const cyc = t % 7.3;
+      if (cyc < 0.02 && (!bolt || t - bolt.t > 1)) {
+        let x = W * (0.2 + Math.random() * 0.6), y = 0; const pts = [[x, y]];
+        while (y < H * 0.7) { x += Math.random() * 30 - 15; y += 18 + Math.random() * 16; pts.push([x, y]); }
+        bolt = { t, pts };
+        if (window.AU && AU.sfx) AU.sfx('crit');
+      }
+      if (bolt && t - bolt.t < 0.45) {
+        const a = 1 - (t - bolt.t) / 0.45;
+        c.fillStyle = `rgba(230,236,255,${0.45 * a})`; c.fillRect(0, 0, W, H);
+        c.strokeStyle = `rgba(255,255,255,${a})`; c.lineWidth = 3; c.beginPath();
+        bolt.pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke();
+      }
+    }
     const motes = Array.from({ length: 18 }, (_, k) => [hash(k, 7) % W, hash(7, k) % H, 0.2 + (hash(k, k) % 50) / 100]);
     const ctx = cv.getContext('2d');
     cv.width = W; cv.height = H; ctx.imageSmoothingEnabled = false;
@@ -223,6 +264,7 @@
           ctx.beginPath(); ctx.arc(p.x + Math.sin(s2 * 6 + k) * 3, p.y - h - s2 * 22, 3 + s2 * 5, 0, 7); ctx.fill();
         }
       });
+      weather(ctx, t, W, H);
       // Dust motes drifting up through the dungeon air
       motes.forEach(([x, y, v]) => { const yy = (y - t * 12 * v) % H, a = 0.25 + 0.2 * Math.sin(t * 2 + x); ctx.fillStyle = `rgba(255,246,214,${a})`; ctx.fillRect((x + Math.sin(t * v + y) * 6 + W) % W, (yy + H) % H, 2, 2); });
       if (you && youPic.complete) {
@@ -499,7 +541,7 @@
   function mitigate(n, why, cls) {
     n = Math.max(0, Math.round(n));
     C.sev = Math.max(0, C.sev - n);
-    if (n > 0) { U.float($('.foe'), '-' + n, cls || 'hit'); U.burst($('.foe'), cls === 'crit'); }
+    if (n > 0) { U.float($('.foe'), '-' + n, cls || 'hit'); U.burst($('.foe'), cls === 'crit'); heroAnim('cast'); flash('.foe', 'hitflash'); if (cls === 'crit') U.shake('.stage'); }
     if (why) C.log = why;
   }
 
@@ -713,7 +755,7 @@
     if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
     run.sla -= dmg;
     C.log = note + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
-    if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); } else AU.sfx('shield');
+    if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); } else AU.sfx('shield');
     if (run.sla <= 0 && !run.mercy) {
       run.sla = 1; run.mercy = true;
       U.system('LAST UPTIME', 'Pip throws himself in front of the request. You hold at 1 SLA. He is fine. Probably. Once a run.', 'red');
@@ -736,6 +778,39 @@
     run.log.won = (run.log.won || 0) + 1;
   }
 
+  // ---------- Battle stage (PixelLab art, tools/battle_art.py) ----------
+  // The chapter's backdrop, you on the left in a fight stance, the incident on the right.
+  // Playing a card that lands makes you cast; taking damage makes you flinch. One ticker
+  // drives the sprite sheet, since the combat screen is re-rendered on every action.
+  const BA = () => SD.battleArt;
+  const hero = { anim: 'idle', t0: 0 };
+  function heroAnim(name) { hero.anim = name; hero.t0 = performance.now(); }
+  // Flashes are remembered for a moment so they survive the re-render that follows each action.
+  const flashes = {};
+  function flash(sel, cls) {
+    flashes[cls] = performance.now();
+    const el = $(sel); if (!el) return;
+    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+  }
+  const flashing = cls => performance.now() - (flashes[cls] || -1e9) < 250 ? ' ' + cls : '';
+  function stageHtml(e, foeCol) {
+    const A = BA(), ch = ((((S.save.run && S.save.run.ch) || 1) - 1) % 3) + 1;
+    const foe = `<div class="foe${flashing('hitflash')}" style="--foe:${foeCol}">${SD.art.enemy(e.sprite, C.boss, e.hue)}</div>`;
+    if (!A) return foe;
+    const h = A.hero;
+    return `<div class="stage" style="background-image:url(assets/img/battle/bg-${ch}.webp)">
+      <div class="hero${flashing('hurtflash')}" role="img" aria-label="You" style="--hw:${h.w}px;--hh:${h.h}px"></div>${foe}</div>`;
+  }
+  (function tick() {
+    const el = document.querySelector('#run .hero'), A = BA();
+    if (el && A) {
+      const h = A.hero, row = h.rows[hero.anim] || h.rows.idle, fps = hero.anim === 'idle' ? 8 : 12;
+      let f = Math.floor((performance.now() - hero.t0) / 1000 * fps);
+      if (hero.anim !== 'idle' && f >= row[1]) { heroAnim('idle'); f = 0; }
+      el.style.backgroundPosition = `${-(f % row[1]) * h.w}px ${-row[0] * h.h}px`;
+    }
+    requestAnimationFrame(tick);
+  })();
   function renderCombat() {
     const run = S.save.run, e = C.e;
     const it = C.e.pattern[C.ii % C.e.pattern.length];
@@ -760,7 +835,7 @@
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
         <div class="foe-zone">
-          <div class="foe" style="--foe:${foeCol}">${SD.art.enemy(e.sprite, C.boss, e.hue)}</div>
+          ${stageHtml(e, foeCol)}
           <div class="foe-info">
             <div class="foe-name">${U.esc(e.name)} ${C.boss ? '<span class="tier boss">BOSS</span>' : C.elite ? '<span class="tier elite">ELITE</span>' : '<span class="tier">INCIDENT</span>'}</div>
             ${e.flavor ? `<div class="foe-flavor">${U.esc(e.flavor)}</div>` : ''}

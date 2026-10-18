@@ -223,7 +223,8 @@
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   A.enemy = function (sprite, boss, hue) {
     const f = FOE[sprite] ? FOE[sprite] : FOE.slime;
-    const crown = boss ? `<path d="M42 16 L48 0 L56 12 L62 -4 L68 12 L76 0 L82 16Z" fill="#ffd23f" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '';
+    // PixelLab monsters (tools/battle_art.py) already wear their own crowns.
+    const crown = boss && !(SD.battleArt && SD.battleArt.monsters[sprite]) ? `<path d="M42 16 L48 0 L56 12 L62 -4 L68 12 L76 0 L82 16Z" fill="#ffd23f" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '';
     return `<svg viewBox="0 0 120 120" aria-hidden="true">
       <ellipse cx="60" cy="113" rx="36" ry="6" fill="rgba(43,35,64,.18)"/>
       <g class="${f.anim}">
