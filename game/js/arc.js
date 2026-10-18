@@ -34,7 +34,8 @@
   });
   // Painted PixelLab busts for the arc cast (tools/pixel_portraits.py). Kyu's six moods follow the doc:
   // neutral, smug (sinister), happy (soft), angry (snapped), confused (dumbfounded) and laugh (used once).
-  const PAINTED = { kyu: ['neutral', 'smug', 'happy', 'angry', 'confused', 'laugh'], latency: ['neutral', 'smug', 'sad'] };
+  const PAINTED = { kyu: ['neutral', 'smug', 'happy', 'angry', 'confused', 'laugh'], latency: ['neutral', 'smug', 'sad'],
+    marta: ['neutral'], fen: ['neutral'], lyra: ['neutral'], gong: ['neutral'] };
   const ALIAS = { sad: 'neutral', blush: 'happy', blank: 'confused' };
   const art = { portrait: SD.art.portrait, painted: SD.art.painted, mood: SD.art.mood, enemy: SD.art.enemy, enemyColor: SD.art.enemyColor };
   SD.art.painted = who => !!PAINTED[who] || art.painted(who);

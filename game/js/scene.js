@@ -272,9 +272,9 @@
       Object.values(sc.actors).forEach(a => { if (a.name && !a.hidden) label(a.px, a.py + 1.45, a.name, a.marker, true); });
       sc.fx.forEach(f => f(ctx, t, ts));
       ctx.restore();
-      const tint = typeof def.sky === 'function' ? def.sky() : SKY[def.sky];
+      const sk = typeof def.sky === 'function' ? def.sky() : def.sky, tint = SKY[sk] || (/^(rgba?|#)/.test(sk || '') ? sk : null);
       if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, vw, vh); }
-      if (def.sky === 'grey' || (typeof def.grey === 'function' && def.grey())) { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#888'; ctx.fillRect(0, 0, vw, vh); ctx.globalCompositeOperation = 'source-over'; }
+      if (sk === 'grey' || (typeof def.grey === 'function' && def.grey())) { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#888'; ctx.fillRect(0, 0, vw, vh); ctx.globalCompositeOperation = 'source-over'; }
       if (def.overlay) def.overlay(ctx, t, vw, vh);
     }
     function frame(now) {

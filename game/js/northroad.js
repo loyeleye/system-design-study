@@ -106,8 +106,8 @@
   // ---------- The tournament arena (chapter 8) ----------
   const arena = (function () {
     const W = 44, H = 36, m = grid(W, H, false);
-    // The sand ring, an oval in the middle of the stone floor.
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (((x - 21.5) / 14) ** 2 + ((y - 19) / 9.5) ** 2 <= 1) m.put(x, y, 'a');
+    // Raked sand everywhere; the fighting ring is marked out by low walls and banners.
+    m.rect(0, 0, W - 1, H - 1, 'a');
     m.rect(0, 0, 43, 0, '#');
     m.rect(4, 0, 16, 3, '#'); m.rect(27, 0, 39, 3, '#');       // north stands
     m.rect(18, 0, 25, 5, '#'); m.put(21, 6, 'D'); m.put(22, 6, 'D');   // fighters' gate
@@ -118,7 +118,7 @@
     m.rect(5, 9, 9, 11, '#');                                   // bracket board
     m.rect(21, 30, 22, 30, '#');                                // statue
     return {
-      map: m.rows(), terrain: { a: 'd8' }, top: ['d8'], base: 'd8', solid: '#', bg: '#c9b48a',
+      map: m.rows(), terrain: { a: 'd8', '#': 'd8', D: 'd8', S: 'd8' }, top: ['d8'], base: 'd8', solid: '#', bg: '#c9b48a', zoom: 32,
       doors: { D: 'D', S: 'S' },
       doorFor: (x, y) => (x >= 18 && x <= 25 && y <= 6) ? [21, 7] : null,
       objects: [
@@ -127,14 +127,15 @@
         { name: 'ar-standv', x: 1.5, y: 17 }, { name: 'ar-standv', x: 1.5, y: 28 }, { name: 'ar-standv', x: 41.5, y: 17, flip: true }, { name: 'ar-standv', x: 41.5, y: 28, flip: true },
         { name: 'ar-stand', x: 10, y: 35 }, { name: 'ar-stand', x: 33, y: 35 },
         { name: 'ar-booth', x: 36.5, y: 11 }, { name: 'ar-bracket', x: 7, y: 11 }, { name: 'ar-statue', x: 21.5, y: 30 },
-        { name: 'ar-wall', x: 12, y: 9 }, { name: 'ar-wall', x: 31, y: 9 }, { name: 'ar-wall', x: 12, y: 28 }, { name: 'ar-wall', x: 31, y: 28 },
-        { name: 'd8a', x: 7, y: 19 }, { name: 'd8a', x: 36, y: 19 }, { name: 'd8a', x: 16, y: 31 }, { name: 'd8a', x: 27, y: 31 },
+        { name: 'ar-wall', x: 13, y: 12 }, { name: 'ar-wall', x: 30, y: 12 }, { name: 'ar-wall', x: 13, y: 26 }, { name: 'ar-wall', x: 30, y: 26 },
+        { name: 'd8a', x: 9, y: 12 }, { name: 'd8a', x: 34, y: 12 }, { name: 'd8a', x: 9, y: 26 }, { name: 'd8a', x: 34, y: 26 },
+        { name: 'd8a', x: 21, y: 12 }, { name: 'd8a', x: 22, y: 26 }, { name: 'd8a', x: 16, y: 31 }, { name: 'd8a', x: 27, y: 31 },
         { name: 'd8b', x: 17, y: 7 }, { name: 'd8b', x: 26, y: 7 }, { name: 'd8b', x: 19, y: 33 }, { name: 'd8b', x: 24, y: 33 }
       ],
-      labels: [{ x: 21.5, y: 7.6, text: "FIGHTERS' GATE" }, { x: 7, y: 12.1, text: 'THE BRACKET' }, { x: 21.5, y: 34.6, text: 'ROAD ↓' }],
+      labels: [{ x: 21.5, y: 7.6, text: "FIGHTERS' GATE" }, { x: 7, y: 12.1, text: 'THE BRACKET' }, { x: 21.5, y: 19.5, text: 'THE RING' }, { x: 21.5, y: 34.6, text: 'ROAD ↓' }],
       actors: {
         gong: { x: 34, y: 13, face: 'south', name: 'GONG' },
-        v3: { x: 9, y: 14, face: 'north', name: 'FAN' }, v1: { x: 30, y: 25, face: 'west', name: 'FAN' },
+        v3: { x: 9, y: 14, face: 'north', name: 'FAN' }, v1: { x: 30, y: 29, face: 'west', name: 'FAN' }, v2: { x: 12, y: 29, face: 'east', name: 'FAN' }, v4: { x: 37, y: 22, face: 'west', name: 'BOOKIE' },
         hero500: { x: 26, y: 15, face: 'west', name: 'HERO #500', hidden: true }
       },
       back: { D: [21, 7, 'south'], S: [21, 34, 'north'] }, enter: [21, 34, 'north'], ch: 8, music: 'ch8', weather: 'sun'
@@ -368,7 +369,7 @@
     v1: () => ['Is the tea always this slow here? ...It\'s good, though. It\'s really good.', 'GO HERO! I don\'t know which one. All of them!'],
     v2: () => ['I walked here from three loops ago. My feet are still in the last one.'],
     v3: () => ['I bet my whole pension on the guy with the shield. Don\'t tell my wife.', 'Prices only go up. Until they don\'t. Then they really don\'t.'],
-    v4: () => ['I\'m on a pilgrimage to the Exchange. I hear if you trade your worries there, you get them back with interest.']
+    v4: () => cur === 'arena' ? ['Odds on the hero? Twelve to one. Odds on Kyu? I stopped taking bets on Kyu.'] : ['I\'m on a pilgrimage to the Exchange. I hear if you trade your worries there, you get them back with interest.']
   };
   let talkI = 0;
   async function talk(id) {
@@ -420,4 +421,5 @@
   }
   NR.go = go;
   NR.where = () => cur;
+  NR.scene = () => sc;
 })();
