@@ -65,7 +65,7 @@ Load after `quests.js` (and after any chapter files such as `ch4.js`), before `m
    `tides`, `ferry`, `pos`, scene flags). Old saves need no migration: the object is created on first use.
    Rewards that touch the main save are XP (`SD.run.gainXp`) and Memory Shards (`S.save.shards`). Shard amounts
    live in one table, `SD.isles.REWARD` in `isles-kit.js`, sized for the shard economy (quests 65 to 350, the
-   quest board 100, Wen's keepsakes 80 to 300, Ayo's cards 100 to 280): 120 per quest chain, 250 for a
+   quest board 100, Wen's keepsakes 80 to 400, Ayo's cards 150 to 400): 120 per quest chain, 250 for a
    commission's first clear, 50 for the daily ferry round, 40 per bridge, 300 for the festival, and 25 for every
    10 shells. The Isles keep no shard balance of their own (shells are separate), so the one-time ×20 migration of
    old shard balances doesn't touch them. Retune them there.

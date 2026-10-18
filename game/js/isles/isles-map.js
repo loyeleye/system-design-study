@@ -164,6 +164,9 @@
       #isles-hud { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background:var(--cream); border-bottom:3px solid var(--ink); z-index:2; }
       #isles-hud .ghost { padding:6px 12px; font-size:14px; }
       #isles-hud .il-where { flex:1 1 140px; min-width:0; font-family:var(--f-head); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      /* Phones: the two buttons on one row, the island name and counters on the next. */
+      @media (max-width: 520px) { #isles-hud { row-gap:6px; } #isles-hud::after { content:''; flex-basis:100%; height:0; order:2; }
+        #isles-hud #il-log { order:1; margin-left:auto; } #isles-hud .il-where { order:3; flex:1 1 0; } #isles-hud .hud-chip { order:4; } }
       #isles-canvas { flex:1; width:100%; min-height:0; display:block; touch-action:none; }
       body:has(#dialog:not([hidden])) .isles-hint { display:none; }
       .il-ferry { position:relative; height:120px; border:3px solid var(--ink); border-radius:12px; overflow:hidden; background:linear-gradient(#bfe8ff 0 45%, #3aa0e0 45%); }
@@ -215,7 +218,7 @@
   };
   I.isOpen = () => active;
   function place(x, y) { P.x = P.px = x; P.y = P.py = y; P.path = []; pip.x = x - 1; pip.y = y; }
-  I.placeAt = place;
+  I.placeAt = (x, y) => { place(x, y); hud(); };
   // Where a tile's centre is on screen (for the playtest scripts).
   I.tileToScreen = (x, y) => { const r = cv.getBoundingClientRect(), { cx, cy } = cam(); return [r.left + x * ts + ts / 2 - cx, r.top + y * ts + ts / 2 - cy]; };
   I.where = () => ({ x: P.x, y: P.y, isle: isleAt(P.x, P.y) });

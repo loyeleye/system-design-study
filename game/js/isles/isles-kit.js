@@ -141,7 +141,7 @@
   `);
 
   // Memory Shard rewards, sized for the main game's economy (town quests pay 65 to 350 shards and the quest board
-  // 100; Wen's keepsakes cost 80 to 300 and Ayo's cards 100 to 280). Shells are the Isles' own small change, kept
+  // 100; Wen's keepsakes cost 80 to 400 and Ayo's cards 150 to 400). Shells are the Isles' own small change, kept
   // under S.save.isles and traded at Leilani's; no save migration touches them.
   I.REWARD = {
     chain: 120,           // each Isles quest chain (a mid-sized town quest)

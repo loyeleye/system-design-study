@@ -435,8 +435,8 @@
       const [x, y] = MAPXY[id], open = I.islandOpen(id), done = I.islandDone(id);
       const names = I.islandConcepts(id).map(c => SD.concepts[c].tag || SD.concepts[c].name).join(' · ');
       return `<g><circle cx="${x}" cy="${y}" r="4" fill="${done ? '#55d68a' : open ? '#ffe14d' : '#ddd'}" stroke="#2b2340" stroke-width="0.8"/>
-        <text x="${x}" y="${y - 5.5}" text-anchor="middle" font-size="3.6" font-weight="700" fill="#2b2340">${esc(I.ISLANDS[id].name)}</text>
-        ${open && names ? `<text x="${x}" y="${y + 8}" text-anchor="middle" font-size="2.8" fill="#6b6080">${esc(names)}</text>` : ''}</g>`;
+        <text x="${x}" y="${y - 5.5}" text-anchor="middle" font-size="3.6" font-weight="700" fill="#2b2340" stroke="#e8f6ff" stroke-width="1.2" stroke-linejoin="round" paint-order="stroke">${esc(I.ISLANDS[id].name)}</text>
+        ${open && names ? `<text x="${x}" y="${y + 8}" text-anchor="middle" font-size="2.8" fill="#6b6080" stroke="#e8f6ff" stroke-width="1" stroke-linejoin="round" paint-order="stroke">${esc(names)}</text>` : ''}</g>`;
     }).join('');
     return `<svg class="il-cmap" viewBox="0 0 110 90" role="img" aria-label="Concept map of the Isles">${lines}${nodes}</svg>`;
   }
