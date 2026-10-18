@@ -6,6 +6,9 @@
   const $ = U.$;
   const rnd = a => a[Math.floor(Math.random() * a.length)];
   let C = null; // current combat
+  // Bestiary, achievements and ascension (js/meta.js): events out, and modifiers on a few numbers.
+  const emit = (...a) => SD.meta && SD.meta.emit(...a);
+  const mod = (k, v, ...a) => SD.meta ? SD.meta.mod(k, v, ...a) : v;
 
   // ---------- Run lifecycle ----------
   R.start = function (ch) {
@@ -21,6 +24,7 @@
     // Chapters with two bosses pick one per run, favouring one you have not beaten yet.
     const c = SD.chapters[ch || 1], all = c.bosses || [c.boss], fresh = all.filter(id => !sv.flags['beat-' + id]);
     sv.run.bossId = rnd(fresh.length ? fresh : all);
+    emit('runStart', sv.run);
     sv.run.sla = S.maxSla();   // after the run exists, so this dungeon's curses apply
     hook('start', sv.run);
     sv.stats.runs++;
@@ -377,7 +381,7 @@
   }
   function rewards(opts, done) {
     const run = S.save.run;
-    const bits = Math.round((opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9)) * (rel('luckybit') ? 1.25 : 1));
+    const bits = mod('bits', Math.round((opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9)) * (rel('luckybit') ? 1.25 : 1)));
     const xp = opts.boss ? 120 : opts.elite ? 40 : 20;
     const shards = opts.boss ? 40 : opts.elite ? 15 : 5;
     run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
@@ -416,6 +420,8 @@
     const run = S.save.run;
     const price = { basic: 20, common: 30, uncommon: 45, rare: 65 };
     if (rel('membercard')) for (const k in price) price[k] = Math.round(price[k] * 0.6);
+    for (const k in price) price[k] = mod('price', price[k]);
+    const tea = mod('heal', 15);
     const stock = cardChoices(3);
     const sold = new Set();
     let removed = false, healed = false;
@@ -425,7 +431,7 @@
         <div class="cardgrid pick">${stock.map((id, i) => sold.has(i) ? '<div class="card sold">SOLD</div>' : `<div class="buy">${U.cardHtml({ id }, { i, dim: run.bits < price[SD.cards[id].rarity] })}<span class="price">${price[SD.cards[id].rarity]} bits</span></div>`).join('')}</div>
         <div class="row">
           <button id="rm" ${removed || run.bits < 35 ? 'disabled' : ''}>Remove a card · 35</button>
-          <button id="heal" ${healed || run.bits < 20 ? 'disabled' : ''}>Tea: +15 SLA · 20</button>
+          <button id="heal" ${healed || run.bits < 20 ? 'disabled' : ''}>Tea: +${tea} SLA · 20</button>
           <button class="primary" id="leave">Leave</button>
         </div>`, { title: 'CACHE CAFÉ', noClose: true, cls: 'wide' });
       b.querySelectorAll('.buy .card').forEach(el => el.onclick = () => {
@@ -433,7 +439,7 @@
         if (run.bits < p) return;
         run.bits -= p; run.deck.push({ id, up: false }); sold.add(i); AU.sfx('coin'); S.persist(); render();
       });
-      b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + 15); healed = true; AU.sfx('heal'); S.persist(); render(); };
+      b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + tea); healed = true; AU.sfx('heal'); S.persist(); render(); };
       b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed = true; S.persist(); render(); }, render);
       b.querySelector('#leave').onclick = () => { U.closePanel(); done(); };
     }
@@ -448,7 +454,7 @@
   }
   function campfire(done) {
     const run = S.save.run;
-    const heal = Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0)));
+    const heal = mod('heal', Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0))));
     const b = U.panel(`<p>A quiet break room between floors: a squashy sofa, a humming vending machine, and Pip burning popcorn in the microwave. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
       <p class="muted small">Diffuse mode: stepping back is part of learning. Choose one.</p>
       <div class="opts">
@@ -520,11 +526,12 @@
     };
     // Deeper chapters hit harder; Form 27B takes 10% off bosses.
     const scale = (opts.sevScale || 1) * (opts.tutorial ? 1 : chap().sevMult || 1) * (opts.boss && dev('form27b') ? 0.9 : 1);
-    C.sev = C.max = Math.round(e.sev * scale);
+    C.sev = C.max = Math.round(e.sev * mod('sev', scale, C));
     if (opts.bonusEnergy) C.diagBonus += opts.bonusEnergy;
     if (opts.reveal) { Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t)); }
     if (opts.startCard) C.draw.unshift({ id: opts.startCard, up: false, uid: 999 });
     run.firstFight = false;
+    emit('fight', eid, C);
     const go = () => { beginTurn(); };
     if (opts.diagnose) diagnose(go); else go();
   }
@@ -545,6 +552,7 @@
       saveKnown();
       U.system('DIAGNOSIS CORRECT', bonus ? `+${bonus} Capacity this turn. Weaknesses revealed.` : 'Weaknesses revealed. The Unindexed Stacks hide the fix: no Capacity bonus.');
     }
+    emit('diagnose', r.ok);
     go();
   }
   function saveKnown() { S.save.flags.known[C.eid] = Array.from(C.known); S.persist(); }
@@ -570,6 +578,7 @@
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
       + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry;
+    C.energy = Math.max(0, mod('energy', C.energy, C));
     C.carry = 0;
     if (C.vuln) C.vuln--;
     // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
@@ -963,26 +972,29 @@
     const held = hook('intent', C, it);
     let { dmg, note } = held || resolveIntent(it);
     const run = S.save.run;
+    dmg = mod('dmg', dmg, C);
     // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
     if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
     if (dmg > 0 && rel('breaker') && !C.breakerUsed) { C.breakerUsed = true; dmg = 0; note += 'The circuit breaker tripped: nothing got through. '; }
     if (dmg > 1 && dmg <= 5 && rel('torii')) { dmg = 1; note += 'The torii charm made it a scratch. '; }
-    run.sla -= dmg;
+    run.sla -= dmg; C.taken = (C.taken || 0) + dmg;
     C.log = note + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
     if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); } else AU.sfx('shield');
-    if (run.sla <= 0 && !run.mercy) {
+    if (run.sla <= 0 && !run.mercy && mod('mercy', true, C)) {
       run.sla = 1; run.mercy = true;
       U.system('LAST UPTIME', 'Pip throws himself in front of the request. You hold at 1 SLA. He is fine. Probably. Once a run.', 'red');
     }
     if (!(held && held.hold)) C.ii++;
     S.persist();
     if (run.sla <= 0) { C.over = true; renderCombat(); return setTimeout(() => endRun(false, 'The ' + C.e.name), 700); }
+    emit('turnEnd', C);
     beginTurn();
   }
 
   function win() {
     if (C.over) return;
     C.over = true;
+    emit('win', C);
     const run = S.save.run;
     renderCombat();
     $('#run').querySelector('.combat').classList.add('won');
@@ -1094,7 +1106,7 @@
   // He turns up once per run, always when things look grim and now and then for no reason at all.
   function garyShouldCome() {
     const run = S.save.run;
-    if (C.boss || C.tutorial || C.over || run.gary) return false;
+    if (C.boss || C.tutorial || C.over || run.gary || !mod('gary', true, C)) return false;
     return run.sla <= S.maxSla() * 0.3 || (C.turn >= 2 && Math.random() < 0.1);
   }
   function oneCommit() {
@@ -1261,6 +1273,7 @@
       S.syncChapter();
       if (firstClear) rareNew = SD.chapters[ch].rareCard;
     }
+    emit('runEnd', { won, ch, boss, run });
     sv.run = null;
     U.lastIncident = incident || 'A cascade';
     sv.loop++;
