@@ -71,7 +71,7 @@
     Object.assign(SD.battleArt.monsters, SD.arcBattleArt.monsters);
     SD.arcBattleArt.backdrops.forEach(b => { if (!SD.battleArt.backdrops.includes(b)) SD.battleArt.backdrops.push(b); });
   }
-  Object.assign(R.weather, { 7: 'sun', 8: 'sun', 9: 'storm', 10: 'storm' });
+  Object.assign(R.weather, { 7: 'sun', 8: 'sun', 9: 'rain', 10: 'storm' });
   // Music and sounds for the arc (Pixabay, see CREDITS.md). A chapter's `music` swaps the run's map, fight and boss tracks.
   AU.add({
     songs: { ch7: 'm-ch7', ch8: 'm-ch8', ch8fight: 'm-ch8fight', ch9: 'm-ch9', arise: 'm-arise', kyu: 'm-kyu', kyusad: 'm-kyusad', ch10: 'm-ch10',
@@ -131,6 +131,7 @@
     r.arc.snap = clone({ deck: r.deck, sla: r.sla, bits: r.bits, map: r.map, gary: !!r.gary, mercy: !!r.mercy });
     if (c.onFloor) c.onFloor(r, f);
   }
+  A.enterFloor = enterFloor;
   function floorFx(text, done) {
     const fx = document.createElement('div');
     fx.className = 'gatefx';
