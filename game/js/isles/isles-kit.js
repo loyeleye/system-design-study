@@ -135,6 +135,7 @@
     .isles-game .il-good { color:#1f8a4c; font-weight:700; } .isles-game .il-bad { color:#c0392b; font-weight:700; }
     .isles-game table.il-t { width:100%; border-collapse:collapse; font-size:.85rem; }
     .isles-game table.il-t td, .isles-game table.il-t th { border:1.5px solid var(--line); padding:4px 6px; text-align:left; vertical-align:top; }
+    #panel .win-h .x.quit { white-space:nowrap; flex-shrink:0; }
   `);
 
   // Memory Shard rewards, sized for the main game's economy (the daily quest board pays 100 shards; Wen's relics
