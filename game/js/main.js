@@ -445,7 +445,7 @@
     const primed = sv.flags.primedLoop === sv.loop;
     // Each cleared chapter opens the next dungeon; earlier ones stay open for practice. Optional ones
     // (chapter 6) sit beside the main path and are never the default.
-    const open = Object.keys(SD.chapters).map(Number).filter(S.chapterOpen);
+    const open = Object.keys(SD.chapters).map(Number).filter(ch => !SD.chapters[ch].arc && S.chapterOpen(ch));
     const latest = open.filter(ch => !SD.chapters[ch].optional).pop();
     const dungeons = open.slice().reverse().map(ch => {
       const c = SD.chapters[ch];

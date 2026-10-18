@@ -259,6 +259,11 @@
     play(name, resume);
   };
   A.stop = function () { A.loopName = null; want = null; A.weather(null); if (ctx) stopCur(0.3); };
+  // Later chapters bring their own recordings (js/arc.js): { songs: {name: file}, samples: {...}, jingles: {...} }.
+  A.add = function (o) {
+    Object.assign(SONG, o.songs || {}); Object.assign(SAMPLE, o.samples || {}); Object.assign(JING, o.jingles || {});
+    if (ctx) Object.values(o.samples || {}).concat(Object.values(o.jingles || {})).forEach(loadBuf);
+  };
 
   // ---------- Sound effects ----------
   const FX = {

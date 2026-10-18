@@ -26,6 +26,7 @@
     sv.run.bossId = rnd(fresh.length ? fresh : all);
     emit('runStart', sv.run);
     sv.run.sla = S.maxSla();   // after the run exists, so this dungeon's curses apply
+    hook('start', sv.run);
     sv.stats.runs++;
     sv.flags['entered' + (ch || 1)] = true;
     S.persist();
@@ -38,9 +39,12 @@
     if (run.pending) { const node = findNode(run.pending); if (node) return enterNode(node); }
     R.showMap();
   };
-  R.abandon = function () { endRun(false, 'Your sudden decision to go home'); };
+  R.abandon = function () { endRun(false, 'Your sudden decision to go home', true); };
 
   const chap = () => SD.chapters[(S.save.run && S.save.run.ch) || 1];
+  // Chapters 7-10 (js/arc.js) run several floors per run and add node types, cutscenes and boss rules.
+  // A chapter's `hooks` plug in at these points; a hook that returns true has handled it.
+  const hook = (name, ...a) => { const h = chap() && chap().hooks; return h && h[name] ? h[name](...a) : undefined; };
   const bossId = () => (S.save.run && S.save.run.bossId) || chap().boss;
   // Plot Devices (town quest rewards) and this dungeon's active curses.
   const dev = id => SD.quests.has(id);
@@ -89,6 +93,8 @@
     fight: { l: 'Incident', g: 'crossed-swords' }, elite: { l: 'Elite', g: 'horned-skull' }, board: { l: 'Whiteboard', g: 'notebook' },
     cafe: { l: 'Café', g: 'coffee-cup' }, camp: { l: 'Break Room', g: 'coffee-cup' }, event: { l: 'Event', g: 'card-random' }, boss: { l: 'BOSS', g: 'crowned-skull' }
   };
+
+  R.NODE = NODE;
 
   R.showMap = function () {
     const run = S.save.run, ch = run.ch || 1;
@@ -160,7 +166,7 @@
     return have && (Array.isArray(have) ? have.includes(String(ch)) : have[ch]) ? ch : ((ch - 1) % 3) + 1;
   }
   // Weather by chapter: sun and leaves early on and in the Oracle Spire, wind and drifting cloud in the Sky Harbour, storms elsewhere.
-  const WEATHER = { 1: 'sun', 2: 'sun', 4: 'wind', 6: 'sun' };
+  const WEATHER = R.weather = { 1: 'sun', 2: 'sun', 4: 'wind', 6: 'sun' };
   // What the map sounds like (js/audio.js): birdsong under the sun, rain in storms with gusts in the Sky Harbour,
   // and a thunderstorm for the last chapter.
   const weatherSound = ch => ch >= 10 ? 'storm' : ({ sun: 'sun', wind: 'wind' })[WEATHER[ch]] || 'rain';
@@ -320,7 +326,7 @@
     const run = S.save.run, sv = S.save;
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     return `<div class="hud-sla"><span>SLA</span><div class="bar sla"><i style="width:${pct}%"></i></div><b>${run.sla}/${S.maxSla()}</b></div>
-      <span class="hud-chip">Bits <b>${run.bits}</b></span><span class="hud-chip">Shards <b>${sv.shards}</b></span><span class="hud-chip">${S.rank()}-Rank · Lv ${sv.level}</span>`;
+      <span class="hud-chip">Bits <b>${run.bits}</b></span><span class="hud-chip">Shards <b>${sv.shards}</b></span><span class="hud-chip">${S.rank()}-Rank · Lv ${sv.level}</span>${hook('hud', run) || ''}`;
   }
   function showDeck() {
     const run = S.save.run;
@@ -336,6 +342,7 @@
       S.persist();
       if (S.save.run) R.showMap();
     };
+    if (hook('node', n, done)) return;
     const pools = chap().pools;
     if (n.type === 'fight') return fight(rnd(pools[n.f < 2 ? 1 : n.f < 5 ? 2 : 3]), { diagnose: Math.random() < 0.45 }, done);
     if (n.type === 'elite') return fight(rnd(pools.elite), { diagnose: true, elite: true }, done);
@@ -962,7 +969,8 @@
     // Pinned Tabs keeps your hand; the Leftover Croissant keeps unspent Capacity.
     if (!rel('pinned')) { C.disc.push(...C.hand); C.hand = []; }
     if (rel('croissant')) C.carry = C.energy;
-    let { dmg, note } = resolveIntent(it);
+    const held = hook('intent', C, it);
+    let { dmg, note } = held || resolveIntent(it);
     const run = S.save.run;
     dmg = mod('dmg', dmg, C);
     // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
@@ -976,7 +984,7 @@
       run.sla = 1; run.mercy = true;
       U.system('LAST UPTIME', 'Pip throws himself in front of the request. You hold at 1 SLA. He is fine. Probably. Once a run.', 'red');
     }
-    C.ii++;
+    if (!(held && held.hold)) C.ii++;
     S.persist();
     if (run.sla <= 0) { C.over = true; renderCombat(); return setTimeout(() => endRun(false, 'The ' + C.e.name), 700); }
     emit('turnEnd', C);
@@ -1082,7 +1090,7 @@
         <div class="hand-zone">
           <div class="hand-top"><div class="energy" aria-label="Capacity ${C.energy}"><b>${C.energy}</b><span>CAP</span></div>
             <span class="muted small">Draw ${C.draw.length} · Discard ${C.disc.length}</span>
-            <button class="primary" id="end-turn">End turn</button></div>
+            ${hook('combatButtons', C) || ''}<button class="primary" id="end-turn">End turn</button></div>
           <div class="hand">${C.hand.map((c, i) => U.cardHtml(c, { i, cost: costOf(c), dim: costOf(c) > C.energy })).join('')}</div>
         </div>
       </div>`;
@@ -1091,6 +1099,7 @@
       el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); playCard(+el.dataset.i); } };
     });
     $('#end-turn').onclick = endTurn;
+    hook('combatWire', C, $('#run'), renderCombat);
   }
 
   // ---------- Gary: the deus ex machina ----------
@@ -1175,6 +1184,7 @@
 
   // ---------- Bosses: the Goblin King of Links (URL shortener), Lord Latency (rate limiter) ----------
   async function boss(done) {
+    if (hook('boss', bossId(), done)) return;
     if ((S.save.run.ch || 1) === 2) return boss2(done);
     if (SD.bossDesign[bossId()]) return bossDesigned(bossId());
     AU.music('boss');
@@ -1248,9 +1258,10 @@
   }
 
   // ---------- End of run: postmortem ----------
-  function endRun(won, incident) {
+  function endRun(won, incident, quit) {
     const sv = S.save, run = sv.run;
     if (!run) return;
+    if (hook('end', won, incident, quit)) return;
     const mins = Math.round((Date.now() - run.startedAt) / 60000);
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
@@ -1282,4 +1293,6 @@
       if (rareNew) setTimeout(() => U.system('RARE CARD UNLOCKED', `${U.esc(SD.cards[rareNew].name)} can now turn up in rewards and shops, in every dungeon.`, 'gold'), 1500);
     };
   }
+  // The pieces js/arc.js builds chapter runs from.
+  R.api = { fight, rewards, cardChoices, cafe, campfire, eventNode, whiteboard, pickCard, findNode, endRun, gateFx, win, mitigate, absorb, hasInfra, combat: () => C };
 })();

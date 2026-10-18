@@ -699,6 +699,33 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
   .hand .c-text { font-size: 10.5px; padding: 0 6px; }
   .hand .c-cost { width: 26px; height: 26px; font-size: 13px; top: -9px; left: -7px; }
 }
+/* Chapters 7-10: the North Road screen, cutscenes, and the arc's run HUD (js/scene.js, js/arc.js, js/northroad.js) */
+#screen-north { background: #5fbf5f; }
+#north-canvas { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; }
+.nr-hud { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
+button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; color: var(--ink); }
+.hud-chip.warn, .arc-meter { background: #ffd6d6; }
+.arc-tape { background: #e8e0ff; }
+#arc-scene { position: fixed; inset: 0; z-index: 26; background: #1a1530; }
+#arc-scene canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+.arc-skip { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 6px 12px; font-size: 13px; z-index: 1; }
+.arc-cap { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); text-align: center; color: #fff; text-shadow: 0 3px 0 var(--ink); max-width: calc(100% - 32px); animation: panelIn .5s ease-out; }
+.arc-cap b { display: block; font-family: var(--f-head); font-size: clamp(26px, 7vw, 48px); letter-spacing: .04em; }
+.arc-cap span { display: block; margin-top: 6px; font-weight: 700; font-size: clamp(14px, 3.6vw, 18px); }
+.arc-ll { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; font-size: 13px; }
+.arc-ll .bust { flex: none; }
+.arc-metfx { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); z-index: 70; pointer-events: none; text-align: center; color: #ff4d4d; text-shadow: 0 3px 0 var(--ink), 0 0 18px rgba(255,60,60,.7); animation: arcMeter 2.4s ease-out forwards; }
+.arc-metfx span { display: block; font-family: var(--f-head); font-size: 18px; letter-spacing: .3em; }
+.arc-metfx b { display: block; font-family: var(--f-head); font-size: clamp(48px, 14vw, 96px); }
+@keyframes arcMeter { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+.arc-book { display: grid; gap: 10px; max-height: 50vh; overflow-y: auto; }
+.arc-page { background: #fffdf6; border: 2px solid var(--ink); border-radius: 10px; padding: 10px 12px; }
+.arc-page h4 { margin: 0 0 4px; }
+.arc-page p { margin: 0; font-size: 14px; }
+.arc-margin { margin-top: 6px !important; font-style: italic; color: #7a3fbf; font-size: 13px !important; }
+.arc-files { padding-left: 20px; }
+.nr-jump { position: absolute; left: 50%; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 3; font-size: 14px; padding: 8px 16px; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .arc-metfx, .arc-cap { animation: none; } }
 </style>
 </head>
 <body>
@@ -764,6 +791,16 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
 <script src="js/ch5.js"></script>
 <script src="js/ch6.js"></script>
 <script src="js/peddler.js"></script>
+<script src="js/arc-art.js"></script>
+<script src="js/arc-dungeon-art.js"></script>
+<script src="js/arc-battle-art.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/arc.js"></script>
+<script src="js/ch7.js"></script>
+<script src="js/ch8.js"></script>
+<script src="js/ch9.js"></script>
+<script src="js/ch10.js"></script>
+<script src="js/roadquests.js"></script>
 <script src="js/isles/isles-kit.js"></script>
 <script src="js/isles/isles-data.js"></script>
 <script src="js/isles/landing.js"></script>
@@ -786,6 +823,10 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
 <script src="js/ascension.js"></script>
 <script src="js/journal.js"></script>
 <script src="js/main.js"></script>
+<script src="js/northroad.js"></script>
+<script src="js/sidequests.js"></script>
+<!-- Debug start (testing only; remove before release) -->
+<script src="js/debug.js"></script>
 <!-- @page-end -->
 </body>
 </html>
