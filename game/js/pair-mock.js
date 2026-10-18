@@ -11,7 +11,7 @@
   const PM = SD.pair = {};
   const M = SD.mock, net = SD.net;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const PACES = { brisk: 'Brisk (15 min)', full: 'Full length (45 min)', untimed: 'Untimed' };
+  const PACES = {}; Object.keys(M.paces).forEach(k => { PACES[k] = M.paces[k].free ? M.paces[k].label : `${M.paces[k].label} (${M.paces[k].sub.replace(' real minutes', ' min')})`; });
   const CONF = ['Guess', 'Think so', 'Sure'];
   const VERDICT = { strong: 'Strong hire (senior)', senior: 'Hire (senior)', mid: 'Hire at mid level', no: 'No hire' };
   const part = id => (SD.wb && SD.wb.parts[id]) || { name: id };
@@ -116,7 +116,7 @@
     const room = await hub.join('pm-' + code);
     const me = hub.me;
     let role = o.role || null;
-    const settings = { pid: valid(o.pid) ? o.pid : 'url', pace: PACES[o.pace] ? o.pace : 'brisk' };
+    const settings = { pid: valid(o.pid) ? o.pid : 'url', pace: M.pace(o.pace) };
     let started = false, done = null;
     const finished = new Promise(res => { done = res; });
     const pres = () => room.presence({ kind: 'pair', nick: me.nick, role, host: !!o.create, pid: o.create ? settings.pid : null, pace: o.create ? settings.pace : null, started });
@@ -133,7 +133,7 @@
     function lobby() {
       if (started) return;
       const h = hostP();
-      if (h && valid(h.presence.pid)) { settings.pid = h.presence.pid; settings.pace = PACES[h.presence.pace] ? h.presence.pace : 'brisk'; }
+      if (h && valid(h.presence.pid)) { settings.pid = h.presence.pid; settings.pace = M.pace(h.presence.pace); }
       const p = partner(), taken = p && p.presence.role;
       if (!role && taken) { role = taken === 'candidate' ? 'interviewer' : 'candidate'; pres(); }
       const P = prob(settings.pid);

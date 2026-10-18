@@ -1,6 +1,6 @@
 # Mock interview mode
 
-A timed 45-minute system design round with Ploy, the Eventual Isles game-club president, as the interviewer, scored on a senior-level rubric. Ladi picked it on 2026-10-18 from a list of ideas for the game ("the closest thing to the real interview").
+A timed system design round (45 interview minutes, played in 5 to 15 real ones) with Ploy, the Eventual Isles game-club president, as the interviewer, scored on a senior-level rubric. Ladi picked it on 2026-10-18 from a list of ideas for the game ("the closest thing to the real interview").
 
 To play it on its own, serve `game/` (for example `python3 -m http.server` inside `game/`) and open `mock.html`. `mock.html?p=chat` opens one problem straight away. In the main game, talk to Ploy in her cove on the Eventual Isles once chapter 3 is cleared.
 
@@ -19,7 +19,7 @@ It follows Hello Interview's delivery order, which the bosses already use, with 
 
 At 45:00 the round ends wherever you are, and anything you didn't reach scores zero.
 
-**Pace.** Brisk runs the interview clock at 3× (15 real minutes), Full length is 45 real minutes (the Saturday run in Ladi's study plan), and Untimed drops the clock and the Time line from the rubric. Actions cost interview minutes on top of the clock: a clarifying question 1, a nudge 2, a targeted estimate 2, the ten-year estimate 6, a bikeshed 2. Pause hides the question while the clock is stopped.
+**Pace.** The clock counts a real round's 45 interview minutes, sped up because answers are multiple choice (Ladi, Oct 18: a round should take 5 to 15 minutes). Quick runs it at 9× (5 real minutes), Standard at 4.5× (10 real minutes, the default) and Relaxed at 3× (15 real minutes). Untimed drops the clock and the Time line from the rubric. Actions cost interview minutes on top of the clock: a clarifying question 1, a nudge 2, a targeted estimate 2, the ten-year estimate 6, a bikeshed 2. Pause hides the question while the clock is stopped.
 
 **Think aloud** (on by default). Justification and deep-dive questions hide their options until you tap "I've said it", so you generate an answer before you recognise one. Those questions also take a confidence level (Guess, Think so, Sure). Being sure and wrong costs a point on Trade-offs, as in the rest of the game.
 

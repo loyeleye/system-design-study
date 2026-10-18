@@ -7,7 +7,7 @@
   const net = SD.net;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const GAMES = {
-    pair: { name: 'Pair Mock', players: '2 players', blurb: 'One of you plays the 45-minute system design round. The other is the interviewer, with the answer packet, and scores you.', play: (root, hub, code, o) => SD.pair.play(root, hub, code, o) },
+    pair: { name: 'Pair Mock', players: '2 players', blurb: 'One of you plays a 5 to 15 minute system design round. The other is the interviewer, with the answer packet, and scores you.', play: (root, hub, code, o) => SD.pair.play(root, hub, code, o) },
     raid: { name: 'Incident Raid', players: '2 players (up to 4)', blurb: 'Co-op card battle. You each bring your own deck and hand against one boss, with a shared SLA and shared infra. Plan it out loud: every third turn the boss hits reads and writes at once.', play: (root, hub, code, o) => SD.raid.play(root, hub, code, o), ok: () => !!(SD.raid && SD.raid.available()) },
     show: { name: 'Whiteboard Showdown', players: '2 to 8 players', blurb: 'Smudge erases half a design and the whole table rebuilds it at once, betting on how sure they are. Then a vote on each stress test.', play: (root, hub, code, o) => SD.show.play(root, hub, code, o) }
   };
