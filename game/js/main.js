@@ -138,6 +138,7 @@
     if (fx === 'alarm') { AU.sfx('alarm'); AU.music('battle'); }
     if (fx === 'gary') AU.jingle('gary', null);
   };
+  M.coldOpen = coldOpen;  // the debug panel's "Play the intro" (js/debug.js)
   async function coldOpen() {
     const sv = S.save;
     AU.stop();
