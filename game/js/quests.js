@@ -685,7 +685,9 @@
     const sv = S.save;
     s.done = true; s.items = [];
     if (!QS.has(q.device)) QS.devices().push(q.device);
-    sv.shards += 2;
+    // Later quests pay more: 50 shards for the first ones, up to 110 for quests 16-20.
+    const shards = 50 + 15 * (q.unlock || 0);
+    sv.shards += shards;
     SD.run.gainXp(q.xp);
     S.persist();
     AU.jingle('victory', 'town');
@@ -693,7 +695,7 @@
     const lifts = Object.keys(SD.curses).filter(k => SD.curses[k].lift === q.device);
     await new Promise(res => {
       const b = U.panel(`<div class="verdict ok">QUEST COMPLETE!</div><p class="center"><b>${esc(q.title)}</b></p>
-        <div class="loot"><span>+${q.xp} XP</span><span>+2 shards</span></div>
+        <div class="loot"><span>+${q.xp} XP</span><span>+${shards} shards</span></div>
         <div class="pd-get"><div class="pd-icon">${icon(d.icon)}</div><div><span class="q-ctx">Plot Device get!</span><b>${esc(d.name)}</b><p class="small">${esc(d.text)}</p>
         ${lifts.map(k => `<p class="small good">Lifts the <b>${esc(SD.curses[k].name)}</b> curse.</p>`).join('')}<p class="muted small"><i>${esc(d.flavor)}</i></p></div></div>
         <p class="muted small">Plot Devices survive every loop. Uptima says it's in her contract, clause 7: "the plot must go on".</p>

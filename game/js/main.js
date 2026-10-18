@@ -253,7 +253,7 @@
       onResult(res) {
         (res.concepts || []).forEach(id => { if (SD.concepts[id]) S.recordAnswer(id, false, 1); });
         SD.wb.blueprints.find(x => x.id === res.bp).nodes.forEach(n => { const id = SD.wb.parts[n.p] && SD.wb.parts[n.p].concept; if (id && SD.concepts[id]) S.seeConcept(id); });
-        if (res.ok) { SD.run.gainXp(10 + 10 * res.stars); sv.shards += res.stars; }
+        if (res.ok) { SD.run.gainXp(10 + 10 * res.stars); sv.shards += 10 * res.stars; }
         const best = (store.load().best || {});
         const early = SD.wb.blueprints.filter(x => x.ch <= 3);
         if (!SD.quests.has('eraser') && early.every(x => (best[x.id] || 0) >= 2)) {
@@ -270,17 +270,23 @@
   async function cafe() {
     const sv = S.save;
     if (sv.flags.wenLoop !== sv.loop) { sv.flags.wenLoop = sv.loop; await U.dialog(SD.story.wen.map(t => ({ s: 'wen', t }))); }
+    // Keepsakes past the first shelf unlock with your Guild rank; locked ones show what is coming.
+    const rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
     const render = () => {
-      const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Shards spend the same in every loop, dear. Croissants don't. Gary bought them all."</p></div>
-        <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span></div>
-        <div class="opts">${SD.metaShop.map(it => {
+      const shelves = SD.ranks.filter(r => SD.metaShop.some(it => it.rank === r)).map(r => {
+        const open = rankAt(r) <= mine;
+        return `<p class="q-ctx">${r === 'E' ? 'On the counter' : `${r}-Rank shelf`}${open ? '' : ` · unlocks at ${r}-Rank`}</p><div class="opts">${SD.metaShop.filter(it => it.rank === r).map(it => {
           const own = sv.relics.includes(it.id);
-          return `<button class="opt" data-r="${it.id}" ${own || sv.shards < it.cost ? 'disabled' : ''}><b>${U.esc(it.name)}</b> · ${own ? 'Owned' : it.cost + ' shards'}<br><span class="small">${U.esc(it.text)}</span></button>`;
-        }).join('')}</div>${SD.lessons.buttons('C')}`, { title: 'CACHE CAFÉ · KEEPSAKES' });
+          return `<button class="opt" data-r="${it.id}" ${own || !open || sv.shards < it.cost ? 'disabled' : ''}><b>${U.esc(it.name)}</b> · ${own ? 'Owned' : it.cost + ' shards'}<br><span class="small">${U.esc(it.text)}</span></button>`;
+        }).join('')}</div>`;
+      }).join('');
+      const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Shards spend the same in every loop, dear. Croissants don't. Gary bought them all."</p></div>
+        <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
+        ${shelves}${SD.lessons.buttons('C')}`, { title: 'CACHE CAFÉ · KEEPSAKES' });
       SD.lessons.wire(b, id => { lesson = id; });
       b.querySelectorAll('[data-r]').forEach(el => el.onclick = () => {
         const it = SD.metaShop.find(x => x.id === el.dataset.r);
-        if (sv.shards < it.cost) return;
+        if (sv.shards < it.cost || rankAt(it.rank) > mine) return;
         sv.shards -= it.cost; sv.relics.push(it.id); S.persist();
         U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
       });
@@ -291,17 +297,68 @@
     if (lesson) await SD.lessons.play(lesson);
   }
 
+  // Ayo's Card Forge: buy cards with shards; they join your starting deck in every future run unless benched.
+  // One card is half price each loop.
+  function saleId() {
+    const sv = S.save, f = sv.flags;
+    if (f.saleLoop !== sv.loop) {
+      const lib = (sv.cardLib || []).map(x => x.id), pool = SD.cardShop.filter(x => !lib.includes(x.id));
+      f.saleLoop = sv.loop; f.saleId = pool.length ? pool[Math.floor(Math.random() * pool.length)].id : null;
+      S.persist();
+    }
+    return f.saleId;
+  }
+  async function forge() {
+    await SD.quests.idle('ayo');
+    const sv = S.save;
+    sv.cardLib = sv.cardLib || [];
+    let tab = 'shop', devices = false;
+    const render = () => {
+      const sale = saleId(), owned = id => sv.cardLib.find(x => x.id === id);
+      const price = it => it.id === sale ? Math.round(it.cost / 2) : it.cost;
+      let body = `<div class="shopkeep">${SD.art.portrait('ayo', 72)}<p>"Every card here is forged on-prem, by hand, by me. Buy one and it's in your deck for every run after this. HA!"</p></div>
+        <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span></div>
+        <div class="tabs" role="tablist">${[['shop', 'Forge'], ['lib', `Your cards (${sv.cardLib.length})`]].map(([k, l]) => `<button role="tab" class="tab${k === tab ? ' on' : ''}" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
+      if (tab === 'shop') {
+        body += `<p class="muted small">Bought cards join your starting deck in every future run. One card is half price each loop.</p>
+          <div class="cardgrid pick">${SD.cardShop.map(it => {
+            const have = owned(it.id), p = price(it);
+            return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || sv.shards < p })}<span class="price">${have ? 'Owned' : it.id === sale ? `<s>${it.cost}</s> <b>${p}</b> · SALE` : p + ' shards'}</span></div>`;
+          }).join('')}</div>`;
+      } else {
+        body += sv.cardLib.length ? `<p class="muted small">Tap a card to bench it or put it back. Benched cards stay yours but skip your next runs.</p>
+          <div class="cardgrid pick">${sv.cardLib.map(x => `<div class="buy">${U.cardHtml({ id: x.id }, { i: x.id, dim: !x.on })}<span class="price">${x.on ? 'In your deck' : 'Benched'}</span></div>`).join('')}</div>`
+          : '<p class="muted small">Nothing yet. Ayo says the first one is the hardest. Then he says it again, louder.</p>';
+      }
+      body += '<div class="row"><button class="ghost" id="fg-dev">Plot Devices</button></div>';
+      const b = U.panel(body, { title: "AYO'S CARD FORGE", cls: 'wide' });
+      b.querySelectorAll('[data-tab]').forEach(el => el.onclick = () => { tab = el.dataset.tab; render(); });
+      b.querySelector('#fg-dev').onclick = () => { devices = true; U.closePanel(); };
+      b.querySelectorAll('.card').forEach(el => el.onclick = () => {
+        const id = el.dataset.i;
+        if (tab === 'lib') { const x = owned(id); x.on = !x.on; S.persist(); AU.sfx('blip'); render(); return; }
+        const it = SD.cardShop.find(x => x.id === id), p = price(it);
+        if (owned(id) || sv.shards < p) return;
+        sv.shards -= p; sv.cardLib.push({ id, on: true }); S.persist();
+        U.system('CARD FORGED!', `${U.esc(SD.cards[id].name)} joins your starting deck from your next run.`, 'gold'); render();
+      });
+    };
+    render();
+    await waitClose();
+    if (devices) { SD.quests.log('devices'); await waitClose(); }
+  }
+
   async function treehouse() {
     const sv = S.save;
     const first = sv.mioVisitLoop !== sv.loop;
     const lines = SD.story.mioByDrawing[Math.min(sv.drawings, SD.story.mioByDrawing.length - 1)];
     await U.dialog(lines.map(t => ({ s: 'mio', t })));
     if (first) {
-      sv.mioVisitLoop = sv.loop; sv.drawings++; sv.shards++;
+      sv.mioVisitLoop = sv.loop; sv.drawings++; sv.shards += 10;
       S.persist();
       AU.sfx('coin');
       const b = U.panel(`<div class="drawings one"><figure>${SD.art.drawing(sv.drawings - 1)}<figcaption>By Mio, age 8 · Loop ${sv.loop}</figcaption></figure></div>
-        <p class="small">She won't remember drawing it tomorrow. You will. It goes in your pocket and stays there through every loop.</p><p class="muted small">+1 Memory Shard</p>
+        <p class="small">She won't remember drawing it tomorrow. You will. It goes in your pocket and stays there through every loop.</p><p class="muted small">+10 Memory Shards</p>
         <button class="primary" id="h-ok">Keep it</button>`, { title: 'A GIFT!' });
       b.querySelector('#h-ok').onclick = U.closePanel;
       await waitClose();
@@ -341,11 +398,6 @@
     if (lesson) await SD.lessons.play(lesson);
   }
 
-  async function forge() {
-    await SD.quests.idle('ayo');
-    SD.quests.log('devices');
-    await waitClose();
-  }
 
   async function gary() {
     const sv = S.save;
@@ -366,7 +418,7 @@
     const due = S.dueCount();
     const b = U.panel(`<div class="quest"><div class="q-ctx">[DAILY QUEST] Keep the Cloud happy</div>
       <ul class="qlist"><li>Answer 5 review questions <span class="muted">${due ? `(${due} concept${due > 1 ? 's' : ''} due)` : ''}</span></li></ul>
-      <p class="small">Reward: 40 XP and 2 Memory Shards. ${done ? '<b>Completed today.</b> You can still practise for XP.' : 'Skipping the daily quest has no penalty. Uptima says the penalty is forgetting. She also forgets things, so.'}</p></div>
+      <p class="small">Reward: 40 XP and 100 Memory Shards, once a day. ${done ? '<b>Completed today.</b> You can still practise for XP.' : 'Skipping the daily quest has no penalty. Uptima says the penalty is forgetting. She also forgets things, so.'}</p></div>
       <div class="plan"><div class="q-ctx">Your real study plan</div>
       <p class="small">${PLAN.find(([c]) => (sv.chapter || 1) >= c) ? PLAN.find(([c]) => (sv.chapter || 1) >= c)[1] : (sv.chapter || 1) >= 3 ? 'Chapter 3 covers weeks 4 and 5 of your Hello Interview track: Ticketmaster and the news feed, then top-K and the ad click aggregator, with indexes, consistency models, search and backpressure along the way.' : (sv.chapter || 1) >= 2 ? 'Chapter 2 covers week 3 of your Hello Interview track: the rate limiter and Dropbox-style file sync, plus queues and retries from week 2\'s key technologies.' : 'Chapter 1 covers weeks 1 and 2 of your Hello Interview track: the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener.'} Do the week's problem on paper first; use runs here to keep it fresh.</p></div>
       <div class="row"><button class="primary" id="dq-go">Start</button><button class="ghost" id="dq-x">Later</button></div>`, { title: 'QUEST BOARD', onClose: () => resolveBoard() });
@@ -377,7 +429,7 @@
       b.querySelector('#dq-go').onclick = async () => {
         const r = await Q.session(5, { title: '[DAILY QUEST] REVIEW' });
         const right = r.filter(x => x.ok).length;
-        if (!done) { sv.flags.dailyDate = today(); sv.shards += 2; SD.run.gainXp(40); U.system('DAILY QUEST COMPLETE!', `${right}/5 correct. +40 XP, +2 shards.`, 'gold'); }
+        if (!done) { sv.flags.dailyDate = today(); sv.shards += 100; SD.run.gainXp(40); U.system('DAILY QUEST COMPLETE!', `${right}/5 correct. +40 XP, +100 shards.`, 'gold'); }
         else { SD.run.gainXp(right * 6); U.system('PRACTICE COMPLETE', `${right}/5 correct. +${right * 6} XP.`); }
         S.persist(); res();
       };
@@ -421,8 +473,8 @@
 
   SD.onPickup = function () {
     const sv = S.save;
-    sv.shards += 1; SD.run.gainXp(10);
-    U.system('SHINY THING!', 'A memory fragment from a past loop. +1 shard, +10 XP.', 'gold');
+    sv.shards += 5; SD.run.gainXp(10);
+    U.system('SHINY THING!', 'A memory fragment from a past loop. +5 shards, +10 XP.', 'gold');
     S.persist(); M.hud();
   };
   SD.onCloudLoad = function () {

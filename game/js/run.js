@@ -12,7 +12,8 @@
     const sv = S.save;
     sv.run = {
       ch: ch || 1,
-      deck: SD.starterDeck.map(id => ({ id, up: false })),
+      // Cards bought at Ayo's Card Forge join the starter deck unless benched.
+      deck: SD.starterDeck.concat((sv.cardLib || []).filter(x => x.on).map(x => x.id)).map(id => ({ id, up: false })),
       sla: 0, bits: 20, floor: -1, pos: null, pending: null,
       map: genMap(), mercy: false, startedAt: Date.now(), firstFight: !sv.stats.fights,
       log: { fights: 0, concepts: {}, misses: 0, right: 0, xp: 0 }, boss: {}
@@ -39,6 +40,8 @@
   const bossId = () => (S.save.run && S.save.run.bossId) || chap().boss;
   // Plot Devices (town quest rewards) and this dungeon's active curses.
   const dev = id => SD.quests.has(id);
+  // Keepsakes from Grandma Wen's café.
+  const rel = id => S.save.relics.includes(id);
   const curse = id => SD.quests.curses((S.save.run && S.save.run.ch) || 1).includes(id);
   function gateFx(done, ch) {
     const fx = document.createElement('div');
@@ -145,14 +148,14 @@
   }
   // Animated bits per chapter: Prod's torches flicker, the Archives' scrolls bob on the flood,
   // the Spire's gears turn and its vents puff steam. Everything else is painted once.
-  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam', d4a: 'bob', d4b: 'spin', d5a: 'torch' };
+  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam', d4a: 'bob', d4b: 'spin', d5a: 'torch', d6b: 'bob' };
   // A chapter uses its own art when it has some, and borrows the first three chapters' in turn otherwise.
   function artCh(have) {
     const ch = (S.save.run && S.save.run.ch) || 1;
     return have && (Array.isArray(have) ? have.includes(String(ch)) : have[ch]) ? ch : ((ch - 1) % 3) + 1;
   }
-  // Weather by chapter: sun and leaves early on, wind and drifting cloud in the Sky Harbour, storms elsewhere.
-  const WEATHER = { 1: 'sun', 2: 'sun', 4: 'wind' };
+  // Weather by chapter: sun and leaves early on and in the Oracle Spire, wind and drifting cloud in the Sky Harbour, storms elsewhere.
+  const WEATHER = { 1: 'sun', 2: 'sun', 4: 'wind', 6: 'sun' };
   function paintMap(el, floors, xy, bend, rows, cur) {
     const A = dArt(), cv = el && el.querySelector('.map-bg');
     if (!A || !cv) return;
@@ -363,10 +366,11 @@
   }
   function rewards(opts, done) {
     const run = S.save.run;
-    const bits = opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9);
+    const bits = Math.round((opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9)) * (rel('luckybit') ? 1.25 : 1));
     const xp = opts.boss ? 120 : opts.elite ? 40 : 20;
-    const shards = opts.boss ? 5 : opts.elite ? 2 : 1;
+    const shards = opts.boss ? 40 : opts.elite ? 15 : 5;
     run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
+    if (rel('postnotes')) run.sla = Math.min(S.maxSla(), run.sla + 5);
     R.gainXp(xp);
     if (opts.boss) return done();
     const n = S.save.relics.includes('satchel') ? 4 : 3;
@@ -400,6 +404,7 @@
   function cafe(done) {
     const run = S.save.run;
     const price = { basic: 20, common: 30, uncommon: 45, rare: 65 };
+    if (rel('membercard')) for (const k in price) price[k] = Math.round(price[k] * 0.6);
     const stock = cardChoices(3);
     const sold = new Set();
     let removed = false, healed = false;
@@ -500,7 +505,7 @@
       draw: opts.tutorial ? deck : Q.shuffle(deck), hand: [], disc: [], exh: [], infra: [],
       sh: zero(), stale: 0, jitter: false, choice: null, known: new Set(known), diagBonus: 0,
       elite: !!opts.elite, boss: !!opts.boss, done, deepAsked: false, mercyScale: run.firstFight ? 0.75 : 1, log: '',
-      budget: dev('halo') ? 5 : 0
+      budget: dev('halo') ? 5 : 0, whistled: false, breakerUsed: false, vuln: 0, carry: 0
     };
     // Deeper chapters hit harder; Form 27B takes 10% off bosses.
     const scale = (opts.sevScale || 1) * (opts.tutorial ? 1 : chap().sevMult || 1) * (opts.boss && dev('form27b') ? 0.9 : 1);
@@ -552,21 +557,29 @@
     C.turn++;
     const sv = S.save;
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
-    C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0);
-    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false;
+    C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
+      + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry;
+    C.carry = 0;
+    if (C.vuln) C.vuln--;
+    // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
+    if (!C.infra.some(c => SD.cards[c.id].keepSh)) C.sh = zero();
+    if (C.turn === 1 && rel('standby')) C.sh.any += 8;
+    C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
       if (d.eachStale) C.stale += d.eachStale;
+      if (d.eachMit) mitigate(d.eachMit + (c.up ? 2 : 0), '', 'hit');
     });
-    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0));
+    if (C.sev <= 0) return win();
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0));
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();
     if (garyShouldCome()) garyRescue();
   }
 
   function mitigate(n, why, cls) {
-    n = Math.max(0, Math.round(n));
+    n = Math.max(0, Math.round(n * (C.vuln ? 1.5 : 1)));
     C.sev = Math.max(0, C.sev - n);
     if (n > 0) { U.float($('.foe'), '-' + n, cls || 'hit'); U.burst($('.foe'), cls === 'crit'); heroAnim('cast'); flash('.foe', 'hitflash'); if (cls === 'crit') U.shake('.stage'); }
     if (why) C.log = why;
@@ -583,6 +596,15 @@
     const sv = S.save, up = c.up ? 3 : 0;
     const cacheSpec = sv.spec === 'cache' && (d.tags || []).includes('cache');
     let msg = '';
+    // Keepsakes that boost a card's mitigation, once per card: the Badge always, the Whistle on the first
+    // such card each fight, and the Rubber Stamp doubles every 5th one in a run.
+    let plus = 0, times = 1, used = false;
+    if (d.mit || d.pow || d.xcost || d.slam || d.rca) {
+      if (rel('badge')) plus += 3;
+      if (rel('whistle') && !C.whistled) { plus += 8; C.whistled = true; }
+      if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
+    }
+    const boost = v => { const r = (v + (used ? 0 : plus)) * times; used = true; return r; };
     if (d.abs) for (const k in d.abs) {
       let v = d.abs[k] + up + (cacheSpec ? 3 : 0);
       if (c.id === 'addserver' && hasInfra('stateless')) v += 4;
@@ -603,21 +625,33 @@
     if (d.handoff) C.handoff = true;
     if (d.failover) C.failover = true;
     if (d.killswitch) C.killswitch = true;
+    if (d.streaming) C.streaming = true;
+    if (d.sandbox) C.sandbox = true;
+    if (d.steplimit) C.steplimit = true;
     // Distributed Trace: show every weakness and resistance of this incident.
     if (d.reveal) { Object.keys(C.e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(C.e.resist).forEach(t => C.known.add('r:' + t)); saveKnown(); }
-    if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
+    // Shop cards (Ayo's Card Forge)
+    if (d.selfDmg) sv.run.sla = Math.max(1, sv.run.sla - d.selfDmg);
+    if (d.gain) C.energy += d.gain;
+    if (d.doubleSh) for (const k in C.sh) C.sh[k] *= 2;
+    if (d.xcost) { const n = C.energy; C.energy = 0; mitigate(boost((d.xmit + (c.up ? 2 : 0)) * n), n ? '' : 'No Capacity left to spend.', 'hit'); }
+    if (d.slam) mitigate(boost(Object.values(C.sh).reduce((a, b) => a + b, 0) + up), '', 'crit');
+    if (d.rca) { mitigate(boost(C.stale * 4 + up), C.stale ? `Root cause found in ${C.stale} wrong answers.` : 'No Stale to learn from.', 'hit'); C.stale = 0; }
+    if (d.upHand) C.hand.forEach(h => { h.up = true; });
+    if (d.mit) mitigate(boost(d.mit + up - (sv.spec === 'warden' ? 2 : 0)), '', 'hit');
+    if (d.vuln) C.vuln = Math.max(C.vuln, d.vuln);
     if (d.pow) {
       const tags = d.tags || [];
       const rs = tags.find(t => C.e.resist[t]);
       // The Oracle's rare card is always effective: it names the incident's first weakness.
       const wk = d.wild ? Object.keys(C.e.weak)[0] : tags.find(t => C.e.weak[t]);
-      if (wk) { mitigate(d.pow + up, 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); AU.sfx('crit'); }
+      if (wk) { mitigate(boost(d.pow + up), 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); AU.sfx('crit'); }
       else if (rs) {
         C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); AU.sfx('resist');
         // Wen's Bottomless Mug: once a fight, a resisted card hands its Capacity back.
         if (dev('mug') && !C.mugUsed) { C.energy += cost; C.mugUsed = true; C.log += ' The mug refilled your Capacity.'; }
       }
-      else { mitigate(Math.floor((d.pow + up) / 2), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
+      else { mitigate(boost(Math.floor((d.pow + up) / 2)), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
       saveKnown();
     }
     if (d.concept) S.seeConcept(d.concept);
@@ -864,6 +898,47 @@
         else note = 'Ten million pushes, all at once, straight at the provider. ';
         dmg = absorb(n, [['write', 1], ['any', 1]]); break;
       }
+      // Chapter 6
+      case 'tokens': {
+        let n = sc(it.n);
+        if (hasInfra('batch')) { n *= 0.4; note = 'Continuous batching: many chats shared each GPU step. '; }
+        if (hasInfra('router')) { n *= 0.7; note += 'Easy questions went to the small model. '; }
+        if (C.throttle) { n *= 0.5; note += 'Token budgets clipped the heaviest users. '; }
+        if (!note) note = 'Every prompt got a GPU to itself, and waited for it. ';
+        dmg = absorb(n, [['cache', 1], ['any', 1]]); break;
+      }
+      case 'wait': {
+        let n = sc(it.n);
+        if (C.streaming) { n *= 0.4; note = 'The first words appeared at once; nobody minds watching the rest. '; }
+        if (hasInfra('batch')) { n *= 0.7; note += 'Batched GPUs kept the queue short. '; }
+        if (!note) note = 'Users stared at a blank box for eleven seconds, then left. ';
+        dmg = absorb(n, [['any', 1], ['read', 1]]); break;
+      }
+      case 'hallucinate': {
+        let n = sc(it.n);
+        if (hasInfra('rag')) { n *= 0.5; note = 'Answers came from retrieved passages, with sources. '; }
+        else { C.stale += 2; note = 'The model answered from memory, confidently and wrongly (+2 Stale). '; }
+        dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1]]); break;
+      }
+      case 'inject': {
+        let n = sc(it.n);
+        if (C.sandbox) { dmg = 0; note = 'The injected order reached a tool that could not touch anything. '; break; }
+        if (hasInfra('guard')) { n *= 0.4; note = 'Guardrails caught most of it on the way in and out. '; }
+        else { C.stale += 1; note = 'The model obeyed the hidden instructions, and leaked a little (+1 Stale). '; }
+        dmg = absorb(n, [['any', 1]]); break;
+      }
+      case 'regress': {
+        let n = sc(it.n);
+        if (hasInfra('eval')) { n *= 0.4; note = 'The golden set flagged the regression before it shipped. '; }
+        else { C.stale += 1; note = 'Nobody noticed one answer in ten got worse (+1 Stale). '; }
+        dmg = absorb(n, [['any', 1], ['write', 1]]); break;
+      }
+      case 'agentloop': {
+        let n = sc(it.n);
+        if (C.steplimit) { n *= 0.3; note = 'Ten steps, then the agent stopped and asked. '; }
+        else note = 'The agent called the same tool again. And again. ';
+        dmg = absorb(n, [['any', 1]]); break;
+      }
     }
     return { dmg, note };
   }
@@ -871,11 +946,15 @@
   function endTurn() {
     if (C.over || C.busy) return;
     const it = C.e.pattern[C.ii % C.e.pattern.length];
-    C.disc.push(...C.hand); C.hand = [];
+    // Pinned Tabs keeps your hand; the Leftover Croissant keeps unspent Capacity.
+    if (!rel('pinned')) { C.disc.push(...C.hand); C.hand = []; }
+    if (rel('croissant')) C.carry = C.energy;
     let { dmg, note } = resolveIntent(it);
     const run = S.save.run;
     // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
     if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
+    if (dmg > 0 && rel('breaker') && !C.breakerUsed) { C.breakerUsed = true; dmg = 0; note += 'The circuit breaker tripped: nothing got through. '; }
+    if (dmg > 1 && dmg <= 5 && rel('torii')) { dmg = 1; note += 'The torii charm made it a scratch. '; }
     run.sla -= dmg;
     C.log = note + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
     if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); } else AU.sfx('shield');
@@ -950,6 +1029,7 @@
     if (C.stale) chips.push(`<span class="chip stale" title="Stale reads. Audits deal ${auditPer()} damage per stack.">Stale ${C.stale}</span>`);
     if (C.choice) chips.push(`<span class="chip choice">${C.choice === 'cp' ? 'Consistency' : 'Availability'}</span>`);
     if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
+    if (C.vuln) chips.push('<span class="chip">Load-tested: mitigation +50%</span>');
     if (C.throttle) chips.push('<span class="chip">Throttled</span>');
     if (C.backoff) chips.push('<span class="chip">Backing off</span>');
     if (C.chunk) chips.push('<span class="chip">Chunked</span>');
@@ -960,6 +1040,9 @@
     if (C.handoff) chips.push('<span class="chip">Handoff ready</span>');
     if (C.failover) chips.push('<span class="chip">Failover ready</span>');
     if (C.killswitch) chips.push('<span class="chip">Kill switch armed</span>');
+    if (C.streaming) chips.push('<span class="chip">Streaming</span>');
+    if (C.sandbox) chips.push('<span class="chip">Tools sandboxed</span>');
+    if (C.steplimit) chips.push('<span class="chip">Step limit</span>');
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
@@ -1156,12 +1239,12 @@
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
     const ch = run.ch || 1, boss = run.bossId || SD.chapters[ch].boss;
+    let rareNew = null;
     if (won) {
       const firstClear = !sv.flags['ch' + ch];
       sv.stats.wins++; sv.flags['ch' + ch] = true; sv.flags['beat-' + boss] = true;
       S.syncChapter();
-      const rare = SD.chapters[ch].rareCard;
-      if (rare && firstClear) setTimeout(() => U.system('RARE CARD UNLOCKED', `${U.esc(SD.cards[rare].name)} can now turn up in rewards and shops, in every dungeon.`, 'gold'), 400);
+      if (firstClear) rareNew = SD.chapters[ch].rareCard;
     }
     sv.run = null;
     U.lastIncident = incident || 'A cascade';
@@ -1179,6 +1262,7 @@
       if (won) await U.dialog(SD.story[SD.enemies[boss].win || SD.chapters[ch].win]);
       else await U.dialog(SD.story.cascade);
       SD.main.toHub(true);
+      if (rareNew) setTimeout(() => U.system('RARE CARD UNLOCKED', `${U.esc(SD.cards[rareNew].name)} can now turn up in rewards and shops, in every dungeon.`, 'gold'), 1500);
     };
   }
 })();

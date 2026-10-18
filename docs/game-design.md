@@ -173,6 +173,18 @@ In `game/js/ch5.js`, which also holds quests 16–20 and their Plot Devices.
 - **Three bosses**: the Streamlord (YouTube), the Crawler Queen (web crawler) and Lord Latency, Unbuffered (global multi-region service). Lord Latency ends up washing dishes at the Cache Café.
 - **Events**: Chad's Mega-Region, Mio's Treehouse Is Open, Gary's Silent Server, Wen's New Recipe and Seymour's Address Book.
 
+### Chapter 6: the Oracle Spire (built, optional)
+
+In `game/js/ch6.js`. It maps to the study plan's Applied AI add-on (Ema, Gradial).
+
+- **Gate**: opens when chapter 5 is cleared and sits beside the main path; it closes the first time you enter chapter 10 (`optional`, `after: 5`, `until: 10` in `SD.chapters[6]`). Main chapters skip it: chapter 7 opens from chapter 5. The gate helpers are `SD.state.chapterReached`, `chapterOpen` and `syncChapter`. Rank shows as EX. No curses.
+- **Reward**: clearing it unlocks a rare card, **The Oracle's Answer** (cost 2, always EFFECTIVE against the incident's first weakness, draw 1, exhaust). It has no `ch`, so it turns up in rewards and shops in every dungeon (`rareCard` in the chapter).
+- **Concepts** (`zone: 6`): serving an LLM (tokens, streaming, continuous batching, KV cache), retrieval (RAG), evals, guardrails, LLM cost and caching, agents and tool use. 24 questions with ELI5 help, 13 glossary terms and 12 concept links.
+- **Cards** (`ch: 6`): Continuous Batching, KV Cache, Stream the Tokens, Model Router, Vector Index (HNSW), Chunk + Embed, Rerank + Cite, Golden Eval Set, LLM-as-Judge, Input/Output Guardrails, Least-Privilege Tools, Semantic Cache, Token Budget, Step Limit + Timeouts.
+- **Incidents**: the Token Glutton, the Confident Mirage, the Whispering Prompt, the Recursive Agent, the Silent Regression, the Bill Goblin and the Outdated Index; elites the Jailbreak Jester, the GPU Furnace and the Biased Judge. New intents: tokens, wait, hallucinate, inject, regress and agentloop.
+- **Two bosses**: the Oracle of Everything (a ChatGPT-style chat service) and the Helpdesk Mimic (a support bot that answers from your own documents).
+- **Events**: Chad's Autonomous Agent, Mio's Homework Helper, Kaito's Perfect Prompt and Wen's Token Bill.
+
 ### Quests 11–20 (built)
 
 Posted after chapter 3 (they teach chapter 4's material and lift its curses). Their five concepts (`realtime`, `clocks`, `election`, `locks`, `sagas`) are in `SD.concepts` with `zone: 4`, with three questions each. Chapter 5's seven concepts (`dns`, `multiregion`, `observe`, `deploy`, `video`, `crawler`, `notify`) arrive with quests 16–20, in `game/js/ch5.js`.
@@ -227,6 +239,23 @@ Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `
 | Crawler Garden | Pick the spider's next page five times, each with one polite, new choice | Frontier, politeness, URL normalisation, content hashes, traps | Discrimination practice: near-identical URLs teach what "the same page" means |
 | Pager Panic | Page, ticket or silence five alerts, then fail a region over | Symptoms vs causes, SLO burn rate, failover | Interleaved judgement calls with a story consequence (Uptima's 400 pages) |
 | Rebuild the Recipe (revised) | The rules sit on screen, entries are listed by number, a live card shows the result, and Undo and Hint help when stuck | Snapshots and logs | Ladi found the first version confusing (2026-10-18); the goal and the three rules are now explicit before the first move |
+
+## Shards, Wen's café and Ayo's forge
+
+Ladi asked (2026-10-18) for more to buy with Memory Shards, rank-gated keepsakes in the spirit of Slay the Spire relics, a card shop, and bigger shard rewards.
+
+- **Earning:** quests pay 50 + 15 per unlock step (65 to 350), the daily quest board 100, Mio's drawing 10, blueprint stars 10 each, Uptima's loot 20 or 40, map pickups 5, and incidents 5, 15 or 40. Prices rose about twentyfold, so old saves multiply their balance by 20 once (`econ: 2` in `state.js`).
+- **Wen's keepsakes** (`SD.metaShop`, 80–300 shards) sit on shelves that open with Guild rank:
+
+| Shelf | Keepsakes (price) | Slay the Spire inspiration |
+|---|---|---|
+| Counter (E) | Pip's Monocle 80, Bottomless Teapot 90, Lucky Rubber Duck 100, Grandma's Thermos 120, Bag of Holding 150 | Early relics: Regal Pillow, Strawberry, Lantern, Question Card |
+| C-Rank | Lucky Bit 110 (+25% bits), Postmortem Notebook 140 (heal 5 after each incident), First Responder's Whistle 160 (first mitigating card each fight +8), Dog-Eared Runbook 180 (draw 2 more on turn 1) | Golden Idol, Burning Blood, Akabeko, Bag of Preparation |
+| B-Rank | Torii Gate Charm 190 (losses of 5 or less become 1), Warm Standby 200 (start with 8 Any absorb), Circuit Breaker 220 (first SLA loss each fight is zero), Coffee Drip 230 (+1 Capacity every third turn) | Torii, Anchor, Fossilized Helix, Happy Flower |
+| A-Rank | Guild Membership Card 240 (dungeon shops 40% off), Leftover Croissant 260 (unspent Capacity carries over), Rubber Stamp of Approval 270 (every 5th mitigating card in a run doubles) | Membership Card, Ice Cream, Pen Nib |
+| S-Rank | Principal Engineer's Badge 300 (+3 to every mitigation), Pinned Tabs 300 (keep your hand between turns) | Vajra, Runic Pyramid |
+
+- **Ayo's Card Forge** (`SD.cardShop`, 100–280 shards): bought cards join the starting deck of every future run; the "Your cards" tab benches or restores them. One unowned card is half price each loop (`flags.saleId`). The cards borrow Slay the Spire effects: Defense in Depth and Graceful Degradation (Defend variants), Flow State (Adrenaline-like draw), Root Cause Analysis (scales with Stale), Backpressure Slam (Body Slam), Load Test (Vulnerable), All-Nighter (Offering), Autoscaling (Entrench), Hotfix Storm (an X-cost Whirlwind), Refactor Everything (Apotheosis), SRE Rotation (Demon Form, gently) and Persistent Volumes (Barricade).
 
 ## Audio
 
@@ -310,7 +339,7 @@ Chapters 1 and 2 match weeks 1 to 3 of the 10-week plan in `job-hunt-agent/inter
 | 3 (built) | Clockwork Spire | Indexes (B-tree, LSM), quorums and the consistency spectrum (linearizable, causal, read-your-writes, eventual), pub-sub, fan-out on write vs read, distributed search and inverted indexes, sharded counters, queue ordering, backpressure, top-K, stream aggregation | News feed and Ticketmaster bosses; Typeahead and Quora elites; ad click aggregator | 4–5 |
 | 4 (built) | Sky Harbour | Geospatial indexes, WebSockets and presence, failure models, consensus and leader election, Lamport and vector clocks, gossip and hinted handoff, distributed locks, task scheduling, sagas, distributed caches (Memcached vs Redis) | Uber, WhatsApp and key-value store bosses; Yelp, Google Docs (OT vs CRDT) and payment system elites | 6–7 |
 | 5 (built) | Lord Latency's Castle | DNS and GeoDNS, global load balancing, CDN deep dive (push vs pull, invalidation), monitoring and logging, deployment systems (canaries, rollouts), video pipelines, crawlers, notifications, multi-region | YouTube and web crawler bosses; real-outage postmortem events | 8–9 |
-| 6 (optional, after 5) | TBD | AI-era systems: LLM serving, ML data infrastructure, retrieval, support bots, code assistants | ChatGPT-style chat service | — |
+| 6 (built, optional) | The Oracle Spire (EX) | AI-era systems: LLM serving, retrieval (RAG), evals, guardrails, cost and caching, agents | ChatGPT-style chat service; RAG support bot | Applied AI add-on |
 
 Topic coverage is cross-checked against the public outline of Educative's *Grokking the Modern System Design Interview* (titles only; see `/mnt/project-files/curriculum/educative_grokking_mapping.md` in the project). The game repo is public, so every explanation is written fresh; nothing from the course is copied. Built refreshers from that check: availability and nines math (Uptima's temple lesson), and DNS in Mio's request walkthrough.
 
@@ -327,7 +356,7 @@ Topic coverage is cross-checked against the public outline of Educative's *Grokk
 - `game/js/goddess.js` — Uptima's Oopsies: once a loop she breaks something in town on your way to the gate; one question fixes it, and her reward is rolled from a mostly-junk loot table (rarely a shard).
 - `game/js/lessons.js` — building lessons that prime the next dungeon: Uptima's How Many Nines?, Mio's illustrated walkthroughs (a request's journey, how a big file travels, how a post reaches a feed), Wen's mini-games (Cache Rush, Token Bucket, Top 3 Pastries) and Seymour's (Shard Sorter, Festival Queue, Seat Rush).
 - `game/js/minigames.js` — the quest mini-games (`SD.games`): Blueprint, What's Missing?, Requirements Sort, Napkin Math, Front Desk, Dedupe Desk, Rebuild the Recipe, Limiter Lab, Jitter Garden, The Forbidden Index, Quorum Dial, Performance Review, Declutter, Heartbeat Haunt, Timeline Detective, Ballot Box, Lock & Lease, Saga Builder, Resolver Relay, Canary Coop, Bitrate Ladder, Crawler Garden and Pager Panic.
-- `game/js/ch4.js`, `game/js/ch5.js` — one file per chapter from chapter 4 on: concepts, cards, incidents, bosses, curses, questions, events and story. `ch5.js` also holds quests 16–20 and their Plot Devices.
+- `game/js/ch4.js`, `game/js/ch5.js`, `game/js/ch6.js` — one file per chapter from chapter 4 on: concepts, cards, incidents, bosses, curses, questions, events and story. `ch5.js` also holds quests 16–20 and their Plot Devices.
 - `game/js/quests.js` — town quests, the new villagers, Plot Devices (`SD.devices`), curses (`SD.curses`), the quest log and villagers' idle lines.
 - `game/js/eli5.js` — plain-language help: a game analogy per question, a game-terms summary per concept, and a jargon glossary.
 - `game/js/ui.js`, `game/js/art.js`, `game/js/main.js` — UI helpers and dialogue, code-drawn art, boot, cold open and hub buildings.
@@ -338,7 +367,6 @@ Saves go to localStorage. On claude.ai they also go to a private per-user docume
 
 ## Next steps
 
-- Chapter 6, optional: open after chapter 5 and playable until chapter 10 starts, with a rare card for clearing it (AI-era systems: LLM serving, retrieval, evals, guardrails, a ChatGPT-style boss).
 - Chapters 7–10 (being built separately).
 - Redraw the village map and the cast with PixelLab (generated with the owner's account; credit it in `CREDITS.md`, since it is not CC0 or CC BY).
 - Pixel-art dungeon scenes behind combat, and painted portraits for Pip and Lord Latency if good matches turn up.

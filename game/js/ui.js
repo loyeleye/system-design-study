@@ -140,7 +140,7 @@
     const tagHue = { cache: 190, replica: 160, cdn: 210, shard: 280, lb: 45, hscale: 45, stateless: 45, salting: 190, coalesce: 320, ttl: 320, invalidate: 0, cp: 0, ap: 120, idgen: 260, nosql: 280, sql: 30, '302': 210, vscale: 30 };
     const tag = (d.tags || [])[0];
     const hue = tag != null && tagHue[tag] != null ? tagHue[tag] : 220;
-    const cost = opts.cost != null ? opts.cost : d.cost;
+    const cost = d.xcost ? 'X' : opts.cost != null ? opts.cost : d.cost;
     return `<div class="card ${d.kind} r-${d.rarity}${opts.dim ? ' dim' : ''}" style="--h:${hue}" data-i="${opts.i != null ? opts.i : ''}" tabindex="0" role="button" aria-label="${U.esc(d.name)}, cost ${cost}. ${U.esc(text)}">
       <div class="c-cost">${cost}</div>
       <div class="c-name">${U.esc(d.name)}${c.up ? '+' : ''}</div>

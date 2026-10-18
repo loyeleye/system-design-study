@@ -213,8 +213,8 @@
   const LOOT = [
     { w: 58, roll: () => ({ junk: JUNK[Math.floor(Math.random() * JUNK.length)] }) },
     { w: 25, roll: () => ({ xp: 5 + Math.floor(Math.random() * 3) * 5, text: 'a pat on the head' }) },
-    { w: 13, roll: () => ({ shards: 1, text: 'a Memory Shard! She looks as surprised as you are' }) },
-    { w: 4, roll: () => ({ shards: 2, text: 'two Memory Shards. She sneezed and they fell out' }) }
+    { w: 13, roll: () => ({ shards: 20, text: 'a little pouch of Memory Shards! She looks as surprised as you are' }) },
+    { w: 4, roll: () => ({ shards: 40, text: 'a big pouch of Memory Shards. She sneezed and it fell out' }) }
   ];
   function rollLoot() {
     let r = Math.random() * 100;
