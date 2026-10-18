@@ -7,7 +7,7 @@
 
   function fresh() {
     return {
-      v: 1, name: 'Ash', loop: 1, xp: 0, level: 1, shards: 0,
+      v: 1, econ: 2, name: 'Ash', loop: 1, xp: 0, level: 1, shards: 0,
       relics: [], spec: 'none', concepts: {}, pages: [], links: [], pickups: [],
       flags: {}, stats: { runs: 0, wins: 0, fights: 0, answered: 0, correct: 0 },
       chapter: 1, drawings: 0, mioVisitLoop: 0, run: null, lastRun: null, updatedAt: Date.now()
@@ -16,10 +16,18 @@
 
   const S = SD.state = { save: fresh(), db: null, uid: null };
 
+  // A stored save over the defaults. Shard prices went up about twentyfold (economy 2),
+  // so balances from older saves scale with them.
+  function revive(json) {
+    const d = JSON.parse(json);
+    if ((d.econ || 1) < 2) { d.shards = (d.shards || 0) * 20; d.econ = 2; }
+    return Object.assign(fresh(), d);
+  }
+
   S.load = function () {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) S.save = Object.assign(fresh(), JSON.parse(raw));
+      if (raw) S.save = revive(raw);
     } catch (e) { /* storage blocked: play without a local save */ }
     // Saves from before a chapter existed: clearing the chapter before it opens it.
     S.syncChapter();
@@ -54,7 +62,7 @@
       const snap = await db.doc('data/users/' + uid + '/save').get();
       const d = snap.exists ? snap.data() : null;
       if (d && d.json && d.updatedAt > (S.save.updatedAt || 0)) {
-        S.save = Object.assign(fresh(), JSON.parse(d.json));
+        S.save = revive(d.json);
         try { localStorage.setItem(KEY, d.json); } catch (e) { /* ignore */ }
         if (SD.onCloudLoad) SD.onCloudLoad();
       } else {

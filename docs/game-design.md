@@ -240,6 +240,23 @@ Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `
 | Pager Panic | Page, ticket or silence five alerts, then fail a region over | Symptoms vs causes, SLO burn rate, failover | Interleaved judgement calls with a story consequence (Uptima's 400 pages) |
 | Rebuild the Recipe (revised) | The rules sit on screen, entries are listed by number, a live card shows the result, and Undo and Hint help when stuck | Snapshots and logs | Ladi found the first version confusing (2026-10-18); the goal and the three rules are now explicit before the first move |
 
+## Shards, Wen's café and Ayo's forge
+
+Ladi asked (2026-10-18) for more to buy with Memory Shards, rank-gated keepsakes in the spirit of Slay the Spire relics, a card shop, and bigger shard rewards.
+
+- **Earning:** quests pay 50 + 15 per unlock step (65 to 350), the daily quest board 100, Mio's drawing 10, blueprint stars 10 each, Uptima's loot 20 or 40, map pickups 5, and incidents 5, 15 or 40. Prices rose about twentyfold, so old saves multiply their balance by 20 once (`econ: 2` in `state.js`).
+- **Wen's keepsakes** (`SD.metaShop`, 80–300 shards) sit on shelves that open with Guild rank:
+
+| Shelf | Keepsakes (price) | Slay the Spire inspiration |
+|---|---|---|
+| Counter (E) | Pip's Monocle 80, Bottomless Teapot 90, Lucky Rubber Duck 100, Grandma's Thermos 120, Bag of Holding 150 | Early relics: Regal Pillow, Strawberry, Lantern, Question Card |
+| C-Rank | Lucky Bit 110 (+25% bits), Postmortem Notebook 140 (heal 5 after each incident), First Responder's Whistle 160 (first mitigating card each fight +8), Dog-Eared Runbook 180 (draw 2 more on turn 1) | Golden Idol, Burning Blood, Akabeko, Bag of Preparation |
+| B-Rank | Torii Gate Charm 190 (losses of 5 or less become 1), Warm Standby 200 (start with 8 Any absorb), Circuit Breaker 220 (first SLA loss each fight is zero), Coffee Drip 230 (+1 Capacity every third turn) | Torii, Anchor, Fossilized Helix, Happy Flower |
+| A-Rank | Guild Membership Card 240 (dungeon shops 40% off), Leftover Croissant 260 (unspent Capacity carries over), Rubber Stamp of Approval 270 (every 5th mitigating card in a run doubles) | Membership Card, Ice Cream, Pen Nib |
+| S-Rank | Principal Engineer's Badge 300 (+3 to every mitigation), Pinned Tabs 300 (keep your hand between turns) | Vajra, Runic Pyramid |
+
+- **Ayo's Card Forge** (`SD.cardShop`, 100–280 shards): bought cards join the starting deck of every future run; the "Your cards" tab benches or restores them. One unowned card is half price each loop (`flags.saleId`). The cards borrow Slay the Spire effects: Defense in Depth and Graceful Degradation (Defend variants), Flow State (Adrenaline-like draw), Root Cause Analysis (scales with Stale), Backpressure Slam (Body Slam), Load Test (Vulnerable), All-Nighter (Offering), Autoscaling (Entrench), Hotfix Storm (an X-cost Whirlwind), Refactor Everything (Apotheosis), SRE Rotation (Demon Form, gently) and Persistent Volumes (Barricade).
+
 ## Audio
 
 Recorded music and samples play when they load, with the original chiptune synth in `game/js/audio.js` as the fallback. Sources and licenses are in `game/CREDITS.md`.
