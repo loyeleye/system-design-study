@@ -29,6 +29,7 @@
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     Object.values(SAMPLE).concat(Object.values(JING)).forEach(loadBuf);
     if (want) { const w = want; want = null; A.music(w); }
+    if (wantWx) { const w = wantWx; wantWx = null; A.weather(w); }
   };
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, A.unlock, { passive: true }));
   document.addEventListener('visibilitychange', () => {
@@ -168,11 +169,13 @@
 
   // ---------- Recorded music and samples ----------
   const BASE = 'assets/audio/';
-  const SONG = { title: 'm-opening', office: 'm-office', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild' };
+  // mapN is chapter N's dungeon map; chapters without one use explore.
+  const SONG = { title: 'm-opening', office: 'm-office', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild',
+    map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5' };
   // Songs without a synth version fall back to this one if the file fails to load.
-  const FALLBACK = { quest: 'town', story: 'town', guild: 'town' };
-  // Per-song loudness: the piano is gentle on purpose.
-  const SONG_VOL = { story: 0.75 };
+  const FALLBACK = { quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore' };
+  // Per-song loudness: the piano is gentle on purpose, and the chapter maps are mastered hotter than explore.
+  const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
   const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door' };
   const SONG_GAIN = 1.5;  // recorded tracks are mastered quieter than the synth
@@ -237,9 +240,11 @@
   }
 
   // Loop a track. Asking for the track already playing does nothing.
+  A.has = name => !!(SONG[name] || TRACKS[name]);
   A.music = function (name) {
     A.loopName = name;
-    if (!ctx) { want = name; return; }
+    if (wx && wx.song !== name) A.weather(null);
+    if (!ctx) { want = name; wantWx = null; return; }
     if (cur && cur.name === name) return;
     stopCur();
     if (name) play(name);
@@ -253,7 +258,7 @@
     if (JING[name] && playBuf(JING[name], musicBus, 1.6, () => setTimeout(resume, 250))) return;
     play(name, resume);
   };
-  A.stop = function () { A.loopName = null; want = null; if (ctx) stopCur(0.3); };
+  A.stop = function () { A.loopName = null; want = null; A.weather(null); if (ctx) stopCur(0.3); };
 
   // ---------- Sound effects ----------
   const FX = {
@@ -298,5 +303,50 @@
       return;
     }
     if (FX[name]) FX[name](t);
+  };
+
+  // ---------- Weather ----------
+  // A looping bed under the dungeon map with occasional one-shots: birdsong and leaves in the sun, rain with distant
+  // thunder in storms (and wind gusts in the Sky Harbour), and a thunderstorm at the end. It belongs to the song playing
+  // when it starts and stops when the music changes. Pixabay sound effects, credited in CREDITS.md.
+  const AMB = { birds: 'a-birds', leaves: 'a-leaves', rain: 'a-rain', storm: 'a-storm', wind: 'a-wind', rumble: 'a-rumble', clap1: 'a-thunder1', clap2: 'a-thunder2', clap3: 'a-thunder3' };
+  // bed and its volume, then extras: [sounds to pick from, volume, min and max seconds between them].
+  const SKY = {
+    sun: { bed: 'birds', vol: 0.35, extra: [[['leaves'], 0.4, 12, 28]] },
+    rain: { bed: 'rain', vol: 1.5, extra: [[['rumble'], 0.3, 30, 60]] },
+    wind: { bed: 'rain', vol: 1.3, extra: [[['wind'], 0.3, 10, 22], [['rumble'], 0.25, 30, 60]] },
+    storm: { bed: 'storm', vol: 0.4, extra: [[['clap1', 'clap2', 'clap3'], 0.5, 10, 25], [['wind'], 0.35, 14, 30]] }
+  };
+  let wx = null, wantWx = null;
+  A.weather = function (kind) {
+    if (!ctx) { wantWx = kind; return; }
+    if (wx && wx.kind === kind) return;
+    if (wx) {
+      const old = wx; wx = null;
+      old.timers.forEach(clearTimeout);
+      old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
+      setTimeout(() => { if (old.src) old.src.stop(); old.gain.disconnect(); }, 2500);
+    }
+    const W = SKY[kind];
+    if (!W) return;
+    [W.bed].concat(...W.extra.map(e => e[0])).forEach(k => loadBuf(AMB[k]));
+    const gain = ctx.createGain(); gain.gain.value = 0; gain.connect(sfxBus);
+    const me = wx = { kind, song: A.loopName, gain, src: null, timers: [] };
+    const later = (fn, ms) => me.timers.push(setTimeout(() => { if (wx === me) fn(); }, ms));
+    const startBed = () => {
+      const b = bufs[AMB[W.bed]];
+      if (!b || b === 'loading') { if (!failed.has(AMB[W.bed])) later(startBed, 400); return; }
+      const src = me.src = ctx.createBufferSource();
+      src.buffer = b; src.loop = true; src.connect(gain); src.start();
+      gain.gain.setTargetAtTime(W.vol, ctx.currentTime, 0.8);
+    };
+    startBed();
+    W.extra.forEach(([names, vol, lo, hi]) => {
+      const go = () => {
+        playBuf(AMB[names[Math.floor(Math.random() * names.length)]], gain, vol / W.vol);
+        later(go, (lo + Math.random() * (hi - lo)) * 1000);
+      };
+      later(go, (lo / 2 + Math.random() * (hi - lo) / 2) * 1000);
+    });
   };
 })();
