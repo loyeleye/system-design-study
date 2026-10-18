@@ -223,8 +223,8 @@
   // Valentin's town sprite is his Isles sheet, copied to assets/img/village by tools/isles_art.py.
   if (SD.villageArt && SD.isles && SD.isles.ART && SD.isles.ART.chars.valentin) SD.villageArt.chars.valentin = SD.isles.ART.chars.valentin;
 
-  // ---------- Ren on the North Road ----------
-  if (SD.arcArt && SD.isles && SD.isles.ART && SD.isles.ART.chars.ren) SD.arcArt.chars.ren = SD.isles.ART.chars.ren;
+  // ---------- Ren on the North Road (his walk sheet is in arc-art.js; the Isles sheet is the fallback) ----------
+  if (SD.arcArt && SD.isles && SD.isles.ART && SD.isles.ART.chars.ren && !SD.arcArt.chars.ren) SD.arcArt.chars.ren = SD.isles.ART.chars.ren;
   if (NR && NR.maps && NR.maps.road && !NR.maps.road.actors.ren)
     NR.maps.road.actors.ren = { x: 10, y: 28, face: 'west', name: 'REN', sprite: SD.arcArt && SD.arcArt.chars.ren ? 'ren' : 'v3' };
   if (SD.roadTalk) Object.assign(SD.roadTalk.lines, {
