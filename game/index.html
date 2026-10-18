@@ -135,6 +135,19 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .compass { margin-top: 14px; padding: 12px; border: 2px dashed #d39a00; background: #fff7d6; border-radius: 12px; }
 .compass .q-ctx { color: #a06a00; }
 .help-b { display: inline-block; margin: 10px 8px 0 0; padding: 6px 14px; font-size: 14px; }
+.nots { margin-top: 8px; font-size: 0.92em; }
+.nots ul { margin: 4px 0 0; padding-left: 18px; }
+.nots li { margin: 4px 0; }
+.nots li.mine { background: #fff1f1; border-radius: 8px; padding: 2px 6px; }
+.nots .tag { font-size: 0.8em; color: #b23b3b; font-weight: 700; }
+.q-text { width: 100%; box-sizing: border-box; font: inherit; padding: 8px 10px; border: 3px solid var(--ink, #2b2340); border-radius: 12px; resize: vertical; }
+blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a6ff; background: #f7f4ff; border-radius: 0 10px 10px 0; white-space: pre-wrap; }
+.rubric { display: grid; gap: 6px; margin: 6px 0; }
+.rubric .rp { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border: 2px solid #ddd5f0; border-radius: 10px; cursor: pointer; }
+.rubric .rp.on { border-color: #7fd6a8; background: #e9fbf2; }
+.rubric input { margin-top: 3px; }
+.say-first { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #fff8e6; border: 2px dashed #e7b84a; }
+.say-first p { margin: 0 0 8px; }
 .helpbox { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #f1ecff; border: 2px solid #b9a6ff; }
 .helpbox p { margin: 4px 0; }
 .helpbox.huh { background: #e9fbf2; border-color: #7fd6a8; }
@@ -716,6 +729,8 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/ui.js"></script>
 <script src="js/intro.js"></script>
 <script src="js/quiz.js"></script>
+<script src="js/embed.js"></script>
+<script src="js/explain-data.js"></script>
 <script src="js/village-art.js"></script>
 <script src="js/dungeon-art.js"></script>
 <script src="js/battle-art.js"></script>

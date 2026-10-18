@@ -50,6 +50,8 @@
       ${S.save && S.save.flags.ch1 && SD.guild ? '<button class="opt" id="m-guild">Multiplayer: the Guild Hall</button>' : ''}
       <button class="opt" id="m-music">Music: <b>${p.music ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-sfx">Sound effects: <b>${p.sfx ? 'On' : 'Off'}</b></button>
+      <button class="opt" id="m-say">Say it first: <b>${{ boss: 'Boss questions', all: 'Every question', off: 'Off' }[SD.quiz.sayMode()]}</b></button>
+      <button class="opt" id="m-typed">Typed answers: <b>${S.save && S.save.typed === false ? 'Off' : 'On'}</b></button>
       <button class="opt" id="m-name">Change name</button>
       <button class="opt" id="m-credits">Credits</button>
       <button class="opt" id="m-reset">Erase save and start over</button>
@@ -61,6 +63,13 @@
     b.querySelector('#m-music').onclick = () => { AU.set('music', !p.music); menu(); M.hud(); };
     b.querySelector('#m-sfx').onclick = () => { AU.set('sfx', !p.sfx); menu(); M.hud(); };
     b.querySelector('#m-credits').onclick = credits;
+    // Say it first (js/quiz.js): hide multiple choice options until you've answered in your own words.
+    b.querySelector('#m-say').onclick = () => {
+      if (!S.save) return;
+      const m = SD.quiz.SAY_MODES; S.save.sayFirst = m[(m.indexOf(SD.quiz.sayMode()) + 1) % m.length]; S.persist(); menu();
+    };
+    // Typed answers (js/explain-data.js, checked on-device by js/embed.js): sometimes explain a concept instead of picking.
+    b.querySelector('#m-typed').onclick = () => { if (!S.save) return; S.save.typed = S.save.typed === false; S.persist(); menu(); };
     // Testing only (js/debug.js; remove with it before release): a separate save that starts on any chapter or rank.
     b.querySelector('#m-debug').onclick = () => {
       try { if (SD.debug) localStorage.removeItem('last-uptime-debug'); else localStorage.setItem('last-uptime-debug', '1'); } catch (e) { /* ignore */ }
