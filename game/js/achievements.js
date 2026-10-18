@@ -5,7 +5,7 @@
   const AC = SD.achievements = {};
   const S = SD.state, U = SD.ui, M = SD.meta;
   const esc = s => U.esc(s == null ? '' : String(s));
-  const PAY = { 1: 25, 2: 60, 3: 150 };
+  const PAY = { 1: 15, 2: 30, 3: 100 };
 
   const sv = () => S.save;
   const n = k => M.st().n[k] || 0;
@@ -61,9 +61,9 @@
     { id: 'mock1', tier: 2, icon: 'chat-bubble', name: "You're Hired", text: 'Get a senior hire verdict in a mock interview with Gary.', test: () => Object.keys(flags().mockSenior || {}).length > 0 || mockPassed().length > 0 },
     { id: 'mockall', tier: 3, icon: 'scales', name: 'Bar Raiser', text: 'Get a senior hire verdict on every mock interview problem.', progress: () => [mockPassed().length, SD.mock ? SD.mock.problems.length : 6] },
     // Ascension
-    { id: 'asc1', tier: 2, icon: 'stairs', name: 'Ascended', text: 'Clear a dungeon at Ascension 1.', test: () => bestAsc() >= 1 },
-    { id: 'asc5', tier: 3, icon: 'lightning-storm', name: 'Sev-1 Survivor', text: 'Clear a dungeon at Ascension 5.', test: () => bestAsc() >= 5 },
-    { id: 'asc10', tier: 3, icon: 'crystal-ball', name: 'Five Nines', text: 'Clear a dungeon at Ascension 10.', test: () => bestAsc() >= 10 }
+    { id: 'asc1', tier: 2, icon: 'stairs', name: 'Escalated', text: 'Clear a dungeon at Escalation 1.', test: () => bestAsc() >= 1 },
+    { id: 'asc5', tier: 3, icon: 'lightning-storm', name: 'Sev-1 Survivor', text: 'Clear a dungeon at Escalation 5.', test: () => bestAsc() >= 5 },
+    { id: 'asc10', tier: 3, icon: 'crystal-ball', name: 'Five Nines', text: 'Clear a dungeon at Escalation 10.', test: () => bestAsc() >= 10 }
   ];
   const bestAsc = () => Math.max(0, ...Object.values(M.st().asc.best));
   // One badge per chapter, added when the chapter list is final (chapters 7-10 register after this file loads).
