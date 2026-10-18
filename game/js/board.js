@@ -93,6 +93,15 @@
       const label = n => n.label || P[n.p].name;
       const count = p => nodes.filter(n => n.p === p).length;
 
+      // Re-draw in place while on the same screen, so a tap doesn't replay the window's pop-in or scroll back to the top.
+      let screen = null;
+      function show(name, html) {
+        const cur = document.querySelector('#panel:not([hidden]) .win.bd .win-b');
+        const same = cur && screen === name;
+        screen = name;
+        if (same) { const y = cur.scrollTop; cur.innerHTML = html; cur.scrollTop = y; return cur; }
+        return U.panel(html, { title: opts.title || 'DESIGN BOARD', noClose: true, cls: 'quiz bd' });
+      }
       function boardSvg(hi) {
         const W = COLS * 100, H = ROWS * 80, cx = n => n.c * 100 + 50, cy = n => n.r * 80 + 40;
         const on = hi ? new Set(hi) : null;
@@ -122,12 +131,11 @@
           ${showBrief ? `<div class="bd-brief"><p>${U.esc(prob.brief)}</p><p class="small"><b>Flows to trace:</b> ${prob.flows.map(f => U.esc(f.name)).join(' · ')}</p></div>` : ''}`;
       }
       function draw() {
-        const p = U.panel(head() + grid('draw') +
+        const p = show('draw', head() + grid('draw') +
           `<p class="bd-note">${note || (sel ? `Tap an empty square to place ${U.esc(P[sel].name)}.` : pick ? 'Tap another part to connect or disconnect it, an empty square to move this one, or Remove.' : 'Tap a part in the tray, then a square. Tap two parts on the board to connect them.')}</p>
           <div class="bd-tray">${prob.tray.map(k => `<button class="bd-chip${sel === k ? ' sel' : ''}" data-p="${k}" ${count(k) >= MAX_SAME ? 'disabled' : ''}>${icon(P[k].icon)}${U.esc(P[k].name)}</button>`).join('')}</div>
           <div class="row bd-tools"><button class="ghost" id="bd-rm" ${pick && pick !== 'u' ? '' : 'disabled'}>Remove</button><button class="ghost" id="bd-clear">Clear</button>
-          <button class="primary" id="bd-next" ${edges.length >= 2 ? '' : 'disabled'}>Trace the flows →</button></div>`,
-          { title: opts.title || 'DESIGN BOARD', noClose: true, cls: 'quiz bd' });
+          <button class="primary" id="bd-next" ${edges.length >= 2 ? '' : 'disabled'}>Trace the flows →</button></div>`);
         p.querySelector('#bd-brief').onclick = () => { showBrief = !showBrief; draw(); };
         p.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
           const k = b.dataset.p; sel = sel === k ? null : k; pick = null;
@@ -160,10 +168,9 @@
       }
       function trace() {
         const f = prob.flows[fi];
-        const p = U.panel(head() + `<div class="bd-flow"><span class="q-ctx">Flow ${fi + 1} of ${prob.flows.length}</span> <b>${U.esc(f.name)}</b><p class="small">${U.esc(f.hint || 'Tap every part this request touches, starting next to your users. Branches are fine: a server can call a cache and a database.')}</p></div>` +
+        const p = show('trace' + fi, head() + `<div class="bd-flow"><span class="q-ctx">Flow ${fi + 1} of ${prob.flows.length}</span> <b>${U.esc(f.name)}</b><p class="small">${U.esc(f.hint || 'Tap every part this request touches, starting next to your users. Branches are fine: a server can call a cache and a database.')}</p></div>` +
           grid('trace') + `<p class="bd-note">${note || (path.length > 1 ? 'Keep going, or tap Done when the request has everything it needs.' : 'Tap the first part the request reaches.')}</p>
-          <div class="row bd-tools"><button class="ghost" id="bd-back">${path.length > 1 ? 'Undo' : '← Edit the design'}</button><button class="primary" id="bd-done" ${path.length > 1 ? '' : 'disabled'}>Done</button></div>`,
-          { title: opts.title || 'DESIGN BOARD', noClose: true, cls: 'quiz bd' });
+          <div class="row bd-tools"><button class="ghost" id="bd-back">${path.length > 1 ? 'Undo' : '← Edit the design'}</button><button class="primary" id="bd-done" ${path.length > 1 ? '' : 'disabled'}>Done</button></div>`);
         p.querySelector('#bd-brief').onclick = () => { showBrief = !showBrief; trace(); };
         p.querySelectorAll('[data-n]').forEach(b => b.onclick = () => {
           const id = b.dataset.n;
@@ -190,7 +197,7 @@
           ${s.extras.map(n => `<li class="bad"><b>✗ Extra: ${U.esc(label(n))}</b><br><span class="small">${U.esc(prob.useful.includes(n.p) ? 'No flow uses it. Every box on the board should earn its place.' : (prob.extraWhy && prob.extraWhy[n.p]) || `This design doesn't need ${P[n.p].name.toLowerCase()}. The interviewer will ask what it's for.`)}</span></li>`).join('')}
           ${s.direct.map(n => `<li class="bad"><b>✗ Users reach the ${U.esc(label(n))} directly</b><br><span class="small">Phones and browsers talk to your servers, not to your ${U.esc(P[n.p].name.toLowerCase())}. A server in between checks who is asking, validates the request and can change the storage later without shipping a new app.</span></li>`).join('')}</ul>`;
         h += `<div class="row bd-tools">${s.ok ? '' : '<button class="ghost" id="bd-fix">Fix my design</button>'}${prob.ref ? '<button class="ghost" id="bd-ref">See a strong design</button>' : ''}<button class="primary" id="bd-go">${s.ok ? 'Continue' : 'Move on'}</button></div>`;
-        const p = U.panel(h, { title: opts.title || 'DESIGN BOARD', noClose: true, cls: 'quiz bd' });
+        const p = show('check', h);
         const fx = p.querySelector('#bd-fix');
         if (fx) fx.onclick = () => { flows = {}; phase = 'draw'; note = 'Fix the design, then trace the flows again.'; draw(); };
         const rf = p.querySelector('#bd-ref');
@@ -198,9 +205,9 @@
           // Show the reference on the same board, then put the player's own design back.
           const mine = { nodes, edges };
           ({ nodes, edges } = B.ref(prob));
-          const q = U.panel(`<p class="small">One strong answer. Yours can differ and still pass: the checks are about what the design does.</p>${grid('view')}
+          const q = show('ref', `<p class="small">One strong answer. Yours can differ and still pass: the checks are about what the design does.</p>${grid('view')}
             <ul class="bd-checks">${Object.entries(prob.ref.flows).map(([f, ids]) => `<li><b>${U.esc(prob.flows.find(x => x.id === f).name)}:</b> ${ids.map(i => U.esc(label(nodeById(i)))).join(' → ')}</li>`).join('')}</ul>
-            <button class="primary" id="bd-back2">Back</button>`, { title: opts.title || 'DESIGN BOARD', noClose: true, cls: 'quiz bd' });
+            <button class="primary" id="bd-back2">Back</button>`);
           q.querySelector('#bd-back2').onclick = () => { ({ nodes, edges } = mine); check(); };
         };
         p.querySelector('#bd-go').onclick = async () => {
