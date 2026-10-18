@@ -651,7 +651,7 @@
   // ---------- The prize: EXPLOSION! ----------
   // sre-bomb is defined with the fuse mechanic in js/run.js / js/content.js; she names it her way.
   const BOMB = 'sre-bomb';
-  if (SD.cards[BOMB]) Object.assign(SD.cards[BOMB], { name: 'EXPLOSION!', flavor: 'One per day. Three turns of chanting. Then everything.' });
+  if (SD.cards[BOMB]) Object.assign(SD.cards[BOMB], { name: 'EXPLOSION!', text: 'Exhaust. Chant for 3 turns, then deal 40 to ALL incidents. EXPLOSION!' });
   const lib = () => (S.save.cardLib = S.save.cardLib || []);
   const hasBomb = () => lib().some(x => x.id === BOMB);
 
