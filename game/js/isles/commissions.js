@@ -115,7 +115,7 @@
         ask: { id: 'il-com-auction-8', c: 'windows', type: 'mc', q: 'The auction closes at 00:00. A bid reached the API at 23:59:58, but because of consumer lag the processor reads it at 00:00:03. What should happen?',
           opts: [
             "Reject it: the processor read it after midnight, and the processor decides what counts",
-            "Accept it: judge by event time, stamped by the server on arrival, not by when it was processed",
+            "Accept it: judge by when the server received the bid, not by when it was processed",
             "Accept it, using the timestamp from the bidder's phone, since that is when the bid was really made",
             "Close every auction a minute late, so any bid caught in lag still has time to be processed"
           ], a: 1,
@@ -125,7 +125,7 @@
             "Phone clocks drift and can be set by hand, so a bidder could backdate a late bid. Stamp the time where you control the clock: at the server.",
             "Lag has no upper limit, so a grace period only moves the cut-off, and bids sent during that extra minute would now count too."
           ],
-          why: "Processing time depends on lag; event time is when the bid actually happened. Stamp it on arrival at the server (a phone's clock can be wrong or faked) and close by that. Because each auction's bids are in order on one partition, the processor can settle the winner once it has read past the deadline, the way a watermark closes a window. Closing a minute late just moves the problem." } },
+          why: "Processing time depends on lag. What should decide is when the bid happened, and the trustworthy stamp for that is the server's arrival time (strictly, ingestion time; a phone's clock can be wrong or faked), so close by that. Because each auction's bids are in order on one partition, the processor can settle the winner once it has read past the deadline, the way a watermark closes a window. Closing a minute late just moves the problem." } },
       { stage: 'Deep dives', say: [['ruth', "Last thing. Who rings the bell at midnight? Me, if I'm awake. I'm not always awake."]],
         ask: { id: 'il-com-auction-9', c: 'sched', type: 'mc', q: 'Ten million auctions each close at their own time. How do you close them on time?',
           opts: [
