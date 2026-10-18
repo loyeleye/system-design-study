@@ -313,10 +313,13 @@
     if (outline) { ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); ctx.fill(); }
   }
   // The Cloud: where the whole kingdom keeps its data. It has blinking server lights and feelings.
-  // It hangs over the gap between the café and the Guild, clear of the road north at x 20.
+  // It follows the view, and slides aside rather than sit on the road north at x 20.
   function drawTheCloud(vw, t, cx) {
     const R = Math.min(46, vw * 0.07);
-    const X = 32 * ts - cx + Math.sin(t * 0.3) * 20, Y = R * 1.15 + 6 + Math.sin(t * 0.8) * 4;
+    let X = vw * 0.5 - cx * 0.05 + Math.sin(t * 0.3) * 20;
+    const ex = 20.5 * ts - cx, gap = R * 2.6 - Math.abs(X - ex);
+    if (gap > 0) X += X >= ex ? gap : -gap;
+    const Y = R * 1.15 + 6 + Math.sin(t * 0.8) * 4;
     ctx.save(); ctx.globalAlpha = 0.97;
     ctx.fillStyle = INK;
     puff(X, Y + 3, R + 3, INK, false);
