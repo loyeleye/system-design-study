@@ -125,15 +125,41 @@
   H.resize = resize;
   H.start = function () { active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); };
   H.stop = function () { active = false; cancelAnimationFrame(raf); };
-  // The cold open's landing (js/main.js): The Cloud spits you out and you drop onto the plaza with a thump, a puff
-  // of dust and a shaken camera. H.drop() resolves once you're down; taps and keys wait until then.
+  // The cold open's landing (js/main.js): The Cloud spits you out and you drop onto the plaza with a whoosh, a soft
+  // poof of dust and a little bump. H.drop() resolves once you're down; taps and keys wait until then.
   let drop = null, lastCloud = null, camX = 0, camY = 0;
-  H.drop = function () { return new Promise(res => { drop = { t: 0, dur: 1.3, res, landed: false }; }); };
+  H.drop = function () { SD.audio.sfx('drop'); return new Promise(res => { drop = { t: 0, dur: 1.3, res, landed: false }; }); };
   function updateDrop(dt) {
     if (!drop) return;
     drop.t += dt;
-    if (!drop.landed && drop.t >= drop.dur) { drop.landed = true; SD.audio.sfx('crash'); }
+    if (!drop.landed && drop.t >= drop.dur) { drop.landed = true; SD.audio.sfx('poof'); }
     if (drop.t >= drop.dur + 0.8) { const r = drop.res; drop = null; r(); }
+  }
+  // Pip's alarm in the cold open: slimes plop out of The Cloud's mouth one after another and land around you, then
+  // wobble there until the tutorial fight starts. H.slimes(0) clears them.
+  let slimes = [], slimeIm = null;
+  H.slimes = function (n) {
+    if (!n) { slimes = []; return; }
+    if (!slimeIm) { slimeIm = new Image(); slimeIm.src = 'assets/img/monsters/slime.webp'; }
+    const spots = [[2, 0], [-2, 0.2], [3.2, -0.6], [1.2, 0.3], [4.3, 0.2], [-3, -0.8]];
+    slimes = spots.slice(0, n).map(([dx, dy], i) => ({ x: P.x + dx, y: P.y + dy, t: -0.3 - i * 0.3, dur: 0.8, landed: false }));
+  };
+  function updateSlimes(dt) {
+    slimes.forEach(s => { s.t += dt; if (!s.landed && s.t >= s.dur) { s.landed = true; SD.audio.sfx('splat'); } });
+  }
+  function drawSlime(s, t) {
+    if (s.t < 0 || !lastCloud || !ok(slimeIm)) return;
+    const k = Math.min(1, s.t / s.dur), e = k * k, land = s.t - s.dur;
+    const x0 = (lastCloud.X + camX) / ts - 0.5, y0 = (lastCloud.Y + lastCloud.R * 0.6 + camY) / ts - 0.9;
+    const x = x0 + (s.x - x0) * e, y = y0 + (s.y - y0) * e;
+    // Big while it's near the camera, a squish on landing, then a jelly wobble.
+    let sx = 1, sy = 1;
+    if (land >= 0 && land < 0.3) { const q = Math.sin(land / 0.3 * Math.PI); sx = 1 + 0.35 * q; sy = 1 - 0.3 * q; }
+    else if (land >= 0.3) { const w = Math.sin(t * 6 + s.x * 2) * 0.06; sx = 1 + w; sy = 1 - w; }
+    const size = ts * 0.9 * (1 + (1 - e) * 0.6), fx = (x + 0.5) * ts, fy = (y + 0.95) * ts;
+    ctx.fillStyle = `rgba(43,35,64,${0.08 + 0.16 * k})`;
+    ctx.beginPath(); ctx.ellipse((s.x + 0.5) * ts, (s.y + 0.92) * ts, ts * 0.32 * (0.3 + 0.7 * k), ts * 0.1 * (0.3 + 0.7 * k), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(slimeIm, fx - size * sx / 2, fy - size * sy, size * sx, size * sy);
   }
   H.placeAt = function (x, y) { P.x = P.px = x; P.y = P.py = y; P.path = []; pip.x = x - 1; pip.y = y; };
   // Where a tile's centre is on screen (used by the playtest scripts to tap villagers).
@@ -259,7 +285,7 @@
   function loop(ts2) {
     if (!active) return;
     const dt = Math.min(0.05, (ts2 - (t0 || ts2)) / 1000); t0 = ts2;
-    update(dt); updateWanderers(dt); updateDrop(dt);
+    update(dt); updateWanderers(dt); updateDrop(dt); updateSlimes(dt);
     draw(ts2 / 1000, dt);
     raf = requestAnimationFrame(loop);
   }
@@ -271,8 +297,8 @@
     ctx.fillStyle = '#5fbf5f'; ctx.fillRect(0, 0, vw, vh);
     const { cx, cy } = cam();
     camX = cx; camY = cy;
-    // The landing shakes the screen for a moment.
-    const since = drop && drop.landed ? drop.t - drop.dur : 1, shake = since < 0.3 ? (1 - since / 0.3) * 5 : 0;
+    // The landing gives the screen a little bump.
+    const since = drop && drop.landed ? drop.t - drop.dur : 1, shake = since < 0.25 ? (1 - since / 0.25) * 2 : 0;
     ctx.save(); ctx.translate(-Math.round(cx) + (Math.random() - 0.5) * shake, -Math.round(cy) + (Math.random() - 0.5) * shake);
     const x0 = Math.max(0, Math.floor(cx / ts) - 1), x1 = Math.min(W, Math.ceil((cx + vw) / ts) + 1);
     const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
@@ -310,6 +336,7 @@
       ctx.fillStyle = f.c; ctx.strokeStyle = INK; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.ellipse(fx - 3, fy, 3 * flap + 0.5, 3, 0, 0, Math.PI * 2); ctx.ellipse(fx + 3, fy, 3 * flap + 0.5, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     });
+    slimes.forEach(s => drawSlime(s, t));
     ctx.restore();
     // Sky layer: drifting clouds and the Cloud itself (screen space, slight parallax)
     clouds.forEach(c => {
@@ -350,7 +377,7 @@
     ctx.fillStyle = INK;
     ctx.beginPath(); ctx.arc(X - R * 0.3, Y - R * 0.05, 3, 0, Math.PI * 2); ctx.arc(X + R * 0.3, Y - R * 0.05, 3, 0, Math.PI * 2); ctx.fill();
     // While it drops you off its mouth is an O; otherwise a small smile.
-    if (drop && drop.t < drop.dur + 0.4) { ctx.beginPath(); ctx.ellipse(X, Y + R * 0.2, R * 0.11, R * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
+    if ((drop && drop.t < drop.dur + 0.4) || slimes.some(s => s.t > -0.2 && s.t < 0.3)) { ctx.beginPath(); ctx.ellipse(X, Y + R * 0.2, R * 0.11, R * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
     else { ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, Y + R * 0.08, R * 0.14, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
     ctx.font = `600 ${Math.max(10, R * 0.26)}px Fredoka, sans-serif`; ctx.textAlign = 'center';
     ctx.fillStyle = INK; ctx.fillText('THE CLOUD', X, Y - R * 0.55);

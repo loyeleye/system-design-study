@@ -135,7 +135,7 @@
     if (fx === 'glow2') { U.heaven(2); U.crumbs('falling'); AU.sfx('hit'); }
     if (fx === 'glow1') { U.heaven(1); U.crumbs('stuck'); AU.stop(); AU.sfx('static'); }
     if (fx === 'glow0') { U.heaven(0); AU.music('journey'); }
-    if (fx === 'alarm') { AU.sfx('alarm'); AU.music('battle'); }
+    if (fx === 'alarm') { AU.sfx('alarm'); AU.music('battle'); if (!$('#screen-hub').hidden) SD.hub.slimes(5); }
     if (fx === 'gary') AU.jingle('gary', null);
   };
   M.coldOpen = coldOpen;  // the debug panel's "Play the intro" (js/debug.js)
@@ -156,6 +156,7 @@
     await U.dialog(SD.story.introAfterName);
     sv.flags.prologue = true; S.persist();
     SD.run.tutorial(async () => {
+      SD.hub.slimes(0);
       M.toHub(false);
       U.system('[QUEST] ARRIVED', 'Visit Uptima at the temple, then take the Dungeon gate into Prod.');
     });
