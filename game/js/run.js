@@ -374,7 +374,7 @@
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
       if (d.eachStale) C.stale += d.eachStale;
     });
-    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0));
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0));
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();
     if (garyShouldCome()) garyRescue();
@@ -462,7 +462,9 @@
     if (t === 'retry') return (curse('echo') ? 1.4 : 1) * (dev('waxseal') ? 0.7 : 1);
     if (t === 'stampede' || t === 'burst' || t === 'rush') return (curse('gears') ? 1.4 : 1) * (dev('strawhat') && t !== 'rush' ? 0.7 : 1);
     if (t === 'crash') return dev('hammer') ? 0.5 : 1;
-    if (t === 'partition') return curse('rifts') ? 1.4 : 1;
+    if (t === 'partition') return (curse('rifts') ? 1.4 : 1) * (dev('gavel') ? 0.7 : 1);
+    if (t === 'race') return dev('timer') ? 0.7 : 1;
+    if (t === 'collide') return dev('fencing') ? 0.7 : 1;
     if (t === 'scan') return curse('stacks') ? 1.4 : 1;
     return 1;
   }
@@ -503,9 +505,9 @@
       }
       case 'collide': {
         if (hasInfra('idgen')) { dmg = 0; note = 'Counter ranges: every code unique. '; break; }
-        dmg = absorb(sc(it.n), [['any', 1]]); note = 'Two links got the same short code. '; break;
+        dmg = absorb(sc(it.n) * mods(it.t), [['any', 1]]); note = 'Two links got the same short code. '; break;
       }
-      case 'escalate': C.rage += 3; note = 'The incident escalates. All load +3. '; break;
+      case 'escalate': { const up = dev('almanac') ? 2 : 3; C.rage += up; note = `The incident escalates. All load +${up}. `; break; }
       case 'flood': {
         let n = sc(it.n) * mods(it.t);
         if (hasInfra('ratelimit')) { n *= 0.4; note = 'Token buckets ran dry: the flood got 429s. '; }
@@ -527,7 +529,7 @@
       }
       case 'race': {
         if (hasInfra('atomic')) { dmg = 0; note = 'Atomic INCR: every count landed exactly once. '; break; }
-        dmg = absorb(sc(it.n), [['any', 1]]); C.stale += 2; note = 'Two servers read the same count; limits drifted (+2 Stale). '; break;
+        dmg = absorb(sc(it.n) * mods(it.t), [['any', 1]]); C.stale += 2; note = 'Two servers read the same count; limits drifted (+2 Stale). '; break;
       }
       case 'upload': {
         let n = sc(it.n);
@@ -648,6 +650,7 @@
             ${e.flavor ? `<div class="foe-flavor">${U.esc(e.flavor)}</div>` : ''}
             <div class="bar sev"><i style="width:${C.sev / C.max * 100}%"></i><span>Severity ${C.sev}/${C.max}</span></div>
             <div class="intent"><span class="lbl">NEXT</span> ${U.esc(SD.intentText[it.t](shown))}</div>
+            ${C.turn === 1 && dev('walkie') && e.pattern.length > 1 ? `<div class="intent then"><span class="lbl">THEN</span> ${U.esc(SD.intentText[e.pattern[(C.ii + 1) % e.pattern.length].t](Object.assign({}, e.pattern[(C.ii + 1) % e.pattern.length])))}</div>` : ''}
             <div class="tags">${weak.length ? `<span>Weak to: <b>${weak.map(U.esc).join(', ')}</b></span>` : ''}${res.length ? `<span>Resists: <b>${res.map(U.esc).join(', ')}</b></span>` : ''}${!weak.length && !res.length ? '<span class="muted">Weaknesses unknown. Diagnose or experiment.</span>' : ''}</div>
           </div>
         </div>

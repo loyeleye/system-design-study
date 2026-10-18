@@ -115,10 +115,11 @@
     opts = opts || {};
     const p = $('#panel');
     p.innerHTML = `<div class="win ${opts.cls || ''}" role="dialog" aria-modal="true">
-      <div class="win-h"><span>${U.esc(opts.title || 'SYSTEM')}</span>${opts.noClose ? '' : '<button class="x" id="panel-x" aria-label="Close">✕</button>'}</div>
+      <div class="win-h"><span>${U.esc(opts.title || 'SYSTEM')}</span>${opts.noClose ? (U.quitGame ? '<button class="x quit" id="panel-quit" aria-label="Leave the mini-game">✕ Leave</button>' : '') : '<button class="x" id="panel-x" aria-label="Close">✕</button>'}</div>
       <div class="win-b">${html}</div></div>`;
     p.hidden = false;
     if (!opts.noClose) $('#panel-x').onclick = () => { U.closePanel(); if (opts.onClose) opts.onClose(); };
+    else if (U.quitGame) $('#panel-quit').onclick = () => U.quitGame();
     return p.querySelector('.win-b');
   };
   U.closePanel = function () { $('#panel').hidden = true; $('#panel').innerHTML = ''; };

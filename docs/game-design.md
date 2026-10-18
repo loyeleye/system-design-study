@@ -100,7 +100,7 @@ Every quest still teaches. Each has a signature mini-game, one or two whiteboard
 | After clearing chapter 3 (Clockwork Spire) | 11–15 | 5 |
 | After clearing chapter 4 (Sky Harbour) | 16–20 | 5 |
 
-Quests 1–10 are built. Chapter 3 is built, but quests 11–15 are not yet: they are specified below and are the next thing to build, followed by 16–20 with chapter 4, since they teach those chapters' material and lift those dungeons' curses.
+Quests 1–15 are built. Quests 16–20 come with chapter 4, since they teach that chapter's material and lift its curses. Every quest mini-game has a ✕ Leave button: leaving pauses the quest at that step, and talking to the villager again restarts it.
 
 ### Built quests (1–10)
 
@@ -153,9 +153,9 @@ Every dungeon is still beatable without its Plot Devices; it is just meant to fe
 - **Lessons**: Mio's How a Post Reaches Your Feed, Seymour's Seat Rush (holds and a waiting room against 120 fans) and Wen's Top 3 Pastries (a min-heap).
 - **Oopsies**: three new ones for fan-out, booking and backpressure.
 
-### Planned quests (11–20)
+### Quests 11–15 (built) and 16–20 (planned)
 
-Posted after chapter 3 (they teach chapter 4's material and lift its curses):
+Posted after chapter 3 (they teach chapter 4's material and lift its curses). Their five concepts (`realtime`, `clocks`, `election`, `locks`, `sagas`) are in `SD.concepts` with `zone: 4`, with three questions each. The Plot Device effects work now; the chapter 4 curses they lift arrive with chapter 4.
 
 | # | Quest | Giver | Story | Teaches | Mini-game (mechanic) | Plot Device |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -163,7 +163,9 @@ Posted after chapter 3 (they teach chapter 4's material and lift its curses):
 | 12 | Who Ate the Last Croissant? | Wen | Two café tills disagree about who bought the last croissant. Both clocks are wrong. | Clock skew, Lamport and vector clocks, last-write-wins losing data | **Timeline Detective**: draw happens-before arrows between three witnesses' events, then mark which ones were truly concurrent | **Wen's Kitchen Timer:** race intents −30%. Lifts Clock Drift |
 | 13 | The Election of Seymour | Seymour | Five Seymours (he found two more) must elect a captain while a storm cuts the bunker in half. | Leader election, terms, majorities, split votes, randomised timeouts (Raft-style) | **Ballot Box**: real-time vote requests across a partition; get exactly one leader with a majority | **The Speaker's Gavel:** partition intents −30%. Lifts Many Kings |
 | 14 | The Guild's Great Double Booking | Bru | Two heroes accepted the same dragon. One of them fell asleep holding the quest key. | Distributed locks, leases, fencing tokens | **Lock & Lease**: hand out a quest key with an expiry; a hero frozen mid-swing wakes after the lease ends, and fencing numbers decide whose write counts | **Bru's Fencing Token:** collide intents −30%. Lifts Double Booking |
-| 15 | Cron's Very Long Harvest | Cron | Harvest, mill, bake and deliver across four shops; the mill breaks halfway. | Sagas, compensating actions, scheduled jobs and retries | **Saga Builder**: chain the steps, pair each with its undo, then watch a failure roll the chain back | **Cron's Almanac:** escalate adds +2 load instead of +3 |
+| 15 | Cron's Very Long Harvest | Cron | Harvest, mill, bake and deliver across four shops; the oven breaks halfway. | Sagas, compensating actions, scheduled jobs and retries | **Saga Builder**: chain the steps, pair each with its undo, then watch a failure roll the chain back | **Cron's Almanac:** escalate adds +2 load instead of +3 |
+
+As built, Is Anyone There? also teaches polling vs WebSockets through Coo, and The Election of Seymour adds the "why 3 or 5 nodes, not 4" question. Smudge's Eraser (2 stars on every chapter 1–3 blueprint in the Hall of Blueprints) is the sixteenth Plot Device: boss fights start with 1 extra card.
 
 Posted after chapter 4 (chapter 5's material and curses):
 
@@ -194,6 +196,12 @@ Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `
 | Quorum Dial | Set W and R until all three goals hold | R + W > N | Discover the rule instead of being told it (Sung's generation) |
 | Performance Review | Read a histogram, slide to p99, then make an error-budget call | Percentiles, SLOs, error budgets | Estimate from a picture, then apply it to a judgement in context |
 | Declutter | Remove parts from Kaito's design until it meets the requirements | Requirements first, monolith before microservices | Evaluating against goals; Kaito is a walking Einstellung effect (Oakley): stuck on the tool he already knows |
+| Heartbeat Haunt | Pick a heartbeat interval and timeout, run a lunch break, read false alarms, ghost time and battery | Heartbeats, timeouts, presence, polling vs WebSockets | Experiment with three competing goals; a prediction about a late beat |
+| Timeline Detective | Judge four pairs of events as before, after or concurrent from the notes passed, then see last-write-wins drop a sale | Happens-before, logical clocks, LWW data loss | Reasoning from cause instead of the misleading clock (an Einstellung trap) |
+| Ballot Box | Three calls in an election: timers, a partition, a returning leader with an old term | Raft-style election, majorities, terms | Productive failure: fixed timers split the vote first |
+| Lock & Lease | Choose a lease length, then accept or reject each write in Bru's ledger by fencing token | Leases, fencing tokens | Procedural practice with a vivid consequence (two heroes, one dragon) |
+| Saga Builder | Order four steps, pair each with its undo, then pick which undos run, and in what order, when the oven breaks | Sagas, compensating actions, 2PC's blocking | Building the structure, then applying it to a failure |
+| Rebuild the Recipe (revised) | The rules sit on screen, entries are listed by number, a live card shows the result, and Undo and Hint help when stuck | Snapshots and logs | Ladi found the first version confusing (2026-10-18); the goal and the three rules are now explicit before the first move |
 
 ## Audio
 
@@ -258,7 +266,7 @@ Recorded music and samples play when they load, with the original chiptune synth
 
 The art refresh (Ladi asked for art and sound closer to top games and anime) follows the RPG Maker convention: a pixel-art overworld, painted anime portraits in dialogue, and bright cartoon enemies.
 
-- **Village:** Kenney's Tiny Town tiles and Tiny Dungeon people at 16 px, scaled by whole numbers so they stay crisp. Villagers stand by their doors (talking to one is the same as walking in), wanderers stroll about with emote bubbles, and paths lead from every door.
+- **Village:** PixelLab-generated art at 32 px per tile (Ladi asked on 2026-10-18 for a more polished, anime-like look): Wang terrain tilesets drawn on the dual grid so grass, paths, the plaza, the farm and the river blend, one picture per building, and chibi villager sprites facing four ways. The player and wanderers have walk cycles and villagers breathe while idle. `tools/village_art.py` turns PixelLab downloads into `assets/img/village` and `js/village-art.js`. Villagers stand by their doors (talking to one is the same as walking in), wanderers stroll about with emote bubbles, and paths lead from every door.
 - **Portraits:** Painted anime busts with expressions (happy, sad, angry, blush, confused...). A line can set its mood with `e:`, otherwise `SD.art.mood` guesses from the text. Gary stays drawn in a plain style on purpose, like Saitama. Uptima's portrait is a maid, which became a joke: goddessing doesn't pay, so she works part-time at the Cache Café. Grandma Wen looks twenty because she "cached her face in 1987 and never set an expiry".
 - **Monsters:** Each incident is a silly monster assembled from Kenney's Monster Builder Pack by `game/tools/monsters.py`.
 - **Juice:** Hit sparks and slashes from Kenney's Particle Pack, screen shake and floating numbers.

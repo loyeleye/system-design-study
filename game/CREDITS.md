@@ -13,13 +13,15 @@
 | "Kuudere VIsual novel Sprite" | LisadiKaprio, https://opengameart.org/content/kuudere-visual-novel-sprite | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Lexi's portraits (cropped) |
 | "Brown haired hero" | Ironthunder (with thanks to Markeus Brumfield and Frank Ni), https://opengameart.org/content/brown-haired-hero | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Kaito's portrait (background removed, cropped) |
 | "Business Man" | Grahhhhh, https://opengameart.org/content/business-man-1 | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | Chad's portraits |
-| Tiny Town, Tiny Dungeon | Kenney (www.kenney.nl), via https://opengameart.org/content/tiny-town and /tiny-dungeon | CC0 | The village tiles, villagers and the player sprite |
+| Village map, buildings, props and villager sprites (`assets/img/village`) and Smudge (`assets/img/monsters/smudge.webp`) | Generated for this game with [PixelLab](https://pixellab.ai) on Ladi's subscription, processed by `tools/village_art.py` | Used under PixelLab's [Terms of Service](https://pixellab.ai/termsofservice) | The walkable village of Pingsby and the Whiteboard Mimic |
 | Monster Builder Pack | Kenney, via https://opengameart.org/content/monster-builder-pack | CC0 | Incident monsters, assembled by `tools/monsters.py` |
 | Toon Characters 1 | Kenney, via OpenGameArt | CC0 | The hero in the intro slideshow |
 | Emotes Pack, Particle Pack | Kenney, via OpenGameArt | CC0 | Speech-bubble emotes in the village, hit sparks in combat |
 | Game-icons.net (93-icon subset in `assets/game-icons.js`) | https://game-icons.net, via the npm package `@iconify-json/game-icons` 1.2.4. Icons by Lorc, Delapouite and other contributors listed at https://game-icons.net/about.html | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Card art, map nodes, story props |
 
-Portraits are cut by `tools/portraits.py`. Everything else (Gary, Pip, Postmaster Coo and Farmer Cron's portraits, Coo's pigeon sprite, Cron's farm, the truck, the slideshow scenes, the ONE COMMIT effect, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/intro.js`, `js/hub.js` and `index.html`.
+Portraits are cut by `tools/portraits.py`. Everything else (Gary, Pip, Postmaster Coo and Farmer Cron's portraits, the truck, the slideshow scenes, the ONE COMMIT effect, Mio's drawings, System windows) is drawn in code in `js/art.js`, `js/intro.js`, `js/hub.js` and `index.html`.
+
+Smudge's rebuild-the-diagram loop is inspired by InterviewReady's [The Joy of System Design](https://github.com/InterviewReady/joy-of-system-design) (MIT); its diagrams, text and code are written fresh for this game.
 
 ## Music
 

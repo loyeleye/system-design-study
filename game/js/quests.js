@@ -28,6 +28,12 @@
     strawhat: { name: "Cron's Straw Hat", icon: 'sun', text: 'Stampede and Burst intents deal 30% less.', flavor: 'It has seen forty years of midnights. It smells like it, too.' },
     cluster: { name: "Kaito's Spare Cluster", icon: 'server-rack', text: 'Draw 1 extra card on the first turn of every fight.', flavor: '"I-it\'s not like I had too many. I had exactly enough, times forty."' },
     shield: { name: "Seymour's Spare Shield", icon: 'visored-helm', text: 'Audits deal 2 per Stale instead of 3. Partitions with no choice made deal half.', flavor: 'He has three. Obviously.' },
+    eraser: { name: "Smudge's Eraser", icon: 'quill-ink', text: 'Boss fights start with 1 extra card.', flavor: 'Earned by redrawing every blueprint on the shelf from memory. Smudge wants it back.' },
+    walkie: { name: "Mio's Walkie-Talkie", icon: 'walkie-talkie', text: 'On turn 1 of every fight, see the intent after next as well.', flavor: 'It always hears what is coming. Mostly it hears Gary eating.' },
+    timer: { name: "Wen's Kitchen Timer", icon: 'stopwatch', text: 'Race intents deal 30% less.', flavor: 'It never shows the right time. It counts what happened, in order.' },
+    gavel: { name: "The Speaker's Gavel", icon: 'gavel', text: 'Partition intents deal 30% less.', flavor: 'One captain per term. Order! Order!' },
+    fencing: { name: "Bru's Fencing Token", icon: 'key', text: 'Collide intents deal 30% less.', flavor: 'Token number one. Kaito got number 33.' },
+    almanac: { name: "Cron's Almanac", icon: 'notebook', text: 'Escalate adds +2 load instead of +3.', flavor: 'Forty years of harvests. Every one went wrong, and every page says how he fixed it.' },
     halo: { name: "Uptima's Bent Halo", icon: 'star-formation', text: 'Error budget: the first 5 damage you take in each fight is ignored.', flavor: 'Rated MEETS EXPECTATIONS (BARELY) by Celestial HR.' }
   };
 
@@ -285,7 +291,7 @@
           { take: 'drawing' }, { take: 'letters' }, { take: 'ledger' },
           { game: 'replay', def: {
             title: 'REBUILD THE RECIPE', who: 'wen',
-            intro: "Start from Mio's drawing (the <b>snapshot</b>), then replay the changes made after it, <b>in order, once each</b>. Tap <b>Skip</b> for anything the snapshot already has, or that two sources both recorded.",
+            intro: "Mio's drawing is a copy of Hiro's recipe from a while ago (the <b>snapshot</b>). His letters and the ledger record the changes he made, each with a number. Rebuild his final recipe: decide, for each change, whether to <b>Replay</b> it onto the drawing or <b>Skip</b> it.",
             base: { seq: 3, state: { Flour: 4, Honey: 2, Salt: 2, Eggs: 1 } },
             keys: ['Flour', 'Honey', 'Salt', 'Eggs', 'Secret'], units: { Flour: 'cups', Honey: 'spoons', Salt: 'pinches' },
             entries: [
@@ -440,6 +446,116 @@
           { ask: { id: 'qq-review', c: 'nines', type: 'mc', q: 'Uptima promises 99.9% a month. Roughly how much downtime is that?', opts: ['About 43 minutes', 'About 4 minutes', 'About 7 hours', 'About 3 days'], a: 0, why: '0.1% of a 30-day month (43,200 minutes) is about 43 minutes. That is the error budget, to be spent on incidents and risky releases.' } },
           { say: [['uptima', "...Here. Take the halo. It's bent now, but it still blocks a little bad luck. A little.", 'blush']] }] }
       ]
+    },
+    // ---------- Posted after the Clockwork Spire (chapter 3). They teach chapter 4's material. ----------
+    {
+      id: 'walkie', title: 'Is Anyone There?', giver: 'mio', unlock: 3, device: 'walkie', xp: 110,
+      blurb: "Mio's walkie-talkie club keeps \"losing\" friends who are just eating lunch, and one ghost never logs off.",
+      teaches: 'WebSockets vs polling, heartbeats, timeouts and presence', concepts: ['realtime'],
+      items: { radios: 'Five walkie-talkies (one sticky)' },
+      steps: [
+        { at: 'mio', hint: "Visit Mio at the treehouse.", do: [
+          { say: [['mio', 'EMERGENCY! My walkie-talkie club lost Hana! And Rio! And Taro!'],
+            ['mio', 'I found them. They were eating lunch. But the club board says they are GONE. And Yui went home yesterday and the board says she is still here!'],
+            ['pip', "A board that thinks the living are gone and the gone are living. That's... a haunting."]] }] },
+        { at: 'coo', hint: 'Ask Postmaster Coo about messages. Visit the Pigeon Post.', do: [
+          { say: [['coo', 'Coo. The club asks every friend "are you there?" every second, by pigeon. My pigeons are exhausted.'],
+            ['coo', 'Better: keep one line open, and have each friend say "still here!" now and then. If you hear nothing for a while, then worry.'],
+            ['pip', 'A line that stays open and a little "still here!" beep. Got it!']] },
+          { item: 'radios' }] },
+        { at: 'mio', hint: "Bring the radios back to Mio.", do: [
+          { take: 'radios' },
+          { game: 'heartbeat', def: { title: 'HEARTBEAT HAUNT · THE TREEHOUSE', who: 'mio', intro: "Choose how often everyone beeps \"still here!\" and how long the board waits before calling someone gone. Then run lunch. Hana chews slowly. Yui goes home at 1:00." } },
+          { say: [['mio', 'Nobody is lost and nobody is haunted! Yui says thank you for letting her go home.']] },
+          { ask: { id: 'qq-walkie', c: 'realtime', type: 'mc', q: 'The quest board asks the Guild "any new quests?" every second, for a thousand heroes. What should it use instead?', opts: ['A WebSocket (or SSE) the Guild pushes new quests down', 'Ask every half second', 'A bigger Guild server', 'Email'], a: 0, why: 'Polling pays for every empty answer. An open connection lets the server push only when there is news; the same line carries heartbeats for presence.' } },
+          { say: [['mio', "You can have my walkie-talkie. It always hears what's coming. Mostly it hears Gary eating."]] }] }
+      ]
+    },
+    {
+      id: 'croissant', title: 'Who Ate the Last Croissant?', giver: 'wen', unlock: 3, device: 'timer', xp: 110,
+      blurb: 'Two café tills disagree about who bought the last croissant. Both clocks are wrong.',
+      teaches: 'Clock skew, happens-before, Lamport and vector clocks, and how last-write-wins loses data', concepts: ['clocks'],
+      items: { receipts: 'Two tills of receipts' },
+      steps: [
+        { at: 'wen', hint: 'Visit Grandma Wen at the Cache Café.', do: [
+          { say: [['wen', 'One croissant left this morning, dear. Till A sold it to Seymour. Till B sold it to Gary. Gary has already eaten it.', 'confused'],
+            ['wen', "The receipts say Gary's was 12:02 and Seymour's 12:07, so Gary was first. But Till B's clock has been wrong since the flood.", 'angry'],
+            ['wen', 'Fetch Seymour. He will want a ruling.']] },
+          { item: 'receipts' }] },
+        { at: 'seymour', hint: 'Show the receipts to Seymour at the bunker.', do: [
+          { say: [['seymour', 'An outrage! I demand justice! And a croissant!', 'angry'],
+            ['seymour', 'We shall settle this properly: not by clocks, which lie, but by who could have KNOWN what. Bring the receipts to Wen and reconstruct the morning.']] }] },
+        { at: 'wen', hint: 'Bring the receipts back to Grandma Wen.', do: [
+          { take: 'receipts' },
+          { game: 'timeline', def: { title: 'TIMELINE DETECTIVE · CACHE CAFÉ', who: 'wen', intro: 'Mio carried notes between the tills all morning. Use the notes, not the clocks, to work out what really came first.' } },
+          { say: [['wen', 'So both sales were "first" as far as each till knew. I shall bake two croissants tomorrow and keep both receipts. Seymour may have the second one.', 'happy']] },
+          { ask: { id: 'qq-croissant', c: 'clocks', type: 'mc', q: 'Two replicas accept writes to the same shopping cart at nearly the same time. How do you avoid silently losing one?', opts: ['Track versions (vector clocks) to detect the conflict, then keep or merge both', 'Last-write-wins by wall-clock time', 'Trust the server with the newer clock', 'Retry until one fails'], a: 0, why: 'Version vectors reveal concurrent writes. Then you merge them (union of cart items, or a CRDT) or keep both for the app to resolve; LWW just drops one.' } },
+          { say: [['wen', "Take my kitchen timer, dear. It doesn't tell the right time either, but it counts what happened, in order."]] }] }
+      ]
+    },
+    {
+      id: 'election', title: 'The Election of Seymour', giver: 'seymour', unlock: 3, device: 'gavel', xp: 120,
+      blurb: 'Five Seymours (he found two more) must elect a captain while a storm cuts the bunker in half.',
+      teaches: 'Leader election, terms, majorities, split votes and randomised timeouts (Raft-style)', concepts: ['election', 'cap'],
+      steps: [
+        { at: 'seymour', hint: 'Visit Seymour at the bunker.', do: [
+          { say: [['seymour', 'Junior! Splendid news: I am now QUINTUPLY replicated. Seymours IV and V were in the cellar.', 'happy'],
+            ['seymour', 'Terrible news: our captain, Seymour III, has stopped answering. He might be asleep. He might be a ghost. Mio says ghosts are a timeout problem now.', 'confused'],
+            ['seymour', 'We must elect a new captain, and a storm is coming. Ask Uptima how elections work. She claims to have run one.']] }] },
+        { at: 'uptima', hint: 'Ask Uptima about elections at the temple.', do: [
+          { say: [['uptima', 'Elections? Easy. Everyone votes for me. I won with one vote. Mine.', 'smug'],
+            ['uptima', "Okay, okay. The real rule: you need MORE than half of everyone. With five, that's three. And every election gets a new number, a term, so you can tell old captains from new ones.", 'neutral'],
+            ['pip', 'More than half, and a number that only goes up. Easy! What could go wrong?']] }] },
+        { at: 'seymour', hint: 'Run the election at the bunker.', do: [
+          { music: 'battle' },
+          { game: 'ballot', def: { title: 'BALLOT BOX · THE BUNKER', who: 'seymour', intro: 'The captain has gone quiet. Every Seymour is waiting to see if he wakes up. When a Seymour gets tired of waiting, he stands for captain and asks the others for votes.' } },
+          { say: [['seymour', 'One captain, exactly one, even in a storm. I have never felt so consistent.', 'happy']] },
+          { ask: { id: 'qq-election', c: 'election', type: 'mc', q: 'Why do etcd and ZooKeeper clusters usually run 3 or 5 nodes, not 4?', opts: ['A majority of 4 is 3, so 4 nodes survive only 1 failure: the same as 3, with more cost', '4 is unlucky', 'Even numbers cannot vote', 'Leaders need a twin'], a: 0, why: 'Tolerating f failures needs 2f + 1 nodes. The fourth node adds cost and another thing to fail without surviving one more failure.' } },
+          { say: [['seymour', 'The first act of Captain Seymour III (re-elected): give you the speaker\'s gavel. Order! Order!', 'happy']] }] }
+      ]
+    },
+    {
+      id: 'lease', title: "The Guild's Great Double Booking", giver: 'bru', unlock: 3, device: 'fencing', xp: 120,
+      blurb: 'Two heroes accepted the same dragon. One of them fell asleep holding the quest key.',
+      teaches: 'Distributed locks, leases and fencing tokens', concepts: ['locks', 'booking'],
+      steps: [
+        { at: 'bru', hint: "Visit Bru at the Adventurers' Guild.", do: [
+          { music: 'guild' },
+          { say: [['bru', 'EHHH?! Two heroes. One dragon. Kaito took the quest key three days ago and fell asleep in the dragon\'s waiting room!', 'angry'],
+            ['bru', "Seymour wants the dragon now. If I give him a new key and Kaito wakes up, they'll BOTH say they won. The paperwork, Junior. Think of the paperwork.", 'confused']] }] },
+        { at: 'kaito', hint: 'Wake Kaito in the plaza.', do: [
+          { say: [['kaito', "Wh-what? I wasn't asleep. I was... charging my Legendary Skill. For three days."],
+            ['kaito', "The key is mine! Mine forever! It's not like I care about the dragon or anything."],
+            ['pip', 'A key that lasts forever, held by someone who naps. This is exactly how Guilds fall.']] }] },
+        { at: 'bru', hint: 'Report back to Bru.', do: [
+          { game: 'lease', def: { title: 'LOCK & LEASE · THE GUILD', who: 'bru', intro: "New rule: quest keys expire, and I'll number every key I hand out. Help me pick the expiry, then keep my ledger honest." } },
+          { say: [['bru', "Expiring keys, numbered keys, and a ledger that turns away old ones. I'm going to frame this ledger.", 'happy']] },
+          { ask: { id: 'qq-lease', c: 'locks', type: 'mc', q: 'A worker holds a 30-second lease and is still working at 25 seconds. What should it do?', opts: ['Renew the lease before it expires', 'Nothing: leases last as long as needed', 'Take a second lease', 'Stop and start again'], a: 0, why: 'Leases expire so crashes free the lock; live workers renew in time. And because a pause can still outlast the lease, writes carry fencing tokens.' } },
+          { say: [['bru', 'Here. Fencing token number one. The first one I ever stamped. Kaito wanted it. Kaito gets number 33.', 'happy']] }] }
+      ]
+    },
+    {
+      id: 'harvest', title: "Cron's Very Long Harvest", giver: 'cron', unlock: 3, device: 'almanac', xp: 130,
+      blurb: 'Harvest, mill, bake and deliver across four shops. The mill breaks halfway.',
+      teaches: 'Sagas, compensating actions, and why two-phase commit blocks', concepts: ['sagas', 'backoff'],
+      items: { order: "Cron's bread order" },
+      steps: [
+        { at: 'cron', hint: 'Visit Farmer Cron by the fields.', do: [
+          { say: [['cron', "Harvest festival, sonny. One hundred loaves. My wheat, Bram's mill, Wen's oven, Coo's pigeons. Four shops, one order."],
+            ['cron', 'Last year the oven broke after the mill was paid, and nobody knew who owed what. My father settled it with a duel. I would rather not.']] },
+          { item: 'order' }] },
+        { at: 'bram', hint: 'Ask Bram at the Forge how the mill handles a broken order.', do: [
+          { say: [['bram', "I can't un-grind flour. Nobody can un-grind flour."],
+            ['bram', "But I can give the coins back. Every shop can undo its own part, its own way. Just tell us which, and in what order."],
+            ['pip', 'Every step gets its own undo. Like a list of apologies, prepared in advance!']] }] },
+        { at: 'cron', hint: "Bring the plan back to Cron.", do: [
+          { take: 'order' },
+          { game: 'saga', def: { title: 'SAGA BUILDER · CRON\'S FARM', who: 'cron', intro: 'Line up the steps, give each one an undo, then run the order. Something will break. Something always breaks at harvest.' } },
+          { say: [['cron', "The oven blew, the miller got his refund back to me, the wheat's in the barn and nobody duelled. My father would be disappointed. I'm not."]] },
+          { ask: { id: 'qq-harvest', c: 'sagas', type: 'mc', q: 'Booking a trip: flight, hotel and car are separate services. The car booking fails. What does a saga do?', opts: ['Cancel the hotel, then the flight: compensate the finished steps in reverse', 'Roll back one big transaction across all three', 'Keep retrying the car forever', 'Book a different flight'], a: 0, why: 'Each service committed on its own, so a saga undoes them with compensating actions, newest first, after a few safe retries of the failing step.' } },
+          { say: [['cron', "Take my almanac. Forty years of harvests, every one went wrong, and every page says how I fixed it."]] }] }
+      ]
+
     }
   ];
   QS.list = QUESTS;
@@ -455,7 +571,12 @@
     'qq-kaito1': "Like reading the quest objective before buying gear: you can't pick a build for a boss you haven't looked at.",
     'qq-kaito2': "Like buying a guild hall for a party of two: you'll manage it all day and never fill it.",
     'qq-quorum': 'Like a party vote that needs two of three: one player alone in a dungeon can\'t pass anything until they regroup.',
-    'qq-review': "Like an invincibility timer: you get a fixed amount per month; spend it on daring plays, and when it's gone you play safe."
+    'qq-review': "Like an invincibility timer: you get a fixed amount per month; spend it on daring plays, and when it's gone you play safe.",
+    'qq-walkie': 'Like refreshing a page over and over to see if a match is ready, versus the game pinging you when it is.',
+    'qq-croissant': 'Like two players editing the same base at once: instead of keeping only the last save, notice both changes and merge them.',
+    'qq-election': 'A raid of four can lose only one player and still have a majority, same as a raid of three. The fourth player is just another person to wait for.',
+    'qq-lease': 'Like an item reservation in a trade window: it times out unless you click "still here" before it does.',
+    'qq-harvest': 'Like a three-part trade that falls through at the last step: hand back what you already received, in reverse order.'
   });
 
   // ---------- State ----------
@@ -518,7 +639,13 @@
       U.system('QUEST ACCEPTED', esc(q.title), 'gold');
     }
     const step = q.steps[s.step];
-    for (const a of step.do) await act(q, s, a);
+    const held = s.items.slice();
+    try { for (const a of step.do) await act(q, s, a); } catch (e) {
+      if (e !== QUIT) throw e;
+      s.items = held; S.persist();
+      U.system('QUEST PAUSED', `${esc(q.title)}: talk to ${esc(who(step.at))} to try again.`);
+      AU.music('town'); SD.main.hud(); return;
+    }
     s.step++;
     if (s.step >= q.steps.length) await complete(q, s);
     else U.system('QUEST UPDATED', `${esc(q.title)}: ${esc(q.steps[s.step].hint)}`);
@@ -527,6 +654,7 @@
     if (sv) SD.main.hud();
   }
 
+  const QUIT = {};
   async function act(q, s, a) {
     if (a.music) AU.music(a.music);
     if (a.say) await U.dialog(a.say.map(([w, t, e]) => ({ s: w, t, e })));
@@ -534,8 +662,11 @@
     if (a.take) s.items = s.items.filter(x => x !== a.take);
     if (a.game) {
       AU.music('quest');
-      const r = await SD.games[a.game](a.def);
+      // Every quest mini-game can be left with the ✕; the step stays where it was, so you can try again later.
+      const r = await Promise.race([SD.games[a.game](a.def), new Promise(res => { U.quitGame = () => res(QUIT); })]);
+      U.quitGame = null;
       U.closePanel();
+      if (r === QUIT) throw QUIT;
       s.score = (s.score || 0) + ((r && r.score) || 0);
       q.concepts.forEach(c => S.seeConcept(c));
     }

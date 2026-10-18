@@ -168,6 +168,7 @@
       if (c === 'U') await SD.quests.guild();
       if (c === 'F') await forge();
       if (c === 'P' || c === 'K' || c === 'cron' || c === 'kaito' || c === 'doug') await SD.quests.idle(DOOR_NPC[c] || c);
+      if (c === 'K' && SD.quests.status('library') === 'done') await hall();
       if (c === 'A') await temple();
       if (c === 'C') await cafe();
       if (c === 'H') await treehouse();
@@ -232,6 +233,36 @@
     b.querySelector('#ar-x').onclick = U.closePanel;
     await waitClose();
     if (lesson) await SD.lessons.play(lesson);
+  }
+
+  // The Hall of Blueprints: Smudge, the Whiteboard Mimic (js/whiteboard.js), opens after Lexi's Forbidden Index.
+  // Its records live in the save, misses go to spaced review, and 2 stars on every early blueprint earns the Eraser.
+  async function hall() {
+    const sv = S.save;
+    const b = U.panel(`<p>Lexi points at a door you never noticed. "The Hall of Blueprints. Something in there has been <i>eating</i> the diagrams."</p>
+      <div class="row"><button class="primary" id="wb-go">Enter the Hall</button><button class="ghost" id="wb-x">Not today</button></div>`, { title: 'GRAND LIBRARY' });
+    const go = await new Promise(res => { b.querySelector('#wb-go').onclick = () => res(true); b.querySelector('#wb-x').onclick = () => res(false); });
+    if (!go) { U.closePanel(); return; }
+    const root = U.panel('<div id="wb-root"></div>', { title: 'THE HALL OF BLUEPRINTS', cls: 'wide' });
+    const store = { load: () => (sv.whiteboard = sv.whiteboard || {}), save: d => { sv.whiteboard = d; S.persist(); } };
+    AU.music('boss');
+    SD.wb.hall(root.querySelector('#wb-root'), {
+      maxChapter: Math.min(3, sv.chapter || 1), store,
+      onResult(res) {
+        (res.concepts || []).forEach(id => { if (SD.concepts[id]) S.recordAnswer(id, false, 1); });
+        SD.wb.blueprints.find(x => x.id === res.bp).nodes.forEach(n => { const id = SD.wb.parts[n.p] && SD.wb.parts[n.p].concept; if (id && SD.concepts[id]) S.seeConcept(id); });
+        if (res.ok) { SD.run.gainXp(10 + 10 * res.stars); sv.shards += res.stars; }
+        const best = (store.load().best || {});
+        const early = SD.wb.blueprints.filter(x => x.ch <= 3);
+        if (!SD.quests.has('eraser') && early.every(x => (best[x.id] || 0) >= 2)) {
+          SD.quests.devices().push('eraser');
+          U.system('PLOT DEVICE GET!', "Smudge's Eraser: boss fights start with 1 extra card.", 'gold');
+        }
+        S.persist();
+      }
+    });
+    await waitClose();
+    AU.music('town');
   }
 
   async function cafe() {

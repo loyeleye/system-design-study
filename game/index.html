@@ -290,6 +290,9 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 .rp-e { display: grid; gap: 2px; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 10px; background: #fff; }
 .rp-e .row { margin-top: 4px; } .rp-e .row button { padding: 4px 10px; font-size: 13px; }
 .rp-src { font: 700 11px var(--f-head); color: var(--blue-d); text-transform: uppercase; letter-spacing: .05em; }
+.rp-rules { border: 2px dashed var(--ink); border-radius: 10px; padding: 6px 12px; margin: 8px 0; background: #fffbe8; font-size: 14px; } .rp-rules ol { margin: 4px 0 0; padding-left: 20px; }
+.rp-e.rp-hint { box-shadow: 0 0 0 4px var(--sun); }
+.win-h .x.quit { font-size: 13px; width: auto; padding: 0 10px; }
 @media (max-width: 520px) { .rp-cols { grid-template-columns: 1fr; } }
 /* Limiter lab and jitter garden charts */
 .ll-algs button { flex: 1 1 150px; text-align: center; line-height: 1.25; }
@@ -313,6 +316,19 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 .qd-rep.fresh { background: #dcf7e8; } .qd-rep.fresh svg { color: #1f8a57; }
 .qd-rep.read { box-shadow: 0 0 0 4px var(--sun); }
 .qd-rep small { font-weight: 800; color: #a06a00; }
+.hb-kids, .bb-seys { grid-template-columns: repeat(5, 1fr); }
+.bb-seys .qd-rep.bb-left { background: #e3e9f7; border-style: dashed; }
+.tl-svg { width: 100%; max-width: 560px; display: block; margin: 8px auto; }
+.tl-lane { font: 600 12px var(--f-head); fill: var(--ink); }
+.tl-line { stroke: #c9c2d8; stroke-width: 3; }
+.tl-msg { stroke: #3b8bff; stroke-width: 2.5; stroke-dasharray: 5 4; }
+.tl-head { fill: #3b8bff; }
+.tl-dot { fill: #fff; stroke: var(--ink); stroke-width: 2.5; } .tl-dot.on { fill: var(--sun); }
+.tl-clock { font: 700 10px var(--f-body, sans-serif); fill: var(--muted); text-anchor: middle; }
+.sg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ll-log { margin: 6px 0; padding-left: 18px; }
+.intent.then { margin-top: 4px; opacity: .85; } .intent.then .lbl { background: #7a6bd6; }
+@media (max-width: 560px) { .hb-kids, .bb-seys { grid-template-columns: repeat(3, 1fr); } .sg-grid { grid-template-columns: 1fr; } }
 .qd-dials { display: grid; gap: 6px; } .qd-dials .row { margin-top: 4px; }
 .qd-goals { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 4px; }
 .qd-goals li { padding: 6px 10px; border-radius: 10px; background: #ffe1e1; font-weight: 700; }
@@ -695,12 +711,15 @@ body.slides #dialog[data-who="narr"] .dlg-foot { color: var(--muted); justify-co
 
 <script src="assets/game-icons.js"></script>
 <script src="js/content.js"></script>
+<script src="js/whiteboard-data.js"></script>
+<script src="js/whiteboard.js"></script>
 <script src="js/state.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/art.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/intro.js"></script>
 <script src="js/quiz.js"></script>
+<script src="js/village-art.js"></script>
 <script src="js/hub.js"></script>
 <script src="js/run.js"></script>
 <script src="js/eli5.js"></script>

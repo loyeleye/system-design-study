@@ -111,7 +111,22 @@ SD.eli5 = {
   bp1: 'When the kitchen is swamped, the waiter stops taking new orders for a bit instead of piling tickets up until the kitchen catches fire.',
   bp2: 'Under lag, the game stops loading cosmetic effects so the actual combat keeps running.',
   bp3: 'A mailbox with no size limit just keeps filling. You only notice when it bursts, and by then every letter is weeks old.',
-  bp4: '12,000 letters a second and each sorter does 500: you need at least 24 sorters, plus a few spare for busy moments.'
+  bp4: '12,000 letters a second and each sorter does 500: you need at least 24 sorters, plus a few spare for busy moments.',
+  rt1: 'Like asking "are we there yet?" every second of a road trip. A million kids asking is a million questions that are almost always "no".',
+  rt2: 'Your friend\'s walkie-talkie goes quiet for one beep. Don\'t panic; they\'re probably chewing. Three missed beeps in a row, then go looking.',
+  rt3: 'Alice is in room 7 of a big hotel. The front desk keeps a list of who is in which room, so a message for Alice goes straight to room 7.',
+  ck1: 'Every player\'s console clock is a little off. If two players hit "buy" in the same second, the clock times can\'t tell you who really was first.',
+  ck2: 'Two players edit the same shared note at once and the game keeps only the one with the later clock. The other edit just vanishes.',
+  ck3: 'A Lamport clock is a single score. A vector clock is a scoreboard with a column per player, so you can tell when two moves didn\'t know about each other.',
+  el1: 'If every player hits "I\'ll lead!" at the same instant, the vote splits. Give everyone a random countdown and one of them usually speaks first.',
+  el2: 'A guild of five needs three votes to pick a leader. A group of two that got separated can\'t reach three, so they wait.',
+  el3: 'You were party leader in season 4. You wake up and everyone\'s on season 6. You\'re not leader any more.',
+  lk1: 'A hero takes the only dungeon key and then logs off for good. Without an expiry on the key, nobody can ever enter again.',
+  lk2: 'Keys are numbered. The bank only accepts the newest number it has seen, so the hero who slept through his turn holding key 33 gets turned away.',
+  lk3: 'A sign-up sheet to stop two players farming the same spot is fine if it\'s sometimes wrong. Splitting the loot of a raid needs something stricter.',
+  sg1: 'Your trade was half done: you gave the gold and got the sword, but the shield failed. Undo it in reverse: give the sword back, then get the gold back.',
+  sg2: 'Two-phase commit is making every shop freeze until the head shop says go. If the head shop goes offline, every shop waits frozen.',
+  sg3: 'Pressing "buy" twice on a laggy screen should still only charge you once: the order number tells the shop it\'s the same order.'
 };
 
 SD.huh = {
@@ -145,7 +160,12 @@ SD.huh = {
   topk: 'Top-K is a leaderboard. Keep only the top few on the board, and when there are too many players to count exactly, use a clever tally sheet that estimates.',
   search: 'Search uses an index like the back of a strategy guide: every word lists the pages it appears on, so you never read the whole book.',
   booking: 'Booking is making sure only one player gets each seat or item. Put a short timed hold on it the moment someone picks it.',
-  backpressure: 'When work arrives faster than you can finish it, say "not now" early: make people wait in a queue, or drop the least important work, instead of collapsing.'
+  backpressure: 'When work arrives faster than you can finish it, say "not now" early: make people wait in a queue, or drop the least important work, instead of collapsing.',
+  realtime: 'Instead of asking the server "anything new?" over and over, keep a phone line open so it can call you. To know who is online, everyone says "still here!" every few seconds.',
+  clocks: 'Every computer\'s clock is a little bit wrong, so "who was first?" can\'t be settled by the time on the clock. Count cause and effect instead: you can\'t reply to a message before it arrives.',
+  election: 'A party needs one leader to make calls. When the leader goes quiet, someone volunteers and asks for votes; whoever gets more than half leads. Random waits stop everyone volunteering at once.',
+  locks: 'Only one hero can hold the quest key at a time. The key expires if they fall asleep, and every key has a number, so a hero waking up with an old key gets turned away.',
+  sagas: 'A big job split across shops, where each step has an undo. If a later step breaks, undo the earlier ones in reverse order, like refunding instead of un-baking.'
 };
 
 // [term, matcher, plain definition]
@@ -224,5 +244,12 @@ SD.glossary = [
   ['Change data capture', /\b(change data capture|CDC|Debezium)\b/i, 'Streaming every committed database change to other systems, like a search index.'],
   ['Hold / lock', /\b(hold|holds|lock|locks|locking|SET NX)\b/i, 'A claim on something (a seat, a row) so nobody else can take it at the same time. Holds expire on their own.'],
   ['Backpressure / load shedding', /\b(backpressure|load shedding|shed)\b/i, 'Pushing back on senders when overloaded, and dropping the least important work first.'],
+  ['WebSocket', /\bWebSockets?\b/i, 'A connection that stays open so the server can push messages to you at any time.'],
+  ['Heartbeat', /\bheartbeats?\b/i, 'A small "still here" message sent every few seconds so others know you are alive.'],
+  ['Lamport / vector clock', /\b(Lamport|vector clocks?)\b/i, 'Counters that order events by cause and effect instead of by wall-clock time.'],
+  ['Leader election', /\b(leader election|Raft)\b/, 'Picking one node to coordinate, by a majority vote. Raft numbers each election with a term.'],
+  ['Fencing token', /\bfencing tokens?\b/i, 'A number that grows with every lock grant; storage refuses writes carrying an older one.'],
+  ['Lease', /\bleases?\b/i, 'A lock with an expiry time, renewed while you work.'],
+  ['Saga', /\bsagas?\b/i, 'A chain of steps across services where each step has an undo (a compensating action).'],
   ['Waiting room', /\bwaiting room\b/i, 'A queue in front of a busy site that lets people in a few at a time.']
 ];

@@ -86,7 +86,7 @@
 /* Header: Smudge and you */
 .wb-top { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
 .wb-smudge { position: relative; width: 74px; height: 86px; }
-.wb-smudge img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 0 var(--wb-ink)); animation: wb-bob 2.6s ease-in-out infinite; }
+.wb-smudge img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 3px 0 var(--wb-ink)); animation: wb-bob 2.6s ease-in-out infinite; }
 .wb-smudge i { position: absolute; border-radius: 50%; opacity: .85; pointer-events: none; }
 .wb-smudge i:nth-child(2) { width: 18px; height: 9px; background: var(--wb-blue); left: 8px; top: 52px; transform: rotate(-20deg); }
 .wb-smudge i:nth-child(3) { width: 14px; height: 7px; background: var(--wb-red); right: 10px; top: 60px; transform: rotate(25deg); }
@@ -238,7 +238,7 @@
       function header() {
         const it = INTENTS[intent()];
         return `<div class="wb-top">
-          <div class="wb-smudge" id="wb-smudge"><img src="${ASSETS}img/monsters/blob.webp" alt="Smudge, a white blob covered in marker"><i></i><i></i><i></i></div>
+          <div class="wb-smudge" id="wb-smudge"><img src="${ASSETS}img/monsters/smudge.webp" alt="Smudge, a grinning whiteboard covered in marker doodles"></div>
           <div class="wb-bars">
             <div class="wb-row"><h3>Smudge, the Whiteboard Mimic</h3>${open.size ? `<span class="wb-intent" title="Smudge's next move">${icon(it.icon)}${esc(it.text)}</span>` : ''}</div>
             <div class="wb-bar boss"><span>Smudge</span><b><span style="width:${Math.max(0, hp)}%"></span></b><span>${Math.max(0, Math.round(hp))}</span></div>
@@ -535,7 +535,7 @@
       // "Due" when it has a weak part you've missed more than you've hit, or it's been a week.
       const due = b => b.nodes.some(n => { const r = parts[n.p]; return r && r.miss * 2 > r.n; }) || (last[b.id] && Date.now() - last[b.id] > 7 * 864e5);
       root.innerHTML = `<div class="wb"><div class="wb-card">
-        <div class="wb-top"><div class="wb-smudge"><img src="${ASSETS}img/monsters/blob.webp" alt=""><i></i><i></i><i></i></div>
+        <div class="wb-top"><div class="wb-smudge"><img src="${ASSETS}img/monsters/smudge.webp" alt=""></div>
           <div><h2>The Hall of Blueprints</h2><p class="wb-muted wb-small" style="margin:2px 0 0">The Grand Library · a mimic named Smudge has been eating the diagrams</p></div></div>
         ${W.lines.intro.map(([w, t]) => say(w, esc(t), w === 'lexi' ? 'smug' : 'neutral')).join('')}
       </div>
@@ -553,6 +553,7 @@
       W.fight(root, {
         bp: id, seed: s, store,
         onEnd(res, bar) {
+          if (opts.onResult) opts.onResult(res);
           bar.innerHTML = `<button class="wb-btn go" data-a="again">Rematch (same erasures)</button>
             <button class="wb-btn" data-a="new">New erasures</button>
             <button class="wb-btn" data-a="shelf">Another blueprint</button>

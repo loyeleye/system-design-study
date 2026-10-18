@@ -337,32 +337,49 @@
   // def: {title, who, intro, base: {seq, state}, entries: [{seq, src, text, k, op, v}], target, keys, done}
   G.replay = function (def) {
     return new Promise(res => {
-      const pool = shuffle(def.entries.map((_, i) => i));
-      let picked = [], skipped = new Set(), tries = 0, note = def.intro;
+      // Entries are listed by number, so the puzzle is which ones to apply, not hunting for them.
+      const pool = def.entries.map((_, i) => i).sort((a, b) => def.entries[a].seq - def.entries[b].seq);
+      let picked = [], skipped = new Set(), moves = [], tries = 0, hint = null, note = def.intro;
       const apply = (st, e) => { const s = Object.assign({}, st); if (e.op === 'set') s[e.k] = e.v; if (e.op === 'add') s[e.k] = (s[e.k] || 0) + e.v; if (e.op === 'mul') s[e.k] = (s[e.k] || 0) * e.v; if (e.op === 'del') delete s[e.k]; return s; };
       const card = st => `<ul class="rp-card">${def.keys.map(k => `<li><span>${esc(k)}</span><b>${st[k] != null ? esc(String(st[k])) + (def.units && def.units[k] ? ' ' + esc(def.units[k]) : '') : '—'}</b></li>`).join('')}</ul>`;
+      const replayed = () => picked.reduce((st, i) => apply(st, def.entries[i]), def.base.state);
+      // The right call for an entry: skip it if the snapshot has it or an earlier entry with its number was replayed.
+      const shouldSkip = i => { const e = def.entries[i]; return e.seq <= def.base.seq || picked.some(k => def.entries[k].seq === e.seq); };
       const render = () => {
         const left = pool.filter(i => !picked.includes(i) && !skipped.has(i));
         const b = U.panel(`${say(def.who, note)}
-          <div class="rp-cols"><div><p class="q-ctx">Snapshot (up to entry #${def.base.seq})</p>${card(def.base.state)}</div>
-          <div><p class="q-ctx">Your replay order</p><ol class="rp-order">${picked.map(i => `<li>#${def.entries[i].seq} ${esc(def.entries[i].text)}</li>`).join('') || '<li class="muted">Tap entries to add them in order.</li>'}</ol>
+          <div class="rp-rules"><b>How to play</b><ol>
+            <li>The snapshot already includes every change up to <b>#${def.base.seq}</b>. <b>Skip</b> those.</li>
+            <li>If two sources recorded the <b>same number</b>, it's one change written down twice: <b>Replay</b> one copy and <b>Skip</b> the other.</li>
+            <li><b>Replay</b> everything else, from the lowest number to the highest.</li></ol></div>
+          <div class="rp-cols"><div><p class="q-ctx">Snapshot (changes #1 to #${def.base.seq})</p>${card(def.base.state)}</div>
+          <div><p class="q-ctx">Card after your replays</p>${card(replayed())}
+          <ol class="rp-order">${picked.map(i => `<li>#${def.entries[i].seq} ${esc(def.entries[i].text)}</li>`).join('')}</ol>
           ${skipped.size ? `<p class="muted small">Skipped: ${[...skipped].map(i => '#' + def.entries[i].seq).join(', ')}</p>` : ''}</div></div>
-          <p class="q-ctx">Log entries found around town</p>
-          <div class="rp-pool">${left.map(i => { const e = def.entries[i]; return `<div class="rp-e"><span class="rp-src">${esc(e.src)} · #${e.seq}</span><span>${esc(e.text)}</span><span class="row"><button class="ghost" data-add="${i}">Replay next</button><button class="ghost" data-skip="${i}">Skip</button></span></div>`; }).join('') || '<p class="muted small">All entries placed.</p>'}</div>
-          <div class="row"><button class="ghost" id="rp-reset">Start over</button><button class="primary" id="rp-go" ${left.length ? 'disabled' : ''}>Replay onto the snapshot</button></div>`, { title: def.title, cls: 'wide', noClose: true });
-        b.querySelectorAll('[data-add]').forEach(el => el.onclick = () => { picked.push(+el.dataset.add); sfx('card'); render(); });
-        b.querySelectorAll('[data-skip]').forEach(el => el.onclick = () => { skipped.add(+el.dataset.skip); sfx('blip'); render(); });
-        b.querySelector('#rp-reset').onclick = () => { picked = []; skipped = new Set(); render(); };
+          <p class="q-ctx">Changes found around town (${left.length} left to decide)</p>
+          <div class="rp-pool">${left.map(i => { const e = def.entries[i]; return `<div class="rp-e${hint === i ? ' rp-hint' : ''}"><span class="rp-src">Change #${e.seq} · from the ${esc(e.src)}</span><span>${esc(e.text)}</span><span class="row"><button class="ghost" data-add="${i}">Replay</button><button class="ghost" data-skip="${i}">Skip</button></span></div>`; }).join('') || '<p class="muted small">Every change is decided. Check the card, then bake it.</p>'}</div>
+          <div class="row"><button class="ghost" id="rp-undo" ${moves.length ? '' : 'disabled'}>Undo</button><button class="ghost" id="rp-hint" ${left.length ? '' : 'disabled'}>Hint</button><button class="ghost" id="rp-reset">Start over</button><button class="primary" id="rp-go" ${left.length ? 'disabled' : ''}>Bake it</button></div>`, { title: def.title, cls: 'wide', noClose: true });
+        const move = (i, add) => { hint = null; moves.push(i); if (add) picked.push(i); else skipped.add(i); };
+        b.querySelectorAll('[data-add]').forEach(el => el.onclick = () => { move(+el.dataset.add, true); sfx('card'); render(); });
+        b.querySelectorAll('[data-skip]').forEach(el => el.onclick = () => { move(+el.dataset.skip, false); sfx('blip'); render(); });
+        b.querySelector('#rp-undo').onclick = () => { const i = moves.pop(); picked = picked.filter(k => k !== i); skipped.delete(i); render(); };
+        b.querySelector('#rp-hint').onclick = () => {
+          const i = left[0], e = def.entries[i]; hint = i;
+          note = e.seq <= def.base.seq ? `Hint: change #${e.seq} is already in the snapshot (it covers #1 to #${def.base.seq}), so <b>Skip</b> it.`
+            : shouldSkip(i) ? `Hint: you already replayed a change #${e.seq}. This is the same change written down twice, so <b>Skip</b> it.`
+            : `Hint: change #${e.seq} comes after the snapshot and you haven't applied it yet, so <b>Replay</b> it.`;
+          render();
+        };
+        b.querySelector('#rp-reset').onclick = () => { picked = []; skipped = new Set(); moves = []; hint = null; render(); };
         b.querySelector('#rp-go').onclick = go;
       };
       const go = () => {
         tries++;
-        let st = def.base.state;
-        picked.forEach(i => { st = apply(st, def.entries[i]); });
+        const st = replayed();
         const diff = def.keys.filter(k => String(st[k]) !== String(def.target[k]));
         if (!diff.length) {
           sfx('right');
-          result(def.title, { verdict: 'RECIPE RESTORED!', stats: [`${tries} replay${tries === 1 ? '' : 's'}`], body: `<p class="q-ctx">The rebuilt card</p>${card(st)}${def.done}` })
+          result(def.title, { verdict: 'RECIPE RESTORED!', stats: [`${tries} attempt${tries === 1 ? '' : 's'}`], body: `<p class="q-ctx">The rebuilt card</p>${card(st)}${def.done}` })
             .then(() => res({ ok: true, score: tries === 1 ? 1 : tries === 2 ? 0.7 : 0.4 }));
           return;
         }
@@ -370,9 +387,8 @@
         const old = picked.filter(i => def.entries[i].seq <= def.base.seq);
         const seqs = picked.map(i => def.entries[i].seq);
         const dup = seqs.some((s, k) => seqs.indexOf(s) !== k);
-        const outOfOrder = seqs.some((s, k) => k && s < seqs[k - 1]);
-        note = `The replay came out wrong: <b>${diff.map(esc).join(', ')}</b> ${diff.length === 1 ? 'is' : 'are'} off. ${old.length ? `Entry #${def.entries[old[0]].seq} is already inside the snapshot, so replaying it applies it twice. ` : ''}${dup ? 'Two sources recorded the same entry number: apply it once. ' : ''}${outOfOrder ? 'The entries are out of order, and order matters when one change builds on another. ' : ''}Try again.`;
-        picked = []; skipped = new Set();
+        const missing = pool.filter(i => skipped.has(i) && !shouldSkip(i));
+        note = `Wen tastes it. Not quite: <b>${diff.map(esc).join(', ')}</b> ${diff.length === 1 ? 'is' : 'are'} off. ${old.length ? `Change #${def.entries[old[0]].seq} is already in the snapshot, so replaying it counts it twice. ` : ''}${dup ? 'You replayed the same numbered change twice: apply it once. ' : ''}${missing.length ? `Change #${def.entries[missing[0]].seq} was skipped but isn't in the snapshot yet. ` : ''}Use Undo, or Start over.`;
         render();
       };
       render();
@@ -675,6 +691,284 @@
           verdict: 'SHIPPED!', stats: [`${on.size} of ${def.parts.length} parts kept`],
           body: def.done
         }).then(() => res({ ok: true, score: Math.max(0.5, 1 - broke * 0.1) }));
+      };
+      render();
+    });
+  };
+
+  // ---------- Heartbeat Haunt: tune heartbeats and timeouts for Mio's walkie-talkie club ----------
+  G.heartbeat = function (def) {
+    return new Promise(async res => {
+      const PRED = ['They get marked "gone" while they\'re eating', 'Nothing: they\'re still there', 'Their walkie-talkie explodes'];
+      const guess = await G.predict(def.title, def.who, 'Hana beeps "still here!" every 3 seconds. Then she takes a bite of sandwich and her beep is 5 seconds late. If the club calls anyone silent for <b>4 seconds</b> "gone", what happens?', PRED);
+      const KIDS = ['Hana', 'Rio', 'Sora', 'Taro', 'Yui'], END = 120, GHOST = 60, BATTERY = 300;
+      const IV = [1, 2, 3, 5, 10], TO = [2, 5, 10, 15, 30];
+      let iv = 3, to = 5, ran = 0, last = null, note = def.intro;
+      // Each beat can arrive up to 4 s late (chewing), and now and then one is lost entirely.
+      const sim = () => {
+        const r = seeded(11);
+        let falseAlarms = 0, ghostSecs = 0;
+        const flagged = new Set();
+        KIDS.forEach((k, i) => {
+          const ghost = i === 4;
+          const beats = [];
+          for (let t = 0; t <= END; t += iv) { if (ghost && t > GHOST) break; if (r() < 0.1) continue; beats.push(t + r() * 4); }
+          beats.sort((a, b) => a - b);
+          for (let j = 1; j < beats.length; j++) if (beats[j] - beats[j - 1] > to) { falseAlarms++; flagged.add(k); break; }
+          if (ghost) ghostSecs = Math.round(beats[beats.length - 1] + to - GHOST);
+        });
+        return { falseAlarms, flagged: [...flagged], ghostSecs, msgs: Math.round(KIDS.length * END / iv) };
+      };
+      const render = () => {
+        const s = last;
+        const goals = s ? [[`No friend marked "gone" while still there`, s.falseAlarms === 0], [`Yui (who went home at 1:00) shown offline within 20 s`, s.ghostSecs <= 20], [`Batteries last: ${BATTERY} beeps or fewer`, s.msgs <= BATTERY]] : null;
+        const b = U.panel(`${say(def.who, note)}
+          <div class="qd-reps hb-kids">${KIDS.map((k, i) => `<div class="qd-rep${s && s.flagged.includes(k) ? '' : ' fresh'}">${icon('walkie-talkie')}<b>${k}</b><span>${i === 4 ? 'goes home at 1:00' : s && s.flagged.includes(k) ? 'marked gone (was eating!)' : 'here all lunch'}</span></div>`).join('')}</div>
+          <p class="q-ctx">Beep "still here!" every...</p><div class="row">${IV.map(v => `<button class="${iv === v ? 'primary' : 'ghost'}" data-iv="${v}">${v} s</button>`).join('')}</div>
+          <p class="q-ctx">Call someone "gone" after silence of...</p><div class="row">${TO.map(v => `<button class="${to === v ? 'primary' : 'ghost'}" data-to="${v}">${v} s</button>`).join('')}</div>
+          ${s ? `<div class="tb-stats"><span class="chip">False alarms ${s.falseAlarms}</span><span class="chip">Ghost online for ${s.ghostSecs} s</span><span class="chip">Beeps sent ${s.msgs}</span></div>
+            <ul class="qd-goals">${goals.map(([t, ok]) => `<li class="${ok ? 'ok' : ''}">${ok ? '✓' : '✗'} ${t}</li>`).join('')}</ul>` : ''}
+          <div class="row"><button class="primary" id="hb-run">Run lunch break</button>${s && goals.every(g => g[1]) ? '<button id="hb-done">Done</button>' : ''}</div>`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-iv]').forEach(el => el.onclick = () => { iv = +el.dataset.iv; sfx('blip'); last = null; render(); });
+        b.querySelectorAll('[data-to]').forEach(el => el.onclick = () => { to = +el.dataset.to; sfx('blip'); last = null; render(); });
+        b.querySelector('#hb-run').onclick = () => {
+          last = sim(); ran++;
+          const good = last.falseAlarms === 0 && last.ghostSecs <= 20 && last.msgs <= BATTERY;
+          sfx(good ? 'right' : 'wrong');
+          note = good ? 'Nobody lost, nobody haunting the channel, and the batteries survive. Mio is ecstatic.'
+            : last.msgs > BATTERY ? 'The batteries died before lunch ended! Beeping that often is a lot of messages for very little news.'
+            : last.falseAlarms ? `${last.flagged.join(' and ')} got marked gone while chewing. The timeout is shorter than a late beep plus a lost one.`
+            : `No false alarms, but Yui "stayed online" for ${last.ghostSecs} s after going home. Spooky. The timeout is too long.`;
+          render();
+        };
+        const d = b.querySelector('#hb-done');
+        if (d) d.onclick = () => result(def.title, {
+          verdict: 'NOBODY LEFT BEHIND!', stats: [`Every ${iv} s, gone after ${to} s`, `${ran} lunch${ran === 1 ? '' : 'es'} simulated`], predicted: PRED[guess], predOk: guess === 0,
+          body: `<p class="small"><b>Presence</b> ("who's online") runs on <b>heartbeats</b>: each client pings every few seconds, and the server marks it offline after a <b>timeout</b> of a few missed beats (about three is the usual rule). Too short a timeout, and normal network hiccups look like people leaving. Too long, and people who really left stay online as ghosts. Beeping more often catches leavers sooner but costs messages and battery.</p>
+            <p class="small">The beeps travel best over a connection that stays open. <b>Polling</b> ("anything new?" on a timer) wastes requests; a <b>WebSocket</b> keeps one two-way line open, so the server can push messages and the client can send heartbeats on the same line.</p>`
+        }).then(() => res({ ok: true, score: ran <= 2 ? 1 : ran <= 4 ? 0.8 : 0.6 }));
+      };
+      render();
+    });
+  };
+
+  // ---------- Timeline Detective: happens-before, concurrency and last-write-wins ----------
+  G.timeline = function (def) {
+    return new Promise(async res => {
+      const PRED = ['Whoever has the later clock time', 'You can\'t tell from the clocks alone', 'Whoever is closer to the oven'];
+      const guess = await G.predict(def.title, def.who, 'Two tills each stamp sales with their own clock. One clock runs 3 minutes fast. Who bought the last croissant first?', PRED);
+      // Lanes: Till A, Till B, Mio (the runner carrying notes between them). Messages carry cause.
+      const EV = {
+        a1: { lane: 0, x: 1, t: 'Till A: sells a croissant to Doug', clock: '12:03' },
+        a2: { lane: 0, x: 3, t: 'Till A: sends Mio "1 left!"', clock: '12:05' },
+        m1: { lane: 2, x: 4, t: 'Mio: reads "1 left!"', clock: '' },
+        m2: { lane: 2, x: 5, t: 'Mio: tells Till B', clock: '' },
+        b1: { lane: 1, x: 2, t: 'Till B: sells a croissant to Kaito', clock: '12:01' },
+        b2: { lane: 1, x: 6, t: 'Till B: hears "1 left" and sells the last one to Gary', clock: '12:02' },
+        a3: { lane: 0, x: 6, t: 'Till A: sells "the last one" to Seymour', clock: '12:07' }
+      };
+      const MSG = [['a2', 'm1'], ['m2', 'b2']];
+      // Pairs to judge: 0 = left before right, 1 = right before left, 2 = concurrent.
+      const PAIRS = [['a1', 'a2', 0, 'Same till, one after the other: Till A did these in order.'], ['a2', 'b2', 0, 'Till A\'s note travelled through Mio to Till B. A message is sent before it is received, so the note caused the sale.'],
+        ['a1', 'b1', 2, 'No note passed between them first. The clocks say 12:03 and 12:01, but Till B\'s clock runs fast, so the clock times prove nothing. Truly concurrent.'],
+        ['b2', 'a3', 2, 'Neither till heard about the other\'s sale. Both think they sold the last croissant. Concurrent, and that is the conflict.']];
+      let i = 0, right = 0, note = def.intro, phase = 1;
+      const lanes = ['Till A', 'Till B', 'Mio'];
+      const svg = (hl) => {
+        const X = x => 70 + x * 62, Y = l => 26 + l * 46;
+        let g = `<svg class="tl-svg" viewBox="0 0 500 140" aria-hidden="true">`;
+        lanes.forEach((n, l) => { g += `<text x="4" y="${Y(l) + 4}" class="tl-lane">${n}</text><line x1="64" x2="490" y1="${Y(l)}" y2="${Y(l)}" class="tl-line"/>`; });
+        MSG.forEach(([a, b2]) => { g += `<line x1="${X(EV[a].x)}" y1="${Y(EV[a].lane)}" x2="${X(EV[b2].x)}" y2="${Y(EV[b2].lane)}" class="tl-msg" marker-end="url(#tl-arr)"/>`; });
+        g += `<defs><marker id="tl-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" class="tl-head"/></marker></defs>`;
+        Object.entries(EV).forEach(([k, e]) => { g += `<circle cx="${X(e.x)}" cy="${Y(e.lane)}" r="${hl.includes(k) ? 9 : 6}" class="tl-dot${hl.includes(k) ? ' on' : ''}"/>${e.clock ? `<text x="${X(e.x)}" y="${Y(e.lane) - 12}" class="tl-clock">${e.clock}</text>` : ''}`; });
+        return g + '</svg>';
+      };
+      const render = () => {
+        let body;
+        if (phase === 1) {
+          const [a, b2] = PAIRS[i];
+          body = `${svg([a, b2])}<p class="q-ctx">Case ${i + 1} of ${PAIRS.length}</p><p><b>Left:</b> ${esc(EV[a].t)}${EV[a].clock ? ` <span class="muted">(clock ${EV[a].clock})</span>` : ''}<br><b>Right:</b> ${esc(EV[b2].t)}${EV[b2].clock ? ` <span class="muted">(clock ${EV[b2].clock})</span>` : ''}</p>
+            <div class="opts"><button class="opt" data-a="0">Left happened before Right</button><button class="opt" data-a="1">Right happened before Left</button><button class="opt" data-a="2">Concurrent: neither could have known about the other</button></div>
+            <p class="muted small">Arrows are notes Mio carried. Clock times are what each till printed. Till B's clock runs about 3 minutes fast... or slow. Nobody knows.</p>`;
+        } else {
+          body = `${svg(['b2', 'a3'])}<p>Grandma Wen merges the two tills' ledgers with <b>last-write-wins</b>: for "who got the last croissant", keep the record with the later clock time.</p>
+            <div class="opts"><button class="opt" data-l="0">Seymour (12:07) keeps it, Gary's sale silently vanishes, and Gary still has a croissant in his hand</button><button class="opt" data-l="1">Both sales are kept</button><button class="opt" data-l="2">The system notices the conflict and asks Wen</button></div>`;
+        }
+        const b = U.panel(`${say(def.who, note)}${body}`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-a]').forEach(el => el.onclick = () => {
+          const ok = +el.dataset.a === PAIRS[i][2]; if (ok) right++;
+          sfx(ok ? 'right' : 'wrong'); note = `${ok ? 'Yes.' : 'Not quite.'} ${PAIRS[i][3]}`;
+          i++; if (i >= PAIRS.length) { phase = 2; note += ' Now, the ledger.'; }
+          render();
+        });
+        b.querySelectorAll('[data-l]').forEach(el => el.onclick = () => {
+          const ok = el.dataset.l === '0'; sfx(ok ? 'right' : 'wrong');
+          if (!ok) { note = 'That\'s what you\'d <i>want</i>. Plain last-write-wins only compares two clock times and keeps one. Try again.'; render(); return; }
+          result(def.title, {
+            verdict: 'CASE CLOSED!', stats: [`${right} of ${PAIRS.length} orderings right`], predicted: PRED[guess], predOk: guess === 1,
+            body: `<p class="small">Clocks on different machines <b>drift</b>, so wall-clock timestamps can't order events across them. What can: <b>happens-before</b>. Events on one till are in order, and a note is sent before it's read. Anything not linked by such a chain is <b>concurrent</b>.</p>
+              <p class="small"><b>Lamport clocks</b> number events so causes always get smaller numbers. <b>Vector clocks</b> keep one counter per node and can also tell when two events were concurrent. <b>Last-write-wins</b> by timestamp quietly throws one concurrent write away (sorry, Gary). To keep both, detect the conflict with version vectors, merge them (CRDTs), or send every write for one key through a single leader.</p>`
+          }).then(() => res({ ok: true, score: right / PAIRS.length }));
+        });
+      };
+      render();
+    });
+  };
+
+  // ---------- Ballot Box: Raft-style leader election across a partition ----------
+  G.ballot = function (def) {
+    return new Promise(async res => {
+      const PRED = ['They all stand at once, split the vote, and try again forever', 'The oldest one wins', 'The election is instant'];
+      const guess = await G.predict(def.title, def.who, 'Five Seymours. The captain goes quiet. Each Seymour waits <b>exactly 150 ms</b>, then stands for captain and votes for himself. What happens?', PRED);
+      const NAMES = ['I', 'II', 'III', 'IV', 'V'];
+      let step = 0, term = 1, mistakes = 0, note = def.intro, mode = null, splits = 0, leader = -1;
+      const seyms = (opts) => `<div class="qd-reps bb-seys">${NAMES.map((n, k) => `<div class="qd-rep${opts.lead === k ? ' fresh' : ''}${opts.side && opts.side[k] === 'L' ? ' bb-left' : ''}">${icon(opts.lead === k ? 'crown' : 'visored-helm')}<b>Seymour ${n}</b><span>${opts.label ? opts.label(k) : ''}</span></div>`).join('')}</div>`;
+      const STEPS = [
+        () => ({ body: `${seyms({ label: () => mode === 'fixed' ? 'stood for captain' : `term ${term}` })}<p class="q-ctx">Step 1: set the election timers</p>
+          <div class="opts"><button class="opt" data-c="fixed">Everyone waits exactly 150 ms</button><button class="opt" data-c="rand">Each waits a random 150-300 ms</button></div>`,
+          pick: c => {
+            if (c === 'fixed') { mode = 'fixed'; splits++; term++; mistakes++; return [false, `Term ${term}: all five stood at once, each voted for himself, nobody got 3 votes. Split vote. Then they all waited 150 ms again... and again.`]; }
+            mode = 'rand'; term++; leader = 2; return [true, `Term ${term}: Seymour III's timer ran out first. He asked for votes before anyone else woke up, got 4 of 5, and became captain. Randomness broke the tie.`];
+          } }),
+        () => ({ body: `${seyms({ lead: leader, side: ['L', 'L', 'R', 'R', 'R'], label: k => k < 2 ? 'cut off by the storm' : 'east bunker' })}<p class="q-ctx">Step 2: the storm splits the bunker. I and II can't reach III, IV, V. I and II stop hearing the captain.</p>
+          <div class="opts"><button class="opt" data-c="L">Seymour I wins an election on the west side</button><button class="opt" data-c="none">Seymour I stands but can't get elected</button><button class="opt" data-c="both">Both sides end up with a captain</button></div>`,
+          pick: c => c === 'none' ? [true, `Seymour I stands in term ${term + 1}, but only II can hear him: 2 votes of 5. A captain needs a <b>majority</b>, 3. The west side waits. Meanwhile III keeps leading the east.`]
+            : [false, `Only 2 of 5 can vote on the west side, and a captain needs a majority of all five: 3. The side with fewer than half can't elect anyone, which is exactly what stops two captains.`] }),
+        () => ({ body: `${seyms({ lead: leader, side: ['L', 'L', 'R', 'R', 'R'], label: k => k < 2 ? `term ${term + 3} (kept standing)` : `term ${term}` })}<p class="q-ctx">Step 3: the storm passes. Seymour I tried and failed so often he's on term ${term + 3}. Captain III is on term ${term}. Who leads now?</p>
+          <div class="opts"><button class="opt" data-c="keep">III stays captain: he has the votes</button><button class="opt" data-c="new">III sees the higher term and steps down; a fresh election follows, and only a Seymour with the latest log can win</button><button class="opt" data-c="one">Seymour I becomes captain: highest term</button></div>`,
+          pick: c => c === 'new' ? [true, 'Terms only grow, and seeing a higher one makes a leader step down. But Seymour I can\'t win just by shouting a big number: voters refuse anyone whose log is behind theirs, so the winner always has every committed write.']
+            : c === 'one' ? [false, 'A higher term forces a new election, but Seymour I missed every write during the storm. Voters refuse a candidate whose log is behind theirs, so he can\'t win.']
+            : [false, 'In Raft a higher term always wins the argument: III must step down when he sees it, and a fresh election picks the next captain.'] })
+      ];
+      const render = () => {
+        const s = STEPS[step]();
+        const b = U.panel(`${say(def.who, note)}${s.body}`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-c]').forEach(el => el.onclick = () => {
+          const [ok, msg] = s.pick(el.dataset.c);
+          sfx(ok ? 'right' : 'wrong'); note = msg;
+          if (!ok && step > 0) mistakes++;
+          if (ok) step++;
+          if (step < STEPS.length) { render(); return; }
+          result(def.title, {
+            verdict: 'ONE CAPTAIN, EXACTLY!', stats: [`${mistakes} wrong call${mistakes === 1 ? '' : 's'}`, splits ? `${splits} split vote${splits > 1 ? 's' : ''}` : 'No split votes'], predicted: PRED[guess], predOk: guess === 0,
+            body: `<p class="small">${note}</p><p class="small"><b>Leader election</b> (as in Raft): followers expect heartbeats from the leader. One that hears nothing before its <b>election timeout</b> becomes a candidate, bumps the <b>term</b> and asks for votes. A <b>majority</b> makes it leader for that term. <b>Randomised timeouts</b> stop split votes; majorities mean only one side of a partition can elect anyone; and a higher term makes an old leader step down.</p>
+              <p class="small">In an interview, say you'd use ZooKeeper or etcd for this rather than build it, and know why it needs an odd number of nodes: 5 survives 2 failures, 4 survives only 1.</p>`
+          }).then(() => res({ ok: true, score: Math.max(0.4, 1 - mistakes * 0.15) }));
+        });
+      };
+      render();
+    });
+  };
+
+  // ---------- Lock & Lease: quest keys with expiries and fencing tokens ----------
+  G.lease = function (def) {
+    return new Promise(async res => {
+      const PRED = ['Accept it: Kaito had the key', 'Reject it: his key number is older than one already used', 'Accept both heroes\' reports'];
+      const LEASES = [['5 s', 5], ['30 s', 30], ['10 min', 600], ['Forever', 1e9]];
+      let phase = 1, lease = null, note = def.intro, mistakes = 0, k = 0, high = 0;
+      // Ledger writes arriving at the Guild: [hero, token, text]
+      const LOG = [['Kaito', 33, 'Kaito: "Dragon at half HP!"'], ['Kaito', 33, 'Kaito: "I am about to win!" (then freezes mid-swing for 40 s)'], ['Seymour', 34, 'Seymour (took the key after Kaito\'s lease ran out): "Dragon defeated!"'], ['Kaito', 33, 'Kaito wakes up: "Dragon defeated by ME, reward please!"'], ['Seymour', 34, 'Seymour: "Returning the key."'], ['Bru', 35, 'Bru gives the key to Mio for the slime quest: "Slimes cleared!"']];
+      const render = () => {
+        let body;
+        if (phase === 1) body = `<p>A dragon quest takes about <b>20 seconds</b> of hero time. Last time, Kaito took the quest key, fell asleep, and the dragon has waited three days. How long should a key last before it expires (a <b>lease</b>)? Heroes can renew while they're still swinging.</p>
+          <div class="opts">${LEASES.map(([l], i) => `<button class="opt" data-l="${i}">${l}</button>`).join('')}</div>`;
+        else if (phase === 2) body = `<p class="q-ctx">Bru's ledger, in arrival order</p>
+          <ul class="ll-log">${LOG.slice(0, k).map(([h, t, s2], j) => `<li class="small">#${t} · ${esc(s2)} <b>${LOG[j].ok ? '✓ accepted' : '✗ rejected'}</b></li>`).join('')}</ul>
+          <div class="lw-say"><p><b>Key #${LOG[k][1]}</b> · ${esc(LOG[k][2])}</p></div>
+          <div class="row"><button class="primary" data-w="1">Accept</button><button class="ghost" data-w="0">Reject</button></div>
+          <p class="muted small">Highest key number accepted so far: ${high || 'none'}. Each new key Bru hands out gets the next number.</p>`;
+        const b = U.panel(`${say(def.who, note)}${body}`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-l]').forEach(el => el.onclick = () => {
+          const i = +el.dataset.l;
+          if (i === 1) { lease = LEASES[1][0]; sfx('right'); phase = 2; note = '30 seconds, renewed while working: long enough for a normal quest, short enough that a sleeping hero frees the dragon soon. Now run the ledger. Bru numbers every key she hands out: a <b>fencing token</b>.'; render(); return; }
+          sfx('wrong'); mistakes++;
+          note = i === 0 ? 'Five seconds and the key expires mid-fight, every fight. Two heroes would end up holding the dragon at once.' : 'That long, and a hero who falls asleep blocks the dragon for ages. A lease should be a bit longer than the job, with renewals.'; render();
+        });
+        b.querySelectorAll('[data-w]').forEach(el => el.onclick = () => {
+          const want = LOG[k][1] >= high, accept = el.dataset.w === '1';
+          const ok = accept === want;
+          LOG[k].ok = want; if (want) high = Math.max(high, LOG[k][1]);
+          if (!ok) mistakes++;
+          sfx(ok ? 'right' : 'wrong');
+          note = want ? (ok ? 'Accepted: its key number is the newest Bru has seen.' : 'That one was fine: its key is at least as new as any accepted so far.')
+            : (ok ? 'Rejected! Key #33 expired while Kaito was frozen, and #34 has already written. A paused hero doesn\'t know his lease ran out, so the ledger has to check.' : 'Careful: Kaito\'s key #33 is older than #34, which already wrote. Accepting it would undo Seymour\'s win with a stale report.');
+          k++;
+          if (k < LOG.length) { render(); return; }
+          result(def.title, {
+            verdict: 'ONE HERO PER DRAGON!', stats: [`Lease: ${lease}`, `${mistakes} slip${mistakes === 1 ? '' : 's'}`], predicted: PRED[guess], predOk: guess === 1,
+            body: `<p class="small">A <b>distributed lock</b> lets one worker own a job. Make it a <b>lease</b> that expires, so a crashed holder can't block everyone forever, and renew it while working.</p>
+              <p class="small">A lease alone isn't safe: a process can pause (a long garbage collection, a frozen VM), wake after its lease ran out, and still act. So every grant carries a <b>fencing token</b>, a number that only grows, and storage rejects writes with a lower token than one it has seen. Redis <code>SET NX</code> with a TTL is fine for avoiding duplicate work; when correctness matters, use ZooKeeper or etcd plus fencing, or a database constraint.</p>`
+          }).then(() => res({ ok: true, score: Math.max(0.4, 1 - mistakes * 0.15) }));
+        });
+      };
+      const guess = await G.predict(def.title, def.who, 'Kaito\'s quest key expired while he was frozen mid-swing, and Seymour finished the dragon with a newer key. Then Kaito wakes up and reports "Dragon defeated by ME!" with his old key. What should the Guild ledger do?', PRED);
+      render();
+    });
+  };
+
+  // ---------- Saga Builder: chain the steps, pair each with its undo, then watch the mill break ----------
+  G.saga = function (def) {
+    return new Promise(async res => {
+      const PRED = ['Undo the finished steps, newest first', 'Undo every step, including the ones that never ran', 'Leave everything as it is and hope'];
+      const guess = await G.predict(def.title, def.who, 'Four shops, four steps. The third shop breaks halfway through the order. What should happen to the two steps that already finished?', PRED);
+      const STEPS = [
+        { id: 'farm', t: 'Cron reserves 10 sacks of wheat', undo: 'Put the sacks back in the barn' },
+        { id: 'mill', t: 'The mill grinds them and charges 20 coins', undo: 'The mill refunds the 20 coins' },
+        { id: 'bake', t: 'The café books its oven for 4 pm', undo: 'Cancel the oven booking' },
+        { id: 'post', t: 'Coo schedules the delivery', undo: 'Cancel the delivery' }
+      ];
+      const order = shuffle(STEPS.map(s => s.id));
+      const undos = shuffle(STEPS.map(s => s.id));
+      let phase = 1, chain = [], pairs = {}, sel = null, mistakes = 0, picked = [], note = def.intro;
+      const S = id => STEPS.find(s => s.id === id);
+      const render = () => {
+        let body;
+        if (phase === 1) body = `<p class="q-ctx">1. Tap the steps in the order the order must run</p>
+          <div class="opts">${order.map(id => `<button class="opt" data-s="${id}" ${chain.includes(id) ? 'disabled' : ''}>${esc(S(id).t)}</button>`).join('')}</div>
+          <ol class="small">${chain.map(id => `<li>${esc(S(id).t)}</li>`).join('')}</ol>`;
+        else if (phase === 2) body = `<p class="q-ctx">2. Pair each step with the action that undoes it: tap a step, then its undo</p>
+          <div class="sg-grid"><div class="opts">${STEPS.map(s => `<button class="opt${sel === s.id ? ' dd-sel' : ''}" data-p="${s.id}" ${pairs[s.id] ? 'disabled' : ''}>${esc(s.t)}${pairs[s.id] ? ' ✓' : ''}</button>`).join('')}</div>
+          <div class="opts">${undos.map(id => `<button class="opt" data-u="${id}" ${Object.values(pairs).includes(id) ? 'disabled' : ''}>↩ ${esc(S(id).undo)}</button>`).join('')}</div></div>`;
+        else body = `<p>The saga runs. ✓ Wheat reserved. ✓ Flour milled and paid for. ✗ <b>The café's oven explodes</b> (it's fine, it was mostly flour).</p>
+          <p class="q-ctx">3. Tap the undo actions to run, in the order to run them</p>
+          <div class="opts">${STEPS.map(s => `<button class="opt" data-c="${s.id}" ${picked.includes(s.id) ? 'disabled' : ''}>↩ ${esc(s.undo)}</button>`).join('')}</div>
+          <ol class="small">${picked.map(id => `<li>${esc(S(id).undo)}</li>`).join('')}</ol>
+          <div class="row"><button class="primary" id="sg-go" ${picked.length ? '' : 'disabled'}>Run these undos</button><button class="ghost" id="sg-clear">Clear</button></div>`;
+        const b = U.panel(`${say(def.who, note)}${body}`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-s]').forEach(el => el.onclick = () => {
+          const want = STEPS[chain.length].id;
+          if (el.dataset.s !== want) { mistakes++; sfx('wrong'); note = 'Not yet: flour before baking, wheat before flour. What has to exist before this step can start?'; render(); return; }
+          chain.push(want); sfx('blip');
+          if (chain.length === STEPS.length) { phase = 2; sfx('right'); note = 'That\'s the chain. Each shop keeps its own books, so there\'s no single "undo everything" button. Every step needs its own undo.'; }
+          render();
+        });
+        b.querySelectorAll('[data-p]').forEach(el => el.onclick = () => { sel = el.dataset.p; sfx('blip'); render(); });
+        b.querySelectorAll('[data-u]').forEach(el => el.onclick = () => {
+          if (!sel) { note = 'Tap a step first, then the undo that matches it.'; render(); return; }
+          if (el.dataset.u !== sel) { mistakes++; sfx('wrong'); note = `"${esc(S(el.dataset.u).undo)}" doesn't undo "${esc(S(sel).t)}".`; render(); return; }
+          pairs[sel] = sel; sel = null; sfx('right');
+          if (Object.keys(pairs).length === STEPS.length) { phase = 3; note = 'Every step has its undo. Now let\'s run it for real...'; }
+          render();
+        });
+        b.querySelectorAll('[data-c]').forEach(el => el.onclick = () => { picked.push(el.dataset.c); sfx('blip'); render(); });
+        const cl = b.querySelector('#sg-clear'); if (cl) cl.onclick = () => { picked = []; render(); };
+        const go = b.querySelector('#sg-go');
+        if (go) go.onclick = () => {
+          const ok = picked.join() === 'mill,farm';
+          if (!ok) {
+            mistakes++; sfx('wrong');
+            note = picked.includes('bake') || picked.includes('post') ? 'The oven booking failed and the delivery was never scheduled: there\'s nothing to undo there. Cancelling them anyway just confuses the café and Coo.'
+              : picked.length < 2 ? 'Both finished steps need undoing, or Cron is down ten sacks or the mill keeps 20 coins for nothing.'
+              : 'Right undos, wrong order. Undo newest first: refund the milling before the wheat goes back, the reverse of how they ran.';
+            picked = []; render(); return;
+          }
+          sfx('right');
+          result(def.title, {
+            verdict: 'HARVEST ROLLED BACK CLEANLY!', stats: [`${mistakes} slip${mistakes === 1 ? '' : 's'}`], predicted: PRED[guess], predOk: guess === 0,
+            body: `<p class="small">An action that spans several services can't use one database transaction. A <b>saga</b> runs it as a chain of local steps, each with a <b>compensating action</b> that undoes it in business terms (refund, release, cancel). When a step fails, the finished steps are compensated <b>in reverse order</b>; steps that never ran need nothing.</p>
+              <p class="small">Steps and undos get retried, so each must be <b>idempotent</b>. A central <b>orchestrator</b> (a workflow engine like Temporal) is easier to follow than <b>choreography</b>, where each service reacts to the last one's event. The alternative, <b>two-phase commit</b>, makes every shop hold its locks until a coordinator decides, and blocks them all if the coordinator dies.</p>`
+          }).then(() => res({ ok: true, score: Math.max(0.4, 1 - mistakes * 0.1) }));
+        };
       };
       render();
     });
