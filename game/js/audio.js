@@ -177,10 +177,10 @@
   // ---------- Recorded music and samples ----------
   const BASE = 'assets/audio/';
   // mapN is chapter N's dungeon map; chapters without one use explore.
-  const SONG = { title: 'm-opening', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild',
+  const SONG = { title: 'm-opening', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild', journey: 'm-journey',
     map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5' };
   // Songs without a synth version fall back to this one if the file fails to load.
-  const FALLBACK = { quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore' };
+  const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore' };
   // Per-song loudness: the piano is gentle on purpose, and the chapter maps are mastered hotter than explore.
   const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };

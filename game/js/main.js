@@ -132,9 +132,9 @@
     if (fx === 'wake') { U.stage('sky'); U.heaven(3); U.eyes('closed'); setTimeout(() => U.eyes('crack'), 500); AU.music('heaven'); }
     if (fx === 'blink') U.eyes('half');
     if (fx === 'open') { U.eyes('open'); AU.sfx('levelup'); }
-    if (fx === 'glow2') { U.heaven(2); AU.sfx('hit'); }
-    if (fx === 'glow1') { U.heaven(1); AU.stop(); AU.sfx('static'); }
-    if (fx === 'glow0') { U.heaven(0); AU.music('goddess'); }
+    if (fx === 'glow2') { U.heaven(2); U.crumbs('falling'); AU.sfx('hit'); }
+    if (fx === 'glow1') { U.heaven(1); U.crumbs('stuck'); AU.stop(); AU.sfx('static'); }
+    if (fx === 'glow0') { U.heaven(0); AU.music('journey'); }
     if (fx === 'alarm') { AU.sfx('alarm'); AU.music('battle'); }
     if (fx === 'gary') AU.jingle('gary', null);
   };

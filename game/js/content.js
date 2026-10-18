@@ -958,6 +958,7 @@ SD.story = {
     { s: 'uptima', e: 'happy', t: '*ahem* WELCOME, CHOSEN ONE! You died. Very sad. Anyway!' },
     { fx: 'glow1', s: 'narr', t: 'The harp stops. It was a speaker. You can see the cable. It runs to a power strip behind a cloud.' },
     { s: 'uptima', e: 'blush', t: 'Yes, this is a maid outfit. Goddessing doesn\'t pay. I have a part-time job at the Cache Café. Don\'t look at me.' },
+    { s: 'narr', t: 'You open your mouth. Nothing comes out. Is this heaven? A café? A very elaborate prank? There are crumbs on the goddess.' },
     { fx: 'glow0', s: 'uptima', e: 'neutral', t: 'My kingdom runs on the Cloud. An actual cloud. It holds everything: quest logs, bakery orders, love letters, cat pictures.' },
     { s: 'uptima', e: 'sad', t: 'And it keeps breaking. My last hero tried to fix it with a sword. Please do not use a sword.' },
     { s: 'system', t: '[SYSTEM] You have been isekai\'d. Class: Junior Engineer. Please rate your death from 1 to 5 stars.' }

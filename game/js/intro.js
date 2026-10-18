@@ -1,6 +1,7 @@
 // The cold open: you open your eyes in the heavens, and the heavens slowly turn out to be Uptima's.
 // U.eyes(state) plays the eyelids over the stage ('closed', 'crack', 'half', 'open'); U.heaven(glow) sets how
-// heavenly the stage looks, from 3 (blinding light, god rays, drifting sparkles) down to 0 (an ordinary sky).
+// heavenly the stage looks, from 3 (blinding light, god rays, drifting sparkles) down to 0 (an ordinary sky);
+// U.crumbs(state) puts croissant crumbs on Uptima.
 // The dialogue lines in SD.story.intro step through both with `fx` (js/main.js).
 (function () {
   const U = SD.ui;
@@ -13,6 +14,13 @@
       st.insertAdjacentHTML('afterbegin', `<div class="heaven wash"></div><div class="heaven rays"><i></i></div><div class="heaven motes">${motes}${feathers}</div>`);
     }
     st.dataset.glow = glow;
+  };
+
+  // Croissant crumbs on Uptima's face after the crunch: 'falling' (stuck ones plus a shower), 'stuck', or off.
+  // They are drawn in CSS on the stage, so they survive her bust changing mood.
+  U.crumbs = function (state) {
+    const st = U.$('#stage');
+    if (state) st.dataset.crumbs = state; else delete st.dataset.crumbs;
   };
 
   U.eyes = function (state) {
