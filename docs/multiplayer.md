@@ -19,11 +19,20 @@ The Guild Hall is a separate page (`game/guild-hall.html`) with two multiplayer 
 
 Everything heard from a room is untrusted. Nicknames and notes are cleaned (`SD.net.clean`), rendered with `esc()` or `textContent`, and checked against the problem and blueprint data before use. Every message stays far under the room's 4 KiB limit. Mock events refer to the problem data by index.
 
+## In the game
+
+- **Menu > Multiplayer: the Guild Hall** appears once chapter 1 is cleared (`sv.flags.ch1`). It calls `SD.guild.play()`, which opens the hall in a wide panel and leaves any table when the panel closes. The player's save name is the default nickname.
+- A Pair Mock candidate in the game earns the same rewards as a solo mock (`SD.mock.reward`), written to their own save. Showdown pays nothing yet.
+- `SD.mock.solo({ title })` opens the solo mock interview (the problem list, the round and the debrief, with rewards) and resolves when the panel closes. The Eventual Isles NPC (owned by the Isles thread) calls it, along with `SD.guild.play()`. Gary's own offer (`SD.mock.visit`) now calls the same function.
+- To reach other players, the main artifact must declare the same `room` and `user` capabilities as the Guild Hall (below). Until then, the in-game hall only reaches the player's other tabs, and it links to the standalone Guild Hall page.
+
 ## Hook-ups into shared files
 
 - `game/js/mock.js`: `opts.onEvent`, `opts.onReady({ say, minutes })`, `opts.onTick(minutes, phase)`, the `.mi-partner` line under Gary's bubble, and `SD.mock.css()`. All of these are no-ops for solo play.
 - `game/js/whiteboard.js`: one line, `SD.wb.css = () => injectCss();`, so the Showdown can draw its board with the same styles.
-- Nothing in `index.html`, `main.js`, `hub.js`, `run.js`, `audio.js`, `art.js` or the save code changed.
+- `game/index.html`: loads `net.js`, `pair-mock.js`, `showdown.js` and `guild.js` after `mock.js`.
+- `game/js/main.js`: the Menu button, shown after chapter 1.
+- `game/js/mock.js`: `SD.mock.reward`, `SD.mock.solo` and `SD.mock.panelClosed`, factored out of `SD.mock.visit` with no change in behaviour.
 
 ## Publishing
 

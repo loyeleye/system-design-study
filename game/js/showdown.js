@@ -79,7 +79,9 @@
     const players = () => room.peers().filter(p => p.presence && p.presence.kind === 'show');
     const nick = peer => { const p = players().find(x => x.peer === peer); return net.clean(p ? p.presence.nick : (S.scores[peer] || [])[0], 24) || 'A hero'; };
     const pres = () => room.presence({ kind: 'show', nick: me.nick, host: hosting });
-    const leave = () => { unsub.forEach(f => f()); clearInterval(iv); room.leave(); done(); };
+    let left = false;
+    const leave = () => { if (left) return; left = true; unsub.forEach(f => f()); clearInterval(iv); room.leave(); done(); };
+    if (o.bind) o.bind(leave);
 
     // ---------- Host ----------
     function push() { S.v++; S.host = me.peer; room.emit('state', S); render(); }
