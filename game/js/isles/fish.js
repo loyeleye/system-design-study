@@ -34,33 +34,69 @@
   // ---------- Questions ----------
   I.addQuestions([
     { id: 'il-windows-1', c: 'windows', type: 'mc', q: 'A ride app shows trips started per hour. Phones in tunnels upload trip events up to 20 minutes late. If you window by the time each event reaches the server, what goes wrong?',
-      opts: ['Nothing: arrival time and event time even out over a day', 'Late trips are counted in the hour they arrived instead of the hour they started, so both hours are wrong', 'The stream processor rejects out-of-order events', 'Late trips are dropped automatically'], a: 1,
-      why: 'Processing time measures the network, not the trip. Window by event time (the timestamp the phone recorded) and use a watermark with some allowed lateness to wait for stragglers.' },
+      opts: ['Little: late trips shift between hours but even out across the whole day', 'Late trips count toward the hour they arrived in, not the hour they started', 'Each late trip is counted twice: in the hour it started and the hour it arrived', 'Late trips are dropped once the watermark passes, so the hourly counts come out low'], a: 1,
+      no: [
+        'The daily total does even out, but every hourly count is wrong, and lateness is not random: tunnels and rush hour push trips into particular hours.',
+        null,
+        'Each event lands in exactly one processing-time window, the one it arrived in. Double counting comes from retries without dedup, not from the window choice.',
+        'Watermarks track event time. Processing-time windows close on the wall clock and take whatever arrives, so nothing is dropped; it is misfiled instead.'
+      ],
+      why: 'Processing time measures the network, not the trip: the hour a trip started comes out short and a later hour too high. Window by event time (the timestamp the phone recorded) and use a watermark with some allowed lateness to wait for stragglers.' },
     { id: 'il-windows-2', c: 'windows', type: 'mc', q: 'You need to group each shopper\'s clicks into visits, where a visit ends after 30 minutes with no clicks. Which window fits?',
-      opts: ['Tumbling windows of 30 minutes', 'Hopping windows of 30 minutes that slide every 5 minutes', 'Session windows per shopper with a 30-minute gap', 'One global window that never closes'], a: 2,
+      opts: ['Tumbling windows of 30 minutes, one after another', 'Hopping windows of 30 minutes that slide every 5 minutes', 'Session windows per shopper with a 30-minute gap', 'Count windows per shopper, closing after a fixed number of clicks'], a: 2,
+      no: [
+        'Tumbling windows cut at fixed clock times, so a visit from 9:50 to 10:10 is split in two. They suit fixed totals like sales per hour.',
+        'Hopping windows overlap, so each click lands in six of them and every visit is counted many times. They suit rolling metrics like "last 30 minutes, every 5".',
+        null,
+        'Count windows close after N events, but a visit ends with a quiet gap, not a click count. They suit things like "average of the last 100 readings".'
+      ],
       why: 'Session windows are per key and close after a gap of inactivity, so each visit gets its own window of whatever length it really was. Tumbling and hopping windows cut visits at fixed clock boundaries.' },
     { id: 'il-windows-3', c: 'windows', type: 'multi', q: 'A streaming job\'s watermark is set very loose: it waits two hours for late events before closing a window. Which of these follow?',
       items: [{ t: 'Each hour\'s result appears about two hours late', ok: true }, { t: 'More windows stay open at once, so state and memory grow', ok: true }, { t: 'Fewer late events are dropped', ok: true }, { t: 'Events start being counted twice', ok: false }, { t: 'The results get less accurate', ok: false }],
       hint: 'Select all that apply.',
       why: 'A loose watermark trades freshness and memory for completeness; a strict one gives fast results but drops or corrects more late events. Duplicates come from retries, not from watermarks.' },
     { id: 'il-outbox-1', c: 'outbox', type: 'mc', q: 'An order service commits the order to Postgres, then publishes OrderPlaced to Kafka. The process crashes right after the commit. What happens?',
-      opts: ['Shipping never hears about a paid order: the event was never published', 'Postgres rolls the order back automatically', 'Kafka notices the missing event and asks for it', 'Nothing: the commit and the publish are one step'], a: 0,
+      opts: ['Shipping never hears of the order: it is saved but never published', 'Postgres rolls the order back, since the publish step never completed', 'The Kafka producer retries on restart and publishes the event late', 'The event still goes out: Kafka\'s exactly-once mode ties it to the commit'], a: 0,
+      no: [
+        null,
+        'The commit already happened, and Postgres knows nothing about Kafka. Committed data survives a crash; only transactions still open are rolled back.',
+        'Producer retries cover a send already in progress, held in that process\'s memory. After a crash nothing remembers the event; that is what an outbox row is for.',
+        'Kafka transactions make writes across Kafka topics atomic, consumer offsets included. They cannot include a Postgres commit.'
+      ],
       why: 'Two systems, no shared transaction: a dual write. Publishing first fails the other way (an event for an order that was never saved). The outbox or CDC makes the event follow from the commit itself.' },
     { id: 'il-outbox-2', c: 'outbox', type: 'order', q: 'Put the transactional outbox in order, from the user\'s click to the shipping service acting on it.',
       items: ['In one local transaction, insert the order row and an outbox row', 'Commit the transaction', 'A relay reads unsent outbox rows and publishes them to Kafka', 'The relay marks those rows as sent', 'The shipping service consumes the event, skipping any event ID it has already handled'],
       why: 'The first two steps make the row and the message atomic. The relay can crash between publishing and marking a row sent, so it may publish twice, which is why the consumer dedupes by event ID.' },
     { id: 'il-outbox-3', c: 'outbox', type: 'mc', q: 'Elasticsearch and a Redis cache must follow every change to a Postgres products table, including changes from an admin script that bypasses your service. Best approach?',
-      opts: ['Have the service write to all three stores in each request', 'Rebuild the search index from scratch every night', 'Make Elasticsearch the source of truth and copy it back to Postgres', 'Change data capture: Debezium reads the Postgres WAL and publishes each committed change to Kafka for the indexer and the cache'], a: 3,
-      why: 'CDC follows the database\'s own log, so it sees every committed change, whoever made it, in commit order. Dual writes miss the admin script and can half-fail; a nightly rebuild is a day stale; a search index makes a poor source of truth.' },
+      opts: ['Have the service write to Postgres, Elasticsearch and Redis in each request', 'Rebuild the search index and reload the cache from Postgres every night', 'Make Elasticsearch the source of truth, and copy its changes back to Postgres', 'CDC: Debezium tails the Postgres WAL and feeds each change to the indexer and cache'], a: 3,
+      no: [
+        'A dual write: it can half-fail, concurrent writers can land in a different order in each store, and the admin script bypasses the service anyway.',
+        'A nightly rebuild is a good safety net, but search and cache are up to a day stale in between. Bulk rebuilds suit derived data that may lag, like reports.',
+        'Search engines lack transactions and constraints, and show writes only after a refresh delay. Keep the database as the truth and the index as derived data.',
+        null
+      ],
+      why: 'CDC follows the database\'s own log, so it sees every committed change, whoever made it, in commit order. Debezium publishes each one to Kafka, where the indexer and the cache consume it. Dual writes miss the admin script and can half-fail; a nightly rebuild is a day stale; a search index makes a poor source of truth.' },
     { id: 'il-batch-1', c: 'batch', type: 'order', q: 'Order the stages of a MapReduce job that counts a year of fish-market receipts by species.',
       items: ['Split the input files across many mappers', 'Each mapper emits (species, count) pairs for the receipts it read', 'Shuffle: group the pairs by species so each species goes to one reducer', 'Each reducer adds up the counts for its species', 'Write the totals as a new output file'],
       why: 'Map works on independent splits of the input, the shuffle brings each key together, and reduce combines each group. Writing a fresh output (never editing the input) is what makes reruns safe.' },
     { id: 'il-batch-2', c: 'batch', type: 'mc', q: 'A daily Spark job counts views per video. One viral video has 40% of all views, and the job\'s last task runs for hours after the rest finish. Best fix?',
-      opts: ['Add more reducers', 'Run the job on one bigger machine', 'Salt the hot key (videoId#0 to videoId#9) so its views spread over several reducers, then add up the partial counts in a second step', 'Drop the viral video\'s views'], a: 2,
-      why: 'More reducers do not help: hashing still sends one key to one reducer. Salting splits the hot key, and a cheap second aggregation puts it back together. (Spark\'s adaptive execution can split skewed join partitions for you.)' },
+      opts: ['Add more reducers, so that each one gets a smaller share of all the views', 'Run the whole job on one bigger machine with plenty of memory', 'Salt the hot key across several reducers, then add the partial counts', 'Move it to a streaming job, so views are counted as they arrive'], a: 2,
+      no: [
+        'Hashing still sends every view of one video to one reducer, so the hot task stays just as big. More reducers only help when keys are evenly spread.',
+        'One machine gives up the parallelism, so the job reads every view on one box. Scaling up suits data that comfortably fits on one machine.',
+        null,
+        'A stream job keyed by video still sends every view of the hot video to one task. Skew follows the key, not the engine.'
+      ],
+      why: 'More reducers do not help: hashing still sends one key to one reducer. Salting adds a suffix to the hot key (videoId#0 to videoId#9) so its views spread over several reducers, and a cheap second aggregation adds the partial counts back together. (Spark\'s adaptive execution can split skewed join partitions for you.)' },
     { id: 'il-batch-3', c: 'batch', type: 'mc', q: 'An ad platform has a Flink job for live click counts and a nightly batch job over the raw clicks for billing. The batch total is slightly higher. Why, and which do you bill from?',
-      opts: ['The batch job runs later, so it is wrong; bill from the stream', 'The stream dropped some clicks that arrived after its watermark; the batch job read every click, so bill from batch', 'Both are wrong; bill from the average', 'The batch job double counts; bill from the stream'], a: 1,
-      why: 'Streams are fast but may miss late data; batch over the complete, immutable log is slow but correct, so it corrects the live numbers. That is the lambda architecture. Kappa does the same by replaying the log through the one stream job.' }
+      opts: ['Flink\'s exactly-once mode makes the live count exact; bill from the stream', 'The stream dropped clicks that arrived after its watermark; bill from batch', 'Batch jobs sample big inputs to finish on time; bill from the stream', 'The gap is normal noise between two systems; bill from either one'], a: 1,
+      no: [
+        'Exactly-once means each event Flink processes affects its state once. Clicks dropped as too late were never processed, so the count is still short.',
+        null,
+        'Batch reads every record of a bounded input, which is why it is trusted. Sampling is opt-in, as with approximate functions like APPROX_COUNT_DISTINCT.',
+        'A gap that always points the same way has a cause, and a bill needs the number you can defend: the one built from every recorded click.'
+      ],
+      why: 'Streams are fast but may miss late data; the batch job read every click, late or not. Batch over the complete, immutable log is slow but correct, so it corrects the live numbers. That is the lambda architecture. Kappa does the same by replaying the log through the one stream job.' }
   ]);
 
   I.addEli5({
@@ -582,7 +618,13 @@
           ['ruth', 'That\'s Gary. Comes every Sunday. Never caught a thing. Says the fish here are eventually consistent.']] }] }
     ],
     school: { c: 'windows', q: '"Why do you count a fish in the hour it was caught, and not when it got to the market?"',
-      opts: ['Because of event-time semantics with watermark-bounded out-of-order ingestion', 'Because a slow boat doesn\'t change when the fish was caught, and we want to know when the fish were really caught', 'Because fish caught earlier are bigger', 'Because the market clock is broken'], a: 1,
+      opts: ['Because of event-time semantics with watermark-bounded out-of-order ingestion', 'Because a slow boat doesn\'t change when a fish was caught, and that\'s the time we care about', 'Because the market clock is often wrong, and the boats\' clocks are more exact', 'Because counting fish as they arrive would lose the late ones, and we don\'t want to lose a single one'], a: 1,
+      no: [
+        'True, but it would lose any seven-year-old. If you can only say it in jargon, you haven\'t shown that you understand it.',
+        null,
+        'Even with a perfect market clock, a fish that lands late was still caught earlier. The question is which moment we mean, not whose clock is better.',
+        'Counting by arrival loses nothing: every fish is still counted, just in the wrong hour. The problem is misfiling, not losing.'
+      ],
       why: 'The simple, true version: arrival time is about the boat, not the fish. The jargon answer is also true, but it would lose any seven-year-old.',
       cheer: 'So a slow boat doesn\'t make the fish late! My granny is a slow boat. She says she\'s fashionably late.' }
   });
@@ -618,7 +660,13 @@
         { ask: 'il-outbox-1' }] }
     ],
     school: { c: 'outbox', q: '"Why does the note for the bank go in the same book as the sale?"',
-      opts: ['So the two writes become a distributed transaction with two-phase commit', 'Because pigeons can read', 'So they are written down together: either both are there or neither is, and a helper sends the note afterwards', 'So the bank can\'t see it'], a: 2,
+      opts: ['So the two writes become one distributed transaction, using two-phase commit', 'So the note reaches the bank sooner than if it were written down somewhere else', 'So they\'re written in one go: both or neither, and a helper sends the note later', 'So the note can never be sent twice, because it\'s only written down once'], a: 2,
+      no: [
+        'Wrong, and jargon too: it is one local transaction in one book. The outbox exists precisely to avoid two-phase commit across a database and a queue.',
+        'It isn\'t faster: the helper sends the note afterwards, maybe a little later. The point is that the sale and the note can\'t be separated.',
+        null,
+        'The helper can send it twice if it naps before ticking it off. The bank skips repeats by checking the slip number.'
+      ],
       why: 'Same book, one stroke: both or neither. The helper (the relay) can send it later, even twice, and the bank checks the number.',
       cheer: 'Like when I write my name on my lunchbox AND my lunch at the same time! Then nobody can say it isn\'t mine.' }
   });
@@ -650,7 +698,13 @@
         { ask: 'il-batch-2' }] }
     ],
     school: { c: 'batch', q: '"Why did you split the tuna between all the counting tables?"',
-      opts: ['Because tuna are heavy', 'To shard the reducer keyspace by salting for a two-phase aggregation', 'So nobody has to count the tuna', 'Because one table with a giant pile takes ages while the others wait, so everyone counts a bit and we add them up at the end'], a: 3,
+      opts: ['Because tuna is the most important fish, so it should get the most helpers', 'To shard the reducer keyspace by salting the hot key, then run a two-phase aggregation on it', 'So each table can check the others\' tuna count and catch any mistakes', 'Because one giant pile makes everyone wait, so each table counts a bit and we add them up'], a: 3,
+      no: [
+        'It isn\'t about which fish matters most. The tuna was split because it had the most slips, and one giant pile holds everyone up.',
+        'True, but a seven-year-old would need a field trip just for the words. The plain version is the one that shows you understand it.',
+        'Each table counts a different quarter of the tuna, so nobody checks anybody. Splitting work up (partitioning) is not copying it (replication).',
+        null
+      ],
       why: 'Many hands, a fair share each, then add the pieces. The jargon option is right but would need its own field trip.',
       cheer: 'Like when we share out the crayons so everyone can colour at once! And then we put them all back in one box!' }
   });

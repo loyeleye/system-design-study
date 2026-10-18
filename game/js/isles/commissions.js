@@ -36,6 +36,12 @@
             "Strong consistency for the highest bid, no accepted bid ever lost, new bids visible within a second",
             "Strong consistency for every piece of data, from bids to item descriptions to view counts"
           ], a: 2,
+          no: [
+            "Load shedding (graceful degradation) suits optional work like view counts. An accepted bid can decide the winner, so bids must be queued, never dropped.",
+            "While replicas disagree, two bidders can each be told they are winning, and a bid can be accepted below the real maximum. The highest bid needs one agreed answer.",
+            null,
+            "Consensus on view counts and descriptions costs latency and buys nothing. Choose per piece of data: strong for the bid path, eventual for the rest."
+          ],
           why: "Everyone must agree on the winning bid, and an accepted bid can never vanish, so the bid path needs strong consistency and durability. Watchers should see new bids almost at once. Descriptions and view counts can be eventually consistent: nobody sues over a stale view count." } },
       { stage: 'Core entities', say: [['ruth', "Name what you're storing before you draw a single boat."]],
         ask: { id: 'il-com-auction-3', c: 'delivery', type: 'multi', q: 'Which of these are core entities for the auction?',
@@ -55,9 +61,15 @@
           opts: [
             'POST /auctions/:auctionId/bids with { amount }, the bidder taken from the auth token',
             'PUT /auctions/:auctionId with { maxBid: amount, userId } to overwrite the current highest',
-            'GET /bid?auction=:id&amount=50&user=ruth, so a bid is one link',
+            'GET /bid?auction=:id&amount=50&user=ruth, so any bid can be placed from one link',
             'POST /bids with { auctionId, amount, userId, timestamp }, all filled in by the client'
           ], a: 0,
+          no: [
+            null,
+            "PUT replaces a whole resource, which suits updates, not new events. Overwriting the auction throws away the bid history and trusts a userId sent by the client.",
+            "GET must be safe to repeat: browsers, crawlers and link previews fetch URLs on their own and would place bids. Changing state takes POST, PUT, PATCH or DELETE.",
+            "The client can lie about who it is and when it bid. Take the bidder from the auth token and stamp the time on the server."
+          ],
           why: "A bid is a new resource under its auction, so POST it to the auction's bids. The bidder comes from the auth token (never trust a userId in the body) and the server stamps the time. A PUT that overwrites the auction loses the bid history, and a GET must never change data." } },
       { stage: 'High-level design', say: [['ruth', "Walk me through one bid, from the boat to every board on the harbour."]],
         ask: { id: 'il-com-auction-5', c: 'queue', type: 'order', q: 'Put the path of one bid through the design in order.',
@@ -72,21 +84,33 @@
       { stage: 'Deep dives', say: [['ruth', "Now, the tuna. Two boats, forty shells each, same instant. Go on."]],
         ask: { id: 'il-com-auction-6', c: 'isolation', type: 'mc', q: "Two bids of 40 arrive together for an auction whose highest is 35. Each processor reads 35, checks 40 > 35, and writes. How do you make the write safe without making every bid wait in line?",
           opts: [
-            "Read the highest bid, then write the new one in a second statement; collisions this exact are rare",
+            "Read the highest bid, then write the new one in a second statement; exact collisions are rare",
             "Conditional write: set max_bid = 40 only WHERE max_bid is still 35; if nothing changed, re-read",
-            "Lock every bid row of the auction with SELECT MAX(amount) ... FOR UPDATE on each new bid",
+            "Lock the auction row with SELECT ... FOR UPDATE, so each bid waits its turn to check and write",
             "Keep the highest bid only in Redis, which is single-threaded, and copy it to the database later"
           ], a: 1,
-          why: "Read, check, then write is a lost update: both see 35 and both win. A compare-and-set on the auction row (optimistic concurrency) makes the check and the write one atomic step, so exactly one 40 lands; the other re-reads, finds 40 is no longer higher, and is rejected. Locking every bid row is safe but makes every bid wait in line, and a Redis-only maximum loses accepted bids if Redis dies before the copy." } },
+          no: [
+            "That is the lost update in the question: both read 35 and both write. Rare is not never, and the midnight rush is exactly when it happens.",
+            null,
+            "Safe, but every bid now waits in line for the lock, which the question rules out. Pessimistic locks suit hot rows where most optimistic writes would fail and retry.",
+            "Redis runs one command at a time, but two clients' GET-then-SET still interleave unless you use a Lua script or WATCH. And bids accepted before a crash are lost."
+          ],
+          why: "Read, check, then write is a lost update: both see 35 and both win. A compare-and-set on the auction row (optimistic concurrency) makes the check and the write one atomic step, so exactly one 40 lands; the other re-reads, finds 40 is no longer higher, and is rejected. Locking the auction row is safe but makes every bid wait in line, and a Redis-only maximum loses accepted bids if Redis dies before the copy." } },
       { stage: 'Deep dives', say: [['ruth', "Five hundred boats are watching that tuna. None of them wants to row over and look at my board."]],
         ask: { id: 'il-com-auction-7', c: 'realtime', type: 'mc', q: 'Thousands of watchers want each new bid within a second, and they are connected to many different app servers. What works?',
           opts: [
             "Each client polls GET /auctions/:id every 200 ms, which is simple and close enough to real time",
             "Watchers hold SSE connections, and the processor pushes each bid out through whichever server it runs on",
-            "Each server caches the highest bid locally and pushes it to its own watchers when its copy changes",
+            "Send each new bid as a mobile push notification (APNs or FCM) to everyone watching the auction",
             "SSE for watchers, plus a pub/sub channel per auction that every server subscribes to"
           ], a: 3,
-          why: "Bid updates flow one way, server to client, so SSE is enough (WebSockets work too). The catch is that watchers are spread over many servers, so a pub/sub layer (Redis pub/sub, or Kafka) carries each new bid to every server with a watcher for that auction. Pushing from one server misses everyone connected elsewhere, local caches drift apart, and polling every 200 ms burns requests on empty answers." } },
+          no: [
+            "Thousands of watchers polling five times a second is a flood of mostly empty answers. Polling every few seconds is fine when data may be a little stale.",
+            "A server can only push to the connections it holds. Watchers connected to other servers never hear the bid without a layer that fans it out.",
+            "Push notifications reach users when the app is closed; they are throttled and not guaranteed to arrive in order. A live price needs an open connection.",
+            null
+          ],
+          why: "Bid updates flow one way, server to client, so SSE is enough (WebSockets work too). The catch is that watchers are spread over many servers, so a pub/sub layer (Redis pub/sub, or Kafka) carries each new bid to every server with a watcher for that auction. Pushing from one server misses everyone connected elsewhere, and polling every 200 ms burns requests on empty answers." } },
       { stage: 'Deep dives', say: [['ruth', "And the bid that rowed in at two past midnight, swearing blind it was shouted at one to."]],
         ask: { id: 'il-com-auction-8', c: 'windows', type: 'mc', q: 'The auction closes at 00:00. A bid reached the API at 23:59:58, but because of consumer lag the processor reads it at 00:00:03. What should happen?',
           opts: [
@@ -95,6 +119,12 @@
             "Accept it, using the timestamp from the bidder's phone, since that is when the bid was really made",
             "Close every auction a minute late, so any bid caught in lag still has time to be processed"
           ], a: 1,
+          no: [
+            "That judges by processing time, so consumer lag decides who wins. The bid reached the server before the deadline.",
+            null,
+            "Phone clocks drift and can be set by hand, so a bidder could backdate a late bid. Stamp the time where you control the clock: at the server.",
+            "Lag has no upper limit, so a grace period only moves the cut-off, and bids sent during that extra minute would now count too."
+          ],
           why: "Processing time depends on lag; event time is when the bid actually happened. Stamp it on arrival at the server (a phone's clock can be wrong or faked) and close by that. Because each auction's bids are in order on one partition, the processor can settle the winner once it has read past the deadline, the way a watermark closes a window. Closing a minute late just moves the problem." } },
       { stage: 'Deep dives', say: [['ruth', "Last thing. Who rings the bell at midnight? Me, if I'm awake. I'm not always awake."]],
         ask: { id: 'il-com-auction-9', c: 'sched', type: 'mc', q: 'Ten million auctions each close at their own time. How do you close them on time?',
@@ -104,6 +134,12 @@
             "Schedule a close job at each end time (delayed message or sorted set) that re-checks, then closes",
             "Close each auction lazily, the next time someone opens its page or tries to place a bid on it"
           ], a: 2,
+          no: [
+            "A full scan of ten million rows every minute gets slower as the table grows, and closes land up to a minute late. Query an index on end time instead.",
+            "In-memory timers vanish on every crash or deploy, and those auctions never close. Due times must live in durable storage.",
+            null,
+            "Lazy expiry (Redis partly expires keys this way) suits reads, but a quiet auction may never be opened again, so its winner and seller are never told."
+          ],
           why: "Keep due times somewhere ordered (a sorted set, a table indexed by end time, or a queue with delayed delivery) so 'what closes now?' is a cheap read. The job re-checks the end time when it fires, in case a rule like 'a last-minute bid extends the auction' moved it, then marks the auction closed and tells the winner. In-memory timers die with their server, full scans don't scale, and a quiet auction closed lazily might never tell its winner." } }
     ],
     win: [
@@ -144,9 +180,15 @@
           opts: [
             "Strongly consistent everywhere, with every job run exactly once, which the queue can guarantee",
             "Highly available, starts within about 2 s of its time, 10,000 jobs a second, at least once each",
-            "Jobs may start up to an hour late, since most jobs are nightly reports nobody reads until morning",
+            "Jobs may start up to an hour late, since most are nightly reports nobody reads until morning",
             "A fast status page above all; a missed job is rare, and an operator can rerun it by hand"
           ], a: 1,
+          no: [
+            "No queue can make a side effect happen exactly once: a worker can finish and crash before acknowledging. Queues give at least once; idempotent jobs do the rest.",
+            null,
+            "Some jobs are reports, but ferries and bells need the right minute. A scheduler's promise is set by its most time-sensitive users.",
+            "Monitoring matters less than running the jobs. At 10,000 jobs a second, even rare misses add up to thousands a day, too many to rerun by hand."
+          ],
           why: "Users need the clock always up, jobs firing on time and never lost. 'Exactly once' can't be promised across a network that drops acknowledgements; at least once plus idempotent jobs gets the same effect." } },
       { stage: 'Core entities', say: [['leilani', "What does the old man actually write in his notebook?"]],
         ask: { id: 'il-com-tideclock-3', c: 'delivery', type: 'multi', q: 'Which of these are core entities for the scheduler?',
@@ -164,11 +206,17 @@
         ask: { id: 'il-com-tideclock-4', c: 'delivery', type: 'mc', q: 'Which API covers the requirements?',
           opts: [
             "POST /jobs/run, which runs the job inside the request and returns its output when it finishes",
-            "GET /jobs/create?task=...&schedule=..., so a job can be created from a bookmark or a link",
+            "A WebSocket each client keeps open to submit jobs and stream back each job's output live",
             "POST /jobs to create, plus PUT /workers/:id so the client can choose which worker runs each job",
             "POST /jobs { task, schedule, params } to create; GET /jobs?status=&from=&to= to monitor"
           ], a: 3,
-          why: "One endpoint per requirement: create a job (its schedule is part of the body), and list jobs with filters for monitoring. Running a job inside the request breaks for long jobs, a GET must not create anything, and clients should never pick workers." } },
+          no: [
+            "Long jobs outlive HTTP timeouts, and a job due next Sunday can't run now. Long or scheduled work returns an id and runs asynchronously.",
+            "Jobs run hours or weeks later, when the client is long gone. Creating and listing jobs is plain request and response; WebSockets suit live two-way traffic like chat.",
+            "Which worker runs a job is the scheduler's own business. Letting clients pick ties them to your fleet, and it breaks as workers come and go.",
+            null
+          ],
+          why: "One endpoint per requirement: create a job (its schedule is part of the body), and list jobs with filters for monitoring. Running a job inside the request breaks for long jobs, no client stays connected until a job runs, and clients should never pick workers." } },
       { stage: 'High-level design', say: [['leilani', "Follow one job, 'ring the bell at nine', from the window to the bell rope."]],
         ask: { id: 'il-com-tideclock-5', c: 'sched', type: 'order', q: 'Trace a job scheduled for 09:00 through the design, in order.',
           items: [
@@ -185,9 +233,15 @@
             "By job id, 'due in 5 minutes' hits every partition; by hour bucket, it is one read in time order",
             "Hour buckets spread the writes more evenly across the partitions than random job ids would",
             "It lets each user list all of their own jobs quickly, with no secondary index needed at all",
-            "Job ids are random strings, and a sort key has to be a value that increases steadily over time"
+            "Random UUIDv4 job ids fragment the index, while hour buckets keep every insert in time order"
           ], a: 0,
-          why: "Design keys for your hottest query, and the scheduler's is 'what is due now?'. Hour buckets don't spread writes, they concentrate them, so at very high rates you add a small shard number to each bucket. The status page needs its own secondary index on user id. Any comparable value can be a sort key; time is chosen because the query is about time." } },
+          no: [
+            null,
+            "The opposite: every job due in the same hour lands in one partition, so buckets concentrate writes. At high rates, add a small shard number to each bucket.",
+            "Neither key contains the user id, so a user's jobs are scattered either way. That query needs a secondary index on user id.",
+            "Hashed partitions don't mind random ids, and jobs arrive in any order of due time anyway. Random UUIDs do fragment B-tree indexes, which UUIDv7 or Snowflake ids fix."
+          ],
+          why: "Design keys for your hottest query, and the scheduler's is 'what is due now?'. Hour buckets don't spread writes, they concentrate them, so at very high rates you add a small shard number to each bucket. The status page needs its own secondary index on user id. Time is the sort key because the hot query is about time." } },
       { stage: 'Deep dives', say: [['leilani', "A worker fell in the harbour halfway through ringing the bell. It happens more than you'd think."]],
         ask: { id: 'il-com-tideclock-7', c: 'locks', type: 'mc', q: 'A worker crashes halfway through a job. How does the job still get done?',
           opts: [
@@ -196,24 +250,42 @@
             "A lease that the worker keeps extending; if the worker dies, it lapses and another worker retries",
             "The watcher re-enqueues any job still unfinished after 24 hours, as a nightly safety net for crashes"
           ], a: 2,
+          no: [
+            "If the worker dies, the flag says 'running' forever and the job never finishes. A claim needs an expiry, which is exactly what a lease adds.",
+            "Every job now runs twice even when nothing fails, doubling its side effects. Sending duplicates (hedged requests) suits idempotent reads where tail latency matters.",
+            null,
+            "A day's wait breaks the promise to start within seconds. A slow sweep is a fine backstop, but recovery from a crash must be quick."
+          ],
           why: "A lease is a lock with an expiry. While the worker is alive it keeps extending it with heartbeats; if it dies, the lease lapses and the job reappears for someone else, retried with backoff. A plain 'running' flag stays forever when its worker dies, and a 24-hour net misses the 2-second promise. After a few failed attempts the job goes to a dead-letter queue for a human." } },
       { stage: 'Deep dives', say: [['leilani', "Worse: one finished a job, then fell in before telling anyone. So the job ran again."]],
         ask: { id: 'il-com-tideclock-8', c: 'queue', type: 'mc', q: "A worker finishes 'charge Ruth 5 shells' but crashes before acknowledging it, so the job runs again. How do you stop a double charge?",
           opts: [
             "Turn on exactly-once delivery in the queue, so the message is only ever handed out a single time",
             "Make the job idempotent: the execution id is an idempotency key, and the payment side ignores repeats",
-            "Make the lease longer, so the job is far less likely to be handed to another worker",
+            "Make the lease much longer, so the job is far less likely to be handed to a second worker",
             "Before charging, the worker checks that the execution isn't already marked 'succeeded' in the database"
           ], a: 1,
+          no: [
+            "Queue features like SQS FIFO dedup or Kafka transactions cover the queue itself, not an outside payment API. A crash after charging still repeats the charge.",
+            null,
+            "The worker crashed, so the job is retried whatever the lease length. A longer lease only makes recovery from real crashes slower.",
+            "The crash came after charging but before marking success, so the retry sees 'not succeeded' and charges again. The check and the charge aren't one atomic step."
+          ],
           why: "At least once means duplicates will happen: doing the work and acknowledging it can't be one atomic step across a network. Checking the status doesn't help, because the worker crashed after charging but before marking it succeeded. An idempotency key held by the payment side makes the repeat a no-op. A longer lease only makes crashes slower to recover from." } },
       { stage: 'Deep dives', say: [['leilani', "Last one. The old man once wrote a job down and forgot to wind the clock. Another time he wound the clock and lost the page."]],
         ask: { id: 'il-com-tideclock-9', c: 'outbox', type: 'mc', q: "A job due in 30 seconds must be saved in the database AND put on the queue (the watcher won't come round in time). If the server crashes between the two writes, the job is lost or runs with no record. What fixes it?",
           opts: [
             "Enqueue first and save second, so at worst a job runs once without a record in the database",
             "A distributed two-phase commit across the database and the queue, run on every single request",
-            "Let the client retry the whole request until both the save and the enqueue have definitely succeeded",
+            "Let the client retry the whole request until both the save and the enqueue have succeeded",
             "The outbox: save the job and an outbox row in one transaction; a relay enqueues from it, retrying"
           ], a: 3,
+          no: [
+            "Swapping the order swaps the failure: now a job can run with no record, status or history. Either order of a dual write can half-fail.",
+            "2PC (XA) needs both systems to support it, most queues don't, and it holds locks while a slow participant decides. The outbox gets atomicity from one local transaction.",
+            "Retries without an idempotency key can create the job twice, and a client that gives up leaves the half-done write behind.",
+            null
+          ],
           why: "Two writes to two systems can half-fail. The outbox turns them into one database transaction, so either everything is saved or nothing is. The relay may enqueue twice after a crash, which is fine because the jobs are idempotent. Two-phase commit across a database and a queue is slow and often unsupported, and client retries can create the job twice." } }
     ],
     win: [
@@ -252,9 +324,15 @@
           opts: [
             "Isolate untrusted code, results in about 5 seconds, favour availability, survive the contest spike",
             "A leaderboard that is strongly consistent to the millisecond, since contests are decided by tiny margins",
-            "Run submissions right on the web servers, which cuts latency because nothing waits in a queue",
+            "Lowest latency above all, so submissions run right on the web servers with no queue in the way",
             "Results within an hour are fine, since contestants can work on the next puzzle meanwhile"
           ], a: 0,
+          no: [
+            null,
+            "Ranks come from the scores and submission times stored with each result, not from when the board refreshes. A board a few seconds stale changes nobody's final rank.",
+            "Untrusted code on the web servers can read their secrets or take them down, and with no queue the contest spike hits them directly.",
+            "Contestants work in a loop: submit, see a failing case, fix, resubmit. An hour per round makes the contest unplayable."
+          ],
           why: "The scary part is running strangers' code: it must be isolated so it can't harm the system or other users. Results should feel instant (a few seconds), and the system must survive the contest spike. A leaderboard a few seconds stale is fine." } },
       { stage: 'Core entities', say: [['lucia', "Nouns first! I always start a translation with the nouns."]],
         ask: { id: 'il-com-shrine-3', c: 'delivery', type: 'multi', q: 'Which of these are core entities for the shrine?',
@@ -277,6 +355,12 @@
             "POST /problems/:id/submissions returns a submission id; GET /submissions/:id returns the result",
             "POST /problems/:id/submissions, and the server emails the result once the code has run"
           ], a: 2,
+          no: [
+            "Thousands of requests held open through a contest queue tie up connections and hit gateway timeouts. Return an id at once and let the client check back.",
+            "Running code creates a submission and burns sandbox time, so it isn't safe to repeat. Code in a URL is also logged, cached and cut off by length limits.",
+            null,
+            "Asynchronous, but email takes seconds to minutes and lands outside the app. Contestants need the result on the page they are coding in."
+          ],
           why: "Accept the submission, return an id at once, and let the client check on it. Holding a request open through a long queue ties up connections and times out; code in a GET URL gets logged, cached and cut off by length limits; and nobody in a contest wants to wait for an email." } },
       { stage: 'High-level design', say: [['lucia', "Follow one answer from the child's hand to the leaderboard. Slowly! I'm writing it down in three languages."]],
         ask: { id: 'il-com-shrine-5', c: 'queue', type: 'order', q: 'Trace one contest submission through the design, in order.',
@@ -296,24 +380,42 @@
             "One long-lived shared container per language, which starts much faster than a fresh one",
             "A fresh container per run: read-only, no network, CPU and memory limits, a timeout, a syscall filter"
           ], a: 3,
+          no: [
+            "A try/catch handles exceptions, not malice. It can't stop file deletion, network calls or a fork bomb, and the code runs with the API server's own permissions.",
+            "Blocklists are easy to dodge with string building, eval or reflection. Static checks can be one extra layer, but never the wall.",
+            "Containers are right, but a shared one lets one user's code read or break the next run. A warm pool of fresh, single-use containers fixes the start-up time.",
+            null
+          ],
           why: "Untrusted code needs layers: isolation (a container or micro-VM per run), no network, a read-only filesystem, resource limits and a timeout so infinite loops die, and a system call filter (seccomp). A try/catch does nothing against a fork bomb, scanning text misses anything disguised, and a shared container lets one user's code read or break the next user's run." } },
       { stage: 'Deep dives', say: [['lucia', "Ah, my favourite! Last week we added a 'k' to the Two Fish puzzle. The old answers are crying.", 'happy']],
         ask: { id: 'il-com-shrine-7', c: 'schemaevo', type: 'mc', q: "A puzzle's test cases change: new cases take an extra input, k. Old submissions, rejudges and the harnesses for 12 languages must all keep working. What is the plan?",
           opts: [
             "Edit the test cases in place and rejudge every old submission overnight against the new cases",
             "Version the cases, record the version on each submission, and add k as optional with a default",
-            "Keep a separate copy of each puzzle for every language, so each harness can change at its own pace",
-            "Add k as a required field and update all 12 harnesses at exactly the same moment"
+            "Keep a separate copy of each puzzle per language, so each harness can change at its own pace",
+            "Add k as a required field and deploy all 12 language harnesses at exactly the same moment"
           ], a: 1,
+          no: [
+            "Old submissions were written for the old signature, so they fail en masse, and past results silently change. History should show what each was judged on.",
+            null,
+            "Twelve copies drift apart, and every fix must be made twelve times. One versioned set of test cases keeps every language in step.",
+            "A required field breaks every reader not yet upgraded, and twelve deploys never land at the same instant. Rolling upgrades need backward-compatible changes."
+          ],
           why: "This is schema evolution. Adding an optional field with a default keeps old and new readers working (backward and forward compatible), and version numbers say exactly which cases a submission was judged on. A required field breaks every reader that isn't upgraded yet, editing in place silently changes old results, and twelve copies drift apart." } },
       { stage: 'Deep dives', say: [['lucia', "The Grand Contest! One hundred thousand puzzlers, one leaderboard. The statue can't count that high. Neither can I."]],
         ask: { id: 'il-com-shrine-8', c: 'topk', type: 'mc', q: 'How should the live contest leaderboard be kept?',
           opts: [
             "GROUP BY user ORDER BY score DESC on the submissions table each time anyone opens the leaderboard",
-            "Each client works out the ranking itself from the submissions it has seen",
+            "Load submissions into the data warehouse (BigQuery or Snowflake) and rank them there with SQL",
             "A Redis sorted set per contest: ZINCRBY on each accepted answer, ZREVRANGE for the top 100",
-            "A text file on one API server, rewritten after every submission, so a read is one file read"
+            "Each API server keeps its own in-memory ranking, built from the submissions it handled"
           ], a: 2,
+          no: [
+            "Correct but heavy: re-aggregating every submission on thousands of reads a second melts the database. Fine for a small or nightly report.",
+            "Warehouses are built for big analytical scans (OLAP), with seconds of latency and a cost per query. Serving thousands of reads a second is not their job.",
+            null,
+            "Each server only sees its share of submissions, so each shows a different, partial board that is lost on restart. The ranking needs one shared store."
+          ],
           why: "A sorted set keeps members ordered by score, so an update or a top-N read is O(log N). Re-ranking every submission with GROUP BY on each view melts the database during a contest. The database stays the source of truth; Redis is a fast view you can rebuild from it." } },
       { stage: 'Deep dives', say: [['lucia', "And how do they see it change? The children want WebSockets. The children want everything.", 'neutral']],
         ask: { id: 'il-com-shrine-9', c: 'realtime', type: 'num', q: '100,000 contestants each poll the leaderboard every 5 seconds. About how many requests per second is that?',
@@ -362,6 +464,12 @@
             "Fast swipes above all; matches can be worked out in a nightly batch and announced in the morning",
             "Strong consistency for swipes, stacks in under 300 ms, 2 billion swipes a day, no repeat faces"
           ], a: 3,
+          no: [
+            "A swiped profile leaves the stack, so nobody swipes again. A missed mutual yes is lost for good, and it is the bug users notice.",
+            "A stack a few minutes stale is harmless, and demanding freshness rules out the caching that keeps it under 300 ms. Spend strong consistency on swipes.",
+            "Batch suits work nobody waits for, like overnight recommendations. A match is a moment users expect to see at once; a next-day match feels broken.",
+            null
+          ],
           why: "A missed match is the bug users notice and hate, so the swipe-pair check needs strong consistency. The stack can be a little stale but must load fast. And the volume is huge: 20M daily users times 100 swipes is 2 billion writes a day." } },
       { stage: 'Core entities', say: [['hajin', "Name the things we store. Not the offices. The things."]],
         ask: { id: 'il-com-matchmaker-3', c: 'delivery', type: 'multi', q: 'Which of these are core entities for the Matchmaker?',
@@ -383,6 +491,12 @@
             "PUT /users/:targetUserId with the full, updated list of everyone who has liked them",
             "POST /matches { user1, user2 }, sent by the app as soon as it sees that both people said yes"
           ], a: 1,
+          no: [
+            "A cached GET may never reach the server, so the swipe is never recorded, and prefetchers can fire it by accident. Requests that change state are not GETs.",
+            null,
+            "Two people liking the same user at once each send a full list, and the last write wins, losing a swipe. Record each swipe as its own row.",
+            "The app can't see the other person's swipe, and a client that declares matches can forge them. The server decides when a match exists."
+          ],
           why: "A swipe is something new, so POST it; the swiper comes from the auth token. Returning the match at once lets the app celebrate. The client must never declare matches itself, and rewriting a whole 'liked by' list loses swipes that happen at the same time." } },
       { stage: 'High-level design', say: [['hajin', "Follow Mina's yes, from her phone to both phones buzzing."]],
         ask: { id: 'il-com-matchmaker-5', c: 'delivery', type: 'order', q: "Trace Mina's yes-swipe on Doyun through the basic design, in order.",
@@ -397,21 +511,33 @@
       { stage: 'Deep dives', say: [['haeun', "Now. Doyun and Mina. Same moment, two offices.", 'angry'], ['hajin', "...each office checking only its own book. Like us.", 'confused']],
         ask: { id: 'il-com-matchmaker-6', c: 'multileader', type: 'mc', q: "Doyun and Mina swipe yes on each other at the same instant. The swipes land on different servers, and each server checks 'did the other say yes?' before the other's write arrives. Both see no, so no match. What fixes it?",
           opts: [
-            "Run a nightly batch job that finds every mutual yes the live checks missed, and announce them then",
+            "A nightly batch job that finds every mutual yes the live checks missed, and announces it",
             "Retry each check after a short random delay, so one of them is bound to see the other's swipe",
             "Route both swipes by the sorted pair (Doyun, Mina) to one shard, and record-and-check atomically",
-            "Let each island's office accept swipes and merge the two books later, like multi-leader replication"
+            "Take a distributed lock on the swiper's user id while their swipe is being recorded and checked"
           ], a: 2,
+          no: [
+            "A reconciliation job is a decent backstop, but a match found a day late has lost its moment. The race must be fixed where the swipes are written.",
+            "Delays make the race rarer, not impossible: both retries can still run before the other write is visible, and replica lag stretches that window.",
+            null,
+            "Doyun's swipe locks Doyun and Mina's locks Mina, so the two never block each other. The lock must cover the pair, which keying by the pair does."
+          ],
           why: "Two places each accepting a write and checking for the other's is the multi-leader trap: neither sees the other's concurrent write. A rule that spans two writes needs one place to decide. Keying by the sorted pair sends both swipes to the same shard, where one atomic step records a swipe and sees the other, so exactly one of them creates the match. Retries only make the race rarer, and a nightly batch is a day late." } },
       { stage: 'Deep dives', say: [['hajin', "The match is saved! Doyun gets the buzz, opens his matches... and it's empty.", 'confused'], ['haeun', "He threw his phone in the sea. Kwame fished it out. Late."]],
         ask: { id: 'il-com-matchmaker-7', c: 'replag', type: 'mc', q: "Doyun taps the match notification, but his matches list is read from a replica that hasn't caught up yet, so the match isn't there. Best fix?",
           opts: [
             "For a while after a match, read from the leader, or a replica that has reached the match's write",
-            "Delay every notification by an hour, so that by then every replica has surely caught up",
-            "Turn off read replicas for the whole app, so that every single read comes from the leader",
+            "Delay each match notification by a few seconds, longer than the usual replication lag",
+            "Turn on semi-synchronous replication, so every replica has the write before the leader commits",
             "Retry the read on another random replica, because the next one will probably have caught up"
           ], a: 0,
-          why: "This is replication lag breaking a promise: the notification says the match exists, so any read that follows must see it. Read from somewhere that has applied at least that write (the leader, or a replica whose log position is far enough). Another random replica may be just as far behind, a fixed delay is guesswork, and dropping replicas throws away read scaling." } },
+          no: [
+            null,
+            "Lag has no ceiling: under load or during a failover it can reach minutes. A fixed delay is a guess, and it slows every match.",
+            "Semi-sync waits for one replica (by default) to receive the write, which protects durability. The other replicas still lag, and reads can land on them.",
+            "Another replica may be just as far behind, and the match can appear, vanish and reappear. Choose a replica that has reached the write's log position."
+          ],
+          why: "This is replication lag breaking a promise: the notification says the match exists, so any read that follows must see it. Read from somewhere that has applied at least that write (the leader, or a replica whose log position is far enough). Another random replica may be just as far behind, and a fixed delay is guesswork. Sending every read to the leader would also work, but it throws away read scaling." } },
       { stage: 'Deep dives', say: [['haeun', "After the evening ferry, everyone opens the app at once. The stack must already be there."]],
         ask: { id: 'il-com-matchmaker-8', c: 'geo', type: 'mc', q: "The stack must load in under 300 ms, but 'people within 10 km, aged 25 to 32, who fit my preferences' is a heavy query. What does the design do?",
           opts: [
@@ -420,15 +546,27 @@
             "Show a random stack straight away, and filter out the poor fits after people swipe on them",
             "Precompute each active user's stack from a region-sharded geo index, cache it, refresh it when low"
           ], a: 3,
+          no: [
+            "Even with indexes, a geo plus preference query at every app open, all at once after the ferry, blows the 300 ms budget and loads the main database.",
+            "That ships millions of profiles and their locations to every phone: slow, costly and a privacy leak. Filtering belongs on the server.",
+            "Fast, but most cards would be people outside the user's age or distance range, which defeats the product. The stack must be fast and relevant.",
+            null
+          ],
           why: "Precomputing and caching moves the heavy query off the critical path, so opening the app is one cache read. A geo index sharded by region makes the background query cheap. The cache goes stale when people move or change settings, so refresh it then, with a short TTL as a backstop." } },
       { stage: 'Deep dives', say: [['hajin', "Last thing. People keep seeing faces they already said no to.", 'confused'], ['haeun', "My cousin has turned down the same fisherman forty times. He thinks it's fate.", 'angry']],
         ask: { id: 'il-com-matchmaker-9', c: 'bloom', type: 'mc', q: 'Some users have swiped on 100,000 people, and checking every candidate against the full swipe history is slow. How do you avoid showing someone again?',
           opts: [
-            "Keep a plain list of swiped ids in the cached stack and search it one id at a time",
-            "A Bloom filter per user of everyone they've swiped on: 'definitely not seen' means show them",
+            "Keep a plain list of every swiped id with the cached stack, and scan it for each candidate",
+            "A Bloom filter per user of everyone they swiped on: 'definitely not seen' means show them",
             "A Bloom filter, accepting that now and then it says 'not seen' for someone already swiped on",
-            "Query the swipes table once per candidate to see whether this user swiped on them"
+            "Query the swipes table for each candidate to see whether this user already swiped on them"
           ], a: 1,
+          no: [
+            "100,000 ids per user, for millions of users, is far too much memory for the cache, and scanning a list for every candidate is slow.",
+            null,
+            "Backwards: a Bloom filter never says 'not seen' for someone it holds. Its rare mistake is 'seen' for someone new, who is simply skipped.",
+            "A database round trip per candidate, for dozens of candidates, blows the 300 ms budget and multiplies load at the evening peak."
+          ],
           why: "A Bloom filter never says 'not in the set' for something that is in it, so nobody is re-shown. Its only mistake goes the other way: now and then it says 'seen' for someone new, who is simply skipped. A few bits per swipe fit in memory where 100,000 ids would not, and a database query per candidate is far too slow for a 300 ms stack." } }
     ],
     win: [
@@ -470,10 +608,16 @@
         ask: { id: 'il-com-pricewatch-2', c: 'delivery', type: 'mc', q: 'Which non-functional requirements fit the Price Watch?',
           opts: [
             "Strong consistency, so that every user sees every price change at exactly the same moment",
-            "Crawl every product every minute, so that prices are never stale and users can always trust them",
-            "Eventually consistent prices, changes seen within an hour, fast charts, 500M products, polite crawling",
+            "Crawl every product every minute, so prices are never stale and users can always trust them",
+            "Eventually consistent, changes seen within an hour, fast charts, 500M products, polite crawling",
             "Alerts can go out in a monthly digest, since most people only shop for big things once a month"
           ], a: 2,
+          no: [
+            "Nobody is harmed if one user sees a new price a minute before another. Strong consistency here costs availability and buys nothing.",
+            "That is over 8 million fetches a second, and shops would block you. Freshness has to be spent where it matters.",
+            null,
+            "Deals can vanish within hours, so a monthly digest arrives after the price has gone back up. Alerts must land while the deal exists."
+          ],
           why: "A price a few minutes stale hurts nobody, so availability wins. The hard limits are scale and politeness: half a billion products, and shops that block crawlers who hammer them. Alerts should arrive while the deal still exists." } },
       { stage: 'Core entities', say: [['minh', "What goes on the map? Things, not tools."]],
         ask: { id: 'il-com-pricewatch-3', c: 'delivery', type: 'multi', q: 'Which of these are core entities for the Price Watch?',
@@ -496,6 +640,12 @@
             "PUT /products/:id { price }, so the extension can set the current price whenever any user sees it",
             "GET /subscriptions/create?productId=...&threshold=..., so an alert can be set from one link"
           ], a: 0,
+          no: [
+            null,
+            "That is billions of points per request. Filter on the server by product and time range, and send only what the chart needs.",
+            "Letting any client overwrite the truth invites typos and abuse. Extension prices are reports to check, sent as new records, never overwrites.",
+            "GET must be safe: link previews, email scanners and prefetchers follow links and would create alerts nobody asked for. Creating a resource is a POST."
+          ],
           why: "One endpoint per requirement: read one product's history over a time range, and create a subscription with a threshold. The extension will also send prices it sees, but as reports to check, never as an overwrite of the truth." } },
       { stage: 'High-level design', say: [['minh', "Follow one price change, from a shop shelf to a customer's letter."]],
         ask: { id: 'il-com-pricewatch-5', c: 'fanout', type: 'order', q: 'Trace one price change through the design, in order.',
@@ -515,15 +665,27 @@
             "Only crawl a product when someone opens its page on the site, so no crawl is ever wasted",
             "Add crawlers until every product is checked every minute, since machines are cheaper than stale data"
           ], a: 1,
+          no: [
+            "Equal freshness wastes crawls on products nobody watches and leaves popular ones a day stale. Spend the crawl budget where users are.",
+            null,
+            "Alerts must fire while nobody is looking, so watched products need crawling on a schedule. Crawling on view also makes the first viewer wait.",
+            "That is over 8 million fetches a second, and the limit isn't your machines: shops rate-limit and block crawlers that hit them that hard."
+          ],
           why: "You can't check everything often, so spend crawls where they matter: products with many subscribers or recent changes go hourly, quiet ones rarely. A queue per shop domain, throttled to its rate limit, keeps you polite and unblocked. Every product every minute would be over 8 million fetches a second, and crawling only on page views leaves alerts with nothing to watch." } },
       { stage: 'Deep dives', say: [['minh', "Every visit writes a price. Millions an hour, never edited. Mang Tomas says his mill could take it."]],
         ask: { id: 'il-com-pricewatch-7', c: 'lsm', type: 'mc', q: "Price points arrive by the million every hour, are never edited, and are read as 'one product's prices over a time range'. Which store and key fit?",
           opts: [
-            "A relational table indexed on price, updating each product's latest row in place",
-            "One JSON document per product, rewritten with the whole history on every new price",
-            "A B-tree table keyed by timestamp alone, so all of the newest prices are stored right next to each other",
+            "A relational table with an index on price, updating each product's latest row in place",
+            "One JSON document per product, rewritten with its whole history every time a new price arrives",
+            "A B-tree table keyed by timestamp alone, so the newest prices are all stored together",
             "An LSM-based store (Cassandra or a time-series DB) keyed by product id, sorted by timestamp"
           ], a: 3,
+          no: [
+            "Updating in place throws away the history the charts need, and an index on price doesn't help 'one product over time'.",
+            "Rewriting years of history on every new point is huge write amplification, and documents have size limits (16 MB in MongoDB).",
+            "Every write hits the newest end of the key range, one hot spot, and one product's history is scattered across the whole table.",
+            null
+          ],
           why: "Append-only, write-heavy data is what LSM trees are built for: writes go to memory and a log, then into sorted files merged in the background. Partitioning by product and sorting by time makes 'this product, last 90 days' one sequential read, and daily rollups keep long charts fast. Keying by time alone makes every write hit the same spot and scatters one product's history; updating in place throws history away." } },
       { stage: 'Deep dives', say: [['minh', "A rope drops to one shell. Fifty thousand people want a letter. Nobody wants two."]],
         ask: { id: 'il-com-pricewatch-8', c: 'outbox', type: 'mc', q: 'A popular product drops below the threshold of 50,000 subscribers. How should the alerts go out?',
@@ -533,15 +695,27 @@
             "Changes go on a stream (CDC or outbox); workers fan out to matching subscriptions, deduped per drop",
             "Alert on every crawl that finds the price below the threshold, so nobody can miss the deal"
           ], a: 2,
+          no: [
+            "Almost every comparison finds nothing, and the work grows with subscriptions, not with changes. Let price changes trigger the work.",
+            "Sending mail stalls the crawler, and a crash halfway loses the rest. A queue lets crawling and notifying scale and fail separately.",
+            null,
+            "A product crawled hourly would email the same people every hour while the price stays low. Alert on the crossing, once per drop."
+          ],
           why: "Event-driven beats scanning: only changes cause work. CDC or an outbox guarantees each stored change produces an event, and alert workers fan out in batches through a queue. Streams deliver at least once, so record each (subscription, drop) as sent: a replay after a crash, or a price bouncing around the threshold, sends one letter, not five. A crawler that sends email stalls the crawl." } },
       { stage: 'Deep dives', say: [['minh', "Last: customers have started sending me prices themselves, from a little lens they hold up to shop windows."]],
         ask: { id: 'il-com-pricewatch-9', c: 'windows', type: 'mc', q: 'The browser extension reports prices users see on shop pages: millions of free data points. One report says a 4,000-shell anchor now costs 1 shell. What do you do with reports?',
           opts: [
-            "Treat reports as claims: accept once several users agree in a short window, or verify with a crawl",
+            "Treat reports as claims: accept once several users agree in a short window, or verify by crawl",
             "Trust every report and alert subscribers at once, since speed is the whole point of the extension",
-            "Ignore the extension, because crowdsourced data can never be trusted for anything",
-            "Accept a report once the same user has sent it twice in a row, which rules out typos"
+            "Ignore extension reports and rely on the crawler alone, since the crawl is the trusted source",
+            "Accept a report once the same user has sent it twice in a row, which rules out simple typos"
           ], a: 0,
+          no: [
+            null,
+            "One typo or prank would email 50,000 people about a deal that doesn't exist. Speed is worthless if the alert is wrong.",
+            "That throws away free, fresh data for exactly the products people are viewing. Untrusted input is fine once it is checked.",
+            "One user repeating a claim proves nothing: a prankster or a buggy extension repeats too. Agreement must come from different users."
+          ],
           why: "Crowdsourcing gives fresh prices for exactly the products people are looking at, but one bad report could email 50,000 people. Count matching reports from different users in a short window, verify big drops with a targeted crawl, and rate-limit or down-rank reporters who are often wrong. One user repeating themselves proves nothing." } }
     ],
     win: [
