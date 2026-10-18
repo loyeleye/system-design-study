@@ -91,7 +91,7 @@
   S.unlockedCards = function () {
     const out = unlocked();
     A.chapters().forEach(ch => { if (A.open(ch) && SD.chapterCards[ch]) SD.chapterCards[ch].forEach(id => { if (!out.includes(id)) out.push(id); }); });
-    return out;
+    return out.filter(id => !(SD.cards[id] && SD.cards[id].quest));
   };
 
   // ---------- Node types the arc adds to the map ----------

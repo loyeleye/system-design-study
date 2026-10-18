@@ -9,6 +9,7 @@
 //   at=title | town | road | waystation | arena | camp | exchange | run   where to start (default town, or road for 7-10)
 //   floor=1..4    with at=run in chapters 7-10: start on this floor
 //   quests=done   mark every quest unlocked so far as finished (their Plot Devices too)
+//   group=2|3     every normal and elite fight is a group of that size (see SD.debug.groupFight below)
 // Examples: index.html?debug&ch=9&rank=A&at=camp   index.html?debug&ch=10&at=run&floor=4
 // While on, a 🐞 button (bottom left) opens a panel to pick these, win the current fight, or add shards.
 (function () {
@@ -117,7 +118,7 @@
         <label for="dbg-shards">Shards</label><input id="dbg-shards" type="number" placeholder="2000" min="0" step="100">
         <label for="dbg-q">Quests</label><label><input id="dbg-q" type="checkbox"${P.get('quests') === 'done' ? ' checked' : ''}> finish every quest so far</label>
       </div>
-      <div class="row"><button class="primary" id="dbg-go">Start here</button><button class="ghost" id="dbg-win">Win this fight</button><button class="ghost" id="dbg-sh">+1,000 shards</button></div>
+      <div class="row"><button class="primary" id="dbg-go">Start here</button><button class="ghost" id="dbg-win">Win this fight</button><button class="ghost" id="dbg-sh">+1,000 shards</button><button class="ghost" id="dbg-grp">Group fight (3)</button></div>
       <p class="muted small">Or put it in the link: <code>?debug&amp;ch=9&amp;rank=A&amp;at=camp</code></p>`, { title: 'DEBUG START' });
     // Rebuild the save in place (a hosted preview can't always reload with a new link), then go there.
     b.querySelector('#dbg-go').onclick = () => {
@@ -135,7 +136,31 @@
       U.closePanel();
       if (C && !C.over) { C.sev = 0; SD.run.api.win(); } else U.system('DEBUG', 'No fight to win right now.');
     };
+    b.querySelector('#dbg-grp').onclick = () => { const C = SD.run.api && SD.run.api.combat(); if (C && !C.over) return U.system('DEBUG', 'Finish this fight first.'); D.groupFight(3); };
     b.querySelector('#dbg-sh').onclick = () => { sv.shards += 1000; S.persist(); U.closePanel(); U.system('DEBUG', `+1,000 shards (${sv.shards} now).`); if (SD.main.hud) SD.main.hud(); };
   }
   D.panel = panel;
+
+  // ---------- Group fights ----------
+  // ?group=2 or ?group=3 in the URL turns every normal and elite fight into a group of that size (any chapter).
+  D.forceGroup = P.get('group') ? Math.max(2, Math.min(3, +P.get('group') || 2)) : 0;
+  // Start a group fight right now: SD.debug.groupFight(3), SD.debug.groupFight(2, true) for elite + minion,
+  // or SD.debug.groupFight(['scrapers', 'echo']) for exact foes. Starts a run in the current chapter if none is on.
+  D.groupFight = function (size, elite) {
+    const go = () => {
+      const api = SD.run.api, pools = SD.chapters[S.save.run.ch || 1].pools;
+      let eid, group;
+      if (Array.isArray(size)) { eid = size[0]; group = size.slice(1); } else {
+        eid = (elite ? pools.elite : pools[2] || pools[1])[0];
+        const was = D.forceGroup; D.forceGroup = size || 2;
+        group = api.groupFor(eid, { elite: !!elite });
+        D.forceGroup = was;
+      }
+      U.closePanel();
+      api.fight(eid, { group, elite: !!elite }, () => SD.run.showMap());
+    };
+    if (S.save.run) return go();
+    SD.run.start(S.save.chapter || 1);
+    setTimeout(go, 1600);
+  };
 })();
