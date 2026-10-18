@@ -962,9 +962,35 @@
     ['The SRE Book was written by the engineers who keep the biggest castle in any realm running. It almost never explodes. Almost. They budget for it! I respect that.', 'smug'],
     ['I am the least reliable person on the North Road. That is exactly why I study reliability. Somebody has to write down what NOT to do.', 'neutral']
   ];
+  // First meeting: the hero actually backs off a step per "further", then shuffles one back in.
+  // Steps queue up, so a fast tap through the lines still plays them in order.
+  let backing = Promise.resolve();
+  function stepBack(n, fast) {
+    const sc = SD.northRoad && SD.northRoad.scene && SD.northRoad.scene();
+    const P = sc && sc.P, ex = sc && sc.actors.explodia;
+    if (!P || !ex) return;
+    backing = backing.then(async () => {
+      let dx = Math.sign(P.x - ex.x), dy = Math.sign(P.y - ex.y);
+      if (dx && dy) { if (Math.abs(P.x - ex.x) >= Math.abs(P.y - ex.y)) dy = 0; else dx = 0; }
+      if (!dx && !dy) dy = 1;
+      const face = dx > 0 ? 'west' : dx < 0 ? 'east' : dy > 0 ? 'north' : 'south';
+      const sp = P.speed;
+      P.speed = fast ? 5 : 2.6;
+      for (let i = 0; i < Math.abs(n); i++) {
+        const nx = P.x + dx * Math.sign(n), ny = P.y + dy * Math.sign(n);
+        if (!sc.walkable(nx, ny)) break;
+        P.x = nx; P.y = ny; P.face = face;
+        for (let t = 0; t < 40 && Math.abs(P.px - P.x) + Math.abs(P.py - P.y) > 0.01; t++) await new Promise(r => setTimeout(r, 25));
+      }
+      P.speed = sp; P.face = face;
+    });
+  }
   function intro() {
     return U.dialog([
-      { s: 'explodia', t: 'Stand back. Further. FURTHER. ...Okay, that\'s too far, come back a bit.', e: 'angry' },
+      { s: 'explodia', t: 'Stand back.', e: 'happy', cue: () => stepBack(1) },
+      { s: 'explodia', t: 'Further.', e: 'smug', cue: () => stepBack(1) },
+      { s: 'explodia', t: 'FURTHER!', e: 'happy', cue: () => stepBack(2, true) },
+      { s: 'explodia', t: '...Okay, that\'s too far. Come back a bit.', e: 'neutral', cue: () => stepBack(-1) },
       { s: 'narr', t: 'Something behind her goes KA-BOOM. Her hat is smoking. She doesn\'t seem to notice.' },
       { s: 'explodia', t: 'Explodia! Demolitions mage. Every crater on this road is mine, and some of them were even on the schedule.', e: 'happy' },
       { s: 'explodia', t: 'I also run the Blast Academy. Our textbook is the SRE Book, written by the people who keep the biggest castle in the realm from exploding. Except on purpose.', e: 'smug' },
