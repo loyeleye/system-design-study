@@ -48,6 +48,8 @@ Load after `quests.js` (and after any chapter files such as `ch4.js`), before `m
 
 ## Hook-up steps for the main game
 
+Done on 2026-10-18 (steps 1, 2, 3 with the tide marker, and both step 6 follow-ups): the pier is a `ferry` entry in `hub.js`'s villager list at (46, 16), drawn as a jetty, and `main.js` opens the Isles from it.
+
 1. **Scripts.** In `index.html`, add the files above, in that order, just before `<script src="js/main.js"></script>`
    (the same tags `tools/isles_page.py` inserts, without `isles-dev.js`). Rebuild the artifact page as usual.
 2. **The letter.** After chapter 3, the first time the player is back in town, call `SD.isles.maybeLetter()`

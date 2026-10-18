@@ -148,6 +148,8 @@
     M.hud();
     if (afterRun) U.system('[SYSTEM] VILLAGE MORNING', `Loop ${S.save.loop}. You respawned. Uptima has filed the paperwork.`);
     SD.quests.checkNew();
+    // Coo's letter from the Eventual Isles, once, the first time you're in town after chapter 3.
+    if (SD.isles) SD.isles.maybeLetter();
   };
 
   // ---------- Buildings and villagers ----------
@@ -164,6 +166,8 @@
     AU.sfx(DOOR_NPC[c] || c === 'G' ? 'door' : 'blip');
     try {
       // Quest business comes first; villagers with a building offer to carry on inside instead.
+      // The ferry to the Eventual Isles (js/isles): the Isles take over the screen and come back through show('hub').
+      if (c === 'ferry') { SD.isles.open(); return; }
       if (c !== 'G' && c !== 'B' && await SD.quests.talk(DOOR_NPC[c] || c, VISIT[c])) return;
       if (c === 'U') await SD.quests.guild();
       if (c === 'F') await forge();

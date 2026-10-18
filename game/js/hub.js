@@ -54,7 +54,11 @@
     { id: 'kaito', name: 'KAITO', x: 18, y: 5, emo: 'star' },
     { id: 'doug', name: 'DOUG', x: 34, y: 10, emo: 'dots' },
     // Aigerim (js/peddler.js) turns up somewhere new each loop from chapter 3, until she moves to the North Road.
-    { id: 'aigerim', name: 'AIGERIM', x: -1, y: -1, emo: 'heart', roam: () => SD.peddler && SD.peddler.spot() }
+    { id: 'aigerim', name: 'AIGERIM', x: -1, y: -1, emo: 'heart', roam: () => SD.peddler && SD.peddler.spot() },
+    // The pier past Cron's farm: Kwame's ferry to the Eventual Isles (js/isles), once their first wave opens.
+    // Its marker shows when an island is at low tide.
+    { id: 'ferry', name: 'FERRY', x: 46, y: 16, pier: true, roam: () => SD.isles && SD.isles.unlocked() ? [46, 16] : null,
+      mark: () => SD.isles && Object.keys(SD.isles.ISLANDS).some(SD.isles.tideLow) ? '!' : null }
   ];
   // Villagers in town right now; roaming ones take today's spot or stay away.
   const people = () => NPCS.filter(n => {
@@ -266,7 +270,7 @@
     }
     label(15.5, 5.6, 'QUEST BOARD', t, H.markers && H.markers.B);
     label(38, 15.2, "CRON'S FARM", t, false);
-    people().forEach(n => label(n.x, n.y + 1.45, n.name, t, H.npcMarks && H.npcMarks[n.id], true));
+    people().forEach(n => label(n.x, n.y + 1.45, n.name, t, (H.npcMarks && H.npcMarks[n.id]) || (n.mark && n.mark()), true));
     petals.forEach(f => {
       const fx = (f.x + Math.sin(t * 0.4 + f.p) * 0.8) * ts, fy = (f.y + Math.cos(t * 0.3 + f.p) * 0.6) * ts;
       const flap = Math.abs(Math.sin(t * 8 + f.p));
@@ -449,12 +453,26 @@
     return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy < 0 ? 'north' : 'south');
   }
   function drawNpc(n, t) {
+    if (n.pier) return drawPier(n, t);
     if (n.bird) drawBird(n, t);
     else person(n.id, n.x, n.y, t, facing(n), false);
     // Gary sips coffee. Everyone else occasionally has a feeling about something.
     const phase = (t + n.x) % 9;
     // A quest marker replaces the feeling, so the two never overlap.
     if (phase < 2.2 && !(H.npcMarks && H.npcMarks[n.id])) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', n.x * ts + ts / 2, n.bird ? n.y * ts : headY(n.y));
+  }
+  // The ferry pier: a short plank jetty with mooring posts and a lantern, and the ferry's flag bobbing beside it.
+  function drawPier(n, t) {
+    const X = n.x * ts, Y = n.y * ts, u = ts / 32;
+    ctx.fillStyle = '#8a5a34'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    rr(X + 2 * u, Y + 6 * u, 28 * u, 22 * u, 3 * u); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#5e3a20'; ctx.lineWidth = 1.5;
+    for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(X + 3 * u, Y + (6 + i * 5.5) * u); ctx.lineTo(X + 29 * u, Y + (6 + i * 5.5) * u); ctx.stroke(); }
+    ctx.fillStyle = '#5e3a20'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    [[2, 4], [26, 4]].forEach(([dx, dy]) => { rr(X + dx * u, Y + dy * u, 4 * u, 26 * u, 1.5 * u); ctx.fill(); ctx.stroke(); });
+    const fy = Y - 10 * u + Math.sin(t * 2) * 1.5 * u;
+    ctx.beginPath(); ctx.moveTo(X + 16 * u, Y + 8 * u); ctx.lineTo(X + 16 * u, fy); ctx.stroke();
+    ctx.fillStyle = '#3fa7d6'; ctx.beginPath(); ctx.moveTo(X + 16 * u, fy); ctx.lineTo(X + 27 * u, fy + 4 * u); ctx.lineTo(X + 16 * u, fy + 8 * u); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
   // Postmaster Coo is a pigeon, bobbing like pigeons do.
   function drawBird(n, t) {
