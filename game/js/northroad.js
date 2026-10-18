@@ -33,20 +33,23 @@
     m.put(29, 25, 'R'); m.put(29, 26, 'R');
     m.put(0, 13, 'K'); m.put(0, 14, 'K');
     m.put(14, 45, 'S'); m.put(15, 45, 'S');
-    m.rect(10, 1, 19, 6, '#'); m.put(14, 7, 'X'); m.put(15, 7, 'X');
+    m.rect(1, 0, 28, 5, 'w'); m.rect(10, 1, 19, 6, '#'); m.put(14, 7, 'X'); m.put(15, 7, 'X');   // the city wall and gate
     m.rect(5, 19, 9, 21, '#'); m.put(7, 22, 'C');
     m.rect(5, 27, 8, 28, '#');                               // courier post
     m.rect(19, 16, 23, 17, '#');                             // bard's stage
     m.rect(18, 39, 22, 40, '#');                             // Marta's caravan
     m.rect(22, 30, 26, 32, '~'); m.rect(3, 40, 6, 42, '~');
-    m.trees([[4, 3], [7, 5], [23, 3], [26, 6], [21, 9], [6, 10], [9, 8], [25, 11], [3, 17], [11, 18], [24, 20], [27, 16], [2, 24], [9, 25], [20, 22],
+    m.trees([[21, 9], [6, 10], [9, 8], [25, 11], [3, 17], [11, 18], [24, 20], [27, 16], [2, 24], [9, 25], [20, 22],
       [26, 21], [3, 31], [19, 33], [27, 35], [8, 38], [23, 36], [4, 44], [10, 43], [20, 44], [25, 42], [18, 11], [11, 11], [27, 29], [6, 33]]);
     return {
-      map: m.rows(), terrain: { p: 'dirt', L: 'dirt', R: 'dirt', K: 'dirt', S: 'dirt', X: 'dirt', C: 'dirt', '~': 'water' },
-      top: ['water', 'dirt'], solid: 'T#~', bg: '#5fbf5f',
+      map: m.rows(), terrain: { p: 'dirt', L: 'dirt', R: 'dirt', K: 'dirt', S: 'dirt', X: 'dirt', C: 'dirt', '~': 'water', w: 'd10', '#': 'd10' },
+      top: ['water', 'd10', 'dirt'], solid: 'T#~w', bg: '#5fbf5f',
       doors: { S: 'S', L: 'L', R: 'R', K: 'K', X: 'X', C: 'C' },
       doorFor: (x, y) => (x >= 10 && x <= 19 && y <= 7) ? [14, 8] : (x >= 5 && x <= 9 && y >= 17 && y <= 21) ? [7, 23] : null,
       objects: [
+        { name: 'nr-roofs', x: 3, y: 2.2 }, { name: 'nr-roofs', x: 8, y: 1.6 }, { name: 'nr-roofs', x: 21, y: 1.6 }, { name: 'nr-roofs', x: 26, y: 2.2 },
+        { name: 'nr-roofs', x: 14.5, y: 0.6 },
+        { name: 'nr-citywall', x: 3.2, y: 5.8 }, { name: 'nr-citywall', x: 7, y: 5.8 }, { name: 'nr-citywall', x: 22, y: 5.8 }, { name: 'nr-citywall', x: 25.8, y: 5.8 },
         { name: 'nr-citygate', x: 14.5, y: 7 },
         { name: 'nr-shop', x: 7, y: 21 },
         { name: 'nr-courierpost', x: 6.5, y: 28 },
@@ -56,7 +59,7 @@
         { name: 'nr-signpost', x: 11, y: 34 }, { name: 'nr-signpost', x: 17, y: 24 }, { name: 'nr-signpost', x: 13, y: 12 },
         { name: 'nr-milestone', x: 16, y: 43 }, { name: 'nr-milestone', x: 11, y: 30 }, { name: 'nr-milestone', x: 13, y: 10 },
         { name: 'nr-fence', x: 18, y: 37 }, { name: 'nr-fence', x: 21, y: 37 }, { name: 'nr-fence', x: 8, y: 16 },
-        { name: 'nr-rock', x: 24, y: 14 }, { name: 'nr-rock', x: 5, y: 7 }, { name: 'nr-rock', x: 21, y: 28 }, { name: 'nr-cart', x: 9, y: 40 }
+        { name: 'nr-rock', x: 24, y: 14 }, { name: 'nr-rock', x: 5, y: 8 }, { name: 'nr-rock', x: 21, y: 28 }, { name: 'nr-cart', x: 9, y: 40 }
       ],
       labels: [
         { x: 2, y: 37.6, text: '← WAYSTATION' }, { x: 27, y: 27.6, text: 'THE ARENA →' }, { x: 2, y: 15.6, text: "← HEROES' CAMP" },
@@ -81,25 +84,27 @@
   const waystation = (function () {
     const W = 26, H = 20, m = grid(W, H, true);
     m.rect(2, 3, 10, 7, '#');                                // the inn
-    m.rect(15, 1, 23, 5, '#'); m.put(19, 6, 'D');           // the road tunnel in the cliff
+    m.rect(1, 1, 24, 4, '#'); m.put(19, 5, 'D'); m.put(20, 5, 'D');   // the cliff, and the road tunnel in it
     m.rect(19, 13, 23, 15, '#');                             // stable
     m.rect(12, 13, 13, 13, '#');                             // well
     m.rect(3, 14, 6, 15, '#');                               // garden
     m.rect(9, 10, 11, 10, '#');                              // tables
-    m.rect(6, 8, 6, 11, 'p'); m.rect(6, 11, 24, 12, 'p'); m.rect(19, 7, 20, 11, 'p'); m.put(25, 11, 'E'); m.put(25, 12, 'E');
-    m.rect(11, 1, 14, 3, 'T'); m.trees([[1, 9], [2, 17], [9, 17], [14, 17], [24, 17], [16, 8], [24, 7], [13, 7]]);
+    m.rect(6, 8, 6, 11, 'p'); m.rect(6, 11, 24, 12, 'p'); m.rect(19, 6, 20, 11, 'p'); m.put(25, 11, 'E'); m.put(25, 12, 'E');
+    m.trees([[1, 9], [2, 17], [9, 17], [14, 17], [24, 17], [16, 8], [24, 7], [13, 7]]);
     return {
       map: m.rows(), terrain: { p: 'dirt', D: 'dirt', E: 'dirt' }, top: ['dirt'], solid: 'T#', bg: '#5fbf5f',
       doors: { D: 'D', E: 'E' },
-      doorFor: (x, y) => (x >= 15 && x <= 23 && y <= 6) ? [19, 7] : (x >= 2 && x <= 10 && y <= 8) ? [6, 8] : null,
+      doorFor: (x, y) => (x >= 17 && x <= 22 && y <= 5) ? [19, 6] : (x >= 2 && x <= 10 && y <= 8) ? [6, 8] : null,
       objects: [
-        { name: 'ws-inn', x: 6, y: 8 }, { name: 'ws-tunnel', x: 19, y: 6 }, { name: 'ws-stable', x: 21, y: 15 },
+        { name: 'ws-cliff', x: 3, y: 4.4 }, { name: 'ws-cliff', x: 10, y: 4.4 }, { name: 'ws-cliff', x: 15.5, y: 4.4 }, { name: 'ws-cliff', x: 23, y: 4.4 },
+        { name: 'ws-tunnel2', x: 19.5, y: 4.9 },
+        { name: 'ws-inn', x: 6, y: 8 }, { name: 'ws-stable', x: 21, y: 15 },
         { name: 'well', x: 12.5, y: 13 }, { name: 'ws-garden', x: 4.5, y: 15 }, { name: 'ws-tables', x: 10, y: 10 },
-        { name: 'nr-milestone', x: 22, y: 9 }, { name: 'lamp', x: 17, y: 7 }, { name: 'lamp', x: 22, y: 7 }, { name: 'nr-rock', x: 14, y: 5 }
+        { name: 'nr-milestone', x: 22, y: 9 }, { name: 'nr-signpost', x: 21.6, y: 6 }, { name: 'nr-rock', x: 14, y: 6 }
       ],
-      labels: [{ x: 19.5, y: 7.6, text: 'THE NORTHBOUND ROAD' }, { x: 6, y: 9.1, text: 'WAYSTATION' }, { x: 24.5, y: 13.6, text: 'ROAD →' }],
+      labels: [{ x: 19.5, y: 6.6, text: 'THE NORTHBOUND ROAD' }, { x: 6, y: 9.1, text: 'WAYSTATION' }, { x: 24.5, y: 13.6, text: 'ROAD →' }],
       actors: { latency: { x: 8, y: 10, face: 'south', name: 'LORD LATENCY' }, v1: { x: 16, y: 13, face: 'west', name: 'GUEST' } },
-      back: { D: [19, 7, 'south'], E: [24, 11, 'west'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun'
+      back: { D: [19, 6, 'south'], E: [24, 11, 'west'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun'
     };
   })();
 
@@ -119,15 +124,19 @@
     m.rect(21, 30, 22, 30, '#');                                // statue
     m.rect(10, 12, 16, 12, '#'); m.rect(27, 12, 33, 12, '#'); m.rect(10, 26, 16, 26, '#'); m.rect(27, 26, 33, 26, '#');   // ring walls
     m.rect(8, 14, 8, 24, '#'); m.rect(35, 14, 35, 24, '#');
+    // The stands are blocks of seats with the crowd in them, tiled around the edge at the hero's scale.
+    const SEATS = [];
+    const row = (xs, y, flip) => xs.forEach(x => SEATS.push({ name: 'ar-seats', x, y, flip }));
+    [1, 3.5].forEach(y => { row([5.6, 8.9, 12.2, 15.5], y); row([28, 31.3, 34.6, 37.9], y); });
+    [32.4, 34.9].forEach(y => { row([5.6, 8.9, 12.2, 15.5], y); row([28, 31.3, 34.6, 37.9], y); });
+    for (let y = 6.5; y < 32; y += 2.5) { row([1.4], y); row([41.6], y, true); }
     return {
       map: m.rows(), terrain: { a: 'd8', '#': 'd8', D: 'd8', S: 'd8' }, top: ['d8'], base: 'd8', solid: '#', bg: '#c9b48a', zoom: 32,
       doors: { D: 'D', S: 'S' },
       doorFor: (x, y) => (x >= 18 && x <= 25 && y <= 6) ? [21, 7] : null,
       objects: [
-        { name: 'ar-stand', x: 10, y: 4 }, { name: 'ar-stand', x: 33, y: 4 },
+        ...SEATS,
         { name: 'ar-gate', x: 21.5, y: 6 },
-        { name: 'ar-standv', x: 1.5, y: 17 }, { name: 'ar-standv', x: 1.5, y: 28 }, { name: 'ar-standv', x: 41.5, y: 17, flip: true }, { name: 'ar-standv', x: 41.5, y: 28, flip: true },
-        { name: 'ar-stand', x: 10, y: 35 }, { name: 'ar-stand', x: 33, y: 35 },
         { name: 'ar-booth', x: 36.5, y: 11 }, { name: 'ar-bracket', x: 7, y: 11 }, { name: 'ar-statue', x: 21.5, y: 30 },
         { name: 'ar-wall', x: 13, y: 12 }, { name: 'ar-wall', x: 30, y: 12 }, { name: 'ar-wall', x: 13, y: 26 }, { name: 'ar-wall', x: 30, y: 26 },
         { name: 'ar-wallv', x: 8, y: 19 }, { name: 'ar-wallv', x: 8, y: 24 }, { name: 'ar-wallv', x: 35, y: 19 }, { name: 'ar-wallv', x: 35, y: 24 },
@@ -152,7 +161,8 @@
     m.rect(17, 4, 21, 5, '#'); m.rect(23, 6, 25, 7, '#'); m.rect(15, 16, 17, 17, '#');
     m.rect(14, 12, 16, 12, '#'); m.rect(21, 12, 23, 12, '#'); m.rect(25, 17, 27, 18, '#'); m.rect(4, 15, 6, 16, '#');
     m.rect(8, 8, 9, 10, 'p'); m.rect(8, 10, 28, 11, 'p'); m.put(29, 10, 'E'); m.put(29, 11, 'E'); m.rect(15, 11, 15, 11, 'p');
-    m.trees([[2, 9], [2, 20], [8, 20], [12, 18], [20, 20], [27, 3], [14, 3], [26, 13]]);
+    m.rect(21, 19, 21, 19, '#'); m.rect(10, 15, 10, 15, '#');     // training dummy, the vending machine
+    m.trees([[2, 9], [2, 20], [12, 21], [20, 22], [27, 3], [14, 3], [26, 13]]);
     return {
       map: m.rows(), terrain: { p: 'dirt', D: 'dirt', E: 'dirt' }, top: ['dirt'], solid: 'T#', bg: '#4f9f55',
       doors: { D: 'D', E: 'E' },
@@ -160,10 +170,14 @@
       objects: [
         { name: 'cp-chasm', x: 8.5, y: 7 }, { name: 'cp-tent1', x: 19, y: 5 }, { name: 'cp-tent2', x: 24, y: 7 }, { name: 'cp-tent2', x: 16, y: 17, flip: true },
         { name: 'cp-fire', x: 15, y: 12 }, { name: 'cp-board', x: 22, y: 12 }, { name: 'cp-tower', x: 26, y: 18 }, { name: 'cp-rack', x: 5, y: 16 },
-        { name: 'nr-rock', x: 13, y: 7 }, { name: 'd9a', x: 3, y: 7 }, { name: 'd9a', x: 12, y: 8 }
+        { name: 'nr-rock', x: 13, y: 7 }, { name: 'd9a', x: 3, y: 7 }, { name: 'd9a', x: 12, y: 8 },
+        { name: 'cp-dummy', x: 21, y: 19 }, { name: 'cp-vending', x: 10, y: 15 }
       ],
-      labels: [{ x: 8.5, y: 8.6, text: 'THE ABYSS' }, { x: 22, y: 13.1, text: 'NOTICE BOARD' }, { x: 28.5, y: 12.6, text: 'ROAD →' }],
+      labels: [{ x: 8.5, y: 8.6, text: 'THE ABYSS' }, { x: 22, y: 13.1, text: 'NOTICE BOARD' }, { x: 28.5, y: 12.6, text: 'ROAD →' }, { x: 8, y: 20.1, text: 'SPARRING' }],
       actors: {
+        hero77: { x: 7, y: 18, face: 'east', name: 'HERO #77' }, hero256: { x: 9, y: 18, face: 'west', name: 'HERO #256' },
+        hero3: { x: 20, y: 19, face: 'east', name: 'HERO #3' }, hero12: { x: 10, y: 16, face: 'north', name: 'HERO #12', sprite: 'v2' },
+        hero404: { x: 24, y: 15, face: 'south', name: 'HERO #404', sprite: 'none' },
         hero1023: { x: 13, y: 13, face: 'east', name: 'HERO #1023', hidden: true },
         hero500: { x: 17, y: 13, face: 'west', name: 'HERO #500', hidden: true }
       },
@@ -177,7 +191,8 @@
     m.rect(0, 0, 33, 0, '#'); m.rect(0, 0, 0, 29, '#'); m.rect(33, 0, 33, 29, '#');
     m.rect(11, 1, 22, 9, '#'); m.put(16, 11, 'D'); m.put(17, 11, 'D');
     m.rect(15, 12, 18, 28, 'c'); m.rect(3, 13, 30, 14, 'c'); m.rect(15, 10, 18, 10, 'c');
-    m.rect(4, 8, 9, 8, '#'); m.rect(25, 15, 28, 16, '#'); m.rect(15, 18, 18, 19, '#');
+    m.rect(1, 1, 10, 9, '#'); m.rect(23, 1, 32, 9, '#');                 // townhouses either side of the tower
+    m.rect(5, 26, 10, 27, '#'); m.rect(25, 15, 28, 16, '#'); m.rect(15, 18, 18, 19, '#');
     m.rect(5, 16, 8, 17, '#'); m.rect(7, 22, 10, 23, '#'); m.rect(25, 23, 28, 24, '#');
     m.rect(0, 29, 33, 29, '#'); m.put(16, 29, 'S'); m.put(17, 29, 'S');
     return {
@@ -186,11 +201,15 @@
       doorFor: (x, y) => (x >= 11 && x <= 22 && y <= 11) ? [16, 12] : null,
       sky: () => flags().ch9 ? 'dark' : 'dusk',
       objects: [
-        { name: 'ex-tower', x: 16.5, y: 11 }, { name: 'ex-ticker', x: 6.5, y: 8 }, { name: 'ex-bull', x: 26.5, y: 16 }, { name: 'ex-fountain', x: 16.5, y: 19 },
+        { name: 'ex-townhouse', x: 1.8, y: 9 }, { name: 'ex-townhouse2', x: 4.9, y: 9 }, { name: 'ex-townhouse', x: 8, y: 9 },
+        { name: 'ex-townhouse2', x: 25, y: 9 }, { name: 'ex-townhouse', x: 28.1, y: 9 }, { name: 'ex-townhouse2', x: 31.2, y: 9 },
+        { name: 'ex-planter', x: 3, y: 12 }, { name: 'ex-planter', x: 30, y: 12 }, { name: 'ex-planter', x: 12, y: 20 }, { name: 'ex-planter', x: 21, y: 20 },
+        { name: 'lamp', x: 10, y: 12 }, { name: 'lamp', x: 23, y: 12 }, { name: 'lamp', x: 3, y: 20 }, { name: 'lamp', x: 30, y: 20 },
+        { name: 'ex-tower', x: 16.5, y: 11 }, { name: 'ex-ticker', x: 7.5, y: 27 }, { name: 'ex-bull', x: 26.5, y: 16 }, { name: 'ex-fountain', x: 16.5, y: 19 },
         { name: 'ex-stall', x: 6.5, y: 17 }, { name: 'ex-stall', x: 8.5, y: 23 }, { name: 'ex-stall', x: 26.5, y: 24, flip: true },
         { name: 'd10a', x: 14, y: 15 }, { name: 'd10a', x: 19, y: 15 }, { name: 'd10a', x: 14, y: 25 }, { name: 'd10a', x: 19, y: 25 }, { name: 'd10b', x: 3, y: 26 }, { name: 'd10b', x: 30, y: 9 }
       ],
-      labels: [{ x: 16.5, y: 12.6, text: 'THE EXCHANGE' }, { x: 16.5, y: 28.6, text: 'ROAD ↓' }],
+      labels: [{ x: 16.5, y: 12.6, text: 'THE EXCHANGE' }, { x: 16.5, y: 28.6, text: 'ROAD ↓' }, { x: 16.5, y: 21.6, text: 'MARKET SQUARE' }],
       actors: { v3: { x: 21, y: 21, face: 'west', name: 'TRADER' } },
       back: { D: [16, 12, 'south'], S: [16, 28, 'north'] }, enter: [16, 28, 'north'], ch: 10, music: 'ch10', weather: 'storm'
     };
@@ -422,6 +441,20 @@
       $('#screen-title').appendChild(b);
     };
   }
+  // The camp is lively: two heroes spar, one trains on the dummy, one argues with the vending machine.
+  let beat = 0;
+  setInterval(() => {
+    if (!sc || !sc.active || cur !== 'camp') return;
+    const a = sc.actors; beat++;
+    if (a.hero77 && !a.hero77.path.length) {
+      const lunge = beat % 4 === 1, back = beat % 4 === 3;
+      if (lunge) { sc.walk('hero77', 8, 18, { speed: 6 }).then(() => { sc.face('hero77', 'east'); sc.emote('hero256', beat % 8 === 1 ? 'alert' : 'star', 1); }); }
+      if (back) { sc.walk('hero77', 7, 18, { speed: 3 }).then(() => sc.face('hero77', 'east')); }
+      if (beat % 8 === 5) { sc.walk('hero256', 10, 18, { speed: 5 }).then(() => sc.walk('hero256', 9, 18, { speed: 5 })).then(() => sc.face('hero256', 'west')); sc.emote('hero77', 'laugh', 1); }
+    }
+    if (a.hero3 && beat % 3 === 0) sc.emote('hero3', beat % 6 === 0 ? 'star' : 'dots', 0.8);
+    if (a.hero12 && beat % 10 === 7) sc.emote('hero12', 'alert', 1.4);
+  }, 700);
   NR.go = go;
   NR.where = () => cur;
   NR.scene = () => sc;

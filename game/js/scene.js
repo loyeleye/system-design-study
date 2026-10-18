@@ -263,7 +263,7 @@
       // Trees ring the map; objects and people are drawn row by row so you walk behind them.
       const objs = (def.objects || []).filter(o => !o.hidden);
       for (let y = y0; y < y1 + 3; y++) {
-        for (let x = x0; x < x1; x++) if (tile(x, y) === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
+        if (y < HT) for (let x = x0; x < x1; x++) if (MAP[y][x] === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
         objs.forEach(o => { if (Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
         Object.values(sc.actors).forEach(a => { if (Math.round(a.py) === y) person(a, t); });
       }
