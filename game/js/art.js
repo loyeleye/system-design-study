@@ -235,7 +235,7 @@
     revenant: { col: '#8fdcff', anim: 'float' }, streamer: { col: '#ff6b6b', anim: 'shake' }, crawlqueen: { col: '#ffd86b', anim: 'float' },
     glutton: { col: '#b98bff', anim: 'shake' }, mirage: { col: '#ffd9a0', anim: 'float' }, whisper: { col: '#ff8f8f', anim: 'float' }, regress: { col: '#a8b8a0', anim: 'shake' },
     looper: { col: '#ffc46b', anim: 'shake' }, billgoblin: { col: '#9fe08a', anim: 'shake' }, staleindex: { col: '#c9a07a', anim: 'shake' }, jester: { col: '#ff7ad9', anim: 'float' },
-    furnace: { col: '#ff9a4d', anim: 'shake' }, judge: { col: '#c8b48a', anim: 'float' }, oracle: { col: '#7ef0e0', anim: 'float' }, helpdesk: { col: '#ffcf6b', anim: 'shake' }
+    furnace: { col: '#ff9a4d', anim: 'shake' }, judge: { col: '#c8b48a', anim: 'float' }, crystalhead: { col: '#7ef0e0', anim: 'float' }, helpdesk: { col: '#ffcf6b', anim: 'shake' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   A.enemy = function (sprite, boss, hue) {

@@ -145,14 +145,14 @@
   }
   // Animated bits per chapter: Prod's torches flicker, the Archives' scrolls bob on the flood,
   // the Spire's gears turn and its vents puff steam. Everything else is painted once.
-  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam', d4a: 'bob', d4b: 'spin', d5a: 'torch' };
+  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam', d4a: 'bob', d4b: 'spin', d5a: 'torch', d6b: 'bob' };
   // A chapter uses its own art when it has some, and borrows the first three chapters' in turn otherwise.
   function artCh(have) {
     const ch = (S.save.run && S.save.run.ch) || 1;
     return have && (Array.isArray(have) ? have.includes(String(ch)) : have[ch]) ? ch : ((ch - 1) % 3) + 1;
   }
-  // Weather by chapter: sun and leaves early on, wind and drifting cloud in the Sky Harbour, storms elsewhere.
-  const WEATHER = { 1: 'sun', 2: 'sun', 4: 'wind' };
+  // Weather by chapter: sun and leaves early on and in the Oracle Spire, wind and drifting cloud in the Sky Harbour, storms elsewhere.
+  const WEATHER = { 1: 'sun', 2: 'sun', 4: 'wind', 6: 'sun' };
   function paintMap(el, floors, xy, bend, rows, cur) {
     const A = dArt(), cv = el && el.querySelector('.map-bg');
     if (!A || !cv) return;
@@ -553,7 +553,7 @@
     const sv = S.save;
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0);
-    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false;
+    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
@@ -603,6 +603,9 @@
     if (d.handoff) C.handoff = true;
     if (d.failover) C.failover = true;
     if (d.killswitch) C.killswitch = true;
+    if (d.streaming) C.streaming = true;
+    if (d.sandbox) C.sandbox = true;
+    if (d.steplimit) C.steplimit = true;
     // Distributed Trace: show every weakness and resistance of this incident.
     if (d.reveal) { Object.keys(C.e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(C.e.resist).forEach(t => C.known.add('r:' + t)); saveKnown(); }
     if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
@@ -864,6 +867,47 @@
         else note = 'Ten million pushes, all at once, straight at the provider. ';
         dmg = absorb(n, [['write', 1], ['any', 1]]); break;
       }
+      // Chapter 6
+      case 'tokens': {
+        let n = sc(it.n);
+        if (hasInfra('batch')) { n *= 0.4; note = 'Continuous batching: many chats shared each GPU step. '; }
+        if (hasInfra('router')) { n *= 0.7; note += 'Easy questions went to the small model. '; }
+        if (C.throttle) { n *= 0.5; note += 'Token budgets clipped the heaviest users. '; }
+        if (!note) note = 'Every prompt got a GPU to itself, and waited for it. ';
+        dmg = absorb(n, [['cache', 1], ['any', 1]]); break;
+      }
+      case 'wait': {
+        let n = sc(it.n);
+        if (C.streaming) { n *= 0.4; note = 'The first words appeared at once; nobody minds watching the rest. '; }
+        if (hasInfra('batch')) { n *= 0.7; note += 'Batched GPUs kept the queue short. '; }
+        if (!note) note = 'Users stared at a blank box for eleven seconds, then left. ';
+        dmg = absorb(n, [['any', 1], ['read', 1]]); break;
+      }
+      case 'hallucinate': {
+        let n = sc(it.n);
+        if (hasInfra('rag')) { n *= 0.5; note = 'Answers came from retrieved passages, with sources. '; }
+        else { C.stale += 2; note = 'The model answered from memory, confidently and wrongly (+2 Stale). '; }
+        dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1]]); break;
+      }
+      case 'inject': {
+        let n = sc(it.n);
+        if (C.sandbox) { dmg = 0; note = 'The injected order reached a tool that could not touch anything. '; break; }
+        if (hasInfra('guard')) { n *= 0.4; note = 'Guardrails caught most of it on the way in and out. '; }
+        else { C.stale += 1; note = 'The model obeyed the hidden instructions, and leaked a little (+1 Stale). '; }
+        dmg = absorb(n, [['any', 1]]); break;
+      }
+      case 'regress': {
+        let n = sc(it.n);
+        if (hasInfra('eval')) { n *= 0.4; note = 'The golden set flagged the regression before it shipped. '; }
+        else { C.stale += 1; note = 'Nobody noticed one answer in ten got worse (+1 Stale). '; }
+        dmg = absorb(n, [['any', 1], ['write', 1]]); break;
+      }
+      case 'agentloop': {
+        let n = sc(it.n);
+        if (C.steplimit) { n *= 0.3; note = 'Ten steps, then the agent stopped and asked. '; }
+        else note = 'The agent called the same tool again. And again. ';
+        dmg = absorb(n, [['any', 1]]); break;
+      }
     }
     return { dmg, note };
   }
@@ -960,6 +1004,9 @@
     if (C.handoff) chips.push('<span class="chip">Handoff ready</span>');
     if (C.failover) chips.push('<span class="chip">Failover ready</span>');
     if (C.killswitch) chips.push('<span class="chip">Kill switch armed</span>');
+    if (C.streaming) chips.push('<span class="chip">Streaming</span>');
+    if (C.sandbox) chips.push('<span class="chip">Tools sandboxed</span>');
+    if (C.steplimit) chips.push('<span class="chip">Step limit</span>');
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
@@ -1156,12 +1203,12 @@
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
     const ch = run.ch || 1, boss = run.bossId || SD.chapters[ch].boss;
+    let rareNew = null;
     if (won) {
       const firstClear = !sv.flags['ch' + ch];
       sv.stats.wins++; sv.flags['ch' + ch] = true; sv.flags['beat-' + boss] = true;
       S.syncChapter();
-      const rare = SD.chapters[ch].rareCard;
-      if (rare && firstClear) setTimeout(() => U.system('RARE CARD UNLOCKED', `${U.esc(SD.cards[rare].name)} can now turn up in rewards and shops, in every dungeon.`, 'gold'), 400);
+      if (firstClear) rareNew = SD.chapters[ch].rareCard;
     }
     sv.run = null;
     U.lastIncident = incident || 'A cascade';
@@ -1179,6 +1226,7 @@
       if (won) await U.dialog(SD.story[SD.enemies[boss].win || SD.chapters[ch].win]);
       else await U.dialog(SD.story.cascade);
       SD.main.toHub(true);
+      if (rareNew) setTimeout(() => U.system('RARE CARD UNLOCKED', `${U.esc(SD.cards[rareNew].name)} can now turn up in rewards and shops, in every dungeon.`, 'gold'), 1500);
     };
   }
 })();

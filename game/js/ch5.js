@@ -361,7 +361,7 @@
       { s: 'narr', t: 'The spinning circle stops. It has never stopped before. It looks around, confused, and wanders off to find work elsewhere.' },
       { s: 'latency', t: 'No... no buffering...? Then what... am I... for?' },
       { s: 'wen', t: 'Oh, you poor thing. You look like a man who has never washed a dish in a hurry. I have a job for you. It is very slow work. You will love it.', e: 'happy' },
-      { s: 'system', t: '[SYSTEM] Chapter 5 cleared. Lord Latency now washes dishes at the Cache Café. Chapter 6 and the North Road are coming soon.' }
+      { s: 'system', t: '[SYSTEM] Chapter 5 cleared. Lord Latency now washes dishes at the Cache Café. An optional dungeon has opened: the Oracle Spire, for a rare card.' }
     ],
     boss5bIntro: [
       { s: 'narr', t: 'Silk covers the throne room. Every thread leads to a page of a book, and every book is open. In the middle, a crowned spider is reading all of them at once.' },
@@ -376,7 +376,7 @@
       { s: 'lexi', t: 'She has applied to be my assistant librarian. She can shelve with eight hands. I said yes.', e: 'happy' },
       { s: 'latency', t: 'My... spider... has a job. And I... I have... nothing... to wait for.' },
       { s: 'wen', t: 'Come down to the café, dear. I need someone to wash dishes. Slowly. Very slowly. It is the only job in town where that is a feature.', e: 'happy' },
-      { s: 'system', t: '[SYSTEM] Chapter 5 cleared. Lord Latency now washes dishes at the Cache Café. Chapter 6 and the North Road are coming soon.' }
+      { s: 'system', t: '[SYSTEM] Chapter 5 cleared. Lord Latency now washes dishes at the Cache Café. An optional dungeon has opened: the Oracle Spire, for a rare card.' }
     ],
     boss5cIntro: [
       { s: 'narr', t: 'At the top of the castle, the throne is very, very far away. You walk towards it for some time. It does not get closer.' },
@@ -391,7 +391,7 @@
       { s: 'gary', t: 'I put a server in my shed once. Fastest site in the valley. Only I used it.' },
       { s: 'wen', t: 'Up you get, dear. There is a sink full of dishes at the café, and no hurry at all. I think you will be very good at it.', e: 'happy' },
       { s: 'uptima', e: 'happy', t: 'The Demon King of Lag, washing dishes! I am framing this. Slowly. In his honour.' },
-      { s: 'system', t: '[SYSTEM] Chapter 5 cleared. Lord Latency now washes dishes at the Cache Café. Chapter 6 and the North Road are coming soon.' }
+      { s: 'system', t: '[SYSTEM] Chapter 5 cleared. Lord Latency now washes dishes at the Cache Café. An optional dungeon has opened: the Oracle Spire, for a rare card.' }
     ]
   });
 
