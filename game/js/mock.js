@@ -113,6 +113,9 @@
 .mi-clock .mi-btn { margin-top: 6px; }
 .mi-note { font-size: 12px; font-weight: 800; color: var(--mi-violet); height: 16px; margin-top: 4px; opacity: 0; transition: opacity .3s; }
 .mi-note.show { opacity: 1; }
+.mi-partner { background: #eef5ff; border: 3px solid var(--mi-blue); border-radius: 12px; padding: 6px 12px; margin: 6px 0 0; font-weight: 700; font-size: 14px; }
+.mi-partner::before { content: 'Your interviewer: '; color: var(--mi-blue); }
+.mi-partner.pop { animation: mi-pop .3s; }
 
 /* Timeline: one segment per phase, sized by its budget */
 .mi-line { display: flex; gap: 3px; margin: 10px 0 12px; }
@@ -220,6 +223,8 @@
     document.head.appendChild(st);
   }
 
+  M.css = () => injectCss();
+
   // ---------- One interview ----------
   const TIMEUP = { timeUp: true };
   M.interview = function (root, opts) {
@@ -240,12 +245,16 @@
     const notes = { nav: [], design: [], depth: [], trade: [], time: [] };
     const lessons = [], answers = [];
     const add = (k, n) => { got[k] += n; };
+    // Pair Mock (js/pair-mock.js) watches the round through these events. Each is small and refers to the
+    // problem data by index, so the interviewer's page renders it from its own copy of SD.mock.problems.
+    const emit = ev => { if (opts.onEvent) try { opts.onEvent(ev); } catch (e) { /* the round goes on */ } };
     const note = (k, good, t) => { notes[k].push({ good, t }); if (!good) scribble(); };
 
     root.innerHTML = `<div class="mi">
       <div class="mi-top">${face('gary', 64)}<div class="mi-bubble"><p></p></div>
         <div class="mi-clock"><span class="mi-t">0:00</span><small>of ${TOTAL}:00 · ${esc(pace.label)}</small>${pace.free ? '' : '<button class="mi-btn sm mi-pause" type="button">Pause</button>'}</div></div>
       <div class="mi-note" aria-live="polite">✎ Gary writes something down.</div>
+      <div class="mi-partner" aria-live="polite" hidden></div>
       <div class="mi-line">${SD.mock.phases.map(p => `<div class="mi-seg" data-ph="${p.id}" style="--w:${p.min}"><b><i></i></b><span>${esc(p.name)} · ${p.min}m</span></div>`).join('')}</div>
       <div class="mi-stage"></div></div>`;
     const $ = s => root.querySelector(s);
@@ -253,6 +262,11 @@
     const bubble = $('.mi-bubble');
     function gary(html) { bubble.querySelector('p').innerHTML = html; bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop'); sfx('blip'); }
     let noteTimer = 0;
+    // A line from a human interviewer (Pair Mock). Plain text only.
+    if (opts.onReady) opts.onReady({
+      say(text) { const el = $('.mi-partner'); el.hidden = false; el.textContent = text; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); sfx('blip'); },
+      minutes: () => mins()
+    });
     function scribble() { const n = $('.mi-note'); n.classList.add('show'); clearTimeout(noteTimer); noteTimer = setTimeout(() => n.classList.remove('show'), 1800); }
 
     let timeUp, timeUpP = new Promise(res => { timeUp = res; });
@@ -270,6 +284,7 @@
       });
       const ph = SD.mock.phases.find(p => p.id === phase);
       if (ph && !warned[phase] && m - phaseAt > ph.min) { warned[phase] = true; gary('<i>(Gary glances at the clock.)</i> We should probably move on soon.'); }
+      if (opts.onTick) try { opts.onTick(m, phase); } catch (e) { /* ignore */ }
       if (!pace.free && m >= TOTAL) { over = true; timeUp(); }
     }
     const iv = setInterval(tick, 250);
@@ -281,7 +296,7 @@
     pausedCard.className = 'mi-card mi-paused';
     pausedCard.innerHTML = '<h3>Paused</h3><p class="mi-small mi-muted">A real round can\'t pause, so use this for interruptions, not for thinking time. The question is hidden while the clock is stopped.</p>';
 
-    function enter(id) { leave(); phase = id; phaseAt = mins(); tick(); }
+    function enter(id) { leave(); phase = id; phaseAt = mins(); emit({ k: 'phase', id }); tick(); }
     function leave() { if (phase) spent[phase] = mins() - phaseAt; phase = null; }
     // Render a step and wait for it to resolve, or for the clock to run out.
     function step(html, wire) {
@@ -335,7 +350,7 @@
         const draw = () => step(render(), r => {
           stage.querySelectorAll('.mi-opt[data-i]').forEach(b => b.onclick = () => {
             const i = +b.dataset.i, c = P.clarify[i];
-            asked.push(i); T.extra += COST.clarify; sfx('card');
+            asked.push(i); T.extra += COST.clarify; sfx('card'); emit({ k: 'ask', i });
             gary(esc(c.a));
             if (!c.good) note('nav', false, c.note);
             r('again');
@@ -365,6 +380,7 @@
         }));
         stage.querySelector('.mi-commit').onclick = () => res();
       });
+      emit({ k: 'req', picks: items.map((it, i) => [P.req.indexOf(it), pick[i]]) });
       const right = items.filter((it, i) => pick[i] === it.k).length;
       add('nav', right / items.length * 2);
       const outIn = items.filter((it, i) => it.k === 'out' && pick[i] !== 'out'), inOut = items.filter((it, i) => it.k !== 'out' && pick[i] === 'out');
@@ -392,6 +408,7 @@
         });
         stage.querySelector('.mi-commit').onclick = () => res();
       });
+      emit({ k: 'ents', on: [...on].map(i => P.entities.indexOf(ents[i])) });
       const need = ents.filter(e => e.ok === true), hit = need.filter(e => on.has(ents.indexOf(e))), wrong = ents.filter((e, i) => e.ok === false && on.has(i));
       add('design', Math.max(0, hit.length / need.length - 0.5 * wrong.length));
       if (hit.length === need.length && !wrong.length) note('design', true, 'Named the core entities without padding.');
@@ -405,6 +422,7 @@
 
       gary('Good. Now the API. What would you write?');
       const r = await choose(P.api, { tag: 'API' });
+      emit({ k: 'pick', what: 'api', pick: r.pick, ok: r.ok });
       add('design', r.ok ? 1.5 : 0);
       note('design', r.ok, r.ok ? 'Wrote a clean API: right verbs, right shape.' : 'The API needed correcting.');
       if (!r.ok) lessons.push({ t: 'API', why: P.api.why });
@@ -420,6 +438,7 @@
       const E = P.est;
       const r = await choose({ q: 'What do you estimate?', opts: E.pick.map(p => p.t), a: E.pick.findIndex(p => p.k === 'best') }, { tag: 'Estimation' });
       const kind = E.pick[r.pick].k;
+      emit({ k: 'pick', what: 'est', pick: r.pick, ok: kind === 'best' });
       if (kind === 'best') { T.extra += COST.estBest; add('trade', 1); note('trade', true, 'Estimated only what changes the design.'); }
       if (kind === 'slow') { T.extra += COST.estSlow; add('trade', 0.3); note('trade', false, 'Spent six minutes estimating numbers that didn\'t change the design.'); note('time', false, 'Estimation ran long.'); lessons.push({ t: 'Estimate with a purpose', why: 'Do math only where the answer changes a decision. Here that\'s: ' + E.pick.find(p => p.k === 'best').t }); }
       if (kind === 'skip') {
@@ -440,6 +459,7 @@
         inp.focus();
       });
       const ok = val >= E.lo && val <= E.hi;
+      emit({ k: 'est', val, ok });
       add('depth', ok ? 1.5 : 0);
       note('depth', ok, ok ? `Got the number right (${val.toLocaleString()} ${E.unit}).` : `Estimated ${val.toLocaleString()} ${E.unit}; the answer is ${E.ans}.`);
       if (!ok) lessons.push({ t: 'The estimate', why: `${E.ans}. ${E.why}` });
@@ -472,6 +492,7 @@
           stage.querySelector('.mi-commit').onclick = () => res();
         });
         await build();
+        emit({ k: 'flow', fi, parts: sorted(sel) });
         const missing = () => F.need.filter(g => !g.some(id => sel.has(id)));
         const first = new Set(F.need.filter(g => g.some(id => sel.has(id))));
         if (missing().length) {
@@ -480,7 +501,9 @@
           T.extra += COST.nudge; sfx('blip');
           gary(`Hm. ${esc(nudged)}`);
           note('design', false, `Needed a nudge on "${F.name}".`);
+          emit({ k: 'nudge', text: nudged });
           await build();
+          emit({ k: 'flow', fi, parts: sorted(sel), after: true });
         }
         // Credit: a part found first time is 1, after the nudge 0.5. Extra machinery costs 0.5 each.
         const extra = sorted(sel).filter(id => !F.need.some(g => g.includes(id)) && !(F.ok || []).includes(id));
@@ -504,6 +527,7 @@
       // The "why is that there?" question.
       gary(esc(H.why.q.replace(/^"|"$/g, '')));
       const r = await choose(H.why, { tag: 'Justify a choice', think: true, conf: true });
+      emit({ k: 'pick', what: 'why', pick: r.pick, ok: r.ok, conf: r.conf });
       calibrate(r, 'the design');
       add('trade', r.ok ? 2 : 0);
       note('trade', r.ok, r.ok ? 'Justified the key design choice with the workload, not a buzzword.' : 'Couldn\'t say why the key part was there.');
@@ -527,6 +551,7 @@
         <div class="mi-opts">${order.map((d, i) => `<button class="mi-opt" type="button" data-i="${i}">${esc(d.title)}</button>`).join('')}</div></div>`, res => {
         stage.querySelectorAll('.mi-opt').forEach(b => b.onclick = () => { sfx('card'); res(order[+b.dataset.i]); });
       });
+      emit({ k: 'dive', id: pick.id });
       let plan;
       if (pick.kind === 'bikeshed') {
         T.extra += COST.bikeshed;
@@ -552,14 +577,18 @@
     async function dive(d, k) {
       if (k) gary(`Next: ${esc(lc(d.title))}.`);
       const tag = `Deep dive ${k + 1} of 2 · ${d.title}`;
+      emit({ k: 'divenow', id: d.id });
       let r = await choose(d, { tag, think: true, conf: true });
+      emit({ k: 'pick', what: 'dive', id: d.id, pick: r.pick, ok: r.ok, conf: r.conf });
       calibrate(r, lc(d.title));
       answers.push({ c: d.c, ok: r.ok, conf: r.conf });
       if (r.ok) { add('depth', 2); note('depth', true, `Nailed ${lc(d.title)} on the first try.`); }
       else {
         T.extra += COST.nudge; sfx('wrong');
         gary(`Hm. ${esc(d.nudge)}`);
+        emit({ k: 'nudge', text: d.nudge });
         const r2 = await choose(d, { tag: tag + ' · after a nudge', conf: false, skip: [r.pick] });
+        emit({ k: 'pick', what: 'dive', id: d.id, pick: r2.pick, ok: r2.ok, retry: true });
         if (r2.ok) { add('depth', 1); note('depth', false, `Got ${lc(d.title)} after a nudge.`); }
         else note('depth', false, `Missed ${lc(d.title)}, even after a nudge.`);
         lessons.push({ t: d.title, why: d.why });
@@ -569,6 +598,7 @@
       await reveal(d, r);
       gary(esc(d.f.q));
       const f = await choose(d.f, { tag: tag + ' · the trade-off' });
+      emit({ k: 'pick', what: 'follow', id: d.id, pick: f.pick, ok: f.ok });
       add('trade', f.ok ? 1.5 : 0);
       note('trade', f.ok, f.ok ? `Named the cost of the fix for ${lc(d.title)}.` : `Didn't see what the fix for ${lc(d.title)} costs.`);
       if (!f.ok) lessons.push({ t: d.title + ': the cost', why: d.f.why });
@@ -584,6 +614,7 @@
       const w = await step(`<div class="mi-card"><span class="mi-tag">Your questions</span><div class="mi-opts">${W.map((x, i) => `<button class="mi-opt" type="button" data-i="${i}">${esc(x.t)}</button>`).join('')}</div></div>`, res => {
         stage.querySelectorAll('.mi-opt').forEach(b => b.onclick = () => { sfx('card'); res(W[+b.dataset.i]); });
       });
+      emit({ k: 'wrap', i: SD.mock.wrap.indexOf(w) });
       gary(esc(w.reply));
       if (w.good) { add('trade', 0.5); note('trade', true, 'Asked a thoughtful question at the end.'); } else note('trade', false, w.note);
       await step(`<div class="mi-card"><p>Gary stands up and brushes croissant flakes off his notes.</p>${next('See the debrief')}</div>`, onNext);
@@ -611,7 +642,9 @@
         sfx('hurt');
         await new Promise(res => { stage.innerHTML = `<div class="mi-card"><h3>Out of time</h3><p>A real round ends at 45 minutes, whatever is left. Anything you didn't reach scores zero.</p>${next('See the debrief')}</div>`; onNext(res); });
       }
-      return score(cut);
+      const res = score(cut);
+      emit({ k: 'end', verdict: res.verdict, grades: res.grades, mins: res.mins, cut });
+      return res;
     }
 
     function score(cut) {

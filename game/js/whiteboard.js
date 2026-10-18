@@ -42,6 +42,8 @@
 
   let audioOn = true;
   W.setSound = on => { audioOn = on; };
+  // For pages that draw their own board with these styles (the Guild Hall's Showdown).
+  W.css = () => injectCss();
   const SFX = { ok: 's-ok', card: 's-card', wrong: 's-wrong', right: 's-right', hit: 's-hit', hurt: 's-hurt', crit: 's-crit', blip: 's-blip', cancel: 's-cancel' };
   function sfx(n) {
     if (!audioOn) return;
