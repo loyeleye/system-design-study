@@ -67,11 +67,17 @@
   ];
   const bestAsc = () => Math.max(0, ...Object.values(M.st().asc.best));
   // One badge per chapter, added when the chapter list is final (chapters 7-10 register after this file loads).
+  // Letter ranks read as "B-Rank Cleared". The optional dungeon and the EX-rank finale get their own names instead.
+  function chapterBadgeName(c, last) {
+    if (c.optional) return 'Overtime';
+    if (c.rank === 'EX') return last ? 'Shipped It' : 'Off the Charts';
+    return `${c.rank}-Rank Cleared`;
+  }
   function chapterBadges() {
     return M.chapterIds().map(ch => {
       const c = SD.chapters[ch], last = ch === Math.max(...M.mainChapters());
       return { id: 'ch' + ch, tier: last ? 3 : c.optional ? 2 : 1, icon: last ? 'crown' : c.optional ? 'all-seeing-eye' : 'medieval-gate',
-        name: `${c.rank}-Rank Cleared`, text: `Clear ${c.name.replace(/^the /, 'the ')} (chapter ${ch})${c.optional ? ', the optional dungeon' : ''}.`, test: () => !!flags()['ch' + ch], ch };
+        name: chapterBadgeName(c, last), text: `Clear ${c.name.replace(/^the /, 'the ')} (chapter ${ch})${c.optional ? ', the optional dungeon' : ''}.`, test: () => !!flags()['ch' + ch], ch };
     });
   }
   AC.list = () => chapterBadges().concat(LIST);
