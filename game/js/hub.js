@@ -100,7 +100,7 @@
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
       // The Enter that closes a conversation must not open the next one: the dialogue box already used it.
-      if (!active || e.defaultPrevented) return;
+      if (!active || drop || e.defaultPrevented) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = talkTarget(); if (t) { e.preventDefault(); onDoor(t); } }
@@ -125,6 +125,16 @@
   H.resize = resize;
   H.start = function () { active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); };
   H.stop = function () { active = false; cancelAnimationFrame(raf); };
+  // The cold open's landing (js/main.js): The Cloud spits you out and you drop onto the plaza with a thump, a puff
+  // of dust and a shaken camera. H.drop() resolves once you're down; taps and keys wait until then.
+  let drop = null, lastCloud = null, camX = 0, camY = 0;
+  H.drop = function () { return new Promise(res => { drop = { t: 0, dur: 1.3, res, landed: false }; }); };
+  function updateDrop(dt) {
+    if (!drop) return;
+    drop.t += dt;
+    if (!drop.landed && drop.t >= drop.dur) { drop.landed = true; SD.audio.sfx('crash'); }
+    if (drop.t >= drop.dur + 0.8) { const r = drop.res; drop = null; r(); }
+  }
   H.placeAt = function (x, y) { P.x = P.px = x; P.y = P.py = y; P.path = []; pip.x = x - 1; pip.y = y; };
   // Where a tile's centre is on screen (used by the playtest scripts to tap villagers).
   H.tileToScreen = function (x, y) {
@@ -153,7 +163,7 @@
     return { cx, cy };
   }
   function tap(e) {
-    if (!active) return;
+    if (!active || drop) return;
     const r = cv.getBoundingClientRect();
     const { cx, cy } = cam();
     const tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
@@ -249,7 +259,7 @@
   function loop(ts2) {
     if (!active) return;
     const dt = Math.min(0.05, (ts2 - (t0 || ts2)) / 1000); t0 = ts2;
-    update(dt); updateWanderers(dt);
+    update(dt); updateWanderers(dt); updateDrop(dt);
     draw(ts2 / 1000, dt);
     raf = requestAnimationFrame(loop);
   }
@@ -260,7 +270,10 @@
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#5fbf5f'; ctx.fillRect(0, 0, vw, vh);
     const { cx, cy } = cam();
-    ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
+    camX = cx; camY = cy;
+    // The landing shakes the screen for a moment.
+    const since = drop && drop.landed ? drop.t - drop.dur : 1, shake = since < 0.3 ? (1 - since / 0.3) * 5 : 0;
+    ctx.save(); ctx.translate(-Math.round(cx) + (Math.random() - 0.5) * shake, -Math.round(cy) + (Math.random() - 0.5) * shake);
     const x0 = Math.max(0, Math.floor(cx / ts) - 1), x1 = Math.min(W, Math.ceil((cx + vw) / ts) + 1);
     const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) drawCorner(x, y, t);
@@ -324,6 +337,7 @@
     const ex = 20.5 * ts - cx, gap = R * 2.6 - Math.abs(X - ex);
     if (gap > 0) X += X >= ex ? gap : -gap;
     const Y = R * 1.15 + 6 + Math.sin(t * 0.8) * 4;
+    lastCloud = { X, Y, R };
     ctx.save(); ctx.globalAlpha = 0.97;
     ctx.fillStyle = INK;
     puff(X, Y + 3, R + 3, INK, false);
@@ -335,7 +349,9 @@
     }
     ctx.fillStyle = INK;
     ctx.beginPath(); ctx.arc(X - R * 0.3, Y - R * 0.05, 3, 0, Math.PI * 2); ctx.arc(X + R * 0.3, Y - R * 0.05, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, Y + R * 0.08, R * 0.14, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    // While it drops you off its mouth is an O; otherwise a small smile.
+    if (drop && drop.t < drop.dur + 0.4) { ctx.beginPath(); ctx.ellipse(X, Y + R * 0.2, R * 0.11, R * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, Y + R * 0.08, R * 0.14, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
     ctx.font = `600 ${Math.max(10, R * 0.26)}px Fredoka, sans-serif`; ctx.textAlign = 'center';
     ctx.fillStyle = INK; ctx.fillText('THE CLOUD', X, Y - R * 0.55);
     ctx.restore();
@@ -456,10 +472,10 @@
   // People: the player, Gary, villagers who stand by their doors, and wanderers who just like walking.
   // Each has a PixelLab sheet: rows face south, west, east and north; column 0 stands, then walk or idle frames.
   const ROW = { south: 0, west: 1, east: 2, north: 3 };
-  function person(id, px, py, t, face, moving) {
+  function person(id, px, py, t, face, moving, noShadow) {
     const c = ART().chars[id], im = pic('c-' + id);
     ctx.fillStyle = 'rgba(43,35,64,0.22)';
-    ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+    if (!noShadow) { ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
     if (!c || !ok(im)) return;
     const row = ROW[face] || 0, n = c.n[row];
     const col = n ? 1 + Math.floor(t * (moving ? 8 : 5)) % n : 0;
@@ -469,8 +485,36 @@
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h + bob, w, h);
   }
   const headY = y => (y - 0.55) * ts;
-  function drawPlayer(t) { person('you', P.px, P.py, t, P.face, P.moving); }
-  function drawPip(t) { obj('pip', pip.x * ts + ts / 2, pip.y * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, P.dir < 0); }
+  function drawPlayer(t) {
+    if (drop && !drop.landed && lastCloud) {
+      // Falling: from The Cloud's belly (screen space, last frame) to your tile, accelerating like a dropped croissant.
+      const k = Math.min(1, drop.t / drop.dur), e = k * k;
+      const x0 = (lastCloud.X + camX) / ts - 0.5, y0 = (lastCloud.Y + lastCloud.R * 0.6 + camY) / ts - 0.95;
+      const x = x0 + (P.px - x0) * e, y = y0 + (P.py - y0) * e;
+      ctx.fillStyle = `rgba(43,35,64,${0.08 + 0.2 * k})`;
+      ctx.beginPath(); ctx.ellipse(P.px * ts + ts / 2, P.py * ts + ts * 0.9, ts * 0.34 * (0.3 + 0.7 * k), ts * 0.12 * (0.3 + 0.7 * k), 0, 0, Math.PI * 2); ctx.fill();
+      // Speed lines above you.
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2;
+      for (let i = -1; i <= 1; i++) { const lx = (x + 0.5) * ts + i * ts * 0.3; ctx.beginPath(); ctx.moveTo(lx, (y - 0.4) * ts); ctx.lineTo(lx, (y - 0.4 - 0.6 - k * 1.4) * ts); ctx.stroke(); }
+      // Top-down, so falling away from the camera: you start big under The Cloud and shrink to size as you land.
+      const sc = 1 + (1 - e) * 0.9, fx = (x + 0.5) * ts, fy = (y + 0.95) * ts;
+      ctx.save(); ctx.translate(fx, fy); ctx.scale(sc, sc); ctx.translate(-fx, -fy);
+      person('you', x, y, t, 'south', false, true);
+      ctx.restore();
+      return;
+    }
+    person('you', P.px, P.py, t, P.face, P.moving);
+    if (drop && drop.landed) {
+      // Dust puffs out from your feet.
+      const d = drop.t - drop.dur, a = Math.max(0, 0.75 - d);
+      for (let i = 0; i < 6; i++) {
+        const ang = Math.PI * (i / 5), r = ts * (0.35 + d * 1.5);
+        puff(P.px * ts + ts / 2 + Math.cos(ang) * r * (i % 2 ? 1 : -1), P.py * ts + ts * 0.9 - Math.sin(ang) * r * 0.25, ts * 0.12 * (1 + d), `rgba(240,230,210,${a})`, false);
+      }
+    }
+  }
+  function drawPip(t) {
+    if (drop) return; obj('pip', pip.x * ts + ts / 2, pip.y * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, P.dir < 0); }
   function facing(n) {
     const dx = P.x - n.x, dy = P.y - n.y;
     if (Math.abs(dx) + Math.abs(dy) > 4) return 'south';

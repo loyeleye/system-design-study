@@ -4,9 +4,9 @@
   const U = SD.ui, S = SD.state, Q = SD.quiz, AU = SD.audio;
   const $ = U.$;
 
-  M.show = function (screen) {
+  M.show = function (screen, keepMusic) {
     ['title', 'hub', 'run'].forEach(s => { $('#screen-' + s).hidden = s !== screen; });
-    if (screen === 'hub') { SD.hub.start(); M.hud(); AU.music('town'); } else SD.hub.stop();
+    if (screen === 'hub') { SD.hub.start(); M.hud(); if (!keepMusic) AU.music('town'); } else SD.hub.stop();
   };
 
   const sndIcon = () => AU.muted() ? '🔇' : '🔊';
@@ -144,9 +144,16 @@
     AU.stop();
     await U.dialog(SD.story.intro);
     await new Promise(res => askName(() => { U.closePanel(); res(); }));
-    U.stage('plaza');
-    await U.dialog(SD.story.introAfterName);
+    // Down through The Cloud (js/intro.js), then out of its mouth onto the plaza (js/hub.js).
+    await U.dialog(SD.story.introDrop);
+    await U.fall();
     U.stage(null);
+    SD.hub.placeAt(5, 7);
+    M.show('hub', true);
+    U.whiteout(false);
+    await SD.hub.drop();
+    AU.music('town');
+    await U.dialog(SD.story.introAfterName);
     sv.flags.prologue = true; S.persist();
     SD.run.tutorial(async () => {
       M.toHub(false);

@@ -982,8 +982,14 @@ SD.story = {
     { s: 'uptima', e: 'sad', t: 'And it keeps breaking. My last hero tried to fix it with a sword. Please do not use a sword.' },
     { s: 'system', t: '[SYSTEM] You have been isekai\'d. Class: Junior Engineer. Please rate your death from 1 to 5 stars.' }
   ],
+  // After the name form: Uptima sends you down. U.fall() and the village drop follow (js/main.js).
+  introDrop: [
+    { s: 'uptima', e: 'happy', t: '{name}. Lovely. Very heroic. I\'ll file it. Now, the quickest way down to my kingdom is through the Cloud.' },
+    { s: 'uptima', e: 'neutral', t: 'Try to land on something soft. Not the bakery. They\'re still upset about the last one.' },
+    { s: 'narr', t: 'The cloud under your feet goes soft. Then it goes away.' }
+  ],
   introAfterName: [
-    { s: 'pip', t: 'Ping! Hi! I\'m Pip! I\'m a packet. I got lost on my way somewhere in 2014 and nobody ever acknowledged me.' },
+    { s: 'pip', t: 'Ping! You fell out of the Cloud! Hi! I\'m Pip! I\'m a packet. I got lost on my way somewhere in 2014 and nobody ever acknowledged me.' },
     { s: 'pip', t: 'Wait. Oh no. OH NO. Look up! The Cloud is raining slimes on the plaza!', fx: 'alarm' }
   ],
   tutorialStart: 'Pip: "They all want the same cat picture! Play Cache-Aside: a cache answers repeat reads. Then press End turn."',
