@@ -295,7 +295,11 @@
     },
     enter: t => { hiss({ t, dur: 0.03, vol: 0.3, f: 3000 }); tone({ wave: 'square', f: 1200, t, dur: 0.02, vol: 0.04 }); },
     alarm: t => [0, 1, 2].forEach(i => { tone({ wave: 'square', f: 880, t: t + i * 0.28, dur: 0.13, vol: 0.07 }); tone({ wave: 'square', f: 660, t: t + i * 0.28 + 0.14, dur: 0.13, vol: 0.07 }); }),
-    whoosh: t => hiss({ t, dur: 0.35, vol: 0.2, type: 'bandpass', f: 300, f2: 3000 })
+    whoosh: t => hiss({ t, dur: 0.35, vol: 0.2, type: 'bandpass', f: 300, f2: 3000 }),
+    // Explodia's EXPLOSION: a crack, a low thump and a long rolling rumble.
+    boom: t => { hiss({ t, dur: 0.12, vol: 0.5, f: 2500 }); tone({ wave: 'sine', f: 120, f2: 30, t, dur: 0.6, vol: 0.9, r: 0.4 }); hiss({ t: t + 0.03, dur: 1.6, vol: 0.55, type: 'lowpass', f: 900, f2: 60 }); },
+    // Synth thunder for when the recorded claps haven't loaded.
+    thunder: t => { hiss({ t, dur: 0.08, vol: 0.35, f: 3000 }); hiss({ t: t + 0.05, dur: 2.2, vol: 0.45, type: 'lowpass', f: 500, f2: 50 }); }
   };
   // `pitch` lets each speaker have their own typewriter voice, as in classic JRPGs.
   A.sfx = function (name, pitch) {
@@ -306,6 +310,12 @@
       // Crits keep the synth sparkle on top of the recorded slash.
       if (name === 'crit') [1047, 1319, 1568, 2093].forEach((f, i) => tone({ wave: 'square', f, t: t + 0.04 + i * 0.045, dur: 0.07, vol: 0.05 }));
       return;
+    }
+    // Thunder prefers a recorded clap (the storm's, loaded on first use) over the synth.
+    if (name === 'thunder') {
+      const clap = AMB['clap' + (1 + Math.floor(Math.random() * 3))];
+      loadBuf(AMB.clap1); loadBuf(AMB.clap2); loadBuf(AMB.clap3);
+      if (playBuf(clap, sfxBus, 0.9)) return;
     }
     if (FX[name]) FX[name](t);
   };
