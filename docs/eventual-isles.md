@@ -83,36 +83,22 @@ Done on 2026-10-18 (steps 1, 2, 3 with the tide marker, and both step 6 follow-u
    typewriter pitch map in `ui.js` is private, so islanders use the default pitch; `SD.isles.VOICE` lists the
    intended pitches if that map is ever exposed.
 
-## Art list for PixelLab
+## Art
 
-Everything below is drawn in code today and works as is; these would replace it.
+The islanders, their portraits, the landmarks and the sand paths are PixelLab art in `assets/img/isles`, drawn in
+the village's style (68px characters, low top-down, black outline; map objects as 3/4 front-view buildings).
+`tools/isles_art.py SRC` builds them from the raw PixelLab downloads and rewrites the `I.ART` sizes block in
+`isles-data.js`; the raw files are in the project's shared folder under `isles-art-raw/`.
 
-**Character sheets** (`assets/img/village/c-<id>.webp`, 4 directions like the villagers) and **painted portraits**
-(`neutral`, `happy`, `angry`, `confused`):
-
-| id | Who | Look |
+| What | Files | Drawn by |
 | --- | --- | --- |
-| leilani | Harbourmaster Leilani, Native Hawaiian | Long dark wavy hair with a plumeria, teal harbour jacket |
-| kwame | Captain Kwame, Ghanaian | Captain's cap, short beard, white uniform with gold buttons |
-| farida | Madame Farida, Egyptian | Black hair in an elegant bun, gold earrings, burgundy suit |
-| mutex | Admiral Mutex, retired | Bicorne hat, enormous white mustache, navy coat with one medal |
-| tomas | Mang Tomas, Filipino | Grey hair under a flat cap, green work shirt, sawdust |
-| bloom | Bloom, Tomas's dog | Shaggy brown dog with a red collar |
-| lucia | Professora Lúcia, Brazilian | Big curly black hair, round glasses, purple shawl, three dictionaries |
-| haeun | Mayor Ha-eun, Korean | Straight black bob, red mayoral sash |
-| hajin | Mayor Ha-jin, Korean | Short black hair, blue mayoral sash |
-| ruth | Old Ruth, Irish | Curly red-grey hair under a green headscarf, apron, tally board |
-| minh | Cartographer Minh, Vietnamese | Short black hair, round glasses, ochre vest stuffed with rolled maps |
-| kids | The Isles School | Three small students of mixed backgrounds, hands up |
-| keeper | The Keeper | Never seen: a folded note in K.'s handwriting |
+| Islander sheets: rows face south, west, east, north; column 0 stands, then a breathing idle facing south | `c-<id>.webp` (the school is `c-kid1` to `c-kid3`) | `sprite()` and `islander()` in `isles-map.js`, scaled to the villagers' height |
+| Portraits in `neutral`, `happy`, `angry`, `confused` (the Keeper is the note) | `portraits/<id>-<mood>.webp` | `I.portrait` in `isles-data.js` |
+| Landmarks: office, school, bank, mill (with `sails` turning on it and `planks`), tower, three fish stalls, shop, the twin halls, the lighthouse (its beam is drawn in code) | `<name>.webp` | `PIXEL` in `isles-map.js` |
+| Props: Kwame's `ferry`, the harbour queue's `boat`s and `pilings`, dock `bollard`s, the `tide` post, the Keeper's `note` | `<name>.webp` | `isles-map.js` |
+| Sand paths: a grass/sand Wang tileset, tile for index i at column i % 4, row i / 4 | `t-sand.webp` | `drawCorner()` |
 
-**Landmarks** (objects standing on their footprints): the Harbourmaster's office with an anchor sign, the Isles
-School with a bell, the Bank of the Isles (columns), Admiral Mutex's harbour with a queue of small boats, the Log
-Mill (windmill with turning blades and a plank stack), the Tower of Tongues (tall, with three banners), three fish
-market stalls with striped awnings, the Map & Tool Shop (compass sign), the West and East Twin halls (blue and red
-roofs), the lighthouse (red and white, a lamp room and a beam), Kwame's ferry, a tide post (high and low), a dock,
-and a boardwalk bridge piece (horizontal, vertical and corner).
-
-**Terrain**: a sand tileset in the same Wang layout as `t-dirt` would make the island paths read as beaches.
+The code-drawn versions stay as fallbacks while an image loads, and for any new islander until their art exists.
+Bridges and their building sites are still drawn in code.
 
 **Music**: the Isles play the existing `explore` track; a calmer seaside track would suit the crossings.

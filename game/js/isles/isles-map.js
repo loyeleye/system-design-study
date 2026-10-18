@@ -1,8 +1,8 @@
 // The Eventual Isles: the walkable archipelago, drawn on a canvas like Pingsby (hub.js) and reusing its PixelLab
 // terrain, trees and props. Islands open in waves, the ferry crosses between docks (with a quiet crossing as a
 // diffuse-mode break), bridges appear as you explain how two islands' ideas connect, and each island's tide post
-// shows when its ideas are due for review. Island landmarks and islanders are drawn in code until PixelLab art
-// arrives (docs/eventual-isles.md has the art list).
+// shows when its ideas are due for review. Landmarks, islanders and the sand paths are PixelLab art in
+// assets/img/isles (I.ART in isles-data.js); the code-drawn versions below stand in while an image loads.
 (function () {
   const I = SD.isles, U = SD.ui, S = SD.state, AU = SD.audio, K = I.kit;
   const esc = s => U.esc(s);
@@ -421,6 +421,18 @@
   const pic = name => PICS[name] || (PICS[name] = Object.assign(new Image(), { src: VA + name + '.webp' }));
   const ok = im => im.complete && im.naturalWidth > 0;
   const ART = () => SD.villageArt;
+  const IA = 'assets/img/isles/';
+  const ipic = name => PICS['i:' + name] || (PICS['i:' + name] = Object.assign(new Image(), { src: IA + name + '.webp' }));
+  // An Isles object, its bottom centre at (x, y), scaled like the village art (native pixels at 32px tiles).
+  function iobj(name, x, y, k, alpha) {
+    const im = ipic(name), sz = I.ART && I.ART.objects[name];
+    if (!sz || !ok(im)) return false;
+    const w = sz[0] * ts / 32 * (k || 1), h = sz[1] * ts / 32 * (k || 1);
+    if (alpha != null) { ctx.save(); ctx.globalAlpha = alpha; }
+    ctx.drawImage(im, Math.round(x - w / 2), Math.round(y - h), Math.round(w), Math.round(h));
+    if (alpha != null) ctx.restore();
+    return true;
+  }
   function obj(name, x, y, k, flip) {
     const im = pic(name), sz = ART().objects[name];
     if (!sz || !ok(im)) return;
@@ -436,8 +448,10 @@
     const T = TOP.find(k => c.includes(k));
     if (!T) return;
     const i = c.reduce((a, k, j) => a | ((k === T) << (3 - j)), 0);
-    const im = pic('t-' + T), at = ART().terrain[T][i];
-    if (ok(im) && at) ctx.drawImage(im, at[0], at[1], 32, 32, (x - 0.5) * ts, (y - 0.5) * ts, ts, ts);
+    // Island paths are sand (an Isles tileset laid out by Wang index); the village dirt stands in while it loads.
+    const sand = T === 'dirt' && ipic('t-sand');
+    if (sand && ok(sand)) ctx.drawImage(sand, (i % 4) * 32, (i >> 2) * 32, 32, 32, (x - 0.5) * ts, (y - 0.5) * ts, ts, ts);
+    else { const im = pic('t-' + T), at = ART().terrain[T][i]; if (ok(im) && at) ctx.drawImage(im, at[0], at[1], 32, 32, (x - 0.5) * ts, (y - 0.5) * ts, ts, ts); }
     if (i === 15 && T === 'water') {
       const h = hash(x, y), k = (t * 0.7 + (h % 100) / 100) % 1;
       if (k < 0.5) { ctx.fillStyle = `rgba(255,255,255,${0.7 * Math.sin(k * Math.PI * 2)})`; ctx.fillRect((x - 0.5 + (h % 7) / 8) * ts, (y - 0.5 + (h >> 4) % 6 / 8) * ts, ts / 8, ts / 16); }
@@ -453,7 +467,50 @@
     box(X + w / 2 - ts * 0.3, Y + h - ts * 0.75, ts * 0.6, ts * 0.75, '#8a5a3c', 3);
     [0.22, 0.78].forEach(f => box(X + w * f - ts * 0.25, Y + h * 0.55, ts * 0.5, ts * 0.4, '#bfe8ff', 2));
   }
-  // Each landmark, drawn standing on its footprint.
+  // Each landmark in PixelLab art, standing on its footprint, with the moving parts animated on top.
+  // Returns false while an image is still loading, and the code-drawn landmark below stands in.
+  const foot = l => [(l.x + l.w / 2) * ts, (l.y + l.h) * ts];
+  const PIXEL = {
+    office: l => iobj('office', ...foot(l)),
+    school: l => iobj('school', ...foot(l)),
+    bank: l => iobj('bank', ...foot(l)),
+    shop: l => iobj('shop', ...foot(l)),
+    hallW: l => iobj('hallW', ...foot(l), 1.15),
+    hallE: l => iobj('hallE', ...foot(l), 1.15),
+    tower: l => iobj('tower', ...foot(l)),
+    harbour(l, t) {
+      // Admiral Mutex's harbour: one ship at a time. The queue of little boats reaches the horizon.
+      if (!ok(ipic('boat')) || !ok(ipic('pilings'))) return false;
+      const X = (l.x + 1) * ts, Y = (l.y + 0.6) * ts;
+      for (let i = 6; i >= 0; i--) iobj('boat', X + ts * (0.5 + i * 0.75), Y + ts * 0.9 + Math.sin(t * 2 + i) * 2, 1 - i * 0.08);
+      return iobj('pilings', (l.x + 0.5) * ts, (l.y + l.h) * ts, 0.9);
+    },
+    mill(l, t) {
+      const im = ipic('mill'), sz = I.ART.objects.mill;
+      if (!ok(im) || !ok(ipic('sails'))) return false;
+      const X = (l.x + l.w * 0.4) * ts, Y = (l.y + l.h) * ts;
+      iobj('mill', X, Y);
+      // The sails turn on the hub near the top of the tower.
+      const s = I.ART.objects.sails, k = ts / 32 * 0.8, hy = Y - sz[1] * ts / 32 * 0.8;
+      ctx.save(); ctx.translate(X, hy); ctx.rotate(t * 0.8);
+      ctx.drawImage(ipic('sails'), -s[0] * k / 2, -s[1] * k / 2, s[0] * k, s[1] * k); ctx.restore();
+      // A stack of planks: never edited, only added.
+      iobj('planks', (l.x + l.w - 0.6) * ts, Y);
+      return true;
+    },
+    market(l, t) {
+      if (!['stallB', 'stallR', 'stallG'].every(n => ok(ipic(n)))) return false;
+      ['stallB', 'stallR', 'stallG'].forEach((n, i) => iobj(n, (l.x + 1 + i * 2) * ts, (l.y + l.h) * ts));
+      return true;
+    },
+    light(l, t) {
+      if (!ok(ipic('light'))) return false;
+      const X = (l.x + l.w / 2) * ts, Y = (l.y + l.h) * ts, h = I.ART.objects.light[1] * ts / 32;
+      ctx.save(); ctx.globalAlpha = 0.25; ctx.fillStyle = '#ffe14d';
+      const a = t * 0.9, ly = Y - h * 0.86; ctx.beginPath(); ctx.moveTo(X, ly); ctx.arc(X, ly, ts * 6, a, a + 0.35); ctx.closePath(); ctx.fill(); ctx.restore();
+      return iobj('light', X, Y);
+    }
+  };
   const DRAW = {
     office(l, t) {
       roofHouse(l, '#fff3dc', '#2f7fb8', t);
@@ -572,12 +629,14 @@
     Object.keys(DOCK).forEach(id => {
       if (!I.islandOpen(id)) return;
       const [x, y] = DOCK[id].at;
+      if (ok(ipic('bollard'))) { [[0.2, 0.35], [0.8, 0.35], [0.2, 1], [0.8, 1]].forEach(([a, b]) => iobj('bollard', (x + a) * ts, (y + b) * ts, 0.45)); return; }
       ctx.fillStyle = '#a8774f'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
       [[0.1, 0.1], [0.75, 0.1], [0.1, 0.75], [0.75, 0.75]].forEach(([a, b]) => { rr((x + a) * ts, (y + b) * ts, ts * 0.15, ts * 0.15, 2); ctx.fill(); ctx.stroke(); });
     });
     // Kwame's ferry waits at Ferry Landing.
     const [fx, fy] = DOCK.landing.at, bob = Math.sin(t * 2) * 2;
     const X = (fx + 1.6) * ts, Y = (fy + 0.75) * ts + bob;
+    if (iobj('ferry', X, Y + ts * 0.35)) return;
     poly([[X - ts * 0.9, Y - ts * 0.2], [X + ts * 0.9, Y - ts * 0.2], [X + ts * 0.65, Y + ts * 0.3], [X - ts * 0.65, Y + ts * 0.3]], '#f4f1ea');
     box(X - ts * 0.4, Y - ts * 0.65, ts * 0.8, ts * 0.45, '#2f7fb8', 3);
     box(X + ts * 0.1, Y - ts * 1.0, ts * 0.18, ts * 0.38, '#d94848', 2);
@@ -586,7 +645,7 @@
     if (!I.islandOpen(id)) return;
     const [x, y] = TIDE[id], low = I.tideLow(id);
     const X = (x + 0.5) * ts, Y = (y + 0.95) * ts;
-    box(X - ts * 0.08, Y - ts * 0.9, ts * 0.16, ts * 0.9, '#a8774f', 2);
+    if (!iobj('tide', X, Y)) box(X - ts * 0.08, Y - ts * 0.9, ts * 0.16, ts * 0.9, '#a8774f', 2);
     box(X - ts * 0.3, Y - ts * 0.95, ts * 0.6, ts * 0.3, low ? '#ffe14d' : '#9fd3ff', 3);
     ctx.fillStyle = INK; ctx.font = `700 ${ts * 0.18}px Fredoka, sans-serif`; ctx.textAlign = 'center';
     ctx.fillText(low ? 'LOW' : 'HIGH', X, Y - ts * 0.74);
@@ -596,8 +655,37 @@
       ctx.fillStyle = '#ffb3c7'; ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, sy, ts * 0.16, Math.PI, 0); ctx.lineTo(X, sy + ts * 0.12); ctx.closePath(); ctx.fill(); ctx.stroke();
     }
   }
-  // Islanders: code-drawn chibis from I.looks (portraits use the same looks), until PixelLab sheets arrive.
+  // Islanders: PixelLab sheets breathing in place, facing south. Sheets are drawn at 68px characters, so they're
+  // scaled to stand as tall as the villagers; the school is three students side by side.
+  const TALL = { kid1: 0.5, kid2: 0.5, kid3: 0.5, bloom: 0.62 };
+  function sprite(id, X, Y, t, k) {
+    const c = I.ART && I.ART.chars[id], im = ipic('c-' + id);
+    if (!c || !ok(im)) return false;
+    const s = ts / 32 * (k || TALL[id] || 0.66), n = c.n[0], col = n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n : 0;
+    ctx.drawImage(im, col * c.w, 0, c.w, c.h, Math.round(X - c.w * s / 2), Math.round(Y - c.h * s), Math.round(c.w * s), Math.round(c.h * s));
+    return true;
+  }
+  function islander(p, t) {
+    const X = (p.x + 0.5) * ts, Y = (p.y + 0.95) * ts, s = ts / 32;
+    if (p.note) {
+      // The keeper: a folded note on the lighthouse door, lifting in the wind.
+      if (!ok(ipic('note'))) return false;
+      ctx.save(); ctx.translate(X, Y - 6 * s); ctx.rotate(Math.sin(t * 1.5) * 0.1); iobj('note', 0, 0, 1); ctx.restore();
+      return true;
+    }
+    if (p.id === 'kids') {
+      if (!['kid1', 'kid2', 'kid3'].every(k => ok(ipic('c-' + k)))) return false;
+      ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.42, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+      sprite('kid1', X - 10 * s, Y, t); sprite('kid3', X + 10 * s, Y, t); sprite('kid2', X, Y + 2 * s, t);
+      return true;
+    }
+    if (!I.ART || !I.ART.chars[p.id] || !ok(ipic('c-' + p.id))) return false;
+    ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    return sprite(p.id, X, Y, t);
+  }
+  // The code-drawn chibis from I.looks, for Gary's rod and anyone whose sheet hasn't loaded.
   function chibi(p, t) {
+    if (p.id !== 'gary' && islander(p, t)) return;
     const L = I.looks[p.id]; if (!L && p.id !== 'gary') return;
     const X = (p.x + 0.5) * ts, Y = (p.y + 0.95) * ts, s = ts / 32, bob = Math.sin(t * 2.4 + p.x) * s;
     ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
@@ -689,7 +777,7 @@
         if (c === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
         else if (c === 'L') obj(['bush', 'lamp', 'bush', 'barrel', 'sign'][hash(x, y) % 5], (x + 0.5) * ts, (y + 0.95) * ts, 1);
       }
-      LAND.forEach(l => { if (l.y + l.h - 1 === y && I.islandOpen(l.isle)) DRAW[l.id](l, t); });
+      LAND.forEach(l => { if (l.y + l.h - 1 === y && I.islandOpen(l.isle) && !(PIXEL[l.id] && PIXEL[l.id](l, t))) DRAW[l.id](l, t); });
       Object.keys(TIDE).forEach(id => { if (TIDE[id][1] === y) drawTide(id, t); });
       ppl.forEach(p => { if (p.y === y) chibi(p, t); });
       if (Math.round(P.py) === y) { obj('pip', pip.x * ts + ts / 2, pip.y * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, P.dir < 0); person(t); }
