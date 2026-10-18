@@ -1067,8 +1067,9 @@
       C.log = boom; U.shake('.stage'); AU.sfx('crit');
       if (settle()) return;
     }
-    // Each incident still standing acts in turn, left to right, with its own intent and load.
-    const group = grouped(), tgt = C.fi, hold = C.llHold;
+    // Each incident still standing acts in turn, left to right, with its own intent and load: it lunges at you
+    // (or braces, for an intent with no load), and its hit lands before the next one moves.
+    const group = grouped(), tgt = C.fi, hold = C.llHold, order = group ? living() : [C.fi];
     let total = 0, notes = boom;
     const act = () => {
       if (group) C.llHold = hold;   // Lord Latency's raised hand stops the whole group, not just the first
@@ -1083,24 +1084,46 @@
       total += dmg;
       notes += group ? `${foeName(C.foes[C.fi])}: ${note}${dmg ? `-${dmg}. ` : ''}` : note;
       if (!(held && held.hold)) C.ii++;
+      return { dmg, attack: !!it.n };
     };
-    eachFoe(act);
-    if (group) { C.llHold = false; if (C.foes[tgt].dead) load(living()[0]); }
-    const dmg = total;
-    run.sla -= dmg; C.taken = (C.taken || 0) + dmg;
-    C.log = notes + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
-    if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); } else AU.sfx('shield');
-    if (run.sla <= 0 && !run.mercy && mod('mercy', true, C)) {
-      run.sla = 1; run.mercy = true;
-      U.system('LAST UPTIME', 'Pip throws himself in front of the request. You hold at 1 SLA. He is fine. Probably. Once a run.', 'red');
-    }
-    S.persist();
-    if (run.sla <= 0) { C.over = true; renderCombat(); return setTimeout(() => endRun(false, 'The ' + C.e.name), 700); }
-    // Turn-end rules that raise the load (ascension 10) raise it for every incident in a group.
-    const rage0 = C.rage;
-    emit('turnEnd', C);
-    if (group && C.rage !== rage0) { const dr = C.rage - rage0; C.foes.forEach((f, i) => { if (i !== C.fi) f.rage += dr; }); }
-    beginTurn();
+    C.busy = true;
+    const step = k => {
+      if (C.over) return;
+      if (k >= order.length) return finish();
+      const i = order[k];
+      if (group) { stash(); load(i); }
+      const { dmg, attack } = act();
+      if (group) { stash(); load(tgt); }
+      run.sla -= dmg; C.taken = (C.taken || 0) + dmg;
+      C.log = notes;
+      renderCombat();
+      const el = $(group ? `.foe[data-fi="${i}"]` : '.stage .foe') || $('.foe');
+      if (el) el.classList.add(attack ? 'foe-atk' : 'foe-def');
+      // The hit lands as the lunge reaches you.
+      setTimeout(() => {
+        if (C.over) return;
+        if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); if ($('.hero')) U.burst($('.hero'), false); }
+        else AU.sfx(attack ? 'shield' : 'ok');
+        if (run.sla <= 0 && !run.mercy && mod('mercy', true, C)) {
+          run.sla = 1; run.mercy = true;
+          U.system('LAST UPTIME', 'Pip throws himself in front of the request. You hold at 1 SLA. He is fine. Probably. Once a run.', 'red');
+        }
+        S.persist();
+        if (run.sla <= 0) { C.busy = false; C.over = true; renderCombat(); return setTimeout(() => endRun(false, 'The ' + C.e.name), 700); }
+        setTimeout(() => step(k + 1), 380);
+      }, 260);
+    };
+    const finish = () => {
+      if (group) { C.llHold = false; if (C.foes[tgt].dead) load(living()[0]); }
+      C.log = notes + (total ? `You took ${total} SLA damage.` : 'No damage.');
+      C.busy = false;
+      // Turn-end rules that raise the load (ascension 10) raise it for every incident in a group.
+      const rage0 = C.rage;
+      emit('turnEnd', C);
+      if (group && C.rage !== rage0) { const dr = C.rage - rage0; C.foes.forEach((f, i) => { if (i !== C.fi) f.rage += dr; }); }
+      beginTurn();
+    };
+    step(0);
   }
 
   function win() {
