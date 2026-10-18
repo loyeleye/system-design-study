@@ -6,10 +6,9 @@ SRC_DIR holds the raw PixelLab files:
   objs/<name>.png                         map objects (landmarks and props)
   port/<id>-<mood>.png                    128px busts: a character_to_portrait of the south sprite, then
                                           edit_image for the happy, angry and confused expressions
-  sand.json                               the grass/sand Wang tileset (lower = grass, upper = sand)
-It writes the sheets, objects, portraits and t-sand.webp, then rewrites the I.ART block in js/isles/isles-data.js.
+It writes the sheets, objects and portraits, then rewrites the I.ART block in js/isles/isles-data.js.
 """
-import base64, io, json, os, re, sys
+import json, os, re, sys
 from PIL import Image
 
 SRC = sys.argv[1]
@@ -17,6 +16,7 @@ GAME = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(GAME, 'assets/img/isles')
 os.makedirs(os.path.join(OUT, 'portraits'), exist_ok=True)
 MOODS = ['neutral', 'happy', 'angry', 'confused']
+TOWN = {'valentin': 'village', 'ren': 'arc'}
 
 def save(im, name):
     im.save(os.path.join(OUT, name + '.webp'), lossless=True, quality=100, method=6)
@@ -50,6 +50,8 @@ for name in sorted(os.listdir(os.path.join(SRC, 'chars'))):
         for ci, im in enumerate(r):
             out.alpha_composite(im.crop((x0, box[1], x1, box[3])), (ci * fw, ri * fh))
     save(out, 'c-' + name)
+    # Valentin stands in Pingsby and Ren on the North Road (js/ploy-quest.js): their sheets go where those maps look.
+    if name in TOWN: out.save(os.path.join(GAME, 'assets/img', TOWN[name], f'c-{name}.webp'), lossless=True, quality=100, method=6)
     art['chars'][name] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows]}
 
 for f in sorted(os.listdir(os.path.join(SRC, 'objs'))):
@@ -79,18 +81,6 @@ for m in MOODS:
 note = crop(Image.open(os.path.join(SRC, 'objs', 'note.png')).convert('RGBA'))
 note = note.resize((note.width * 8, note.height * 8), Image.NEAREST)
 note.save(os.path.join(OUT, 'portraits', 'keeper-neutral.webp'), lossless=True, method=6)
-
-# Sand paths: a 4x4 atlas where the tile for Wang index i (NW*8 + NE*4 + SW*2 + SE, 1 = sand) sits at
-# column i % 4, row i // 4.
-ts = json.load(open(os.path.join(SRC, 'sand.json')))['tileset']
-tw = ts['tile_size']['width']
-atlas = Image.new('RGBA', (tw * 4, tw * 4))
-for t in ts['tiles']:
-    c = t['corners']
-    i = sum((c[k] == 'upper') << s for k, s in (('NW', 3), ('NE', 2), ('SW', 1), ('SE', 0)))
-    tile = Image.open(io.BytesIO(base64.b64decode(t['image']['base64'].split(',')[-1]))).convert('RGBA')
-    atlas.alpha_composite(tile, ((i % 4) * tw, (i // 4) * tw))
-save(atlas, 't-sand')
 
 data = os.path.join(GAME, 'js/isles/isles-data.js')
 s = open(data).read()

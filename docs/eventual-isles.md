@@ -86,7 +86,7 @@ Since then the pier has moved: the ferry is the `E` exit at (47, 7), the end of 
 
 ## Art
 
-The islanders, their portraits, the landmarks and the sand paths are PixelLab art in `assets/img/isles`, drawn in
+The islanders, their portraits and the landmarks are PixelLab art in `assets/img/isles`, drawn in
 the village's style (68px characters, low top-down, black outline; map objects as 3/4 front-view buildings).
 `tools/isles_art.py SRC` builds them from the raw PixelLab downloads and rewrites the `I.ART` sizes block in
 `isles-data.js`; the raw files are in the project's shared folder under `isles-art-raw/`.
@@ -97,9 +97,33 @@ the village's style (68px characters, low top-down, black outline; map objects a
 | Portraits in `neutral`, `happy`, `angry`, `confused` (the Keeper is the note) | `portraits/<id>-<mood>.webp` | `I.portrait` in `isles-data.js` |
 | Landmarks: office, school, bank, mill (with `sails` turning on it and `planks`), tower, three fish stalls, shop, the twin halls, the lighthouse (its beam is drawn in code) | `<name>.webp` | `PIXEL` in `isles-map.js` |
 | Props: Kwame's `ferry`, the harbour queue's `boat`s and `pilings`, dock `bollard`s, the `tide` post, the Keeper's `note` | `<name>.webp` | `isles-map.js` |
-| Sand paths: a grass/sand Wang tileset, tile for index i at column i % 4, row i / 4 | `t-sand.webp` | `drawCorner()` |
+| Ploy's cove: the Game Club house, the game `gtable` and Arjun's `umbrella` | `club.webp`, `gtable.webp`, `umbrella.webp` | `PIXEL` in `isles-map.js` |
+| Valentin's and Ren's town sheets (village scale, ~50px), copied where Pingsby and the North Road look | `assets/img/village/c-valentin.webp`, `assets/img/arc/c-ren.webp` | `hub.js`, `scene.js` |
+
+The ground is Pingsby's own terrain (textured grass, brown dirt paths, plaza stones and water from `SD.villageArt`), so the Isles match the town and the North Road.
 
 The code-drawn versions stay as fallbacks while an image loads, and for any new islander until their art exists.
 Bridges and their building sites are still drawn in code.
 
 **Music**: the Isles play the existing `explore` track; a calmer seaside track would suit the crossings.
+
+## Ploy's cove and Game Night of the Gods
+
+The mainland runs south past the mill to a cove (rows 38 to 49) with the Tide Pool Game Club. It is part of Ferry
+Landing, so it opens with the Isles after chapter 3.
+
+- **Ploy** (after Kaguya-sama's Chika) runs the club. Talking to her offers the solo mock interview
+  (`SD.mock.solo({ title })`) and the Guild Hall (`SD.guild.play()`), each shown only when that code is loaded. Her
+  first meeting plays an intro (`S.save.isles.ployMet`); she has a "!" until then.
+- **Nok** (Naruto's Might Guy), **Kai** (Saiki K.) and **Arjun** (Demon Slayer's Zenitsu) stand in the cove with idle
+  lines in `landing.js`, and new ones once the quest is done.
+- **Game Night of the Gods** (`js/ploy-quest.js`, after chapter 5) is a town quest (`js/quests.js`) with steps on the
+  Isles, in Pingsby and on the North Road: Ploy, Nok, Kai, Arjun, Uptima, **Valentin** (Pingsby, outside the Cache
+  Café; Haven't You Heard? I'm Sakamoto), Aigerim, Ploy, **Ren** (North Road, by the courier post; Death Note's L),
+  Uptima and Ploy. It teaches event sourcing and CQRS (concept `eventsrc`, zone 98). The Isles map sends its
+  islanders' talk to `SD.quests` first and shows the town quests' markers.
+- **Reward**: 400 shards, 220 XP and a pick of one of three rare cards (`gnDance`, `gnLog`, `gnAsleep`), added to
+  `S.save.cardLib` so it starts in the deck on every run (bench it in Aigerim's shop). They are in no reward pool.
+- Shared-file hooks: one `NPCS` entry in `hub.js` (Valentin, shown from chapter 5 via `SD.cove.inTown`), one line in
+  `main.js`'s `door()` for his idle talk, and the `js/ploy-quest.js` script tag in `index.html` after
+  `sidequests.js`. Ren is added to `SD.northRoad.maps.road.actors` from `ploy-quest.js`, as `sidequests.js` does.

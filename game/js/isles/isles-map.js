@@ -1,18 +1,19 @@
 // The Eventual Isles: the walkable archipelago, drawn on a canvas like Pingsby (hub.js) and reusing its PixelLab
 // terrain, trees and props. Islands open in waves, the ferry crosses between docks (with a quiet crossing as a
 // diffuse-mode break), bridges appear as you explain how two islands' ideas connect, and each island's tide post
-// shows when its ideas are due for review. Landmarks, islanders and the sand paths are PixelLab art in
+// shows when its ideas are due for review. Landmarks and islanders are PixelLab art in
 // assets/img/isles (I.ART in isles-data.js); the code-drawn versions below stand in while an image loads.
 (function () {
   const I = SD.isles, U = SD.ui, S = SD.state, AU = SD.audio, K = I.kit;
   const esc = s => U.esc(s);
   const INK = '#2b2340';
-  const W = 62, HT = 38;
+  const W = 62, HT = 50;
 
   // ---------- Geometry ----------
   // Islands are rounded blobs of grass in the sea; the mainland (Ferry Landing) fills the west edge.
   const ISLE = {
-    landing: { box: [0, 0, 12, 37], label: [6, 1.2] },
+    // The mainland runs south past the mill to Ploy's cove and the Tide Pool Game Club.
+    landing: { box: [0, 0, 12, 49], parts: [[0, 0, 12, 49], [13, 38, 31, 48]], label: [6, 1.2] },
     ledger: { box: [18, 2, 28, 12], label: [23, 2.2] },
     mill: { box: [18, 25, 28, 35], label: [23, 25.2] },
     tower: { box: [31, 14, 40, 23], label: [35.5, 14.2] },
@@ -47,10 +48,14 @@
     { id: 'shop', isle: 'carto', x: 45, y: 27, w: 5, h: 3, name: 'MAP & TOOL SHOP' },
     { id: 'hallW', isle: 'twins', x: 32, y: 1, w: 3, h: 2, name: 'WEST TWIN' },
     { id: 'hallE', isle: 'twins', x: 39, y: 1, w: 3, h: 2, name: 'EAST TWIN' },
-    { id: 'light', isle: 'lighthouse', x: 57, y: 16, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [57.5, 12.4] }
+    { id: 'light', isle: 'lighthouse', x: 57, y: 16, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [57.5, 12.4] },
+    { id: 'club', isle: 'landing', x: 16, y: 39, w: 4, h: 3, name: 'TIDE POOL GAME CLUB' },
+    { id: 'gtable', isle: 'landing', x: 20, y: 44, w: 1, h: 1, name: '' },
+    { id: 'umbrella', isle: 'landing', x: 26, y: 44, w: 1, h: 1, name: '' }
   ];
   // Islanders stand by their landmarks. The keeper is a note pinned to the lighthouse door.
   const PEOPLE = [
+    { id: 'ploy', x: 16, y: 43 }, { id: 'kai', x: 19, y: 44 }, { id: 'nok', x: 21, y: 44 }, { id: 'arjun', x: 26, y: 45 },
     { id: 'leilani', x: 10, y: 19 }, { id: 'kwame', x: 12, y: 22 }, { id: 'kids', x: 10, y: 28 },
     { id: 'farida', x: 24, y: 8 }, { id: 'mutex', x: 26, y: 10 },
     { id: 'tomas', x: 22, y: 31 }, { id: 'bloom', x: 25, y: 31 },
@@ -63,7 +68,7 @@
   const TIDE = { landing: [11, 25], ledger: [20, 9], mill: [26, 28], tower: [32, 20], fish: [52, 10], carto: [52, 28], twins: [36, 5], lighthouse: [59, 20] };
   const EXIT = [0, 20];
 
-  // Build the tile grid: '~' sea, '.' grass, 'p' sand path, ',' boards and plazas, 'T' tree, 'L' prop, '#' landmark.
+  // Build the tile grid: '~' sea, '.' grass, 'p' dirt path, ',' boards and plazas, 'T' tree, 'L' prop, '#' landmark.
   const G = [];
   for (let y = 0; y < HT; y++) G.push(new Array(W).fill('~'));
   const hash = (x, y) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
@@ -78,10 +83,11 @@
   }
   // The mainland coast wobbles a little.
   for (let y = 0; y < HT; y++) for (let x = 0; x <= 12 + (hash(3, y) % 3 === 0 && ![7, 18, 23, 30].includes(y) ? 1 : 0); x++) set(x, y, '.');
+  blob(ISLE.landing.parts[1], true);
   Object.keys(ISLE).forEach(id => { if (id === 'landing') return; (ISLE[id].parts || [ISLE[id].box]).forEach(b => blob(b, id !== 'lighthouse')); });
-  // Sand paths: from the Pingsby road through Ferry Landing, and across each island to its dock and bridges.
+  // Dirt paths: from the Pingsby road through Ferry Landing, and across each island to its dock and bridges.
   const path = pts => { for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i]; for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++) if (get(x, y) === '.') set(x, y, 'p'); } };
-  path([[0, 20], [9, 20], [9, 7], [12, 7]]); path([[9, 20], [9, 30], [12, 30]]); path([[9, 18], [12, 18]]); path([[9, 23], [12, 23]]);
+  path([[0, 20], [9, 20], [9, 7], [12, 7]]); path([[9, 20], [9, 30], [12, 30]]); path([[9, 30], [9, 42], [28, 42]]); path([[9, 18], [12, 18]]); path([[9, 23], [12, 23]]);
   path([[9, 17], [9, 17]]);
   path([[18, 7], [23, 7], [23, 12]]); path([[23, 7], [28, 7], [28, 8]]); path([[23, 4], [28, 4]]);
   path([[18, 30], [23, 30], [23, 25]]); path([[23, 30], [28, 30]]);
@@ -90,8 +96,9 @@
   path([[43, 30], [48, 30], [48, 25]]); path([[45, 25], [50, 25]]);
   path([[33, 3], [33, 6]]); path([[31, 4], [33, 4]]); path([[39, 3], [39, 5]]);
   path([[56, 18], [58, 18]]);
-  // Plazas: Ferry Landing's harbour square and the market floor.
+  // Plazas: Ferry Landing's harbour square, the market floor and the Game Club's yard.
   for (let y = 21; y <= 24; y++) for (let x = 8; x <= 11; x++) set(x, y, ',');
+  for (let y = 43; y <= 45; y++) for (let x = 15; x <= 24; x++) set(x, y, ',');
   for (let y = 6; y <= 7; y++) for (let x = 45; x <= 50; x++) if (get(x, y) !== '~') set(x, y, ',');
   // Trees and props on grass, away from paths and people.
   const busy = (x, y) => PEOPLE.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) <= 1) || LAND.some(l => x >= l.x - 1 && x <= l.x + l.w && y >= l.y - 1 && y <= l.y + l.h)
@@ -313,15 +320,31 @@
     } finally { busyTalk = false; hud(); }
   }
 
-  // Leilani and Kwame have services as well as quests; everyone else just talks.
+  // Leilani, Kwame and Ploy have services as well as quests; everyone else just talks.
+  const GREET = {
+    kwame: 'Where to? I will get you there. Not on time. But there.',
+    ploy: 'Welcome to the Tide Pool Game Club! Today\'s game is... interviews! Alone or with friends?'
+  };
   async function talk(w) {
     if (w === 'gary') { const l = I.pick('gary', [['gary', '...'], ['gary', 'The fish here are eventually consistent.']]); await U.dialog([l]); return; }
+    if (w === 'ploy' && !I.st().ployMet) {
+      I.st().ployMet = true; S.persist();
+      await I.say('ployMeet', [
+        ['ploy', 'A visitor! A real one! Hi hi! I\'m Ploy, president of the Tide Pool Game Club.'],
+        ['ploy', 'Founder too. And treasurer. And, um, the only member. Membership is very exclusive right now.'],
+        ['ploy', 'I invent games! Rock-paper-scissors-load-balancer. Two truths and a race condition. Musical chairs, but the chairs are leaders and someone has to hold an election.'],
+        ['ploy', 'My best one is the interview game. I play the interviewer, you play the candidate, and if you win I do the victory dance. It\'s very good. Ask anyone. Ask the kids. They\'ve seen it forty times.'],
+        ['ploy', 'You can play it alone, or bring friends to the Guild Hall and play it together. Come talk to me whenever you want a round!']
+      ]);
+    }
+    // Town quests can have steps on the Isles (js/ploy-quest.js): they come first, as they do in Pingsby.
+    if (SD.quests && SD.quests.pending(w).length && await SD.quests.talk(w)) { AU.music('explore'); hud(); return; }
     const services = SERVICES[w] ? SERVICES[w]() : [];
     if (!services.length) { await I.talk(w); return; }
     const pend = I.pending(w);
     const choice = await new Promise(res => {
       const opts = [...pend.map((c, i) => [`q${i}`, `<b>${esc(c.title)}</b> ${I.chainStatus(c.id) === 'open' ? '<span class="pill due">New quest</span>' : '<span class="pill">Continue</span>'}`]), ...services.map(([k, label]) => [k, label]), ['chat', 'Just chat']];
-      const b = U.panel(`<div class="shopkeep">${SD.art.portrait(w, 64)}<p>${esc(w === 'kwame' ? 'Where to? I will get you there. Not on time. But there.' : 'What can I do for you?')}</p></div>
+      const b = U.panel(`<div class="shopkeep">${SD.art.portrait(w, 64)}<p>${esc(GREET[w] || 'What can I do for you?')}</p></div>
         <div class="opts">${opts.map(([k, l]) => `<button class="opt" data-k="${k}">${l}</button>`).join('')}</div>`, { title: I.who(w).toUpperCase(), onClose: () => res(null) });
       b.querySelectorAll('[data-k]').forEach(el => el.onclick = () => { U.closePanel(); res(el.dataset.k); });
     });
@@ -336,10 +359,16 @@
       I.bridges.filter(I.bridgeReady).forEach(b => out.push(['bridge:' + b.id, `Build the bridge: ${esc(I.ISLANDS[b.islands[0]].name)} to ${esc(I.ISLANDS[b.islands[1]].name)}`]));
       return out;
     },
-    kwame: () => [['ferry', 'Take the ferry'], ['round', `The daily ferry round${I.st().ferry === new Date().toISOString().slice(0, 10) ? ' (practice)' : ''}`]]
+    kwame: () => [['ferry', 'Take the ferry'], ['round', `The daily ferry round${I.st().ferry === new Date().toISOString().slice(0, 10) ? ' (practice)' : ''}`]],
+    // Each game shows up once the code behind it is in the game.
+    ploy: () => !I.unlocked() ? [] : [
+      ...(SD.mock && SD.mock.solo ? [['solo', 'Practice interview (solo)']] : []),
+      ...(SD.guild && SD.guild.play ? [['guild', 'The Guild Hall (play with friends)']] : [])
+    ]
   };
   const SERVICE_RUN = new Proxy({
-    board: () => I.board(), shells: () => I.shellShop(), ferry: () => ferry('landing'), round: () => I.ferryRound()
+    board: () => I.board(), shells: () => I.shellShop(), ferry: () => ferry('landing'), round: () => I.ferryRound(),
+    solo: () => SD.mock.solo({ title: 'THE INTERVIEW GAME WITH PLOY' }), guild: () => SD.guild.play()
   }, { get: (o, k) => o[k] || (String(k).startsWith('bridge:') ? () => I.buildBridge(String(k).slice(7)) : () => Promise.resolve()) });
 
   // ---------- The ferry ----------
@@ -445,13 +474,11 @@
   const terrain = (x, y) => TERRAIN[get(x, y)] || 'grass';
   function drawCorner(x, y, t) {
     const c = [terrain(x - 1, y - 1), terrain(x, y - 1), terrain(x - 1, y), terrain(x, y)];
-    const T = TOP.find(k => c.includes(k));
-    if (!T) return;
+    // Open grass is the all-grass tile of the dirt sheet, as in Pingsby and on the North Road.
+    const T = TOP.find(k => c.includes(k)) || 'dirt';
     const i = c.reduce((a, k, j) => a | ((k === T) << (3 - j)), 0);
-    // Island paths are sand (an Isles tileset laid out by Wang index); the village dirt stands in while it loads.
-    const sand = T === 'dirt' && ipic('t-sand');
-    if (sand && ok(sand)) ctx.drawImage(sand, (i % 4) * 32, (i >> 2) * 32, 32, 32, (x - 0.5) * ts, (y - 0.5) * ts, ts, ts);
-    else { const im = pic('t-' + T), at = ART().terrain[T][i]; if (ok(im) && at) ctx.drawImage(im, at[0], at[1], 32, 32, (x - 0.5) * ts, (y - 0.5) * ts, ts, ts); }
+    const im = pic('t-' + T), at = ART().terrain[T][i];
+    if (ok(im) && at) ctx.drawImage(im, at[0], at[1], 32, 32, (x - 0.5) * ts, (y - 0.5) * ts, ts, ts);
     if (i === 15 && T === 'water') {
       const h = hash(x, y), k = (t * 0.7 + (h % 100) / 100) % 1;
       if (k < 0.5) { ctx.fillStyle = `rgba(255,255,255,${0.7 * Math.sin(k * Math.PI * 2)})`; ctx.fillRect((x - 0.5 + (h % 7) / 8) * ts, (y - 0.5 + (h >> 4) % 6 / 8) * ts, ts / 8, ts / 16); }
@@ -478,6 +505,9 @@
     hallW: l => iobj('hallW', ...foot(l), 1.15),
     hallE: l => iobj('hallE', ...foot(l), 1.15),
     tower: l => iobj('tower', ...foot(l)),
+    club: l => iobj('club', ...foot(l), 1.3),
+    gtable: l => iobj('gtable', ...foot(l)),
+    umbrella: l => iobj('umbrella', ...foot(l)),
     harbour(l, t) {
       // Admiral Mutex's harbour: one ship at a time. The queue of little boats reaches the horizon.
       if (!ok(ipic('boat')) || !ok(ipic('pilings'))) return false;
@@ -512,6 +542,9 @@
     }
   };
   const DRAW = {
+    club(l, t) { roofHouse(l, '#ffc8dc', '#e86fa0', t); },
+    gtable(l) { box(l.x * ts + ts * 0.1, l.y * ts + ts * 0.3, ts * 0.8, ts * 0.5, '#c98b5a', 6); },
+    umbrella(l) { poly([[l.x * ts - ts * 0.2, (l.y + 0.4) * ts], [(l.x + 0.5) * ts, (l.y - 0.4) * ts], [(l.x + 1.2) * ts, (l.y + 0.4) * ts]], '#ff9ac0'); },
     office(l, t) {
       roofHouse(l, '#fff3dc', '#2f7fb8', t);
       const X = (l.x + l.w / 2) * ts, Y = l.y * ts + ts * 0.15;
@@ -771,6 +804,9 @@
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) drawCorner(x, y, t);
     drawBridges(t); drawDocks(t);
     const marks = I.marks(), ppl = people();
+    if (!I.st().ployMet && !marks.ploy) marks.ploy = '!';
+    const qm = SD.quests ? SD.quests.marks() : {};
+    ppl.forEach(p => { if (qm[p.id] && !marks[p.id]) marks[p.id] = qm[p.id]; });
     for (let y = y0; y < y1 + 3; y++) {
       for (let x = x0; x < x1; x++) {
         const c = get(x, y);
