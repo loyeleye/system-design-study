@@ -414,7 +414,8 @@
   // cells around it, so grass, paths, the plaza, the farm and the river blend into each other.
   const TERRAIN = { '~': 'water', '=': 'water', ',': 'plaza', B: 'plaza', p: 'dirt', f: 'farm' };
   const TOP = ['water', 'plaza', 'farm', 'dirt'];
-  const terrain = (x, y) => TERRAIN[tile(x, y)] || (DOORS.includes(tile(x, y)) ? 'dirt' : 'grass');
+  // The North Road exit is just the dirt path carrying on north through the trees, off the top of the map.
+  const terrain = (x, y) => (y < 0 && x === 20) ? 'dirt' : TERRAIN[tile(x, y)] || (DOORS.includes(tile(x, y)) ? 'dirt' : 'grass');
   function drawCorner(x, y, t) {
     const c = [terrain(x - 1, y - 1), terrain(x, y - 1), terrain(x - 1, y), terrain(x, y)];
     const T = TOP.find(k => c.includes(k)) || 'dirt';
@@ -453,6 +454,7 @@
     if (c === 'L') { obj(DECO[hash(x, y) % DECO.length], (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
     if (c === 'f' && (x + y) % 2 === 0) { obj('crops', (x + 0.5) * ts, (y + 0.9) * ts, 0.8); return; }
     if (c !== '#' && !DOORS.includes(c)) return;
+    if (c === 'N') return;   // no gate: a plain path leads north (Ladi, 2026-10-18)
     const o = blockOwner(x, y), b = bbox(o);
     if (!b || x !== b.x0 || y !== b.y1) return;
     const name = 'b-' + o, sz = ART().objects[name];
