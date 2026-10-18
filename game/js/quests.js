@@ -665,6 +665,7 @@
     if (a.say) await U.dialog(a.say.map(([w, t, e]) => ({ s: w, t: typeof t === 'function' ? t() : t, e })));
     if (a.item) { s.items.push(a.item); AU.sfx('coin'); U.system('ITEM GET!', esc(q.items[a.item])); }
     if (a.take) s.items = s.items.filter(x => x !== a.take);
+    if (a.fn) await a.fn();
     if (a.game) {
       AU.music('quest');
       // Every quest mini-game can be left with the ✕; the step stays where it was, so you can try again later.
@@ -686,21 +687,22 @@
   async function complete(q, s) {
     const sv = S.save;
     s.done = true; s.items = [];
-    if (!QS.has(q.device)) QS.devices().push(q.device);
-    // Later quests pay more: 50 shards for the first ones, up to 110 for quests 16-20.
-    const shards = 50 + 15 * (q.unlock || 0);
+    if (q.device && !QS.has(q.device)) QS.devices().push(q.device);
+    // Later quests pay more: 50 shards for the first ones, up to 110 for quests 16-20. Side quests without a
+    // Plot Device set their own `shards` instead.
+    const shards = q.shards || 50 + 15 * (q.unlock || 0);
     sv.shards += shards;
     SD.run.gainXp(q.xp);
     S.persist();
     AU.jingle('victory', 'town');
-    const d = SD.devices[q.device];
-    const lifts = Object.keys(SD.curses).filter(k => SD.curses[k].lift === q.device);
+    const d = q.device && SD.devices[q.device];
+    const lifts = d ? Object.keys(SD.curses).filter(k => SD.curses[k].lift === q.device) : [];
     await new Promise(res => {
       const b = U.panel(`<div class="verdict ok">QUEST COMPLETE!</div><p class="center"><b>${esc(q.title)}</b></p>
         <div class="loot"><span>+${q.xp} XP</span><span>+${shards} shards</span></div>
-        <div class="pd-get"><div class="pd-icon">${icon(d.icon)}</div><div><span class="q-ctx">Plot Device get!</span><b>${esc(d.name)}</b><p class="small">${esc(d.text)}</p>
+        ${d ? `<div class="pd-get"><div class="pd-icon">${icon(d.icon)}</div><div><span class="q-ctx">Plot Device get!</span><b>${esc(d.name)}</b><p class="small">${esc(d.text)}</p>
         ${lifts.map(k => `<p class="small good">Lifts the <b>${esc(SD.curses[k].name)}</b> curse.</p>`).join('')}<p class="muted small"><i>${esc(d.flavor)}</i></p></div></div>
-        <p class="muted small">Plot Devices survive every loop. Uptima says it's in her contract, clause 7: "the plot must go on".</p>
+        <p class="muted small">Plot Devices survive every loop. Uptima says it's in her contract, clause 7: "the plot must go on".</p>` : `${q.payoff ? `<p class="center small">${q.payoff}</p>` : ''}<p class="muted small center">A side quest: shards and a story, no Plot Device.</p>`}
         <button class="primary" id="pd-ok">Excellent</button>`, { title: 'QUEST COMPLETE', noClose: true });
       b.querySelector('#pd-ok').onclick = () => { U.closePanel(); res(); };
     });
@@ -728,9 +730,9 @@
         locked.forEach(q => { groups[q.unlock] = (groups[q.unlock] || 0) + 1; });
         body += `<p class="muted small">${Object.entries(groups).map(([ch, n]) => `${n} more quest${n > 1 ? 's' : ''} post after you clear ${esc(SD.chapters[ch].name.replace(/^the /, 'the '))}`).join('. ')}.</p>`;
       }
-      if (done.length) body += '<p class="q-ctx">Completed</p><ul class="links">' + done.map(q => `<li>✓ <b>${esc(q.title)}</b> · ${esc(SD.devices[q.device].name)}</li>`).join('') + '</ul>';
+      if (done.length) body += '<p class="q-ctx">Completed</p><ul class="links">' + done.map(q => `<li>✓ <b>${esc(q.title)}</b> · ${q.device ? esc(SD.devices[q.device].name) : (q.shards || '') + ' shards'}</li>`).join('') + '</ul>';
     } else if (tab === 'devices') {
-      body += '<p class="muted small">Plot Devices come from town quests. They are always on, in every run, in every loop.</p><div class="pd-grid">' + QUESTS.map(q => {
+      body += '<p class="muted small">Plot Devices come from town quests. They are always on, in every run, in every loop.</p><div class="pd-grid">' + QUESTS.filter(q => q.device).map(q => {
         const d = SD.devices[q.device], own = QS.has(q.device);
         return `<div class="pd${own ? '' : ' locked'}"><div class="pd-icon">${own ? icon(d.icon) : '?'}</div><div><b>${own ? esc(d.name) : '???'}</b><p class="small">${own ? esc(d.text) : `From the quest "${status(q) === 'locked' ? '???' : esc(q.title)}".`}</p></div></div>`;
       }).join('') + '</div>';

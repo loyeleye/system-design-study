@@ -398,8 +398,8 @@
     if (busy) return;
     busy = true; sc.pause();
     try {
-      if (id === 'aigerim') { await shop(); AU.music(MAPS[cur].music); return; }
       if (QS() && QS().pending(id).length) { await QS().talk(id); AU.music(MAPS[cur].music); return; }
+      if (id === 'aigerim') { await shop(); AU.music(MAPS[cur].music); return; }
       const own = SD.roadTalk && SD.roadTalk.lines[id];
       const lines = (own && own()) || (TALK[id] && TALK[id]());
       if (!lines) return;
