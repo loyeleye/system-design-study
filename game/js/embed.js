@@ -39,7 +39,7 @@
   // BERT uncased tokenizer: lowercase, strip accents, split on whitespace and punctuation, then WordPiece.
   const isPunct = ch => /[!-/:-@[-`{-~]/.test(ch) || /\p{P}/u.test(ch);
   function basic(text) {
-    text = text.toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '').replace(/[\u0000�\p{Cc}]/gu, ' ');
+    text = text.toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '').replace(/[\u0000\uFFFD\p{Cc}]/gu, ' ');
     const out = [];
     for (const chunk of text.split(/\s+/)) {
       let cur = '';
