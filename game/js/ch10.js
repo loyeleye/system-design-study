@@ -450,13 +450,13 @@
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', rules); else rules();
 
-  // Pingsby goes grey while the Cloud is down: from Gary leaving (chapter 9's end) until chapter 10 is cleared.
-  // The hub calls groundExtra every frame, so the class follows the save without other changes to js/hub.js.
+  // While the Cloud is down (from Gary leaving at chapter 9's end until chapter 10 is cleared) Pingsby is always
+  // night, with rain and thunderstorms, and only Ayo's Forge glows: js/clock.js, js/weather.js and js/hub.js.
+  // Only the cutscene where the village goes grey (c10dawn, below) is grey.
   // Gary's cold coffee, left where he always stands (22, 6), until he comes back.
   if (SD.hub) SD.hub.groundExtra = (ctx, ts) => {
-    const f = flags(), grey = !!(f.garyGone && !f.ch10);
-    if (document.body.classList.contains('pingsby-grey') !== grey) document.body.classList.toggle('pingsby-grey', grey);
-    if (!grey) return;
+    const f = flags();
+    if (!(f.garyGone && !f.ch10)) return;
     const x = 22 * ts + ts / 2, y = 6 * ts + ts * 0.78, s = ts / 32;
     ctx.save(); ctx.lineWidth = 2; ctx.strokeStyle = '#2b2340';
     ctx.fillStyle = 'rgba(43,35,64,.18)'; ctx.beginPath(); ctx.ellipse(x, y + 7 * s, 8 * s, 2.5 * s, 0, 0, Math.PI * 2); ctx.fill();
@@ -465,9 +465,6 @@
     ctx.beginPath(); ctx.arc(x + 6.5 * s, y, 3 * s, -Math.PI / 2, Math.PI / 2); ctx.stroke();
     ctx.restore();
   };
-  const greyCss = document.createElement('style');
-  greyCss.textContent = 'body.pingsby-grey #hub-canvas{filter:grayscale(.92) brightness(.9) contrast(.95);transition:filter 1.2s}';
-  document.head.appendChild(greyCss);
 
   // ---------- The chapter ----------
   SD.chapters[10] = {
@@ -754,7 +751,7 @@
   Object.assign(SD.cutscenes, {
     // Dawn: Pingsby goes grey, and Gary is gone.
     c10dawn: {
-      map: 'plaza', music: 'kyusad',
+      map: 'plaza', music: 'kyusad', grey: true, weather: 'rain',
       cast: { seymour: { x: 8, y: 4, face: 'south' }, uptima: { x: 10, y: 4, face: 'south' }, bru: { x: 6, y: 5, face: 'east' }, wen: { x: 12, y: 5, face: 'west' } },
       script: [
         ['caption', 'THE PROMISED DAY', 'Dawn, Pingsby. The Cloud is shutting down one building at a time.'],

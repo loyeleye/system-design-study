@@ -361,6 +361,10 @@
     if (cs.once && (flags().scenes || []).includes(cs.once)) return;
     const base = typeof cs.map === 'string' ? SD.arcMaps[cs.map] : cs.map;
     const def = Object.assign({}, base, { actors: Object.assign({}, cs.cast || {}), objects: (base.objects || []).concat(cs.objects || []), labels: cs.labels || base.labels || [] });
+    // A scene can be grey, bring its own weather (js/weather.js), or set the time of day for when you're back (js/clock.js).
+    if (cs.grey) def.grey = () => true;
+    if (cs.weather) def.weather = cs.weather;
+    if (cs.time && SD.clock) SD.clock.set(cs.time, 'story', true);
     if (cs.music) AU.music(cs.music);
     await SD.scene.play(def, cs.script);
     if (cs.once) { (flags().scenes = flags().scenes || []).push(cs.once); S.persist(); }

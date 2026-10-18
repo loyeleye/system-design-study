@@ -65,7 +65,9 @@
     // The Isles barricade's sign can't agree with itself: eventual consistency, in wood.
     { id: 'boulder', name: 'LOADING... 99%', x: 20, y: 1, block: 'boulder', roam: () => H.exitOpen('N') ? null : [20, 1] },
     { id: 'barricade', get name() { return Math.floor(Date.now() / 900) % 2 ? 'ROAD OPEN' : 'ROAD CLOSED'; }, x: 46, y: 7, block: 'barricade',
-      roam: () => H.exitOpen('E') ? null : [46, 7] }
+      roam: () => H.exitOpen('E') ? null : [46, 7] },
+    // The plaza bench: sit and wait for the next time block (js/clock.js).
+    { id: 'bench', name: 'BENCH', x: 13, y: 4, bench: true }
   ];
   // Whether an exit's road is open. N: the North Road (js/northroad.js), from chapter 7 (or chapter 5 cleared without it).
   // E: the Eventual Isles (js/isles), once chapter 3 is cleared. Stepping on an open exit calls the door handler with 'N' or 'E'.
@@ -287,6 +289,7 @@
     const dt = Math.min(0.05, (ts2 - (t0 || ts2)) / 1000); t0 = ts2;
     update(dt); updateWanderers(dt); updateDrop(dt); updateSlimes(dt);
     draw(ts2 / 1000, dt);
+    if (SD.weather) SD.weather.sync();
     raf = requestAnimationFrame(loop);
   }
 
@@ -320,6 +323,11 @@
       if (Math.round(P.py) === y) { drawPip(t); drawPlayer(t); }
     }
     WANDER.forEach(w => { if (w.emoT > 0) emote(w.emo, w.px * ts + ts / 2, headY(w.py)); });
+    // The time of day over the ground and people, with lamps and windows lit (js/clock.js). Signs and names stay
+    // on top so they read at night.
+    ctx.restore();
+    if (SD.clock) SD.clock.shade(ctx, vw, vh, lights(t, cx, cy));
+    ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if (BUILD[c] && !'BNE'.includes(c)) label(x, y, BUILD[c].name, t, H.markers && H.markers[c]);
@@ -330,7 +338,7 @@
     label(15.5, 5.6, 'QUEST BOARD', t, H.markers && H.markers.B);
     label(38, 15.2, "CRON'S FARM", t, false);
     people().forEach(n => label(n.x, n.y + 1.45, n.name, t, (H.npcMarks && H.npcMarks[n.id]) || (n.mark && n.mark()), true));
-    petals.forEach(f => {
+    if (!dark()) petals.forEach(f => {
       const fx = (f.x + Math.sin(t * 0.4 + f.p) * 0.8) * ts, fy = (f.y + Math.cos(t * 0.3 + f.p) * 0.6) * ts;
       const flap = Math.abs(Math.sin(t * 8 + f.p));
       ctx.fillStyle = f.c; ctx.strokeStyle = INK; ctx.lineWidth = 1;
@@ -339,11 +347,36 @@
     slimes.forEach(s => drawSlime(s, t));
     ctx.restore();
     // Sky layer: drifting clouds and the Cloud itself (screen space, slight parallax)
+    const dk = dark();
     clouds.forEach(c => {
       c.x += c.v * dt; if (c.x > 1.2) c.x = -0.2;
-      puff(c.x * vw, c.y * vh * 0.5 - cy * 0.1, 26 * c.s, 'rgba(255,255,255,0.75)', false);
+      puff(c.x * vw, c.y * vh * 0.5 - cy * 0.1, 26 * c.s, `rgba(${dk ? '110,120,170' : '255,255,255'},${0.75 - 0.5 * dk})`, false);
     });
-    drawTheCloud(vw, t, cx);
+    drawTheCloud(vw, t, cx, dk);
+    // Weather over everything (js/weather.js).
+    if (SD.weather) SD.weather.draw(ctx, t, vw, vh);
+  }
+  const dark = () => SD.clock ? SD.clock.dark() : 0;
+  // What glows after dark, in screen pixels: street lamps, each building's windows and door, the dungeon portal,
+  // and Ayo's Forge, which always burns brightest ("my fire runs on-prem").
+  function lights(t, cx, cy) {
+    if (!dark()) return [];
+    // With the Cloud down (chapter 10) the lamps and windows are out too: only the Forge and the portal glow.
+    const down = SD.clock.frozen();
+    const out = [], at = (x, y, r, rgb) => out.push({ x: x * ts - cx, y: y * ts - cy, r: r * ts, rgb });
+    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+      const c = tile(x, y);
+      if (c === 'L' && !down && DECO[hash(x, y) % DECO.length] === 'lamp') at(x + 0.5, y - 0.7, 2.6);
+      if (BUILD[c] && !'BNE'.includes(c) && (!down || 'FG'.includes(c))) {
+        const b = bbox(c);
+        if (!b) continue;
+        const flick = c === 'F' ? 1 + 0.08 * Math.sin(t * 9) + 0.05 * Math.sin(t * 23) : 1;
+        if (c === 'G') at(x + 0.5, y + 0.3, 2.4, '190,120,255');
+        else if (c === 'F') at(x + 0.5, y + 0.4, 3.4 * flick, '255,140,60');
+        else at((b.x0 + b.x1 + 1) / 2, b.y1 + 0.3, Math.min(2.8, (b.x1 - b.x0 + 1) * 0.42), '255,210,130');
+      }
+    }
+    return out;
   }
 
   function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
@@ -358,7 +391,7 @@
   }
   // The Cloud: where the whole kingdom keeps its data. It has blinking server lights and feelings.
   // It follows the view, and slides aside rather than sit on the road north at x 20.
-  function drawTheCloud(vw, t, cx) {
+  function drawTheCloud(vw, t, cx, dk) {
     const R = Math.min(46, vw * 0.07);
     let X = vw * 0.5 - cx * 0.05 + Math.sin(t * 0.3) * 20;
     const ex = 20.5 * ts - cx, gap = R * 2.6 - Math.abs(X - ex);
@@ -381,6 +414,15 @@
     else { ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, Y + R * 0.08, R * 0.14, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
     ctx.font = `600 ${Math.max(10, R * 0.26)}px Fredoka, sans-serif`; ctx.textAlign = 'center';
     ctx.fillStyle = INK; ctx.fillText('THE CLOUD', X, Y - R * 0.55);
+    if (dk) {
+      // After dark the Cloud goes dusky blue, lit softly from inside by its servers (unless it's down, in chapter 10).
+      puff(X, Y, R, `rgba(30,36,90,${0.6 * dk})`, false);
+      if (SD.clock.frozen()) { ctx.restore(); return; }
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(X, Y + R * 0.2, 0, X, Y + R * 0.2, R * 1.3);
+      g.addColorStop(0, `rgba(120,200,255,${0.35 * dk * (0.85 + 0.15 * Math.sin(t * 2))})`); g.addColorStop(1, 'rgba(120,200,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(X - R * 1.4, Y - R * 1.2, R * 2.8, R * 2.8);
+    }
     ctx.restore();
   }
 
@@ -551,12 +593,25 @@
   }
   function drawNpc(n, t) {
     if (n.block) return obj(n.block, (n.x + 0.5) * ts, (n.y + 1) * ts, 0.8);
+    if (n.bench) return drawBench(n.x, n.y);
     if (n.bird) drawBird(n, t);
     else person(n.id, n.x, n.y, t, facing(n), false);
     // Gary sips coffee. Everyone else occasionally has a feeling about something.
     const phase = (t + n.x) % 9;
     // A quest marker replaces the feeling, so the two never overlap.
     if (phase < 2.2 && !(H.npcMarks && H.npcMarks[n.id])) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', n.x * ts + ts / 2, n.bird ? n.y * ts : headY(n.y));
+  }
+  // The plaza bench, drawn in code: two planks on stubby legs, in the village's ink outline.
+  function drawBench(x, y) {
+    const s = ts / 32, X = x * ts + ts / 2, Y = y * ts + ts * 0.9;
+    ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y, ts * 0.46, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.fillStyle = '#7a4a2a';
+    [[-12, -4], [9, -4]].forEach(([dx, dy]) => { ctx.fillRect(X + dx * s, Y + dy * s, 3 * s, 5 * s); ctx.strokeRect(X + dx * s, Y + dy * s, 3 * s, 5 * s); });
+    ctx.fillStyle = '#b97a45';
+    rr(X - 15 * s, Y - 9 * s, 30 * s, 6 * s, 2); ctx.fill(); ctx.stroke();
+    rr(X - 15 * s, Y - 19 * s, 30 * s, 6 * s, 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#7a4a2a'; ctx.fillRect(X - 13 * s, Y - 13 * s, 3 * s, 4 * s); ctx.fillRect(X + 10 * s, Y - 13 * s, 3 * s, 4 * s);
   }
   // Postmaster Coo is a pigeon, bobbing like pigeons do.
   function drawBird(n, t) {

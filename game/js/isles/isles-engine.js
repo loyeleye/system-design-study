@@ -75,6 +75,7 @@
       AU.music('town'); I.refresh(); return;
     }
     s.step++;
+    if (SD.clock) SD.clock.advance('quest');
     if (s.step >= c.steps.length) { await school(c); await complete(c, s); }
     else U.system('QUEST UPDATED', `${esc(c.title)}: ${esc(c.steps[s.step].hint)}`);
     S.persist();

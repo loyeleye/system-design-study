@@ -20,7 +20,7 @@
     const newQ = Object.values(marks).filter(m => m === '!').length;
     $('#hud').innerHTML = `
       <div class="rank"><b>${S.rank()}</b><span>RANK</span></div>
-      <div class="hud-mid"><div class="hud-name">${U.esc(sv.name)} <span class="muted">Lv ${sv.level} · Loop ${sv.loop}</span></div>
+      <div class="hud-mid"><div class="hud-name">${U.esc(sv.name)} <span class="muted">Lv ${sv.level} · Loop ${sv.loop}${SD.clock ? ' · ' + SD.clock.label() : ''}</span></div>
         <div class="bar xp"><i style="width:${sv.xp / need * 100}%"></i></div></div>
       <span class="hud-chip">Shards <b>${sv.shards}</b></span>
       ${due ? `<span class="hud-chip due">${due} review${due > 1 ? 's' : ''} due</span>` : ''}
@@ -200,6 +200,7 @@
       if (c === 'N') { SD.hub.placeAt(20, 2); if (SD.northRoad) await SD.northRoad.enter(); return; }
       if (c === 'E') { SD.hub.placeAt(45, 7); if (SD.isles) SD.isles.open(); return; }
       if (c === 'boulder' || c === 'barricade') { await blocker(c); return; }
+      if (c === 'bench') { await SD.clock.bench(); return; }
       if (c !== 'G' && c !== 'B' && await SD.quests.talk(DOOR_NPC[c] || c, VISIT[c])) return;
       if (c === 'U') await SD.quests.guild();
       if (c === 'F') await forge();
@@ -320,7 +321,7 @@
       onResult(res) {
         (res.concepts || []).forEach(id => { if (SD.concepts[id]) S.recordAnswer(id, false, 1); });
         SD.wb.blueprints.find(x => x.id === res.bp).nodes.forEach(n => { const id = SD.wb.parts[n.p] && SD.wb.parts[n.p].concept; if (id && SD.concepts[id]) S.seeConcept(id); });
-        if (res.ok) { SD.run.gainXp(10 + 10 * res.stars); sv.shards += 10 * res.stars; }
+        if (res.ok) { SD.run.gainXp(10 + 10 * res.stars); sv.shards += 10 * res.stars; SD.clock.advance('blueprint'); }
         const best = (store.load().best || {});
         const early = SD.wb.blueprints.filter(x => x.ch <= 3);
         if (!SD.quests.has('eraser') && early.every(x => (best[x.id] || 0) >= 2)) {
@@ -453,7 +454,7 @@
         const right = r.filter(x => x.ok).length;
         if (!done) { sv.flags.dailyDate = today(); sv.shards += 100; SD.run.gainXp(40); U.system('DAILY QUEST COMPLETE!', `${right}/5 correct. +40 XP, +100 shards.`, 'gold'); }
         else { SD.run.gainXp(right * 6); U.system('PRACTICE COMPLETE', `${right}/5 correct. +${right * 6} XP.`); }
-        S.persist(); res();
+        S.persist(); SD.clock.advance('review'); res();
       };
     });
   }

@@ -186,33 +186,6 @@
     };
   })();
 
-  // The Exchange is always under a thunderstorm: rain streaks over the view, and every so often lightning
-  // whites out the screen and the thunder follows a moment later.
-  let boltAt = 0, nextBolt = 0;
-  function storm(ctx, t, vw, vh) {
-    ctx.save();
-    ctx.strokeStyle = 'rgba(200,215,255,0.35)'; ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    for (let i = 0; i < 140; i++) {
-      const sx = (i * 97.3) % 1, sp = 0.8 + ((i * 53.1) % 1) * 0.6;
-      const x = (sx * (vw + 80) + t * 60) % (vw + 80) - 40, y = ((i * 0.618 + t * sp * 1.6) % 1) * (vh + 40) - 20;
-      ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 16);
-    }
-    ctx.stroke();
-    if (!nextBolt) nextBolt = t + 4 + Math.random() * 6;
-    if (t >= nextBolt) {
-      boltAt = t; nextBolt = t + 8 + Math.random() * 12;
-      setTimeout(() => AU.sfx('thunder'), 250 + Math.random() * 500);
-    }
-    const f = t - boltAt;
-    if (boltAt && f < 0.6) {
-      // Two quick flashes, like real lightning.
-      const a = f < 0.08 ? 0.75 : f < 0.16 ? 0.1 : f < 0.24 ? 0.55 : Math.max(0, 0.55 * (1 - (f - 0.24) / 0.36));
-      ctx.fillStyle = `rgba(235,240,255,${a})`; ctx.fillRect(0, 0, vw, vh);
-    }
-    ctx.restore();
-  }
-
   // ---------- The Exchange (chapter 10) ----------
   const exchange = (function () {
     const W = 34, H = 30, m = grid(W, H, false);
@@ -228,7 +201,6 @@
       doors: { D: 'D', S: 'S' },
       doorFor: (x, y) => (x >= 11 && x <= 22 && y <= 11) ? [16, 12] : null,
       sky: () => flags().ch9 ? 'dark' : 'dusk',
-      overlay: storm,
       objects: [
         { name: 'ex-townhouse', x: 1.8, y: 9 }, { name: 'ex-townhouse2', x: 4.9, y: 9 }, { name: 'ex-townhouse', x: 8, y: 9 },
         { name: 'ex-townhouse2', x: 25, y: 9 }, { name: 'ex-townhouse', x: 28.1, y: 9 }, { name: 'ex-townhouse2', x: 31.2, y: 9 },
@@ -240,7 +212,9 @@
       ],
       labels: [{ x: 16.5, y: 12.6, text: 'THE EXCHANGE' }, { x: 16.5, y: 28.6, text: 'ROAD ↓' }, { x: 16.5, y: 21.6, text: 'THE FIRE PIT' }],
       actors: { v3: { x: 21, y: 21, face: 'west', name: 'TRADER' } },
-      back: { D: [16, 12, 'south'], S: [16, 28, 'north'] }, enter: [16, 28, 'north'], ch: 10, music: 'ch10', weather: 'rain'
+      back: { D: [16, 12, 'south'], S: [16, 28, 'north'] }, enter: [16, 28, 'north'], ch: 10, music: 'ch10',
+      // The Exchange is always under a thunderstorm: rain, and lightning with thunder a moment later (js/weather.js).
+      weather: 'storm'
     };
   })();
 
@@ -270,6 +244,7 @@
     const open = A.chapters().filter(A.open), cleared = open.filter(ch => flags()['ch' + ch]);
     $('#nr-hud').innerHTML = `<div class="hud-chip"><b>${TITLE[cur]}</b></div>
       <div class="hud-chip">Cleared ${cleared.length}/${A.chapters().length}</div>
+      ${SD.clock ? `<div class="hud-chip">${SD.clock.label()}</div>` : ''}
       <button class="hud-chip" data-nr="quests">Quests</button>
       ${(flags().runbook || []).length || (flags().kyuFiles || []).length ? '<button class="hud-chip" data-arc="runbook">📓 Runbook</button>' : ''}
       ${flags().downtime ? `<div class="hud-chip warn">Downtime ${flags().downtime}%</div>` : ''}`;
@@ -301,7 +276,7 @@
     if (at) { sc.place('you', at[0], at[1]); sc.face('you', at[2] || 'south'); }
     cast(); hud(); sc.start();
     AU.music(def.music);
-    if (AU.weather) AU.weather(def.weather);
+    if (SD.weather) SD.weather.sync(SD.weather.now(def.weather));
   }
 
   NR.enter = async function (fromRun) {

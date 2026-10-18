@@ -237,6 +237,7 @@
     el.innerHTML = `<button class="ghost" id="il-home" aria-label="Back to Pingsby">← Pingsby</button>
       <div class="il-where">${esc(I.ISLANDS[isl] ? I.ISLANDS[isl].name : 'The Eventual Isles')}</div>
       <span class="hud-chip">Shells <b>${st.shells}</b></span><span class="hud-chip">Shards <b>${S.save.shards}</b></span>
+      ${SD.clock ? `<span class="hud-chip">${SD.clock.label()}</span>` : ''}
       ${lows ? `<span class="hud-chip due">${lows} low tide${lows > 1 ? 's' : ''}</span>` : ''}
       <button class="ghost" id="il-log">Isles log</button>`;
     el.querySelector('#il-home').onclick = () => { if (!busyTalk) I.close(); };
@@ -443,6 +444,7 @@
     const dt = Math.min(0.05, (ms - (t0 || ms)) / 1000); t0 = ms;
     update(dt);
     draw(ms / 1000, dt);
+    if (SD.weather) SD.weather.sync();
     raf = requestAnimationFrame(loop);
   }
 
@@ -820,12 +822,31 @@
       ppl.forEach(p => { if (p.y === y) chibi(p, t); });
       if (Math.round(P.py) === y) { obj('pip', pip.x * ts + ts / 2, pip.y * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, P.dir < 0); person(t); }
     }
+    // The time of day (js/clock.js) under the signs and names.
+    ctx.restore();
+    if (SD.clock) SD.clock.shade(ctx, vw, vh, lights(t, cx, cy));
+    ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     LAND.forEach(l => { if (I.islandOpen(l.isle) && l.name && l.id !== 'board') label(l.lab ? l.lab[0] : l.x + l.w / 2 - 0.5, l.lab ? l.lab[1] : l.y + l.h + 0.7, l.name, null, false, t); });
     if (I.islandOpen('landing')) label(10, 16.6, 'BOARD', I.commissions.some(c => I.commissionStatus(c.id) === 'open') ? '!' : null, true, t);
     ppl.forEach(p => label(p.x, p.y + 1.45, p.note ? 'NOTE' : (I.who(p.id).split(' ').slice(-1)[0] || '').toUpperCase(), marks[p.id], true, t));
     label(EXIT[0] + 0.6, EXIT[1] - 0.2, '← PINGSBY', null, true, t);
     Object.keys(ISLE).forEach(id => { if (id !== 'landing' && !I.islandOpen(id)) fog(id, t); });
     ctx.restore();
+    if (SD.weather) SD.weather.draw(ctx, t, vw, vh);
+  }
+  // After dark: street lamps, a warm glow from each open landmark, and the lighthouse's great lamp.
+  function lights(t, cx, cy) {
+    if (!SD.clock || !SD.clock.dark()) return [];
+    const out = [], at = (x, y, r, rgb) => out.push({ x: x * ts - cx, y: y * ts - cy, r: r * ts, rgb });
+    const x0 = Math.max(0, Math.floor(cx / ts) - 4), x1 = Math.min(W, Math.ceil((cx + cv.width / dpr) / ts) + 4);
+    const y0 = Math.max(0, Math.floor(cy / ts) - 4), y1 = Math.min(HT, Math.ceil((cy + cv.height / dpr) / ts) + 4);
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (get(x, y) === 'L' && hash(x, y) % 5 === 1) at(x + 0.5, y - 0.7, 2.6);
+    LAND.forEach(l => {
+      if (!I.islandOpen(l.isle) || l.h < 2) return;
+      if (l.id === 'light') at(l.x + l.w / 2, l.y - 0.6, 7 + 0.6 * Math.sin(t * 1.5), '255,236,170');
+      else at(l.x + l.w / 2, l.y + l.h - 0.4, Math.min(2.8, l.w * 0.42), '255,210,130');
+    });
+    return out;
   }
   // The player keeps their village sprite: rows face south, west, east and north.
   const ROW = { south: 0, west: 1, east: 2, north: 3 };

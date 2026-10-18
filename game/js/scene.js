@@ -39,7 +39,9 @@
 
   // def: { map: [rows], terrain: { char: sheetKey }, top: [sheet keys, highest first], base: sheetKey for plain ground,
   //   solid: chars you can't walk on, objects: [{ name, x, y, k, flip }], actors: { id: { x, y, face } },
-  //   labels: [{ x, y, text }], tint, sky: 'sun'|'dusk'|'dark'|'grey' }
+  //   labels: [{ x, y, text }], tint, sky: 'sun'|'dusk'|'dark'|'grey', weather: a map's own weather (js/weather.js),
+  //   clock: false to keep the time of day off a walkable map (js/clock.js) }
+  // Walkable maps (ones with a player) show the time of day and the weather; cutscenes only show weather they ask for.
   SC.create = function (canvas, def) {
     const sc = { def, actors: {}, P: null, active: false, onTalk: null, onDoor: null, follow: null, fx: [] };
     const ctx = canvas.getContext('2d');
@@ -270,19 +272,39 @@
         Object.values(sc.actors).forEach(a => { if (Math.round(a.py) === y) person(a, t); });
       }
       Object.values(sc.actors).forEach(a => { if (!a.hidden && a.emoT > 0 && a.emo) emote(a.emo, a.px * ts + ts / 2, (a.py - 0.55 - (a.scale || 1) * 0.5 + 0.5) * ts); });
+      const sk = typeof def.sky === 'function' ? def.sky() : def.sky;
+      if (SD.clock && (def.clock === true || (sc.P && def.clock !== false))) {
+        // The time of day under the signs and names, dimmed where the map's own sky is already dark.
+        ctx.restore();
+        SD.clock.shade(ctx, vw, vh, lights(objs, cx, cy), { dimmed: ['dark', 'night', 'storm'].includes(sk) ? 0.7 : 0 });
+        ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
+      }
       (def.labels || []).forEach(l => { if (!l.hidden) label(l.x, l.y, l.text, l.marker); });
       Object.values(sc.actors).forEach(a => { if (a.name && !a.hidden) label(a.px, a.py + 1.45, a.name, a.marker, true); });
       sc.fx.forEach(f => f(ctx, t, ts));
       ctx.restore();
-      const sk = typeof def.sky === 'function' ? def.sky() : def.sky, tint = SKY[sk] || (/^(rgba?|#)/.test(sk || '') ? sk : null);
+      const tint = SKY[sk] || (/^(rgba?|#)/.test(sk || '') ? sk : null);
       if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, vw, vh); }
+      if (SD.weather && (sc.P || def.weather)) SD.weather.draw(ctx, t, vw, vh, SD.weather.now(def.weather));
       if (sk === 'grey' || (typeof def.grey === 'function' && def.grey())) { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#888'; ctx.fillRect(0, 0, vw, vh); ctx.globalCompositeOperation = 'source-over'; }
       if (def.overlay) def.overlay(ctx, t, vw, vh);
+    }
+    // Lamps, fires and windows that glow after dark: [art height fraction above the base, radius in tiles, colour].
+    const LIGHT = { lamp: [0.88, 2.6], 'ex-firepit': [0.3, 3.6, '255,140,60'], 'cp-fire': [0.3, 3.6, '255,140,60'], camp: [0.3, 3.6, '255,140,60'],
+      'ws-inn': [0.4, 3], 'ex-townhouse': [0.45, 2.4], 'ex-townhouse2': [0.45, 2.4], 'nr-roofs': [0.4, 2.2], 'nr-shop': [0.4, 2.4],
+      'ex-stall': [0.4, 1.8], 'cp-tent1': [0.4, 1.6], 'cp-tent2': [0.4, 1.6], 'ex-tower': [0.5, 3.6], 'nr-citygate': [0.4, 2.6], 'ws-stable': [0.4, 2], 'b-C': [0.4, 3] };
+    function lights(objs, cx, cy) {
+      if (!SD.clock.dark()) return [];
+      return objs.filter(o => LIGHT[o.name] && objArt(o.name)).map(o => {
+        const [f, r, rgb] = LIGHT[o.name], a = objArt(o.name);
+        return { x: (o.x + 0.5) * ts - cx, y: (o.y + 1) * ts - a.h * ts / 32 * (o.k || 1) * f - cy, r: r * ts, rgb };
+      }).concat((def.lights || []).map(l => ({ x: (l.x + 0.5) * ts - cx, y: (l.y + 0.5) * ts - cy, r: (l.r || 3) * ts, rgb: l.rgb })));
     }
     function frame(now) {
       if (!sc.active) return;
       const dt = Math.min(0.05, (now - (t0 || now)) / 1000); t0 = now;
       update(dt); draw(now / 1000);
+      if (sc.P && SD.weather) SD.weather.sync(SD.weather.now(def.weather));
       raf = requestAnimationFrame(frame);
     }
     sc.start = function () {

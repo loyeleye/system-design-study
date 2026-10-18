@@ -10,6 +10,8 @@
 //   floor=1..4    with at=run in chapters 7-10: start on this floor
 //   quests=done   mark every quest unlocked so far as finished (their Plot Devices too)
 //   group=2|3     every normal and elite fight is a group of that size (see SD.debug.groupFight below)
+//   time=morning|afternoon|evening|night   the time of day (js/clock.js; chapter 10's town stays night)
+//   weather=clear|drizzle|rain|storm|wind|gusty|fog|mist|snow   force the weather on every map (js/weather.js)
 // Examples: index.html?debug&ch=9&rank=A&at=camp   index.html?debug&ch=10&at=run&floor=4
 // While on, a 🐞 button (bottom left) opens a panel to pick these, win the current fight, add shards, start a group fight, or replay the intro.
 (function () {
@@ -56,6 +58,7 @@
     sv.shards = shards != null && shards !== '' ? +shards : 2000;
     sv.loop = ch + 1; sv.chapter = ch;
     if ((quests || P.get('quests')) === 'done') finishQuests();
+    if (P.get('time') && SD.clock) SD.clock.set(P.get('time'), 'debug', true);
     S.persist();
   };
 
@@ -117,7 +120,10 @@
         <label for="dbg-floor">Floor</label><select id="dbg-floor">${[1, 2, 3, 4].map(n => opt(n, P.get('floor') || 1)).join('')}</select>
         <label for="dbg-shards">Shards</label><input id="dbg-shards" type="number" placeholder="2000" min="0" step="100">
         <label for="dbg-q">Quests</label><label><input id="dbg-q" type="checkbox"${P.get('quests') === 'done' ? ' checked' : ''}> finish every quest so far</label>
+        <label for="dbg-time">Time of day</label><select id="dbg-time">${SD.clock.BLOCKS.map(k => opt(k, SD.clock.block())).join('')}</select>
+        <label for="dbg-wx">Weather</label><select id="dbg-wx">${opt('', SD.weather.force || '', 'the chapter\'s own (' + SD.weather.now() + ')')}${SD.weather.KINDS.map(k => opt(k, SD.weather.force || '')).join('')}</select>
       </div>
+      <div class="row"><button class="ghost" id="dbg-sky">Set time and weather now</button></div>
       <div class="row"><button class="primary" id="dbg-go">Start here</button><button class="ghost" id="dbg-win">Win this fight</button><button class="ghost" id="dbg-sh">+1,000 shards</button><button class="ghost" id="dbg-grp">Group fight (3)</button><button class="ghost" id="dbg-intro">Play the intro</button></div>
       <p class="muted small">Or put it in the link: <code>?debug&amp;ch=9&amp;rank=A&amp;at=camp</code></p>`, { title: 'DEBUG START' });
     // Rebuild the save in place (a hosted preview can't always reload with a new link), then go there.
@@ -144,9 +150,20 @@
       SD.main.coldOpen();
     };
     b.querySelector('#dbg-grp').onclick = () => { const C = SD.run.api && SD.run.api.combat(); if (C && !C.over) return U.system('DEBUG', 'Finish this fight first.'); D.groupFight(3); };
+    b.querySelector('#dbg-sky').onclick = () => {
+      D.setTime(b.querySelector('#dbg-time').value); D.setWeather(b.querySelector('#dbg-wx').value);
+      U.closePanel(); U.system('DEBUG', `${SD.clock.label()}, ${SD.weather.now()}.`);
+    };
     b.querySelector('#dbg-sh').onclick = () => { sv.shards += 1000; S.persist(); U.closePanel(); U.system('DEBUG', `+1,000 shards (${sv.shards} now).`); if (SD.main.hud) SD.main.hud(); };
   }
   D.panel = panel;
+
+  // ---------- Time and weather ----------
+  // SD.debug.setTime('night') jumps the clock; SD.debug.setWeather('storm') forces the weather on every map until
+  // you call SD.debug.setWeather() with nothing. Chapter 10's town stays night whatever the clock says.
+  D.setTime = block => SD.clock.set(block, 'debug', true);
+  D.setWeather = kind => { SD.weather.force = SD.weather.KINDS.includes(kind) ? kind : null; };
+  if (P.get('weather')) D.setWeather(P.get('weather'));
 
   // ---------- Group fights ----------
   // ?group=2 or ?group=3 in the URL turns every normal and elite fight into a group of that size (any chapter).
