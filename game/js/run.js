@@ -435,7 +435,8 @@
     if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {
       C.deepAsked = true;
       renderCombat();
-      const q = SD.questions.find(x => x.id === rnd(C.e.deep));
+      // Pick the id once: a rnd() inside find() rolls again for every question and can match none.
+      const id = rnd(C.e.deep), q = SD.questions.find(x => x.id === id);
       const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."' });
       if (r.ok) { mitigate(16, `DEEP DIVE LANDED! ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
       else C.log = `The deep dive slipped. ${C.e.short} cackles and presses on.`;
