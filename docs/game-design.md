@@ -258,6 +258,14 @@ Ladi asked (2026-10-18) for more to buy with Memory Shards, rank-gated keepsakes
 
 - **Aigerim's cards** (`js/peddler.js`, `SD.cardShop`, 150–400 shards, priced by expected value: Root Cause Analysis 150 is situational, Persistent Volumes 400 anchors an absorb engine). Ladi moved the card shop from Ayo to a new character (2026-10-18). From chapter 3 Aigerim roams Pingsby (a different spot each loop) with only the four cheapest cards, at full price. Once the North Road opens (`flags.ch5` and the road exists) she leaves town; the road places her and calls `SD.peddler.open({ full: true })`: all twelve cards, two unowned ones half price each loop (`flags.aigSales`). Bought cards join the starting deck of every future run; the "Your cards" tab benches or restores them. The cards borrow Slay the Spire effects: Defense in Depth and Graceful Degradation (Defend variants), Flow State (Adrenaline-like draw), Root Cause Analysis (scales with Stale), Backpressure Slam (Body Slam), Load Test (Vulnerable), All-Nighter (Offering), Autoscaling (Entrench), Hotfix Storm (an X-cost Whirlwind), Refactor Everything (Apotheosis), SRE Rotation (Demon Form, gently) and Persistent Volumes (Barricade).
 
+## Roads out of Pingsby
+
+Ladi asked (2026-10-18) for open paths out of the main map. Two dirt roads leave town, each blocked by something from the story until it opens (`js/hub.js`; `main.js` has the lines).
+
+- **North, to the North Road:** a path up x 20 from the quest board to the exit `N` at (20, 0). Lord Latency's boulder sits on (20, 1) with a progress bar painted on it stuck at LOADING... 99%; the last one percent is the North Road. It clears when `SD.hub.exitOpen('N')`: the North Road exists and `SD.arc.open(7)` (chapter 5 cleared). Stepping on the exit stands you at (20, 2) and calls `SD.northRoad.enter()`; coming back, the road places you at (20, 2). Gary moved one step east to (22, 6) to keep the path clear.
+- **East, to the ferry:** the Forge moved up two rows (door at (45, 4), Ayo at (46, 5)), and row 7 now runs on under it to the exit `E` at (47, 7). The barricade on (46, 7) has a sign that flips between ROAD OPEN and ROAD CLOSED every second: two replicas that haven't synced. It clears once chapter 3 is cleared (`SD.isles.unlocked()`), and the exit opens the Eventual Isles. This replaces the old pier at (46, 16).
+- Talking to a blocker gives a first-time scene with Pip, then a random one-liner. Each exit's sign appears on the path once its road is clear.
+
 ## Audio
 
 Recorded music and samples play when they load, with the original chiptune synth in `game/js/audio.js` as the fallback. Sources and licenses are in `game/CREDITS.md`.
