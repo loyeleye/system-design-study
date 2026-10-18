@@ -166,8 +166,11 @@
     AU.sfx(DOOR_NPC[c] || c === 'G' ? 'door' : 'blip');
     try {
       // Quest business comes first; villagers with a building offer to carry on inside instead.
-      // The ferry to the Eventual Isles (js/isles): the Isles take over the screen and come back through show('hub').
-      if (c === 'ferry') { SD.isles.open(); return; }
+      // The two roads out of town (js/hub.js): the North Road and the ferry to the Eventual Isles. Each takes over the
+      // screen and comes back through show('hub'), so the hero is stood back on the path first.
+      if (c === 'N') { SD.hub.placeAt(20, 2); if (SD.northRoad) await SD.northRoad.enter(); return; }
+      if (c === 'E') { SD.hub.placeAt(45, 7); if (SD.isles) SD.isles.open(); return; }
+      if (c === 'boulder' || c === 'barricade') { await blocker(c); return; }
       if (c !== 'G' && c !== 'B' && await SD.quests.talk(DOOR_NPC[c] || c, VISIT[c])) return;
       if (c === 'U') await SD.quests.guild();
       if (c === 'F') await forge();
@@ -186,6 +189,35 @@
       if (!$('#screen-hub').hidden) { SD.hub.stepOffDoor(); SD.hub.start(); M.hud(); }
     }
   }
+  // What blocks each road until the story opens it. The boulder is Lord Latency's: a loading bar stuck at 99%.
+  // The Isles barricade's sign keeps flipping between OPEN and CLOSED, because its two halves haven't synced.
+  const BLOCK = {
+    boulder: [
+      [['narr', 'A boulder blocks the road north. Someone has painted a progress bar on it. LOADING... 99%.'],
+        ['pip', 'Ooh, I know this one! It has said 99% since before I got lost. The last one percent is always the North Road.'],
+        ['narr', "A note is taped underneath: 'The road opens when the Hero is ready. Patience is a feature. Lord L.'"],
+        ['uptima', 'Lord Latency put it there. Clear the dungeons in town, all five chapters, and it will finish loading. Probably.']],
+      [['narr', 'LOADING... 99%. The bar wobbles, thinks about 100%, and goes back to 98%.']],
+      [['pip', 'I pushed it for an hour. It moved one pixel. Then it rolled back. It had a rollback plan! Rocks are so mature.']],
+      [['narr', 'You knock on the boulder. A tiny voice inside says "Please wait." Then, much later: "Please wait."']],
+      [['narr', "Estimated time remaining: 3 minutes. It said that yesterday. It will say it tomorrow."]]
+    ],
+    barricade: [
+      [['narr', 'A barricade blocks the east road to the ferry. Its sign says ROAD OPEN. Now it says ROAD CLOSED. Now ROAD OPEN.'],
+        ['pip', "It's written to two boards and they haven't synced! The road is open and closed until they agree."],
+        ['narr', "Pinned underneath, in Cron's handwriting: 'Ferry to the Eventual Isles. Opens once the third dungeon is cleared. Or already has. Depends which half of the sign you read.'"]],
+      [['narr', 'ROAD CLOSED. ROAD OPEN. ROAD CLOSED. The sign is very sure, each time.']],
+      [['pip', 'If we read the sign twice and take the majority, it says... ROAD OPCLOSED. Quorum is hard.']],
+      [['narr', 'You lean on the barricade. It accepts the write, then forgets it ever happened.']]
+    ]
+  };
+  async function blocker(c) {
+    const f = S.save.flags, k = 'seen_' + c, lines = BLOCK[c];
+    const say = !f[k] ? lines[0] : lines[1 + Math.floor(Math.random() * (lines.length - 1))];
+    if (!f[k]) { f[k] = 1; S.persist(); }
+    await U.dialog(say.map(([s, t]) => ({ s, t })));
+  }
+
   const waitClose = () => new Promise(res => {
     const p = $('#panel');
     const obs = new MutationObserver(() => { if (p.hidden) { obs.disconnect(); res(); } });
