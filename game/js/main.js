@@ -194,6 +194,7 @@
       if (c === 'B') await board();
       if (c === 'gary') await gary();
       if (c === 'aigerim') await SD.peddler.visit();
+      if (c === 'valentin' && SD.cove) await SD.cove.idle(c);
       if (c === 'G') await gate();
     } finally {
       atDoor = false;
@@ -407,8 +408,6 @@
     const i = sv.flags.garyTalk || 0;
     sv.flags.garyTalk = i + 1; S.persist();
     await U.dialog(SD.story.gary[i % SD.story.gary.length].map(t => ({ s: 'gary', t })));
-    // Mock interviews with Gary (js/mock.js), once chapter 1 is cleared.
-    if (SD.mock && SD.mock.visit) await SD.mock.visit();
   }
 
   // Which weeks of the real 10-week plan each later chapter covers (job-hunt-agent/interview/study_plan_dsa_system_design.md).

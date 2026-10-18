@@ -216,8 +216,35 @@
     kids: ['But WHY is the ferry always late?',
       'Teacher says the copies catch up eventually. How long is eventually? Is it longer than lunch?',
       'I posted a drawing on the board and it vanished! Then it came back! Magic!',
-      'When I grow up I want to be a ferry. Ferries never have to hurry.']
+      'When I grow up I want to be a ferry. Ferries never have to hurry.'],
+    ploy: ['New game! Everyone holds a copy of the score, and whoever shouts it last wins. The kids called it "last write wins". I called it "loud". We\'re still voting.',
+      'Did you know Kwame can\'t say "on time" without laughing? I tested it. Eleven times. For science.',
+      'If I win, victory dance. If you win, victory dance for you. If it\'s a tie, we both dance. There are no losers in the Game Club. Only dancers.',
+      'Detective Ploy is on the case! Who keeps moving the board pins? ...Oh. It\'s the wind. Case closed. Victory dance.',
+      'Interview tip from the president: say what you\'re thinking out loud. Silence is only good in hide-and-seek.'],
+    nok: ['HERO! Ploy and I are tied at forty-nine wins each! Or fifty to forty-nine! The chalkboard got rained on! Our rivalry is ETERNAL and also slightly unclear!',
+      'Today I challenged Ploy to a staring contest. She invented a rule where blinking is allowed if you blink in rhythm. I lost. MAGNIFICENTLY.',
+      'When my youth burns too hot, I run laps of the island. Kwame says I\'ve lapped his ferry nine times. The ferry was moving. Slowly. But moving!',
+      'Kai says he knows how all our games end. So I invented a game with no end! We have been playing it since spring!'],
+    kai: ['Hello. You\'re going to ask what I\'m doing. Standing. Next question.',
+      'I know how every game ends before it starts. Ploy changes the rules halfway through. It\'s the only thing I can\'t see coming. It\'s exhausting. I come every day.',
+      'Nok is about to shout. ...There it is.',
+      'Arjun sleeps through every game and wins half of them. I knew that would happen. I still don\'t understand it.',
+      'If you bring me mango sticky rice, I\'ll tell you nothing about the future. That\'s the best thing I can offer anyone.'],
+    arjun: ['AAAH! Oh. It\'s you. Sorry. I thought you were a crab. A big crab. With opinions.',
+      'I\'m the club treasurer. We have eleven shells. I count them every hour. What if one ESCAPES?',
+      'Ploy says I won three games yesterday. I don\'t remember any of them. Was I good? Was I brave? Was I asleep?',
+      'zzz... shard by user ID... replicate to three... zzz... AAAH! What did I say? Was it embarrassing? Write it down. No, don\'t!']
   });
+  // After Game Night of the Gods (js/ploy-quest.js): the club is official.
+  I.addIdle({
+    ploy: ['The club is OFFICIAL! Four members! I made us badges. Kai knew what they\'d look like. He wore his anyway.',
+      'Next Game Night, Uptima and Aigerim are a team. Team Five Nines Append-Only. They\'re still arguing about the name. It\'s a great game.',
+      'The scoreboard is a diary now. Every game, forever. Nok has read it start to finish four times. He cries at the same parts.'],
+    nok: ['Defeated by a sleeping man! I have never been so inspired! I now train asleep! ...I keep waking up.', 'The scoreboard can never be rubbed out! Our rivalry is recorded for ALL TIME! Page 1: Ploy won. ...I will not read page 1 again.'],
+    kai: ['I knew everything that happened at Game Night. Except the third spin. I think about the third spin a lot.', 'Valentin lost a game. He looked delighted. I didn\'t see that coming either. Two surprises in one year. Good grief.'],
+    arjun: ['I WON GAME NIGHT? Me? Asleep? Who told the goddess? Is she angry? Is she coming? AAAH!', 'zzz... snapshot every hundred games... zzz... the treasury is safe... zzz']
+  }, () => SD.quests && SD.quests.status('gamenight') === 'done');
   // After chapter 7, Leilani talks about the apprentice who signed the schedule.
   I.addIdle({
     leilani: ['There was an apprentice here, years ago. Quiet. She wrote everything down: every sailing, every delay, every complaint, even the silly ones.',
