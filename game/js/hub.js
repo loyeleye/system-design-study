@@ -90,11 +90,19 @@
     cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr);
     // Whole multiples of 16 keep the pixel art crisp.
     ts = Math.max(r.width / 15, r.height / (HT - 1)) >= 44 ? 48 : 32;
+    // Resizing wipes the canvas. While a villager is talking the village is paused, so a phone's
+    // address bar sliding in or out would leave a blank blue screen behind the dialogue: repaint the still frame.
+    if (!active && t0 && r.width && r.height) { try { draw(t0 / 1000, 0); } catch (e) { /* images still loading */ } }
   }
   H.resize = resize;
   H.start = function () { active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); };
   H.stop = function () { active = false; cancelAnimationFrame(raf); };
   H.placeAt = function (x, y) { P.x = P.px = x; P.y = P.py = y; P.path = []; pip.x = x - 1; pip.y = y; };
+  // Where a tile's centre is on screen (used by the playtest scripts to tap villagers).
+  H.tileToScreen = function (x, y) {
+    const r = cv.getBoundingClientRect(), { cx, cy } = cam();
+    return [r.left + x * ts + ts / 2 - cx, r.top + y * ts + ts / 2 - cy];
+  };
   H.stepOffDoor = function () {
     if (DOORS.includes(tile(P.x, P.y))) H.placeAt(P.x, P.y + 1);
   };

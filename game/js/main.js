@@ -154,7 +154,12 @@
   // Who stands at each door, and what "go inside" means when they also have quest business.
   const DOOR_NPC = { A: 'uptima', C: 'wen', H: 'mio', W: 'seymour', U: 'bru', F: 'bram', P: 'coo', K: 'lexi' };
   const VISIT = { A: 'Visit the temple', C: 'Go into the café', H: 'Climb into the treehouse', W: 'Enter the bunker', U: "Check the Guild's quest log", F: 'Look around the Forge', P: 'Browse the Pigeon Post', K: 'Browse the library' };
+  // One conversation at a time: a second trigger (a tap landing while a door's walk-in timer runs) would
+  // start a second dialogue on top of the first and strand it.
+  let atDoor = false;
   async function door(c) {
+    if (atDoor) return;
+    atDoor = true;
     SD.hub.stop();
     AU.sfx(DOOR_NPC[c] || c === 'G' ? 'door' : 'blip');
     try {
@@ -171,6 +176,7 @@
       if (c === 'gary') await gary();
       if (c === 'G') { await gate(); return; }
     } finally {
+      atDoor = false;
       if (!$('#screen-hub').hidden) { SD.hub.stepOffDoor(); SD.hub.start(); M.hud(); }
     }
   }

@@ -91,6 +91,7 @@ button:disabled { cursor: default; opacity: .5; }
 .hud-chip { font-size: 12px; font-weight: 700; padding: 4px 10px; border: 2px solid var(--ink); border-radius: 20px; white-space: nowrap; background: #fff; }
 .hud-chip.due { background: var(--sun); }
 #hub-canvas { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; }
+body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .hub-hint { position: absolute; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; color: var(--ink); background: rgba(255,250,240,.92); border: 2px solid var(--ink); padding: 4px 12px; border-radius: 20px; pointer-events: none; white-space: nowrap; }
 
 /* Bars */
