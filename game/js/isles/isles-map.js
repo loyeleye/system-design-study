@@ -801,7 +801,7 @@
   }
 
   // ---------- Hook-up helpers for the main game (see docs/eventual-isles.md) ----------
-  // True once chapter 3 is cleared: show the pier past Cron's farm and let it call SD.isles.open().
+  // True once chapter 3 is cleared: the barricade on Pingsby's east road clears and the exit calls SD.isles.open().
   I.unlocked = () => I.waveOpen(1);
   // Coo's letter from the east, once, the first time you're back in town after chapter 3.
   I.maybeLetter = async function () {
@@ -809,7 +809,7 @@
     if (!I.unlocked() || st.letter) return false;
     st.letter = true; S.persist();
     await I.say('letter', [['coo', 'Coo! A letter from the east. The Eventual Isles cannot agree on anything, and they want a hero who knows about Clouds.']]);
-    U.system('THE EVENTUAL ISLES', 'A ferry now runs from the pier past Cron\'s farm.', 'gold');
+    U.system('THE EVENTUAL ISLES', 'The barricade on the east road past the Forge has finally made up its mind. The ferry is running.', 'gold');
     return true;
   };
   I.debugGrid = () => G.map(r => r.join('')).join('\n');

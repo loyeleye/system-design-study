@@ -2,15 +2,17 @@
 (function () {
   const H = SD.hub = {};
   // The east district (Guild, Forge, Pigeon Post, Grand Library and Cron's farm) opens up the town for quests.
+  // Two roads leave town: N (top edge) to the North Road and E (east edge, below the Forge) to the Eventual Isles ferry.
+  // Each is blocked until its story opens it (see EXITS below).
   const MAP = [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'T..................#N#.........................T',
-    'T.#######......L.......#######....#########....T',
+    'TTTTTTTTTTTTTTTTTTTTNTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'T..............................................T',
+    'T.#######......L.......#######....#########.###T',
     'T.#######..............#######....#########.###T',
-    'T.#######....,,,,,,....#######....#########.###T',
-    'T.###A###....,,,,,,....###C###....####U####.#F#T',
+    'T.#######....,,,,,,....#######....#########.#F#T',
+    'T.###A###....,,,,,,....###C###....####U####....T',
     'T............,,BB,,............................T',
-    'T..L.........,,,,,,............................T',
+    'T..L.........,,,,,,............................E',
     'T~~~~~~~~~~~~~~==~~~~~~~~~~~~~~~~~~~~~~~==~~~~~T',
     'T~~~~~~~~~~~~~~==~~~~~~~~~~~~~~~~~~~~~~~==~~~~~T',
     'T..L...........................................T',
@@ -31,24 +33,24 @@
     H: { name: "MIO'S TREEHOUSE" }, W: { name: "SEYMOUR'S BUNKER" },
     G: { name: 'DUNGEON (PROD)' }, B: { name: 'QUEST BOARD' },
     U: { name: "ADVENTURERS' GUILD" }, F: { name: 'FORGE' }, P: { name: 'PIGEON POST' }, K: { name: 'GRAND LIBRARY' },
-    N: { name: 'NORTH ROAD' }
+    N: { name: 'NORTH ROAD' }, E: { name: 'TO THE ISLES' }
   };
-  const DOORS = 'ACHWGUFPKN';
+  const DOORS = 'ACHWGUFPKNE';
   // Dirt paths from each door to the plaza and the bridge (drawn as stepping stones, walkable).
   const PATHS = [[5, 6], [26, 6], ...[5, 6, 7, 8, 9, 10, 11, 12].map(x => [x, 7]), ...[19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 7]),
     ...[10, 11, 12, 13].map(y => [15, y]), ...[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 14]),
     ...[15, 16, 17].map(y => [12, y]), [12, 18], [13, 18], [14, 18], [15, 18], [16, 18], [15, 14],
-    ...Array.from({ length: 19 }, (_, i) => [27 + i, 7]), [38, 6], [45, 6], ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14])];
+    ...Array.from({ length: 20 }, (_, i) => [27 + i, 7]), [38, 6], [45, 5], [45, 6], ...[1, 2, 3, 4, 5, 6].map(y => [20, y]), ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14])];
   PATHS.forEach(([x, y]) => { if (MAP[y][x] === '.') MAP[y] = MAP[y].slice(0, x) + 'p' + MAP[y].slice(x + 1); });
   // Villagers stand by their doors; talking to one is the same as walking in. Sprites are in assets/img/village.
   const NPCS = [
-    { id: 'gary', name: 'GARY', x: 20, y: 6 },
+    { id: 'gary', name: 'GARY', x: 22, y: 6 },
     { id: 'uptima', name: 'UPTIMA', x: 3, y: 6, door: 'A', emo: 'star' },
     { id: 'wen', name: 'WEN', x: 28, y: 6, door: 'C', emo: 'heart' },
     { id: 'mio', name: 'MIO', x: 3, y: 14, door: 'H', emo: 'idea' },
     { id: 'seymour', name: 'SEYMOUR', x: 30, y: 13, door: 'W', emo: 'alert' },
     { id: 'bru', name: 'BRU', x: 37, y: 6, door: 'U', emo: 'star' },
-    { id: 'ayo', name: 'AYO', x: 46, y: 6, door: 'F', emo: 'alert' },
+    { id: 'ayo', name: 'AYO', x: 46, y: 5, door: 'F', emo: 'alert' },
     { id: 'coo', name: 'COO', x: 33, y: 13, bird: true, door: 'P', emo: 'music' },
     { id: 'lexi', name: 'LEXI', x: 45, y: 14, door: 'K', emo: 'idea' },
     { id: 'cron', name: 'CRON', x: 43, y: 16, emo: 'sleep' },
@@ -56,11 +58,20 @@
     { id: 'doug', name: 'DOUG', x: 34, y: 10, emo: 'dots' },
     // Aigerim (js/peddler.js) turns up somewhere new each loop from chapter 3, until she moves to the North Road.
     { id: 'aigerim', name: 'AIGERIM', x: -1, y: -1, emo: 'heart', roam: () => SD.peddler && SD.peddler.spot() },
-    // The pier past Cron's farm: Kwame's ferry to the Eventual Isles (js/isles), once their first wave opens.
-    // Its marker shows when an island is at low tide.
-    { id: 'ferry', name: 'FERRY', x: 46, y: 16, pier: true, roam: () => SD.isles && SD.isles.unlocked() ? [46, 16] : null,
-      mark: () => SD.isles && Object.keys(SD.isles.ISLANDS).some(SD.isles.tideLow) ? '!' : null }
+    // Road blockers, standing on the last path tile before each exit until the story moves them (js/main.js says why).
+    // The Isles barricade's sign can't agree with itself: eventual consistency, in wood.
+    { id: 'boulder', name: 'LOADING... 99%', x: 20, y: 1, block: 'boulder', roam: () => H.exitOpen('N') ? null : [20, 1] },
+    { id: 'barricade', get name() { return Math.floor(Date.now() / 900) % 2 ? 'ROAD OPEN' : 'ROAD CLOSED'; }, x: 46, y: 7, block: 'barricade',
+      roam: () => H.exitOpen('E') ? null : [46, 7] }
   ];
+  // Whether an exit's road is open. N: the North Road (js/northroad.js), from chapter 7 (or chapter 5 cleared without it).
+  // E: the Eventual Isles (js/isles), once chapter 3 is cleared. Stepping on an open exit calls the door handler with 'N' or 'E'.
+  H.exitOpen = function (c) {
+    const f = SD.state.save.flags;
+    if (c === 'N') return !!SD.northRoad && (SD.arc ? SD.arc.open(7) : !!f.ch5);
+    if (c === 'E') return !!(SD.isles && SD.isles.unlocked());
+    return true;
+  };
   // Villagers in town right now; roaming ones take today's spot or stay away.
   const people = () => NPCS.filter(n => {
     if (!n.roam) return true;
@@ -267,8 +278,11 @@
     WANDER.forEach(w => { if (w.emoT > 0) emote(w.emo, w.px * ts + ts / 2, headY(w.py)); });
     for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
-      if (BUILD[c] && c !== 'B') label(x, y, BUILD[c].name, t, H.markers && H.markers[c]);
+      if (BUILD[c] && !'BNE'.includes(c)) label(x, y, BUILD[c].name, t, H.markers && H.markers[c]);
     }
+    // The exits sit on the map's edge, so their signs stand on the path instead, once the road is clear.
+    if (H.exitOpen('N')) label(20, 1.6, BUILD.N.name, t, H.markers && H.markers.N);
+    if (H.exitOpen('E')) label(46, 7.5, BUILD.E.name, t, H.markers && H.markers.E);
     label(15.5, 5.6, 'QUEST BOARD', t, H.markers && H.markers.B);
     label(38, 15.2, "CRON'S FARM", t, false);
     people().forEach(n => label(n.x, n.y + 1.45, n.name, t, (H.npcMarks && H.npcMarks[n.id]) || (n.mark && n.mark()), true));
@@ -298,9 +312,10 @@
     if (outline) { ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); ctx.fill(); }
   }
   // The Cloud: where the whole kingdom keeps its data. It has blinking server lights and feelings.
+  // It hangs over the gap between the café and the Guild, clear of the road north at x 20.
   function drawTheCloud(vw, t, cx) {
     const R = Math.min(46, vw * 0.07);
-    const X = vw * 0.5 - cx * 0.05 + Math.sin(t * 0.3) * 20, Y = R * 1.15 + 6 + Math.sin(t * 0.8) * 4;
+    const X = 32 * ts - cx + Math.sin(t * 0.3) * 20, Y = R * 1.15 + 6 + Math.sin(t * 0.8) * 4;
     ctx.save(); ctx.globalAlpha = 0.97;
     ctx.fillStyle = INK;
     puff(X, Y + 3, R + 3, INK, false);
@@ -454,26 +469,13 @@
     return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy < 0 ? 'north' : 'south');
   }
   function drawNpc(n, t) {
-    if (n.pier) return drawPier(n, t);
+    if (n.block) return obj(n.block, (n.x + 0.5) * ts, (n.y + 1) * ts, 0.8);
     if (n.bird) drawBird(n, t);
     else person(n.id, n.x, n.y, t, facing(n), false);
     // Gary sips coffee. Everyone else occasionally has a feeling about something.
     const phase = (t + n.x) % 9;
     // A quest marker replaces the feeling, so the two never overlap.
     if (phase < 2.2 && !(H.npcMarks && H.npcMarks[n.id])) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', n.x * ts + ts / 2, n.bird ? n.y * ts : headY(n.y));
-  }
-  // The ferry pier: a short plank jetty with mooring posts and a lantern, and the ferry's flag bobbing beside it.
-  function drawPier(n, t) {
-    const X = n.x * ts, Y = n.y * ts, u = ts / 32;
-    ctx.fillStyle = '#8a5a34'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    rr(X + 2 * u, Y + 6 * u, 28 * u, 22 * u, 3 * u); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = '#5e3a20'; ctx.lineWidth = 1.5;
-    for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(X + 3 * u, Y + (6 + i * 5.5) * u); ctx.lineTo(X + 29 * u, Y + (6 + i * 5.5) * u); ctx.stroke(); }
-    ctx.fillStyle = '#5e3a20'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    [[2, 4], [26, 4]].forEach(([dx, dy]) => { rr(X + dx * u, Y + dy * u, 4 * u, 26 * u, 1.5 * u); ctx.fill(); ctx.stroke(); });
-    const fy = Y - 10 * u + Math.sin(t * 2) * 1.5 * u;
-    ctx.beginPath(); ctx.moveTo(X + 16 * u, Y + 8 * u); ctx.lineTo(X + 16 * u, fy); ctx.stroke();
-    ctx.fillStyle = '#3fa7d6'; ctx.beginPath(); ctx.moveTo(X + 16 * u, fy); ctx.lineTo(X + 27 * u, fy + 4 * u); ctx.lineTo(X + 16 * u, fy + 8 * u); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
   // Postmaster Coo is a pigeon, bobbing like pigeons do.
   function drawBird(n, t) {

@@ -1,6 +1,6 @@
 # The Eventual Isles
 
-The east map: an archipelago reached by ferry from a pier past Cron's farm, opening in waves after chapters 3, 4,
+The east map: an archipelago reached by ferry down Pingsby's east road past the Forge, opening in waves after chapters 3, 4,
 5 and 8. It teaches the deeper *Designing Data-Intensive Applications* material the chapters only touch, plus five
 Hello Interview problems as optional commissions. Design doc: "Isekai'd Into Prod: The Eventual Isles" (Claude Doc).
 
@@ -49,6 +49,7 @@ Load after `quests.js` (and after any chapter files such as `ch4.js`), before `m
 ## Hook-up steps for the main game
 
 Done on 2026-10-18 (steps 1, 2, 3 with the tide marker, and both step 6 follow-ups): the pier is a `ferry` entry in `hub.js`'s villager list at (46, 16), drawn as a jetty, and `main.js` opens the Isles from it.
+Since then the pier has moved: the ferry is the `E` exit at (47, 7), the end of the east road under the Forge. A barricade whose sign flips between ROAD OPEN and ROAD CLOSED stands on (46, 7) until `SD.isles.unlocked()`; `SD.hub.exitOpen('E')` says which, and `main.js` opens the Isles when you step on the exit.
 
 1. **Scripts.** In `index.html`, add the files above, in that order, just before `<script src="js/main.js"></script>`
    (the same tags `tools/isles_page.py` inserts, without `isles-dev.js`). Rebuild the artifact page as usual.
