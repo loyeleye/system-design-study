@@ -4,7 +4,7 @@
 // detective settles it by replaying the diary. The reward is a rare card of your choice, kept in your deck for every
 // run after (S.save.cardLib, like Aigerim's shop).
 // New people: Ploy's club on the Isles (js/isles: Ploy after Kaguya-sama's Chika, Nok after Naruto's Might Guy,
-// Kai after Saiki K., Arjun after Demon Slayer's Zenitsu, Meron after The Apothecary Diaries' Maomao), Valentin in Pingsby (Haven't You Heard? I'm Sakamoto)
+// Kai after Saiki K., Arjun after Demon Slayer's Zenitsu, Meron after The Apothecary Diaries' Maomao), Dieynaba in Pingsby (Haven't You Heard? I'm Sakamoto; her id is still `valentin`)
 // and Ren on the North Road (Death Note's L). Runs on the town's quest system (js/quests.js); the Isles map routes
 // its islanders' talk to it. Loads after js/sidequests.js.
 (function () {
@@ -14,7 +14,7 @@
   const NR = SD.northRoad;
   const C = SD.cove = {};
 
-  // The Isles people's names and portraits come from js/isles/isles-data.js; Valentin and Ren are drawn there too.
+  // The Isles people's names and portraits come from js/isles/isles-data.js; Dieynaba and Ren are drawn there too.
   if (QS.HOME) Object.assign(QS.HOME, {
     ploy: 'the Tide Pool Game Club, south of Ferry Landing on the Eventual Isles', nok: 'the Tide Pool Game Club on the Eventual Isles',
     kai: 'the Tide Pool Game Club on the Eventual Isles', arjun: 'the Tide Pool Game Club on the Eventual Isles (under the umbrella)',
@@ -119,16 +119,16 @@
         { say: [['uptima', 'A celebrity guest? Me? Finally, a mortal with TASTE.', 'happy'],
           ['uptima', 'I have three small conditions. One: I win every game. Two: I keep the scoreboard. Three: see condition one.'],
           ['you', 'That\'s not really how games work.'],
-          ['uptima', 'It is how MY games work. Five nines of victory! Also I\'ll need a worthy opponent to defeat beautifully. Bring Valentin. He stands outside the café being cool at people. It\'s very annoying.', 'blush'],
+          ['uptima', 'It is how MY games work. Five nines of victory! Also I\'ll need a worthy opponent to defeat beautifully. Bring Dieynaba. She stands outside the café being cool at people. It\'s very annoying.', 'blush'],
           ['narr', 'She presses a signed headshot into your hand. Nobody asked for it.']] },
         { item: 'headshot' }] },
-      { at: 'valentin', hint: 'Invite Valentin, who stands outside the Cache Café in Pingsby.', do: [
-        { say: [['narr', 'As you walk up, a pigeon knocks a teacup off the café windowsill. Valentin catches it on its saucer without looking, takes a sip, and sets it back. Not a drop is spilled. Wen faints quietly behind the glass.'],
+      { at: 'valentin', hint: 'Invite Dieynaba, who stands outside the Cache Café in Pingsby.', do: [
+        { say: [['narr', 'As you walk up, a pigeon knocks a teacup off the café windowsill. Dieynaba catches it on its saucer without looking, takes a sip, and sets it back. Not a drop is spilled. Wen faints quietly behind the glass.'],
           ['valentin', 'Game Night on the Isles. A goddess who must win every game. And a scoreboard she keeps herself.', 'neutral'],
           ['valentin', 'I\'ll come. One should never refuse an invitation, or a duel, or a well-made cup of tea.'],
           ['you', 'She wants to beat you, beautifully.'],
           ['valentin', 'Then she will need cards. Proper ones. The peddler on the North Road keeps the finest deck in the kingdom. She also keeps a diary about you. I\'d bring both.', 'happy'],
-          ['narr', 'He adjusts his glasses. Somewhere, a bell rings. Nobody knows which bell.']] }] },
+          ['narr', 'She tucks a loc behind her ear. Somewhere, a bell rings. Nobody knows which bell.']] }] },
       { at: 'aigerim', hint: 'Ask Aigerim for a deck of cards (her card shop on the North Road).', do: [
         { say: [['aigerim', 'A GAME NIGHT? At NIGHT? With a club of new FRIENDS? And a goddess?', 'yandere'],
           ['aigerim', 'I\'m writing that down. "Day 412. The hero has friends now. Five of them. One of them is very cool. I don\'t like him."', 'yandere'],
@@ -139,11 +139,11 @@
       { at: 'ploy', hint: 'Bring the deck to Ploy at the Game Club. It\'s Game Night!', do: [
         { take: 'invite' }, { take: 'deck' }, { take: 'headshot' },
         { music: 'quest' },
-        { say: [['narr', 'GAME NIGHT. Lanterns on the beach. The whole club, a goddess, a very cool man, and a peddler with a diary. The chalkboard reads: UPTIMA 0, EVERYONE ELSE 0.'],
+        { say: [['narr', 'GAME NIGHT. Lanterns on the beach. The whole club, a goddess, a very cool woman, and a peddler with a diary. The chalkboard reads: UPTIMA 0, EVERYONE ELSE 0.'],
           ['ploy', 'Welcome to the first GRAND GAME NIGHT! Game one: Rock-Paper-Scissors-Load-Balancer! Go!', 'happy'],
           ['narr', 'Arjun, asleep, wins game one. Uptima walks to the chalkboard, rubs out the result and writes UPTIMA 1.'],
           ['aigerim', '"Game one: Arjun won." I have it in ink. Page 1.', 'yandere'],
-          ['narr', 'Valentin wins game two without visibly moving. Uptima rubs it out. UPTIMA 2. Nok wins game three by running in circles until everyone else gives up. UPTIMA 3.'],
+          ['narr', 'Dieynaba wins game two without visibly moving. Uptima rubs it out. UPTIMA 2. Nok wins game three by running in circles until everyone else gives up. UPTIMA 3.'],
           ['uptima', 'As you can see, I am undefeated. Five nines!', 'happy'],
           ['nok', 'THE CHALKBOARD LIES! My youth was there! I SAW it!', 'angry'],
           ['meron', 'Game three started at twenty past eight. Uptima\'s win was written at a quarter past. She wins before the games start now.'],
@@ -222,12 +222,12 @@
     'sq-gn3': 'Like a stats page added to a game years later: it is worked out from the match history, which was there all along.'
   });
 
-  // ---------- Valentin in Pingsby (js/hub.js lists him; js/main.js asks C.idle when there's no quest step) ----------
+  // ---------- Dieynaba in Pingsby (js/hub.js lists her; js/main.js asks C.idle when there's no quest step) ----------
   C.inTown = id => (id === 'valentin' && S.save && S.save.flags.ch5) ? [31, 5] : null;
   const IDLE = {
     valentin: () => QS.status('gamenight') === 'done'
       ? ['Second place at Game Night. I\'ve framed the scoreboard. It\'s very long.', 'Arjun has challenged me to a rematch. In his sleep. I accepted. In mine.', 'Uptima and Aigerim came to the café together. They argued about whose turn it was to pay. They both paid. Neither will let it go.']
-      : ['Good afternoon. The tea is perfect today. It usually is.', 'A pigeon tried to steal my scone. We came to an understanding.', 'Coolness is not effort. It is simply never being surprised. ...That said, the goddess surprises me daily.']
+      : ['Attaya comes in three glasses. The first is bitter, like death. The second is sweet, like life. The third is sweet, like love. Sit. We have time.', 'A pigeon tried to steal my scone. We came to an understanding.', 'Coolness is not effort. It is simply never being surprised. ...That said, the goddess surprises me daily.']
   };
   C.idle = async function (who) {
     const lines = IDLE[who] && IDLE[who]();
@@ -237,7 +237,7 @@
     await U.dialog([{ s: who, t: lines[i % lines.length] }]);
     return true;
   };
-  // Valentin's town sprite is his Isles sheet, copied to assets/img/village by tools/isles_art.py.
+  // Dieynaba's town sprite is her Isles sheet, copied to assets/img/village by tools/isles_art.py.
   if (SD.villageArt && SD.isles && SD.isles.ART && SD.isles.ART.chars.valentin) SD.villageArt.chars.valentin = SD.isles.ART.chars.valentin;
 
   // ---------- Ren on the North Road (walks with his renwalk sheet from arc-art.js; the Isles sheet is the fallback) ----------

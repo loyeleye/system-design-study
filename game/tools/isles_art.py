@@ -54,7 +54,7 @@ for name in sorted(os.listdir(os.path.join(SRC, 'chars'))):
         for ci, im in enumerate(r):
             out.alpha_composite(im.crop((x0, box[1], x1, box[3])), (ci * fw, ri * fh))
     save(out, 'c-' + name)
-    # Valentin stands in Pingsby and Ren on the North Road (js/ploy-quest.js): their sheets go where those maps look.
+    # Dieynaba (id 'valentin') stands in Pingsby and Ren on the North Road (js/ploy-quest.js): their sheets go where those maps look.
     if name in TOWN: out.save(os.path.join(GAME, 'assets/img', TOWN[name], f'c-{name}.webp'), lossless=True, quality=100, method=6)
     art['chars'][name] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows]}
 

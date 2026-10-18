@@ -254,7 +254,7 @@
       'Next Game Night, Uptima and Aigerim are a team. Team Five Nines Append-Only. They\'re still arguing about the name. It\'s a great game.',
       'The scoreboard is a diary now. Every game, forever. Nok has read it start to finish four times. He cries at the same parts.'],
     nok: ['Defeated by a sleeping man! I have never been so inspired! I now train asleep! ...I keep waking up.', 'The scoreboard can never be rubbed out! Our rivalry is recorded for ALL TIME! Page 1: Ploy won. ...I will not read page 1 again.'],
-    kai: ['I knew everything that happened at Game Night. Except the third spin. I think about the third spin a lot.', 'Valentin lost a game. He looked delighted. I didn\'t see that coming either. Two surprises in one year. Good grief.'],
+    kai: ['I knew everything that happened at Game Night. Except the third spin. I think about the third spin a lot.', 'Dieynaba lost a game. She looked delighted. I didn\'t see that coming either. Two surprises in one year. Good grief.'],
     arjun: ['I WON GAME NIGHT? Me? Asleep? Who told the goddess? Is she angry? Is she coming? AAAH!', 'zzz... snapshot every hundred games... zzz... the treasury is safe... zzz'],
     meron: ['Every entry in the club log now says who wrote it and when. Uptima\'s corrections are timestamped too. Three of them are from before the games started. Interesting.',
       'Third place at Game Night. Nobody reads the rules, so nobody noticed you can pass on your turn forever. I passed forty times. Ploy has banned it. She also made it a new game.',
