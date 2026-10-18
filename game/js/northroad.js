@@ -67,6 +67,7 @@
         marta: { x: 17, y: 41, face: 'south', name: 'MARTA' },
         fen: { x: 9, y: 31, face: 'east', name: 'FEN' },
         lyra: { x: 18, y: 19, face: 'south', name: 'LYRA' },
+        aigerim: { x: 9, y: 23, face: 'south', name: 'AIGERIM' },
         v2: { x: 13, y: 26, face: 'east', name: 'TRAVELLER' },
         v4: { x: 17, y: 32, face: 'west', name: 'PILGRIM' }
       },
@@ -230,6 +231,7 @@
     if (cur === 'arena') sc.hide('hero500', !!flags().ch8);
     if (cur === 'waystation') sc.actors.latency.marker = sc.actors.latency.marker || (A.open(7) && !flags().ch7);
     if (SD.roadTalk && SD.roadTalk.cast) SD.roadTalk.cast(sc, cur);
+    if (cur === 'road') sc.hide('aigerim', !(NR.shop && NR.shop.ready()));
     const shop = road.labels.find(l => l.id === 'shop');
     if (shop) shop.text = NR.shop && NR.shop.name ? NR.shop.name.toUpperCase() : 'CARD SHOP';
   }
@@ -342,7 +344,9 @@
     });
   }
 
-  // The card shop: its keeper and stock live elsewhere (NR.shop = { name, open(), ready() }, set by whoever runs it).
+  // The card shop: Aigerim moves her stall here from Pingsby once the road opens (js/peddler.js has her and her stock).
+  // NR.shop = { name, open(), ready() } is all the road needs, so another shop could take the spot.
+  if (SD.peddler) NR.shop = { name: "Aigerim's Cards", open: () => SD.peddler.open({ full: true }), ready: () => SD.peddler.moved() };
   async function shop() {
     if (NR.shop && (!NR.shop.ready || NR.shop.ready())) return NR.shop.open();
     await U.dialog([{ s: 'pip', t: 'A sign in the window: "OPENING SOON. Cards, rare and less rare. Discounts for heroes who have died at least once." That\'s everyone!' }]);
@@ -371,6 +375,7 @@
     if (busy) return;
     busy = true; sc.pause();
     try {
+      if (id === 'aigerim') { await shop(); AU.music(MAPS[cur].music); return; }
       if (QS() && QS().pending(id).length) { await QS().talk(id); AU.music(MAPS[cur].music); return; }
       const own = SD.roadTalk && SD.roadTalk.lines[id];
       const lines = (own && own()) || (TALK[id] && TALK[id]());
