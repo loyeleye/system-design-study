@@ -29,7 +29,7 @@
     $('#hud-snd').onclick = e => toggleSound(e.currentTarget);
     $('#hud-menu').onclick = menu;
     SD.hub.markers = {
-      A: sv.flags.primedLoop !== sv.loop, H: sv.mioVisitLoop !== sv.loop || SD.lessons.hasNew('H'),
+      A: sv.flags.primedLoop !== sv.loop || SD.lessons.hasNew('A'), H: sv.mioVisitLoop !== sv.loop || SD.lessons.hasNew('H'),
       C: SD.lessons.hasNew('C'), W: SD.lessons.hasNew('W'),
       G: !!sv.run, B: sv.flags.dailyDate !== today()
     };
@@ -168,7 +168,7 @@
     1: {
       goal: 'The Goblin King of Links wants every long quest URL in the kingdom turned into a short code, and back again, fast. In interview terms: <b>design a URL shortener</b>.',
       groups: [['Frame it', 'Delivery framework · back-of-envelope math'], ['Scale reads', 'Caching · CDN · replication · hot keys · stampedes'],
-        ['Scale everything else', 'Vertical vs horizontal · load balancing · stateless servers · sharding'], ['Choose your trade-offs', 'CAP & PACELC · SQL vs NoSQL · unique IDs · 301 vs 302']],
+        ['Scale everything else', 'Vertical vs horizontal · load balancing · stateless servers · sharding · availability and nines'], ['Choose your trade-offs', 'CAP & PACELC · SQL vs NoSQL · unique IDs · 301 vs 302']],
       ask: 'which of these would the Goblin King need first, and what would each one cost?'
     },
     2: {
@@ -193,13 +193,17 @@
       <div class="gist"><div class="gist-goal"><span class="q-ctx">Today's quest</span><p>${g.goal}</p></div>
       <div class="gist-groups">${g.groups.map(([h, t]) => `<div><span class="q-ctx">${h}</span><p>${t}</p></div>`).join('')}</div>
       <p class="small">Ask yourself before you go: <i>${g.ask}</i></p></div>
+      ${SD.lessons.buttons('A')}
       <div class="row"><button class="primary" id="ar-codex">Open the cheat sheet</button><button class="ghost" id="ar-x">Leave</button></div>`, { title: 'GIST BOARD · GODDESS TEMPLE' });
+    let lesson = null;
+    SD.lessons.wire(b, id => { lesson = id; });
     ids.forEach(id => S.concept(id));
     if (sv.flags.primedLoop !== sv.loop) { sv.flags.primedLoop = sv.loop; SD.run.gainXp(5); }
     S.persist();
     b.querySelector('#ar-codex').onclick = () => U.codex();
     b.querySelector('#ar-x').onclick = U.closePanel;
     await waitClose();
+    if (lesson) await SD.lessons.play(lesson);
   }
 
   async function cafe() {

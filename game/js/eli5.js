@@ -71,6 +71,10 @@ SD.eli5 = {
   ch4: 'Your other devices get a ping, like a party invite notification, then download only the changed pieces.',
   e5: '10 million players times a 100-byte note each is about a gigabyte, small enough to fit in one memory server.',
   s2: 'If no server holds your save file, any server can pick you up, so you can add or remove servers like swapping party members.',
+  n9a: 'Each extra nine is like cutting your deaths per year by ten. Four nines means the server is down for less than one long movie per year.',
+  n9b: 'If your hero needs both the sword and the shield to fight, and each breaks sometimes, the odds that something breaks add up.',
+  n9c: 'Two healers in the party: you only wipe if both go down at the same time, which is very rare.',
+  n9d: 'A faster respawn timer: you still die sometimes, but you are back in the fight almost instantly.',
   k2: 'Make shadow clones of the popular NPC (key#1, key#2, ...) and send each player to a random clone.'
 };
 
@@ -89,6 +93,7 @@ SD.huh = {
   cap: 'When the bridge between two towns breaks, each town can either stop taking orders (consistent, correct) or keep taking them and sort out conflicts later (available).',
   sqlnosql: 'SQL databases are careful accountants with strict ledgers. NoSQL stores are fast warehouses for simple lookups by key. Pick the one that fits how you use the data.',
   idgen: 'Every item in the game needs a unique serial number. Easy with one counter; tricky when many servers hand out numbers at once.',
+  nines: 'Uptime is how often the game servers are up. "Nines" count the 9s in the percentage: 99.9% is three nines. Each nine means ten times less downtime. Needing many parts at once costs nines; having backups earns them.',
   redirect: 'A redirect is a signpost. A 301 says "moved forever, remember it". A 302 says "go here for now", so people come back each time.',
   ratelimit: 'Rate limiting is a cooldown on how often someone can use your service, so one spammer cannot hog the server. Token buckets work like ability charges that refill over time.',
   limiterdesign: 'Put the cooldown check at the front gate of your servers, track it per player account, and when someone is over the limit, tell them how long to wait (HTTP 429).',
@@ -154,5 +159,6 @@ SD.glossary = [
   ['Write-back / write-through', /\bwrite-(back|through|behind)\b/i, 'Write-through saves to the cache and database together. Write-back saves to the cache now and the database later.'],
   ['Requirements', /\brequirements?\b/i, 'What the system must do (features) and how well (speed, uptime, scale).'],
   ['Analytics', /\banalytics\b/i, 'Counting and studying what users do, like click counts.'],
+  ['Nines / MTTR', /\b(nines?|MTTR|MTBF|99\.9)/i, 'Nines count the 9s in an uptime percentage. MTTR is mean time to recovery: how fast you get back up.'],
   ['Autoscaling', /\bautoscal/i, 'Adding or removing servers automatically as traffic changes.']
 ];

@@ -184,6 +184,12 @@ button:disabled { cursor: default; opacity: .5; }
 .fq-desk i.busy { background: var(--sun); border-style: solid; }
 .fq-done i.ok { background: #7ee0a8; }
 .fq-done i.x { background: #ff8a8a; }
+.nn-pick button { min-width: 72px; }
+.nn-chain { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 8px 0; }
+.nn-chain i { font-style: normal; font-weight: 800; color: var(--muted); }
+.nn-part { display: grid; gap: 2px; padding: 8px 10px; border: 3px dashed var(--line); border-radius: 12px; background: #fff; font: 700 14px var(--f-head); color: var(--muted); }
+.nn-part.on { border: 3px solid var(--ink); background: #fff7d6; color: var(--ink); }
+.nn-part small { font: 700 11px var(--f-body); color: #2f9e5b; }
 .gloss dd { margin: 0; }
 @media (max-width: 480px) { .gloss { grid-template-columns: 1fr; } .gloss dd { margin-bottom: 4px; } }
 .loot { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }

@@ -231,6 +231,40 @@
     b.querySelector('#fq-ok').onclick = () => { if (tick) clearInterval(tick); U.closePanel(); done(true); };
   }
 
+  // ---------- How Many Nines? Uptima's own subject, which she is bad at ----------
+  function nines(done) {
+    const YEAR = 525600; // minutes
+    const fmt = m => m >= 1440 ? `${(m / 1440).toFixed(1)} days` : m >= 60 ? `${(m / 60).toFixed(1)} hours` : m >= 1 ? `${Math.round(m)} minutes` : `${Math.round(m * 60)} seconds`;
+    const SAY = { 2: 'Two nines: 99%. That is my temple. It is down for three and a half days a year. I call it "rest".', 3: 'Three nines: 99.9%. A respectable shop. Down for one long nap a year.', 4: 'Four nines: 99.99%. Fifty-three minutes a year! That is less than one of my lunches.', 5: 'FIVE NINES. 99.999%. My title! Five minutes of downtime a year. I have never actually achieved this.' };
+    let picked = new Set(), parts = { app: true, db: true, cache: false }, replica = false, toggled = false;
+    const avail = () => {
+      let a = 1;
+      if (parts.app) a *= 0.999;
+      if (parts.cache) a *= 0.999;
+      if (parts.db) a *= replica ? 1 - 0.001 * 0.001 : 0.999;
+      return a;
+    };
+    const render = (n) => {
+      const a = avail();
+      const b = U.panel(`<div class="lw-say">${SD.art.portrait('uptima', 64)}<p>${n ? SAY[n] : 'I am the Goddess of Five Nines! Pick a number of nines and I will tell you how much the Cloud may be down. Out loud. In front of everyone.'}</p></div>
+        <p class="q-ctx">1 · How many nines?</p>
+        <div class="row nn-pick">${[2, 3, 4, 5].map(k => `<button class="${n === k ? 'primary' : 'ghost'}" data-n="${k}">${'9'.repeat(k).replace(/^99/, '99.').replace(/\.$/, '')}%</button>`).join('')}</div>
+        ${n ? `<div class="loot"><span>Down ${fmt(YEAR * Math.pow(10, -n))} a year</span><span>${fmt(YEAR / 12 * Math.pow(10, -n))} a month</span></div>` : ''}
+        <p class="q-ctx">2 · Build the temple's prayer service</p>
+        <p class="small">Every part a prayer <b>needs</b> sits in <b>series</b>, so their uptimes multiply. A <b>replica</b> sits in <b>parallel</b>: the database is down only if both copies are down at once. Each part is 99.9%.</p>
+        <div class="nn-chain">${['app', 'cache', 'db'].map(k => `<button class="nn-part${parts[k] ? ' on' : ''}" data-p="${k}">${{ app: 'App server', cache: 'Cache (required)', db: 'Database' }[k]}${k === 'db' && replica ? '<small>+ replica</small>' : ''}</button>`).join('<i>→</i>')}</div>
+        <div class="row"><button class="ghost" id="nn-rep">${replica ? 'Remove the database replica' : 'Add a database replica'}</button></div>
+        <div class="loot"><span>Prayer service: <b>${(a * 100).toFixed(4).replace(/0+$/, '').replace(/\.$/, '')}%</b></span><span>Down ${fmt(YEAR * (1 - a))} a year</span></div>
+        <p class="small">${replica ? `With the replica, the database almost never fails. Now ${parts.cache ? 'the app server and the cache are the weakest links' : 'the app server is the weakest link'}.` : parts.cache ? 'Another required part, another multiplication. Each hard dependency costs you a little uptime.' : 'Try making the cache required, then add a database replica, and watch the number.'}</p>
+        <button class="primary" id="nn-ok" ${picked.size >= 2 && toggled ? '' : 'disabled'}>${picked.size >= 2 && toggled ? 'Got it' : 'Done (try two nines levels and a replica first)'}</button>`, { title: 'HOW MANY NINES? · GODDESS TEMPLE', cls: 'wide', noClose: true });
+      b.querySelectorAll('[data-n]').forEach(el => el.onclick = () => { picked.add(+el.dataset.n); sfx('blip'); render(+el.dataset.n); });
+      b.querySelectorAll('[data-p]').forEach(el => el.onclick = () => { if (el.dataset.p === 'cache') parts.cache = !parts.cache; sfx('card'); render(n); });
+      b.querySelector('#nn-rep').onclick = () => { replica = !replica; toggled = true; sfx(replica ? 'right' : 'card'); render(n); };
+      b.querySelector('#nn-ok').onclick = () => { U.closePanel(); done(true); };
+    };
+    render(0);
+  }
+
   // ---------- The catalogue ----------
   const JOURNEY = {
     title: 'The Journey of a Request', w: 700, h: 260, who: 'mio',
@@ -267,6 +301,7 @@
   };
 
   const LESSONS = [
+    { id: 'nines', b: 'A', ch: 1, kind: 'Mini-game', title: 'How Many Nines?', blurb: 'Uptima explains uptime, badly. Count nines, then wire up her prayer service.', concepts: ['nines', 'replication'], run: nines },
     { id: 'journey', b: 'H', ch: 1, kind: 'Illustrated', title: 'The Journey of a Request', blurb: 'Mio walks Pip through DNS, CDN, load balancer, servers, cache and database.', concepts: ['lb', 'cdn', 'cache', 'stateless'], run: d => walkthrough(JOURNEY, d) },
     { id: 'cacherush', b: 'C', ch: 1, kind: 'Mini-game', title: 'Cache Rush', blurb: 'Be Grandma Wen\'s memory. Three trays, a slow pantry, a lunch rush.', concepts: ['cache'], run: cacheRush },
     { id: 'shards', b: 'W', ch: 1, kind: 'Mini-game', title: 'Shard Sorter', blurb: 'File a town full of Bobs across shelves, then add one more shelf.', concepts: ['sharding', 'hotkey'], run: shardSorter },

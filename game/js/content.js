@@ -80,6 +80,11 @@ SD.concepts = {
     gist: '301 is permanent: browsers cache it, so later clicks skip your servers (less load, no analytics). 302 is temporary: every click comes back to you.',
     page: 'A forwarding address you never check is cheap. One you check every time tells you who is writing. — U.'
   },
+  nines: {
+    name: 'Availability & Nines', zone: 1, tag: 'Nines',
+    gist: 'Availability is the fraction of time a system works. 99.9% allows about 8.8 hours of downtime a year, 99.99% about 53 minutes, 99.999% about 5 minutes. Parts that all must work (in series) multiply: two 99.9% parts give about 99.8%. Redundant copies (in parallel) fail only together: two 99% replicas give 99.99%. Faster recovery (lower MTTR) is often the cheapest nine.',
+    page: 'I am the Goddess of Five Nines. My temple runs at two nines. The other three are aspirational. — U.'
+  },
   // Chapter 2: the Tidewater Archives. Rate limiter and Dropbox-style file sync (Hello Interview week 3).
   ratelimit: {
     name: 'Rate Limiting Algorithms', zone: 2,
@@ -142,6 +147,8 @@ SD.links = [
   { id: 'blob-cdn', a: 'blob', b: 'cdn', text: 'Popular files are served from the edge, pulled from object storage on a miss.' },
   { id: 'limiterdesign-lb', a: 'limiterdesign', b: 'lb', text: 'The gateway in front of your servers is also the natural place to enforce limits.' },
   { id: 'atomic-cap', a: 'atomic', b: 'cap', text: 'When the counter store is unreachable, failing open favours availability and failing closed favours correctness.' },
+  { id: 'nines-replication', a: 'nines', b: 'replication', text: 'Replicas in parallel add nines: the service fails only if every copy fails at once.' },
+  { id: 'nines-lb', a: 'nines', b: 'lb', text: 'Health checks and failover shrink recovery time, which is often the cheapest way to add a nine.' },
   { id: 'queue-herd', a: 'queue', b: 'herd', text: 'Both tame a spike: a queue spreads work out over time, coalescing removes the duplicate work.' }
 ];
 
@@ -400,6 +407,10 @@ SD.questions = [
   { id: 'i2', c: 'idgen', type: 'num', q: 'How many unique codes do 7 base62 characters give? Answer in trillions.', unit: 'trillion', lo: 3, hi: 4, ans: '~3.5 trillion (62^7)', why: '62^7 ≈ 3.5 x 10^12. Plenty for billions of links.' },
   { id: 'i3', c: 'idgen', type: 'mc', q: 'You hash the long URL and keep the first 7 characters. What must you handle?', opts: ['Collisions', 'Clock skew', 'Replication lag', 'Cache stampedes'], a: 0, why: 'Truncated hashes collide. Check on insert and retry with a salt.' },
   { id: 'x1', c: 'redirect', type: 'mc', q: 'A shortener that needs click analytics should redirect with...', opts: ['301 Moved Permanently', '302 Found (temporary)', '200 with a meta refresh', '404'], a: 1, why: 'Browsers cache 301s, so later clicks never reach you. A 302 sends every click through.' },
+  { id: 'n9a', c: 'nines', type: 'mc', q: '99.99% availability allows roughly how much downtime a year?', opts: ['About 53 minutes', 'About 8.8 hours', 'About 5 minutes', 'About 3.6 days'], a: 0, why: 'A year is about 525,600 minutes; 0.01% of that is about 53. Each extra nine divides downtime by ten.' },
+  { id: 'n9b', c: 'nines', type: 'mc', q: 'An app (99.9%) needs its database (99.9%) for every request. Combined availability?', opts: ['About 99.8%', '99.9%', '99.99%', 'About 99.0%'], a: 0, why: 'In series, availabilities multiply: 0.999 x 0.999 ≈ 0.998. Every hard dependency costs you.' },
+  { id: 'n9c', c: 'nines', type: 'mc', q: 'Two independent replicas, each 99% available; either one can serve. Combined?', opts: ['99.99%', '99%', '98%', '99.5%'], a: 0, why: 'In parallel, it fails only if both fail: 1 − 0.01 x 0.01 = 0.9999.' },
+  { id: 'n9d', c: 'nines', type: 'mc', q: 'Often the cheapest way to add a nine to an existing system?', opts: ['Recover faster: health checks and automatic failover cut MTTR', 'Buy pricier hardware and hope', 'Deploy rarely, in huge batches', 'Turn off alerts'], a: 0, why: 'Availability ≈ MTBF / (MTBF + MTTR). Halving recovery time can matter as much as halving failures.' },
   // Chapter 2
   { id: 'rl1', c: 'ratelimit', type: 'mc', q: 'A fixed window allows 100 requests per minute. Worst case inside any 60-second span?', opts: ['100', 'About 200, straddling the boundary between two windows', '150', '50'], a: 1, why: '100 at 0:59 and 100 more at 1:00. Sliding windows fix the edge burst.' },
   { id: 'rl2', c: 'ratelimit', type: 'mc', q: 'Which algorithm allows short bursts while enforcing an average rate?', opts: ['Leaky bucket', 'Token bucket', 'Fixed window counter', 'Round robin'], a: 1, why: 'Tokens pile up to the bucket size, so a quiet client can burst; the refill rate sets the average.' },

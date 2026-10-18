@@ -146,11 +146,14 @@ Chapters 1 and 2 match weeks 1 to 3 of the 10-week plan in `job-hunt-agent/inter
 
 | Chapter | Dungeon | Concepts | Boss | Plan weeks |
 | --- | --- | --- | --- | --- |
-| 1 (built) | Prod (E-Rank) | Delivery framework, estimation, vertical vs horizontal scaling, stateless services, load balancing, caching, CDN, stampedes, hot keys, replication, sharding, CAP/PACELC, SQL vs NoSQL, unique IDs, 301 vs 302 | The Goblin King of Links (URL shortener) | 1–2 |
+| 1 (built) | Prod (E-Rank) | Delivery framework, estimation, vertical vs horizontal scaling, stateless services, load balancing, availability and nines, caching, CDN, stampedes, hot keys, replication, sharding, CAP/PACELC, SQL vs NoSQL, unique IDs, 301 vs 302 | The Goblin King of Links (URL shortener) | 1–2 |
 | 2 (built) | Tidewater Archives (D-Rank) | Rate limiting algorithms, where the limiter lives (gateway, 429, fail open), race conditions and atomic counters, message queues, retries with backoff and idempotency, object storage and presigned URLs, chunking and delta sync | Lord Latency, Demon King of Lag (rate limiter); the Sync Hydra elite (Dropbox) | 3 |
-| 3 | Clockwork Spire | Indexes (B-tree, LSM), quorums, fan-out on write vs read, backpressure, top-K, stream aggregation | News feed, Ticketmaster, ad click aggregator | 4–5 |
-| 4 | Sky Harbour | Geospatial indexes, WebSockets and presence, consensus and leader election, distributed locks, sagas, distributed caches | Uber, WhatsApp, key-value store | 6–7 |
-| 5 | Lord Latency's Castle | Video pipelines, crawlers, notification systems, multi-region | YouTube, web crawler | 8–9 |
+| 3 | Clockwork Spire | Indexes (B-tree, LSM), quorums and the consistency spectrum (linearizable, causal, read-your-writes, eventual), pub-sub, fan-out on write vs read, distributed search and inverted indexes, sharded counters, queue ordering, backpressure, top-K, stream aggregation | News feed and Ticketmaster bosses; Typeahead and Quora elites; ad click aggregator | 4–5 |
+| 4 | Sky Harbour | Geospatial indexes, WebSockets and presence, failure models, consensus and leader election, Lamport and vector clocks, gossip and hinted handoff, distributed locks, task scheduling, sagas, distributed caches (Memcached vs Redis) | Uber, WhatsApp and key-value store bosses; Yelp, Google Docs (OT vs CRDT) and payment system elites | 6–7 |
+| 5 | Lord Latency's Castle | DNS and GeoDNS, global load balancing, CDN deep dive (push vs pull, invalidation), monitoring and logging, deployment systems (canaries, rollouts), video pipelines, crawlers, notifications, multi-region | YouTube and web crawler bosses; real-outage postmortem events | 8–9 |
+| 6 (post-game) | TBD | AI-era systems: LLM serving, ML data infrastructure, retrieval, support bots, code assistants | ChatGPT-style chat service | — |
+
+Topic coverage is cross-checked against the public outline of Educative's *Grokking the Modern System Design Interview* (titles only; see `/mnt/project-files/curriculum/educative_grokking_mapping.md` in the project). The game repo is public, so every explanation is written fresh; nothing from the course is copied. Built refreshers from that check: availability and nines math (Uptima's temple lesson), and DNS in Mio's request walkthrough.
 
 ## Code layout
 
@@ -163,7 +166,7 @@ Chapters 1 and 2 match weeks 1 to 3 of the 10-week plan in `job-hunt-agent/inter
 - `game/js/run.js` — run map, combat, Gary, the tutorial, rewards, café, campfire, events, boss.
 - `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass, ELI5 and Huh???.
 - `game/js/goddess.js` — Uptima's Oopsies: once a loop she breaks something in town on your way to the gate; one question fixes it, and her reward is rolled from a mostly-junk loot table (rarely a shard).
-- `game/js/lessons.js` — building lessons that prime the next dungeon: Mio's illustrated walkthroughs (a request's journey, how a big file travels), Wen's mini-games (Cache Rush, Token Bucket) and Seymour's (Shard Sorter, Festival Queue).
+- `game/js/lessons.js` — building lessons that prime the next dungeon: Uptima's How Many Nines?, Mio's illustrated walkthroughs (a request's journey, how a big file travels), Wen's mini-games (Cache Rush, Token Bucket) and Seymour's (Shard Sorter, Festival Queue).
 - `game/js/eli5.js` — plain-language help: a game analogy per question, a game-terms summary per concept, and a jargon glossary.
 - `game/js/ui.js`, `game/js/art.js`, `game/js/main.js` — UI helpers and dialogue, code-drawn art, boot, cold open and hub buildings.
 - `game/assets/` — icon subset, images (`img/`) and audio (`audio/`); see `game/CREDITS.md`.
