@@ -27,6 +27,8 @@
     const who = l.s, c = SD.cast[who];
     if (l.slide && U.slide) U.slide(l.slide);
     if (l.fx && U.onFx) U.onFx(l.fx);
+    // A line can stage something as it appears (a step, a wince); it runs alongside the typing.
+    if (typeof l.cue === 'function') l.cue();
     // During cutscenes the speaker stands centre stage, visual-novel style.
     const st = $('#stage');
     const mood = SD.art.mood(who, l.t, l.e);
