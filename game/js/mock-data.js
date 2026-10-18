@@ -102,8 +102,9 @@ SD.mock.problems = [
     ],
     api: {
       q: 'Which API would you write on the board?', c: 'redirect',
-      opts: ['POST /urls {long_url, alias?} → {short_code}; GET /{short_code} → 302 to the long URL', 'GET /create?url=… → {code}; GET /{code} → 200 with the URL in JSON', 'POST /{short_code} to follow a link; PUT /urls to make one', 'One endpoint: POST /api {action: "create" | "follow", …}'],
-      a: 0, why: 'Creating changes state, so it\'s a POST. Following is a plain GET a browser can follow, answered with a redirect. A 302 sends every click back to you (good for counting clicks); a 301 lets browsers cache it.'
+      opts: ['POST /urls {long_url, alias?} → {short_code}; GET /{short_code} → 302 to the long URL', 'POST /urls {long_url, alias?} → {short_code}; GET /{short_code} → 200 with the long URL as JSON', 'GET /shorten?url={long_url} → {short_code}; GET /{short_code} → 302 to the long URL', 'GraphQL: a createLink(longUrl) mutation and a link(code) query that returns the long URL'],
+      a: 0, no: [null, 'Short links get clicked in emails and chat apps, which just load the URL. They need a 3xx redirect; JSON only helps your own client code.', 'Creating a link changes state, so it should not be a GET. GETs are meant to be safe: link previewers, crawlers and caches replay them freely.', 'GraphQL suits clients fetching nested data in one call. A clicked short link is a plain browser GET that needs a redirect, not a query.'],
+      why: 'Creating changes state, so it\'s a POST. Following is a plain GET a browser can follow, answered with a redirect. A 302 sends every click back to you (good for counting clicks); a 301 lets browsers cache it.'
     },
     est: {
       pick: [
@@ -122,45 +123,52 @@ SD.mock.problems = [
       ],
       why: {
         c: 'cache', q: '"Why is there a cache on the redirect path?"',
-        opts: ['Redirects outnumber creates about 100 to 1 and popular codes repeat, so memory answers most of them and the database stays calm', 'A cache makes new links durable', 'A load balancer only works with a cache behind it', 'So we can skip the database'],
-        a: 0, why: 'A read-heavy workload with hot keys is exactly what a cache is for. It doesn\'t replace the database; it shields it.'
+        opts: ['Redirects outnumber creates 100 to 1 and hot codes repeat, so memory serves most lookups', 'It holds every link in memory, so the database is only touched for backups and recovery', 'Every click gets counted for analytics, and the cache soaks up those writes in bursts', 'Redirects must finish under 100 ms, and a single database read alone takes about that long'],
+        a: 0, no: [null, 'A cache keeps a copy of the hot keys, not the whole data set, and can lose it on restart. The database stays the source of truth.', 'Buffering writes is a queue or stream\'s job: clicks go onto Kafka and get counted off the redirect path. A cache speeds up repeated reads.', 'An indexed lookup by key takes a millisecond or two. The cache is there for volume and hot keys, not because one read is slow.'],
+        why: 'A read-heavy workload with hot keys is exactly what a cache is for. It doesn\'t replace the database; it shields it, so the database stays calm.'
       }
     },
     dives: [
       {
         id: 'ids', title: 'Generating unique short codes', kind: 'bottleneck', c: 'idgen',
         q: 'How do you make sure two servers never hand out the same code?',
-        opts: ['Each server reserves a block of numbers from a shared counter (say 1,000 at a time) and base62-encodes them', 'Hash the long URL and keep the first 7 characters, no checks', 'Pick a random 7-character string and hope', 'Use the current time in milliseconds'],
-        a: 0, nudge: 'What happens when two servers pick in the same millisecond, or two URLs hash alike?',
-        why: 'Counter ranges give guaranteed-unique numbers with one round trip per thousand links. Hashes and random strings collide unless you check, and timestamps repeat across servers.',
+        opts: ['Each server leases a block of 1,000 IDs from a shared counter and base62-encodes them', 'Hash the long URL with MD5 and keep the first 7 characters, so the same URL gets the same code', 'Generate a random 7-character base62 string; with 3.5 trillion codes, a clash is too rare to matter', 'Use a UUIDv4 for each link, since random 128-bit IDs never collide in practice'],
+        a: 0, no: [null, 'Seven characters of a hash collide once you have billions of links, and nothing here detects it. Hash-and-check works, but costs a lookup per create.', 'The birthday paradox: a clash becomes likely after a couple of million codes, long before trillions. Random codes need a conditional insert and a retry.', 'A UUID is unique without coordination, but it is 22 characters even in base62, so the "short" link is not short. UUIDs suit internal IDs.'],
+        nudge: 'What happens when two servers pick the same random code, or two URLs hash alike?',
+        why: 'Counter ranges give guaranteed-unique numbers with one round trip per thousand links. Hashes and random strings collide unless you check every insert, and UUIDs are unique but far too long to be short codes.',
         f: {
           q: 'What does the counter-range approach cost you?',
-          opts: ['Codes are roughly sequential, so they\'re guessable, and a crashed server wastes the rest of its block', 'Every create needs a global lock', 'Codes grow by one character each day', 'Nothing at all'],
-          a: 0, why: 'Guessable codes matter if links are private (add a random salt or shuffle the bits). Wasted blocks are harmless: there are 3.5 trillion 7-character codes.'
+          opts: ['Codes are roughly sequential and guessable, and a crashed server wastes the rest of its block', 'Every create takes a lock on the shared counter, so creates run one at a time worldwide', 'Blocks can overlap between servers, so every new code still needs a uniqueness check', 'Redirects get slower, since each lookup must ask the counter which server issued that short code'],
+          a: 0, no: [null, 'The counter is touched once per 1,000 links, and the server hands out numbers from memory in between. That is the whole point of leasing blocks.', 'The counter hands out each block once with an atomic increment, so blocks never overlap. Disjoint ranges make every code unique without a check.', 'Redirects only look up the code in the cache or store. The counter is used when creating links, never when following them.'],
+          why: 'Guessable codes matter if links are private (add a random salt or shuffle the bits). Wasted blocks are harmless: there are 3.5 trillion 7-character codes.'
         }
       },
       {
         id: 'viral', title: 'A link goes viral', kind: 'real', c: 'hotkey',
         q: 'One code gets 50,000 clicks a second. What do you do?',
-        opts: ['Serve it from the cache (and a CDN edge if you like). The database only sees the first miss', 'Shard the links table by code', 'Add read replicas until it holds', 'Rate limit that link'],
-        a: 0, nudge: 'All 50,000 clicks ask for the same key. Where does one key live after sharding?',
-        why: 'It\'s one hot key. Sharding puts it on one shard, so that doesn\'t help; replicas help a little; rate limiting breaks the product. Memory at the edge is the fix.',
+        opts: ['Serve the hot code from the cache, or a CDN edge, so the database only sees the first miss', 'Shard the links table by short code so the load spreads across more database nodes', 'Put the lookups on a queue and let workers resolve them as fast as the database allows', 'Rate limit that code so the database is never asked for more than it can handle'],
+        a: 0, no: [null, 'Sharding spreads different keys. All 50,000 clicks are for one code, which lives on one shard, so that shard still takes every read.', 'A redirect is synchronous: the browser is waiting. Queues suit work nobody waits on, like counting the clicks afterwards.', 'These are real users following a popular link. Rate limiting is for abusive clients; here it would break the product at its best moment.'],
+        nudge: 'All 50,000 clicks ask for the same key. Where does one key live after sharding?',
+        why: 'It\'s one hot key. Sharding puts it on one shard, so that doesn\'t help; a queue makes every clicker wait; rate limiting breaks the product. Memory at the edge is the fix.',
         f: {
           q: 'The owner changes where that viral link points. What goes wrong?',
-          opts: ['Cached copies keep sending people to the old URL until they expire, and browsers that got a 301 may never ask again. Use 302 and delete the cache key on edit', 'Nothing, caches update themselves', 'The code has to change', 'The database rejects the edit'],
-          a: 0, why: 'Every cache is a copy that can go stale. Invalidate on write, keep TTLs modest, and avoid 301s for links that can change.'
+          opts: ['Caches keep sending people to the old URL until they expire, and a 301 may stick in browsers', 'Nothing lasting: the cache notices the database write and refreshes that key on its own', 'The short code has to be regenerated, because it was derived from the old long URL', 'Every shard holds a copy of the link, so the edit is slow until all of them agree'],
+          a: 0, no: [null, 'A cache has no idea the database changed. You delete or overwrite the key on edit yourself, or wire up change data capture to do it.', 'The codes came from a counter, not a hash of the URL, so the code is just a key. Changing the target is one write to that row.', 'Sharding by code puts each link on exactly one shard (plus its replicas), so an edit is a single write. The stale copies are in caches.'],
+          why: 'Every cache is a copy that can go stale. Delete the cache key on edit, keep TTLs modest, and use 302s, not 301s, for links that can change: browsers may never ask again after a 301.'
         }
       },
       {
         id: 'shard', title: 'Splitting billions of links', kind: 'real', c: 'sharding',
         q: 'You\'ll store billions of links. How do you split the data?',
-        opts: ['Shard by short code with consistent hashing. Every lookup is by code, so it hits exactly one shard', 'Shard by creation month', 'Shard by user ID', 'Keep one big SQL server and buy a bigger one each year'],
-        a: 0, nudge: 'At redirect time, what is the only thing you know about the link?',
+        opts: ['Shard by short code with consistent hashing, so each redirect hits exactly one shard', 'Shard by creation month, so old links can be archived to cheaper storage in one move', 'Shard by user ID, so each owner\'s links and stats sit together on one shard', 'Split into services, each with its own database: one for links, one for users, one for clicks'],
+        a: 0, no: [null, 'A redirect does not know the link\'s month, and all new links and most clicks land on the newest shard. Time keys suit logs you query by date.', 'A redirect knows only the code, so it would have to ask every shard. User ID suits queries like "list my links", which are rare next to redirects.', 'That splits by feature, not by row: the links table still holds billions of rows on one database. Services split teams and code; sharding splits data.'],
+        nudge: 'At redirect time, what is the only thing you know about the link?',
         why: 'Pick the shard key you look up by. A redirect knows only the code, so code-based sharding never scatters a query.',
         f: {
           q: 'Why not shard by creation month?',
-          opts: ['New links and most clicks land on the newest shard, so one shard runs hot while the rest sit idle', 'Months have different lengths', 'It breaks base62', 'It is fine, actually'],
-          a: 0, why: 'Time-based keys create a moving hotspot. Even spread matters more than tidy ranges.'
+          opts: ['New links and most clicks hit the newest shard, which runs hot while the rest sit idle', 'Each new month means rehashing the key space, which moves most existing links around', 'Old links collect the most clicks over time, so the oldest shards would be overloaded', 'Each month\'s shard would need its own ID counter, so short codes could collide across months'],
+          a: 0, no: [null, 'Range sharding by month just adds a new shard and moves nothing. Mass moves come from hash-mod-N sharding, which consistent hashing avoids.', 'It is the other way round: links get most of their clicks in the first days, then fade. That is what makes the newest shard the hot one.', 'ID generation and storage are separate. One global counter hands out codes wherever the rows are stored, so codes stay unique.'],
+          why: 'Time-based keys create a moving hotspot. Even spread matters more than tidy ranges.'
         }
       },
       { id: 'bike', title: 'The colour of the "Copy link" button', kind: 'bikeshed', reply: '...It\'s a nice blue. Let\'s talk about something else.', note: 'Chose to spend deep-dive time on button colour.' }
@@ -198,8 +206,9 @@ SD.mock.problems = [
     ],
     api: {
       q: 'What interface does the limiter expose?', c: 'limiterdesign',
-      opts: ['Internal: allow(key, cost) → {allowed, remaining, retry_after}. The gateway turns a "no" into HTTP 429 with Retry-After', 'Public: clients call GET /ratelimit?key=… before every request', 'The limiter returns 500 when a client is over', 'POST /ban {key} for each noisy client'],
-      a: 0, why: 'The limiter lives inside the request path, so it\'s an internal call the gateway makes. Clients learn their status from 429s and headers, never by asking first (they would just skip asking).'
+      opts: ['Internal allow(key, cost) → {allowed, remaining, retry_after}; the gateway sends the 429', 'Public GET /ratelimit?key=… that clients call to check their quota before each request', 'Internal allow(key) → true or false; on false the gateway replies 503 Service Unavailable', 'Count connections per client IP at the L4 load balancer and drop the excess there'],
+      a: 0, no: [null, 'Abusive clients would simply not ask, and polite ones double their calls. Clients learn their quota from 429s and rate limit headers on normal replies.', '503 says the server is failing: it burns your error budget and tells the client nothing about its own quota. 429 with Retry-After says "you, slow down".', 'API keys live in HTTP headers, which an L4 balancer never reads, and a dropped connection gets no 429. Limits by key need an L7 hop like the gateway.'],
+      why: 'The limiter lives inside the request path, so it\'s an internal call the gateway makes, and the gateway turns a "no" into HTTP 429 with a Retry-After header. Clients learn their status from 429s and headers, never by asking first (they would just skip asking).'
     },
     est: {
       pick: [
@@ -218,45 +227,52 @@ SD.mock.problems = [
       ],
       why: {
         c: 'limiterdesign', q: '"Why keep the counters in a shared store instead of in each server\'s memory?"',
-        opts: ['With 20 servers, local counters let a client get 20 times its limit by spreading requests. A shared store enforces one limit', 'Shared stores are faster than local memory', 'Local memory can\'t hold integers', 'So the counters survive forever'],
-        a: 0, why: 'The limit is global, so the count must be too. You pay a network hop per request for it, which is why the store has to be fast and in-memory.'
+        opts: ['With 20 servers, local counts let a client get up to 20 times its limit; a shared store gives one count', 'Redis answers faster than a local hash map, because it is built and tuned for counters', '10 million keys of bucket state is too much to fit in a gateway server\'s memory', 'Otherwise we would need sticky routing by key, and load balancers can\'t route that way'],
+        a: 0, no: [null, 'Local memory answers in about 100 nanoseconds; Redis is a network hop of half a millisecond. You pay that hop to get one shared count.', 'At about 100 bytes a key, that is roughly 1 GB, which fits on any server. Memory is not the problem; 20 separate counts are.', 'L7 balancers like Envoy and HAProxy can hash on a header. Routing by key is a real alternative, though scaling moves keys and resets their counts.'],
+        why: 'The limit is global, so the count must be too. You pay a network hop per request for it, which is why the store has to be fast and in-memory.'
       }
     },
     dives: [
       {
         id: 'race', title: 'Two gateways, one counter', kind: 'bottleneck', c: 'atomic',
         q: 'Two gateways read count 99 at the same moment, both allow the request, and both write 100. How do you fix it?',
-        opts: ['Make check-and-update one atomic step in the store: INCR with an expiry, or a small Lua script that refills and takes a token together', 'Lock every request in the app server', 'Read the counter twice to be sure', 'Use a SQL transaction per request'],
-        a: 0, nudge: 'The bug is the gap between reading and writing. What if there were no gap?',
-        why: 'Read-then-write races. Doing both inside Redis in one command (or one script) closes the gap without a distributed lock.',
+        opts: ['Do check-and-update as one atomic step in Redis: INCR, or a Lua script for the token bucket', 'Lock the key inside each gateway, so two requests can never update that count at once', 'Read the counter again just before writing, and skip the write if the value has changed', 'Move the counters to Postgres and wrap each check-and-update in a transaction at READ COMMITTED'],
+        a: 0, no: [null, 'The two requests are on different gateways, and a lock in one process means nothing to the other. Local locks only guard threads in one server.', 'There is still a gap between the second read and the write, so the race just gets narrower. Only an atomic increment or compare-and-set closes it.', 'READ COMMITTED still allows this lost update: both read 99, both write 100. Fixing it needs a row lock or stricter isolation, and a disk round trip per request.'],
+        nudge: 'The bug is the gap between reading and writing. What if there were no gap?',
+        why: 'Read-then-write races. Doing both inside Redis in one command (INCR with an expiry) or one script (refill and take a token together) closes the gap without a distributed lock.',
         f: {
           q: 'What does that cost you?',
-          opts: ['Every request now waits on a round trip to Redis, so that store is a hot dependency: shard it by key and plan for it being down', 'Nothing, Redis is free', 'Limits become per-server again', 'You can no longer have tiers'],
-          a: 0, why: 'A sub-millisecond hop is usually fine, but now the limiter\'s store is on every request\'s path. That leads straight to the failure question.'
+          opts: ['A Redis round trip on every request, which makes that store a hot dependency', 'Lua scripts run on every node in the cluster, so throughput falls as you add nodes', 'Counts drift, because INCR can drop increments when many gateways call it at once', 'Tiers stop working, since one script enforces the same limit for every key'],
+          a: 0, no: [null, 'A script runs only on the node that owns its key, and all of a key\'s state sits in one slot. Adding nodes spreads keys and adds throughput.', 'Redis runs commands one at a time per node, so INCR never loses an update. That is exactly why it fixes the race.', 'The script takes the limit and refill rate as arguments, looked up per key from the rules. Each key can have its own tier.'],
+          why: 'A sub-millisecond hop is usually fine, but now the limiter\'s store is on every request\'s path: shard it by key and plan for it being down. That leads straight to the failure question.'
         }
       },
       {
         id: 'algo', title: 'Choosing the algorithm', kind: 'real', c: 'ratelimit',
         q: 'Clients may burst briefly but must average 100 requests a minute. Which algorithm?',
-        opts: ['A token bucket per key: size sets the burst, refill rate sets the average', 'A fixed window counter per key', 'A sliding window log of every timestamp', 'A leaky bucket that queues requests'],
-        a: 0, nudge: 'You want to allow a short burst, then hold an average. Which one stores up "credit"?',
-        why: 'Token buckets allow bursts up to the bucket size and enforce the average with refill. Fixed windows leak at the edges, logs store too much, and leaky buckets smooth output instead of allowing bursts.',
+        opts: ['A token bucket per key: size sets the burst, refill rate sets the average', 'A fixed window counter per key that resets to zero at the top of every minute', 'A leaky bucket per key that queues requests and releases them at a steady rate', 'A circuit breaker per key that opens after 100 requests and closes a minute later'],
+        a: 0, no: [null, 'Cheap, but the burst size is stuck equal to the limit, and a client can fit 200 requests across a window edge in two seconds.', 'A leaky bucket smooths bursts into a steady stream, so a burst waits in line instead of going through. It suits shaping traffic to a fixed rate.', 'A circuit breaker stops calls to a failing dependency so callers fail fast. It protects you from a sick service, not a service from a greedy client.'],
+        nudge: 'You want to allow a short burst, then hold an average. Which one stores up "credit"?',
+        why: 'Token buckets allow bursts up to the bucket size and enforce the average with refill. Fixed windows leak at the edges, leaky buckets smooth output instead of allowing bursts, and a sliding log of every timestamp works but stores far more.',
         f: {
           q: 'Why not a simple fixed window?',
-          opts: ['A client can send 100 at 0:59 and 100 more at 1:00: twice the limit in two seconds', 'Fixed windows can\'t count past 100', 'They need a database', 'They are slower than token buckets'],
-          a: 0, why: 'Window edges let double bursts through. A sliding window counter or a token bucket smooths that out for the same memory.'
+          opts: ['A client can send 100 at 0:59 and 100 more at 1:00: twice the limit in two seconds', 'It must store a timestamp for every request, so memory grows with the traffic', 'Its counters can\'t be updated atomically in Redis, so gateways race on every window', 'It can\'t tell a client when to retry, because nobody knows when the window ends'],
+          a: 0, no: [null, 'That is the sliding window log. A fixed window keeps one counter per key per window, which is the cheapest option of all.', 'INCR on a key per window is the textbook fixed window, and INCR is atomic. The flaw is in what it counts, not how.', 'Windows end on known boundaries, so Retry-After is just the seconds until the next minute. Fixed windows make that easy.'],
+          why: 'Window edges let double bursts through. A sliding window counter or a token bucket smooths that out for the same memory.'
         }
       },
       {
         id: 'fail', title: 'When the limiter fails', kind: 'real', c: 'limiterdesign',
         q: 'The Redis cluster behind the limiter goes down. What happens to API traffic?',
-        opts: ['Fail open for most endpoints with a rough per-server fallback limit, and fail closed for sensitive ones like login', 'Fail closed everywhere: no limiter, no API', 'Crash the gateways so someone notices', 'Queue every request until Redis is back'],
-        a: 0, nudge: 'Which is worse for most users: a few extra requests getting through, or nobody getting in?',
-        why: 'The limiter protects the API; it shouldn\'t become the outage. Fail open by default, fail closed where abuse is dangerous.',
+        opts: ['Fail open with rough per-server limits, but fail closed on sensitive endpoints like login', 'Fail closed everywhere: if we can\'t count requests, we can\'t safely let any through', 'Hold requests in a queue at the gateway until Redis recovers, then let them through', 'Fall back to counting in the Postgres rules database until the Redis cluster is back'],
+        a: 0, no: [null, 'Then a limiter outage is a full API outage, and the limiter exists to protect the API. Fail closed only where abuse is worse than downtime, like login.', 'Clients time out within seconds, the queue eats gateway memory, and the backlog stampedes in when Redis returns. Queues suit work nobody is waiting on.', 'Every API call becomes a disk write on a database sized for config reads, so one outage becomes two. Fall back to something cheaper, like local memory.'],
+        nudge: 'Which is worse for most users: a few extra requests getting through, or nobody getting in?',
+        why: 'The limiter protects the API; it shouldn\'t become the outage. Fail open by default with a rough per-server fallback limit, and fail closed where abuse is dangerous.',
         f: {
           q: 'What is the risk of failing open?',
-          opts: ['Abusive clients go unlimited during the outage, so you lean on coarse local limits, autoscaling and alerts', 'None', 'Every key gets banned', 'Clients get 429s forever'],
-          a: 0, why: 'Failing open trades protection for availability. Say so out loud, and name the backstop.'
+          opts: ['Abusive clients get far more than their limit until Redis recovers, so you need backstops', 'Clients see 429s for the whole outage, even when they are well under their limits', 'Counts are lost, so every client starts out over its limit once Redis comes back', 'Custom limits for paid tiers are lost, since the rules lived in the Redis cluster'],
+          a: 0, no: [null, 'That is failing closed. Failing open lets requests through unchecked, so the danger is too much traffic, not too little.', 'Lost counts reset to zero, which puts everyone under their limit, not over. Clients get a fresh window when Redis returns.', 'Rules live in the SQL database and are cached by the limiter; Redis holds only the counters. Losing Redis loses counts, not configuration.'],
+          why: 'Failing open trades protection for availability. Say so out loud, and name the backstop: coarse local limits, autoscaling and alerts.'
         }
       },
       { id: 'bike', title: 'The wording of the 429 error message', kind: 'bikeshed', reply: '"Slow down, Doug" is fine. Moving on.', note: 'Chose to spend deep-dive time on error message wording.' }
@@ -295,8 +311,9 @@ SD.mock.problems = [
     ],
     api: {
       q: 'Which API fits?', c: 'fanout',
-      opts: ['POST /posts {text, media_ids}; POST /follows/{user_id}; GET /feed?cursor=…&limit=20', 'GET /feed returns every post from everyone you follow, ever', 'GET /feed?page=3 with offset pages', 'POST /feed {user_id} to read your feed'],
-      a: 0, why: 'Reads are GETs, and feeds need cursor pagination: the cursor (time and post ID of the last item) stays correct while new posts land at the top. Offsets shift and repeat items.'
+      opts: ['POST /posts {text, media_ids}; POST /follows/{user_id}; GET /feed?cursor=…&limit=20', 'POST /posts {text, media_ids}; POST /follows/{user_id}; GET /feed?page=3&size=20', 'POST /posts; PUT /users/{id} {follows: [...]} with the full list; GET /feed?cursor=…', 'POST /posts; POST /follows/{user_id}; a WebSocket that pushes every new post to readers'],
+      a: 0, no: [null, 'Offsets count from the top, so posts arriving while you scroll push items down and page 3 repeats page 2. Offsets suit stable lists like search results.', 'Sending the whole list on each follow means two follows at once can overwrite each other, with a big payload every time. A follow is its own resource.', 'Holding sockets open for 500 million users who read ten times a day is waste, and a socket gives no paging through history. Push suits chat.'],
+      why: 'Reads are GETs, and feeds need cursor pagination: the cursor (time and post ID of the last item) stays correct while new posts land at the top. Offsets shift and repeat items.'
     },
     est: {
       pick: [
@@ -315,45 +332,52 @@ SD.mock.problems = [
       ],
       why: {
         c: 'fanout', q: '"Why fan out when someone posts, instead of building the feed when it\'s read?"',
-        opts: ['Reads outnumber posts about 10 to 1 and must be under 500 ms, so doing the work once at post time makes every read a cheap list lookup', 'It uses less storage', 'Posts become strongly consistent', 'Fan-out on read is impossible at scale'],
-        a: 0, why: 'You move work from the hot, latency-sensitive path (reads) to the cooler one (writes), and you pay for it in storage and write volume.'
+        opts: ['Reads outnumber posts 10 to 1 and must be fast, so do the work once, at post time', 'It saves storage, since each follower\'s feed holds post IDs instead of whole posts', 'Posts become strongly consistent, so every follower sees a new post at the same instant', 'Feeds built on read are minutes stale, while fan-out on write shows posts within seconds'],
+        a: 0, no: [null, 'Fan-out on write stores a copy of every post ID in every follower\'s feed, so it costs more storage, not less. You trade storage for fast reads.', 'Fan-out runs async through a queue, so followers see a post at different moments. It is eventually consistent, which the requirements allow.', 'It is the reverse: building at read time sees every post up to that moment. Fan-out on write lags by however long the queue takes.'],
+        why: 'Every read becomes a cheap list lookup, well under 500 ms. You move work from the hot, latency-sensitive path (reads) to the cooler one (writes), and you pay for it in storage and write volume.'
       }
     },
     dives: [
       {
         id: 'celeb', title: 'Celebrity posts', kind: 'bottleneck', c: 'fanout',
         q: 'An account with 50 million followers posts. What does your fan-out do?',
-        opts: ['Skip fan-out for accounts over a follower threshold. Followers merge those posts in when they read', 'Write it into all 50 million feeds before replying', 'Switch everyone to fan-out on read', 'Limit celebrities to one post a day'],
-        a: 0, nudge: '50 million writes for one post. How long does that take, and how often do celebrities post?',
+        opts: ['Skip fan-out for accounts above a follower threshold; followers merge their posts in on read', 'Write it into all 50 million feeds in parallel, then confirm the post once they are done', 'Move every account to fan-out on read, so no single post ever costs millions of writes', 'Throttle celebrity accounts to a few posts an hour so the fan-out queue keeps up'],
+        a: 0, no: [null, 'Even at a million writes a second that is close to a minute per post, and it floods the workers for everyone else. Nobody should wait on 50 million writes.', 'That makes all 5 billion daily reads slow to fix a problem only a few thousand accounts have. Keep fan-out on write for the many; pull the few.', 'Each post still costs 50 million writes, and limiting your most-read accounts breaks the product. Rate limits are for abuse, not popularity.'],
+        nudge: '50 million writes for one post. How long does that take, and how often do celebrities post?',
         why: 'The hybrid: precompute feeds for ordinary accounts, and pull the few huge accounts in at read time. Nobody waits for 50 million writes.',
         f: {
           q: 'What does the hybrid cost you?',
-          opts: ['Reads now merge two sources, so they\'re more complex and a little slower, and you have to choose and tune the threshold', 'Nothing', 'Celebrity posts are lost', 'Feeds become strongly consistent'],
-          a: 0, why: 'Two code paths, a merge on read, and a threshold to tune. Worth it, but say it.'
+          opts: ['Reads merge two sources, so they\'re slower and more complex, and the threshold needs tuning', 'Celebrity posts reach followers minutes late, since they skip the fan-out queue', 'Each follower\'s cached feed must also hold every celebrity post, so memory doubles', 'Celebrities stop receiving posts in their own feeds, since they are excluded from fan-out'],
+          a: 0, no: [null, 'They are pulled at read time, so they show up the moment a follower refreshes. Skipping the queue makes them fresher, not later.', 'Celebrity posts are kept once, in the author\'s recent-posts list, and that hot list is cached. Followers fetch it on read instead of storing copies.', 'The threshold decides whose posts skip fan-out, not who receives it. A celebrity\'s own feed still fills from the accounts they follow.'],
+          why: 'Two code paths, a merge on read, and a threshold to tune. Worth it, but say it.'
         }
       },
       {
         id: 'size', title: 'Feed cache size and misses', kind: 'real', c: 'cache',
         q: 'Do you precompute a feed for all 2 billion accounts?',
-        opts: ['Only for recently active users, keeping the newest few hundred post IDs each. Rebuild an inactive user\'s feed when they return', 'Yes, every account, with every post forever', 'No feeds at all; query the posts table each time', 'Only for celebrities'],
-        a: 0, nudge: 'Most of those accounts haven\'t opened the app this month. Who are you paying memory for?',
-        why: 'Memory is the cost of fan-out on write. Spend it on people who will read, and cap each list.',
+        opts: ['Feeds only for recently active users, capped at a few hundred IDs; rebuild others on return', 'Yes, every account, with each feed\'s full history so any scroll depth loads instantly', 'None at all; on each load, query the latest posts of every account the user follows', 'Only for celebrity accounts, since their followers generate most of the feed reads'],
+        a: 0, no: [null, 'Most of those accounts haven\'t opened the app this month, and nobody scrolls back years. You would pay memory for feeds that are never read.', 'That is fan-out on read for everyone: about 200 lookups and a merge on each of 58,000 reads a second. It misses the 500 ms target at peak.', 'Feeds belong to readers, not authors. A celebrity\'s posts land in millions of other people\'s feeds; their own feed is read no more than anyone else\'s.'],
+        nudge: 'Most of those accounts haven\'t opened the app this month. Who are you paying memory for?',
+        why: 'Memory is the cost of fan-out on write. Spend it on people who will read, and cap each list at the newest few hundred post IDs. Rebuild an inactive user\'s feed when they return.',
         f: {
           q: 'What does that cost the user who comes back after a month?',
-          opts: ['Their first load is slower while the feed rebuilds from their follows', 'They see an empty feed forever', 'They lose their follows', 'Nothing at all'],
-          a: 0, why: 'A slow first load for rare returners is a fair trade for not caching billions of idle feeds.'
+          opts: ['A returning user\'s first load is slow while the feed rebuilds from their follows', 'They miss the posts made while they were away, since nothing was fanned out to them', 'Their follow list was evicted from the cache, so they have to follow everyone again', 'Their feed is out of order until the next fan-out cycle sorts it back by time'],
+          a: 0, no: [null, 'The rebuild reads the recent posts of everyone they follow, so those posts come back. Fan-out was skipped, not the posts.', 'Follows live in the database, the source of truth. Evicting a cache entry only means the next read goes to the database.', 'The rebuild merges recent posts by timestamp, so the feed comes back in order. Fan-out is triggered per post, not run in cycles.'],
+          why: 'A slow first load for rare returners is a fair trade for not caching billions of idle feeds.'
         }
       },
       {
         id: 'page', title: 'Pagination while new posts arrive', kind: 'real', c: 'fanout',
         q: 'A user scrolls while 30 new posts arrive at the top. Page 2 now repeats posts from page 1. Fix?',
-        opts: ['Cursor pagination: return the time and ID of the last item, and fetch posts older than that', 'Smaller pages', 'Lock the feed while the user scrolls', 'Refresh the whole feed every scroll'],
-        a: 0, nudge: 'Offsets count from the top. What if you counted from the last thing the user saw?',
+        opts: ['Cursor pagination: send the last item\'s time and ID, and fetch posts older than that', 'Use smaller pages, so fewer new posts can arrive between two page requests', 'Lock the user\'s feed while they scroll, so fan-out can\'t insert new posts mid-read', 'Send an ETag with each page, so the client can tell the feed changed and refetch page 2'],
+        a: 0, no: [null, 'Any post that lands between requests still shifts every offset, so the repeats get smaller but never stop. The page size is not the problem.', 'Fan-out workers would stall behind every scrolling reader, and posts would back up. Readers should not block writers here.', 'An ETag tells a client or cache whether a resource changed, but page 2 by offset is still shifted when refetched. ETags suit conditional GETs.'],
+        nudge: 'Offsets count from the top. What if you counted from the last thing the user saw?',
         why: 'A cursor anchors on an item, not a position, so new posts at the top can\'t shift what comes next.',
         f: {
           q: 'What do you give up with cursors?',
-          opts: ['You can\'t jump to page 37 directly; you can only go forward from a cursor', 'Pages are slower to read', 'New posts never appear', 'You need a SQL join per page'],
-          a: 0, why: 'Feeds are scrolled, not paged by number, so losing random access costs almost nothing here.'
+          opts: ['You can\'t jump to page 37 directly; you can only go forward from a cursor', 'Each page gets slower, since the database must skip every row before the cursor', 'New posts never appear, since the cursor pins the feed to the moment you first loaded', 'Cursors need SQL, so the feed cache can no longer be a Redis list or sorted set'],
+          a: 0, no: [null, 'That is the cost of offsets. A cursor becomes WHERE (time, id) < (?, ?) on an index, so page 1,000 is as fast as page 1.', 'Pulling to refresh asks for posts newer than the first item, so new posts show up. The cursor only anchors the scroll down.', 'A Redis sorted set scored by time handles cursors well: ask for the next 20 below the last score. Cursors are a pattern, not a database feature.'],
+          why: 'Feeds are scrolled, not paged by number, so losing random access costs almost nothing here.'
         }
       },
       { id: 'bike', title: 'Which emoji reactions to ship', kind: 'bikeshed', reply: 'The croissant one. Obviously. ...Anyway.', note: 'Chose to spend deep-dive time on the emoji set.' }
@@ -392,8 +416,9 @@ SD.mock.problems = [
     ],
     api: {
       q: 'Which API would you write down?', c: 'booking',
-      opts: ['GET /events/{id}; GET /search?q=…; POST /bookings {event_id, seat_ids} → hold; POST /bookings/{id}/confirm with payment', 'POST /seats/{id}/buy charges the card at once, no hold', 'GET /bookings/create?seat=…', 'PUT /events/{id} with the seat to book'],
-      a: 0, why: 'Booking is two steps, hold then pay, because payment takes minutes and can fail. Each step changes state, so each is a POST.'
+      opts: ['GET /events/{id}; GET /search?q=…; POST /bookings {seat_ids} → hold; POST /bookings/{id}/confirm', 'GET /events/{id}; GET /search?q=…; POST /seats/{id}/buy charges the card in the same request', 'GET /events/{id}; GET /search?q=…; the client sends PATCH /seats/{id} {status: "sold"}', 'GET /events/{id}; GET /search?q=…; POST /bookings {seat_ids} → hold; POST /bookings/{id}/confirm {card_number, cvv}'],
+      a: 0, no: [null, 'Payment takes minutes and can fail, so without a hold the seat is either locked inside one long request or sold twice. Booking needs hold, then pay.', 'The client would decide what is sold, with no hold, payment or server-side check. State changes go through server endpoints that enforce the rules.', 'Raw card numbers on your servers put you in PCI scope. With Stripe, the client sends the card to Stripe and you confirm with its payment ID.'],
+      why: 'Booking is two steps, hold then pay, because payment takes minutes and can fail. Each step changes state, so each is a POST, and the confirm carries the payment provider\'s ID.'
     },
     est: {
       pick: [
@@ -412,45 +437,52 @@ SD.mock.problems = [
       ],
       why: {
         c: 'consistency', q: '"Why do bookings go to a SQL database?"',
-        opts: ['A booking must be all or nothing and no seat can be sold twice: that wants transactions and a unique constraint, not eventual consistency', 'SQL is faster than every NoSQL store', 'Search needs SQL', 'It\'s the only database a waiting room supports'],
-        a: 0, why: 'Use strong consistency where money and seats meet, and relax it everywhere else (search, the seat map).'
+        opts: ['Bookings need transactions and a unique constraint, so no seat is ever sold twice', 'SQL serves the million seat-map reads a second at 10:00 better than NoSQL would', 'SQL scales writes across many nodes out of the box, which most NoSQL stores can\'t', 'Holds must expire after ten minutes, and only SQL databases can expire rows on their own'],
+        a: 0, no: [null, 'That read spike goes to a cache in front of the seat map. The database handles the far smaller stream of holds and confirmations.', 'It is roughly the reverse: most NoSQL stores were built to shard writes, while a classic SQL primary takes all writes on one node.', 'Redis and DynamoDB expire keys natively; Postgres does not. In SQL a hold is a held_until column that queries check.'],
+        why: 'A booking must be all or nothing, and no seat can be sold twice: that wants ACID transactions, not eventual consistency. Use strong consistency where money and seats meet, and relax it everywhere else (search, the seat map).'
       }
     },
     dives: [
       {
         id: 'double', title: 'Two fans click seat 14C at once', kind: 'bottleneck', c: 'booking',
         q: 'Two fans click seat 14C in the same millisecond. How does exactly one of them get it?',
-        opts: ['An atomic conditional write: set 14C to held, with an expiry ten minutes out, only if it is available right now. One write wins, the other gets "taken"', 'Check availability, then write the hold', 'Let both book and refund one later', 'Show the seat to only one fan at a time'],
-        a: 0, nudge: 'Check-then-write has a gap. Where can the check and the write happen as one step?',
-        why: 'UPDATE … WHERE status = \'available\' (or Redis SET NX with a TTL) makes the check and the claim one atomic step, so two fans can\'t both win.',
+        opts: ['One atomic conditional write: hold 14C for ten minutes only if it is still available', 'Check that 14C is available, then write the hold if it is, both in the booking service', 'Accept both holds, then refund whichever fan\'s payment completes second', 'Give the seat to the request with the earlier client timestamp, down to the millisecond'],
+        a: 0, no: [null, 'Both requests can pass the check before either writes, so both get the seat. The check and the claim must be one step in the database.', 'That breaks the "never sold twice" requirement, and one fan learns after paying. Refunds are a last resort, not concurrency control.', 'Phone clocks drift by seconds and can be set by hand, and two requests can still tie. Something must still arbitrate atomically in one place.'],
+        nudge: 'Check-then-write has a gap. Where can the check and the write happen as one step?',
+        why: 'UPDATE … WHERE status = \'available\' (or Redis SET NX with a TTL) makes the check and the claim one atomic step, so two fans can\'t both win: one write succeeds, the other gets "taken".',
         f: {
           q: 'The fan holding 14C closes the tab. What happens?',
-          opts: ['The hold just expires after ten minutes and the seat goes back on sale. No cleanup job is needed for correctness', 'The seat is lost forever', 'A human releases it', 'The other fan gets it at once'],
-          a: 0, why: 'Expiry makes abandoned holds safe by default. A sweeper can tidy up, but correctness never depends on it.'
+          opts: ['The hold expires after ten minutes and the seat goes back on sale, with no cleanup job', 'The server sees the connection close and puts the seat back on sale right away', 'The seat stays held until a nightly job finds and releases abandoned holds', 'The hold lived in the browser session, so it vanishes the moment the tab closes'],
+          a: 0, no: [null, 'A dropped train signal looks the same as a closed tab, so fans would lose seats mid-payment. Disconnects are a poor signal; expiry is a reliable one.', 'Seats would sit unsold for hours during the on-sale. The expiry in the hold itself frees it; a sweeper can tidy rows, but nothing depends on it.', 'Holds must live on the server, or two fans could hold the same seat. The browser only keeps the booking ID.'],
+          why: 'Expiry makes abandoned holds safe by default. A sweeper can tidy up, but correctness never depends on it.'
         }
       },
       {
         id: 'surge', title: 'The 10:00 surge', kind: 'real', c: 'backpressure',
         q: '10 million fans arrive the moment sales open. What goes in front of booking?',
-        opts: ['A virtual waiting room that admits fans in order at the rate booking can handle', 'Autoscale the booking servers', 'A bigger database', 'A CDN in front of the booking API'],
-        a: 0, nudge: 'The database can only do so many holds a second, however many servers you add. What controls the arrival rate?',
+        opts: ['A virtual waiting room that admits fans in order at the rate booking can handle', 'Autoscaling for the booking servers, with a low CPU target so new ones start early', 'A CDN in front of the booking API, so most requests are answered at the edge', 'Read replicas for the bookings database, so it can absorb ten times the load'],
+        a: 0, no: [null, 'New servers take minutes to boot, and they all hit the same database, which is the real limit. Autoscaling suits gradual swings, not a 10:00 cliff.', 'A CDN caches identical responses, and each hold is a unique write. It helps with the seat map and static pages, not with booking.', 'Holds are writes, and replicas only serve reads, so every hold still goes to the primary. Replicas help read-heavy pages like the event page.'],
+        nudge: 'The database can only do so many holds a second, however many servers you add. What controls the arrival rate?',
         why: 'Autoscaling is too slow and the database is the real limit. A waiting room turns a stampede into a steady line.',
         f: {
           q: 'What does the waiting room cost?',
-          opts: ['Fans wait, and you need fair ordering and bot protection, or scalpers just take more places in line', 'Nothing', 'Seats can be double-booked', 'Search stops working'],
-          a: 0, why: 'Fairness and anti-bot measures become part of the design. It\'s a product decision too, not just a backend one.'
+          opts: ['Fans wait, and you need fair ordering and bot checks, or scalpers fill the line', 'Seats can be double-booked while batches of fans are being let in from the line', 'The booking database must still be sized for all 10 million fans arriving at once', 'Every fan in the line needs a seat hold, so 10 million holds are written up front'],
+          a: 0, no: [null, 'Admission only controls who reaches booking. The atomic hold still decides who gets each seat, so nothing can be sold twice.', 'Sizing booking for its admit rate, not the crowd, is the whole point. The waiting room absorbs the spike instead of the database.', 'Fans in line hold nothing but a place token. A hold is written only after a fan is admitted and picks a seat.'],
+          why: 'Fairness and anti-bot measures become part of the design. It\'s a product decision too, not just a backend one.'
         }
       },
       {
         id: 'search', title: 'Searching events', kind: 'real', c: 'search',
         q: 'Fans search by name, date and city, with typos. How?',
-        opts: ['An inverted-index search engine (like Elasticsearch), kept in sync with the database through change data capture', 'LIKE \'%taylor%\' on the events table', 'Cache every possible query', 'Scan all events in the app server'],
-        a: 0, nudge: 'LIKE with a leading wildcard can\'t use an index. What is built for finding documents by their words?',
-        why: 'Search engines index words, handle fuzziness, and scale reads apart from the booking database.',
+        opts: ['A search engine like Elasticsearch, kept in sync with the database by change data capture', 'LIKE \'%taylor%\' on the events table, with a B-tree index on the name column to speed it up', 'Cache the results of popular queries in Redis, and send the rest to the events table', 'Load events nightly into a warehouse like BigQuery with an ETL job, and search there'],
+        a: 0, no: [null, 'A B-tree can\'t help when the pattern starts with a wildcard, so every search scans the table, and typos match nothing. B-trees suit exact and prefix lookups.', 'A cache only repeats answers it has seen; new queries and typos still hit a table that can\'t match fuzzily. Caches sit in front of search, not instead of it.', 'Warehouses are for analytics: big scans in seconds over data a day old. Fans need fuzzy answers in milliseconds on today\'s events.'],
+        nudge: 'LIKE with a leading wildcard can\'t use an index. What is built for finding documents by their words?',
+        why: 'Search engines index words in an inverted index, handle fuzziness, and scale reads apart from the booking database.',
         f: {
           q: 'What does a separate search index cost?',
-          opts: ['It lags the database by a few seconds, which is fine for browsing but must never decide seat availability', 'Bookings become eventually consistent', 'Nothing', 'Searches get slower'],
-          a: 0, why: 'Two copies of the data means a sync path and a little staleness. Keep the source of truth for seats in the database.'
+          opts: ['The index lags the database by seconds: fine for browsing, never for seat availability', 'Bookings become eventually consistent, since seat holds now flow through the index', 'Each search gets slower, since the app must confirm every hit against the database', 'The index has to be rebuilt from scratch nightly, so search results are a day old'],
+          a: 0, no: [null, 'Holds and bookings still go to the SQL database; the index only gets a copy. The source of truth for seats stays strongly consistent.', 'The search engine answers from its own index. You check the database only at booking time, when a fan picks a seat.', 'Change data capture streams each database change into the index within seconds. Nightly rebuilds are what you do without CDC.'],
+          why: 'Two copies of the data means a sync path and a little staleness. Keep the source of truth for seats in the database.'
         }
       },
       { id: 'bike', title: 'SVG or canvas for the seat map', kind: 'bikeshed', reply: 'Either. It\'s a backend round. ...I like canvas.', note: 'Chose to spend deep-dive time on front-end rendering.' }
@@ -489,8 +521,9 @@ SD.mock.problems = [
     ],
     api: {
       q: 'How do phones talk to the service?', c: 'realtime',
-      opts: ['A WebSocket per device: send {chat_id, client_msg_id, body} and get an ack; the server pushes new messages and ticks; GET /chats/{id}/messages?after=… to catch up', 'POST /messages, and phones poll GET /messages every second', 'One HTTP request per message, kept open until a reply arrives', 'Phones email each other'],
-      a: 0, why: 'A persistent connection lets the server push the moment a message arrives. The client message ID makes resends safe, and the catch-up call covers reconnects.'
+      opts: ['A WebSocket per device to send and receive pushes; GET /chats/{id}/messages?after=… to catch up', 'POST /messages to send, and every phone polls GET /messages each second for anything new', 'POST /messages to send, and deliver every message to the phone as an APNs or FCM push', 'A raw UDP socket per device, since chat needs low latency and TCP retransmits are slow'],
+      a: 0, no: [null, 'A billion phones asking every second is mostly empty requests, and messages still wait up to a second. Polling suits rare updates or a fallback.', 'APNs and FCM are best effort: they can delay, collapse or drop messages, and they throttle. They wake an offline phone; an open connection carries the chat.', 'UDP drops and reorders packets, and messages must never be lost. TCP\'s retransmits are what make delivery reliable. UDP suits voice and video calls.'],
+      why: 'A persistent connection lets the server push new messages and ticks the moment they happen. Each send carries {chat_id, client_msg_id, body} and gets an ack, so resends are safe, and the catch-up call covers reconnects.'
     },
     est: {
       pick: [
@@ -510,45 +543,52 @@ SD.mock.problems = [
       ],
       why: {
         c: 'realtime', q: '"Why WebSockets rather than phones polling every second?"',
-        opts: ['An open connection lets the server push each message the moment it arrives; a billion phones polling every second would be mostly empty requests and still add latency', 'WebSockets encrypt messages and HTTP can\'t', 'Polling can\'t carry text', 'WebSockets need no servers'],
-        a: 0, why: 'Push beats poll when updates are frequent and latency matters. The cost is holding a billion connections open, which is its own deep dive.'
+        opts: ['The server can push each message the instant it arrives, without a billion empty polls', 'WebSockets are encrypted, while plain HTTP polling has no way to encrypt messages', 'A WebSocket stays open while the phone sleeps in a pocket, so messages still get through', 'WebSocket servers are stateless, so any server can take any message for any user'],
+        a: 0, no: [null, 'TLS secures both: HTTPS for polling, WSS for WebSockets. End-to-end encryption is a separate layer on top of either.', 'Phone operating systems close background sockets to save battery. A sleeping phone is reached by a push notification through APNs or FCM.', 'Each server holds specific users\' open connections, which makes it stateful. That is why you need a registry of who is connected where.'],
+        why: 'Push beats poll when updates are frequent and latency matters: a billion phones polling every second would be mostly empty requests, and still up to a second late. The cost is holding a billion connections open, which is its own deep dive.'
       }
     },
     dives: [
       {
         id: 'route', title: 'Finding Bob\'s server', kind: 'bottleneck', c: 'realtime',
         q: 'Alice is connected to server 12, Bob to server 87. How does her message reach him?',
-        opts: ['Look up Bob\'s server in a connection registry (user → server, in Redis) and forward it there, or publish to Bob\'s channel in a pub/sub layer that server 87 listens on', 'Server 12 broadcasts it to all servers', 'Bob\'s phone polls server 12', 'Keep every user on the same server'],
-        a: 0, nudge: 'Server 12 has no idea where Bob is. Who could know?',
-        why: 'With millions of connections spread over thousands of servers, you need a directory or a pub/sub layer. Broadcasting to every server doesn\'t scale.',
+        opts: ['Look up Bob\'s server in a user → server registry and forward it, or use per-user pub/sub', 'Server 12 broadcasts it to every chat server, and the one holding Bob delivers it', 'Hash the chat ID at the load balancer, so everyone in a chat connects to one server', 'The service mesh sidecar on server 12 finds server 87 through service discovery'],
+        a: 0, no: [null, 'With thousands of servers, each message becomes thousands of sends, nearly all wasted. Broadcast suits a handful of nodes, not this fleet.', 'A phone opens one connection but belongs to hundreds of chats, so no single chat can pick its server. Connections are placed by user, not chat.', 'Service discovery finds healthy instances of a service, not which instance holds Bob\'s socket. Meshes handle routing, retries and mTLS between services.'],
+        nudge: 'Server 12 has no idea where Bob is. Who could know?',
+        why: 'With millions of connections spread over thousands of servers, you need a directory (user → server, in Redis) or a pub/sub layer where server 87 listens on Bob\'s channel. Broadcasting to every server doesn\'t scale.',
         f: {
           q: 'Server 87 crashes. What happens to Bob?',
-          opts: ['His phone reconnects to another server, which updates the registry; anything he missed is in the message store, so he asks for everything after his last seen ID', 'His messages are lost', 'He has to reinstall the app', 'Server 12 holds his messages forever'],
-          a: 0, why: 'Store first, then deliver. The connection is disposable because the message store is the source of truth.'
+          opts: ['Bob reconnects elsewhere, the registry updates, and he fetches messages after his last seen ID', 'Messages sent to him during the crash are lost, since server 87 held them in memory', 'Server 12 keeps retrying server 87 until it is back up, then delivers the backlog', 'The load balancer moves his open WebSocket to a healthy server without a reconnect'],
+          a: 0, no: [null, 'Messages are written to the store before delivery, so the server only ever held copies. The store, not the connection, is the source of truth.', 'Bob may never come back to 87, and the message would wait on a dead box. Deliver through the registry and let the store hold the rest.', 'A TCP connection lives on the server that crashed, and nothing can move it. The phone notices the drop and opens a new connection.'],
+          why: 'Store first, then deliver. The connection is disposable because the message store is the source of truth.'
         }
       },
       {
         id: 'order', title: 'Duplicates and ordering', kind: 'real', c: 'clocks',
         q: 'A flaky network makes Alice\'s phone resend. Bob sees the message twice, out of order. Fix?',
-        opts: ['The phone sends a client message ID the server dedupes on, and the server gives each message a per-chat sequence number that phones sort by', 'Sort by the phone\'s clock', 'Never retry', 'Send every message twice on purpose'],
-        a: 0, nudge: 'Phone clocks lie. Who could hand out the order instead, and how would the server spot a repeat?',
+        opts: ['Dedupe on a client message ID, and order by a server-assigned per-chat sequence number', 'Sort by the sending phone\'s timestamp, and drop any message with the same sender and text', 'Turn off app retries and rely on TCP, which already guarantees delivery and ordering', 'Turn on Kafka\'s exactly-once delivery between servers, so no message can be duplicated'],
+        a: 0, no: [null, 'Phone clocks drift and can be set by hand, and people really do send "ok" twice. You need an ID per send and one place that decides the order.', 'TCP only covers one connection. If it drops after the server got the message but before the ack, only an app-level retry with an ID recovers.', 'The duplicate starts at the phone, before Kafka sees it. Kafka\'s exactly-once covers its own pipelines; end to end you still need idempotent writes.'],
+        nudge: 'Phone clocks lie. Who could hand out the order instead, and how would the server spot a repeat?',
         why: 'Idempotency keys make retries safe; a server-assigned sequence per chat gives one agreed order.',
         f: {
           q: 'What does a per-chat sequence number cost?',
-          opts: ['One counter per chat must be updated in order, which limits how fast a single huge chat can go. Fine at 100 members', 'Nothing', 'Messages can\'t be encrypted', 'It breaks offline delivery'],
-          a: 0, why: 'A single ordered counter is a bottleneck for one chat, but chats are small, so it shards well by chat ID.'
+          opts: ['One serial counter per chat caps a single huge chat\'s speed; fine at 100 members', 'All chats share one global counter, which bottlenecks at 580,000 messages a second', 'Each member of a group needs their own counter, so a 100-person chat needs 100 of them', 'Sequence numbers are readable by the server, so they break end-to-end encryption'],
+          a: 0, no: [null, 'The counter is per chat, and chats shard by ID across many nodes. Only one chat\'s own messages wait on each other.', 'One counter per chat gives every member the same order. Per-member counters would let members disagree on what came first.', 'End-to-end encryption hides message bodies; routing metadata like chat ID and sequence is visible to the server anyway.'],
+          why: 'A single ordered counter is a bottleneck for one chat, but chats are small, so it shards well by chat ID.'
         }
       },
       {
         id: 'store', title: 'Storing 50 billion messages a day', kind: 'real', c: 'sharding',
         q: 'Where do the messages live?',
-        opts: ['A wide-column store (like Cassandra) partitioned by chat ID and sorted by sequence number, deleting from the server once delivered or after 30 days', 'One Postgres table with an index on time', 'Object storage, one file per message', 'Only on phones; the server stores nothing'],
-        a: 0, nudge: 'What query runs most? "The latest messages in this chat". What layout makes that one disk read?',
-        why: 'Partition by the thing you read by (the chat), sort by the thing you page by (the sequence), and keep it write-optimised.',
+        opts: ['A Cassandra-style wide-column store, partitioned by chat ID and sorted by sequence', 'One Postgres table indexed on (chat_id, sent_at), plus read replicas to share the load', 'Only on phones: the server just relays, since phones keep the full history anyway', 'In Kafka as an event log, replaying a chat\'s topic partition whenever someone opens it'],
+        a: 0, no: [null, 'That is 580,000 writes a second on one primary, and replicas copy writes rather than share them. Postgres fits the users and chats tables, not this.', 'Offline users need their messages kept for up to 30 days, and a phone that is off can\'t take a relay. The server holds them until delivered.', 'Kafka is a log you read in order, not a store you query by chat. Replaying per open is slow; event sourcing still needs a read model.'],
+        nudge: 'What query runs most? "The latest messages in this chat". What layout makes that one disk read?',
+        why: 'Partition by the thing you read by (the chat), sort by the thing you page by (the sequence), and keep it write-optimised. Delete from the server once delivered, or after 30 days.',
         f: {
           q: 'What do you give up?',
-          opts: ['Very busy group chats become hot partitions, and you lose joins and easy ad-hoc queries', 'Messages arrive out of order', 'Nothing', 'Offline delivery'],
-          a: 0, why: 'Wide-column stores are great at one access pattern. Know which one, and what happens to the outliers.'
+          opts: ['Busy group chats become hot partitions, and you lose joins and ad-hoc queries', 'Messages come back out of order, since rows within one partition can\'t be sorted', 'Writes get slow, because each insert rewrites the whole chat\'s partition on disk', 'Old messages can\'t expire, so undelivered ones pile up with no TTL to remove them'],
+          a: 0, no: [null, 'Clustering columns sort rows inside a partition, which is exactly how "latest messages in this chat" is one read.', 'Cassandra is log-structured: writes go to memory and a commit log, then flush in batches. That is why it is fast at writes.', 'Cassandra can set a TTL on every write, so a 30-day expiry is one setting. Expired data is purged during compaction.'],
+          why: 'Wide-column stores are great at one access pattern. Know which one, and what happens to the outliers.'
         }
       },
       { id: 'bike', title: 'The design of the double blue tick', kind: 'bikeshed', reply: 'Two ticks. Blue. Done. What else?', note: 'Chose to spend deep-dive time on tick icons.' }
@@ -587,8 +627,9 @@ SD.mock.problems = [
     ],
     api: {
       q: 'How do uploads and playback work at the API level?', c: 'blob',
-      opts: ['POST /videos {title} → {video_id, presigned chunk upload URLs}; chunks go straight to object storage; GET /videos/{id} → metadata and a manifest URL; the player fetches segments from the CDN', 'POST /videos with the whole 4 GB file in the request body', 'GET /videos/{id}/download returns the full MP4 every time', 'A WebSocket streams raw frames to every viewer'],
-      a: 0, why: 'Big bytes skip your servers: chunks go to object storage on presigned URLs, and segments come from the CDN. The API itself only handles small metadata calls.'
+      opts: ['POST /videos → presigned upload URLs; GET /videos/{id} → metadata and a manifest of CDN segments', 'POST /videos with the whole file as a multipart body; GET /videos/{id} → a manifest of CDN segments', 'POST /videos → presigned upload URLs; GET /videos/{id}/file returns the original upload to play', 'POST /videos → presigned upload URLs; the player opens a WebSocket and the API streams frames'],
+      a: 0, no: [null, 'A 4 GB body ties up an app server for an hour, and one drop means starting over. Big bytes go straight to object storage in resumable chunks.', 'The original might be a 4K file at a huge bitrate that a phone on a train can\'t play. Players need transcoded renditions they can switch between.', 'Streaming from your API servers skips the CDN, so every view crosses the world to your origin. Segments are plain HTTP files that edges can cache.'],
+      why: 'Big bytes skip your servers: chunks go to object storage on presigned URLs, and segments come from the CDN. The API itself only handles small metadata calls.'
     },
     est: {
       pick: [
@@ -607,45 +648,52 @@ SD.mock.problems = [
       ],
       why: {
         c: 'blob', q: '"Why do uploads go straight to object storage instead of through your servers?"',
-        opts: ['Multi-GB files would tie up app servers; with presigned URLs the client sends chunks directly to storage, can resume after a drop, and the app only handles small metadata calls', 'Object storage can run SQL queries on video', 'App servers can\'t receive files', 'It makes transcoding unnecessary'],
-        a: 0, why: 'Keep heavy bytes off the request path. Your servers hand out permission; storage does the lifting.'
+        opts: ['Huge uploads would tie up app servers, so clients send resumable chunks straight to storage', 'Object storage transcodes each video as it arrives, so no separate transcoding workers are needed', 'Presigned URLs skip authentication, so creators can upload without signing in first', 'Uploads can skip TLS that way, and plain HTTP to the bucket is faster for huge files'],
+        a: 0, no: [null, 'Buckets store bytes; they don\'t transcode. The upload event goes on a queue, and transcoding workers pick it up.', 'Your API signs the URL only after checking the user, and it is scoped to one object for a short time. It hands out permission; it does not remove the check.', 'Presigned URLs use HTTPS like everything else, and encryption costs little once the connection is up. The gain is skipping your servers, not TLS.'],
+        why: 'Keep heavy bytes off the request path. With presigned URLs the client sends chunks directly to storage and can resume after a drop, while the app only handles small metadata calls. Your servers hand out permission; storage does the lifting.'
       }
     },
     dives: [
       {
         id: 'abr', title: 'Smooth playback on bad networks', kind: 'bottleneck', c: 'video',
         q: 'A viewer on a train keeps losing signal. How does playback stay smooth?',
-        opts: ['Transcode each video into a ladder of bitrates, cut into few-second segments with a manifest (HLS or DASH), and let the player pick a rendition per segment', 'Send the 4K file and buffer longer', 'Lower everyone to 240p', 'Retry the whole download when it fails'],
-        a: 0, nudge: 'If the network changes every few seconds, how often should the video be able to change quality?',
-        why: 'Adaptive bitrate streaming: small segments in many qualities let the player step down in a tunnel and back up after.',
+        opts: ['Adaptive bitrate: many renditions in short segments; the player picks one per segment', 'Send the original file and have the player buffer a full minute ahead before playback starts', 'Serve every video at a single 480p rendition, which plays smoothly on almost any connection', 'Stream over WebRTC on UDP, so lost packets are skipped instead of waited for'],
+        a: 0, no: [null, 'Startup takes ages, and a dead zone longer than the buffer still stalls. The quality can\'t change mid-video, so playback can\'t adapt.', 'TV viewers get a blurry picture, and a dead zone still stalls 480p. One rendition can\'t fit both a train and a living room.', 'WebRTC suits calls and live video, where delay matters most. Recorded video uses HTTP segments so CDNs can cache them; dropped packets would show as glitches.'],
+        nudge: 'If the network changes every few seconds, how often should the video be able to change quality?',
+        why: 'Adaptive bitrate streaming: transcode each video into a ladder of bitrates, cut into few-second segments listed in a manifest (HLS or DASH). Small segments in many qualities let the player step down in a tunnel and back up after.',
         f: {
           q: 'What does a bitrate ladder cost?',
-          opts: ['Storage and transcoding grow with every rendition, so rarely watched videos may get fewer rungs', 'Nothing', 'Videos can\'t be cached', 'Uploads must be smaller'],
-          a: 0, why: 'More rungs mean smoother playback and a bigger bill. Popularity decides how far up the ladder goes.'
+          opts: ['Each rung adds storage and transcoding work, so unpopular videos may get fewer rungs', 'CDNs can cache only one rendition per video, so viewers on the other rungs always miss', 'Viewers have to pick a quality by hand each time their network gets better or worse', 'Creators must upload a separate file for each rung, so uploads take several times longer'],
+          a: 0, no: [null, 'Each segment of each rendition is its own URL, and edges cache them all. Popular rungs stay hot; rarely used ones fall out.', 'The player measures throughput and switches renditions per segment by itself. Manual quality pickers are an override, not the mechanism.', 'Creators upload once; your transcoding workers produce every rung from the original. The cost lands on your compute, not their upload.'],
+          why: 'More rungs mean smoother playback and a bigger bill. Popularity decides how far up the ladder goes.'
         }
       },
       {
         id: 'viral', title: 'A viral trailer', kind: 'real', c: 'cdn',
         q: 'A trailer drops and 20 million people press play in an hour. What keeps it up?',
-        opts: ['The CDN caches the segments at edges near viewers, and you pre-warm the edges with the trailer before launch', 'More app servers', 'A bigger object storage bucket', 'A queue of viewers'],
-        a: 0, nudge: 'The bytes are identical for every viewer. Where should they come from?',
+        opts: ['CDN edges near viewers serve the segments, pre-warmed with the trailer before launch', 'Autoscale the app servers that read segments from object storage and stream them to viewers', 'Add read replicas to the video metadata database so it can take the extra lookups', 'A virtual waiting room that admits viewers at the rate the origin servers can stream'],
+        a: 0, no: [null, 'Every byte would still cross the world from one origin, and millions of video streams is terabits a second. Origin servers should feed edges, not viewers.', 'Metadata is a few KB per view and caches easily. The load here is video bytes, which the database never touches.', 'Waiting rooms ration something scarce, like seats. Video has no scarcity, so make serving it cheap at the edge instead of making fans wait.'],
+        nudge: 'The bytes are identical for every viewer. Where should they come from?',
         why: 'Identical bytes, worldwide, all at once: that is the CDN\'s job. Pre-warming avoids every edge missing at the same moment.',
         f: {
           q: 'Why not push every video to every edge?',
-          opts: ['Pushing costs edge storage and bandwidth for videos that may never be watched there; pull-through caching is cheaper for the long tail', 'Edges can\'t store video', 'It would make uploads slower', 'There is no reason not to'],
-          a: 0, why: 'Push for the few you know will be hot, pull for the long tail. Say which and why.'
+          opts: ['Most videos never get watched at most edges; pull-through caching fits the long tail', 'CDN edges hold only images, scripts and small files, so they can\'t store full-length videos', 'Pushed copies would go stale, because videos keep changing after they are published', 'Creators would have to wait at upload until every edge in the world had a copy'],
+          a: 0, no: [null, 'Video segments are most of what CDNs serve. The limit is how much each edge can hold, which is why edges cache what is popular there.', 'Published segments never change; a new version gets new URLs. Immutable files are the easiest thing to cache.', 'Pushes can run in the background after transcoding. The real cost is edge storage and bandwidth spent on copies nobody watches.'],
+          why: 'Pushing every video costs edge storage and bandwidth for copies nobody there will watch. Push for the few you know will be hot, pull for the long tail. Say which and why.'
         }
       },
       {
         id: 'resume', title: 'A three-hour upload on hotel Wi-Fi', kind: 'real', c: 'chunking',
         q: 'A creator uploads a 3-hour video and the connection drops at 80%. What happens?',
-        opts: ['The file was sent in chunks with presigned URLs; the client asks which chunks arrived and resends only the missing ones (a multipart upload)', 'Start over from zero', 'The server keeps the half file and plays it', 'Email the file instead'],
-        a: 0, nudge: 'What if the file were many small pieces, each confirmed on its own?',
-        why: 'Chunked, resumable uploads turn one fragile 3-hour transfer into many small retryable ones.',
+        opts: ['With a multipart upload, the client resends only the chunks that never arrived', 'It restarts from zero, but HTTP/2 makes the second attempt fast enough not to matter', 'TCP picks the transfer up where it left off as soon as the connection comes back', 'The upload queue retries the job on its own until the whole file has come through'],
+        a: 0, no: [null, 'Restarting resends all of it, and HTTP/2 only multiplexes requests over one connection; it adds no bandwidth. Hours on hotel Wi-Fi stay hours.', 'A dropped TCP connection is gone, and the new one starts with no memory of the old. Resuming has to be built above TCP, by the application.', 'The queue starts after the upload, handing finished files to transcoders. It has no copy of the creator\'s bytes to retry.'],
+        nudge: 'What if the file were many small pieces, each confirmed on its own?',
+        why: 'Chunked, resumable uploads turn one fragile 3-hour transfer into many small retryable ones: the chunks go up on presigned URLs, and the client asks which arrived and resends only the missing ones.',
         f: {
           q: 'What new work does chunking add?',
-          opts: ['Tracking which chunks arrived, assembling them, and cleaning up uploads that were abandoned halfway', 'None', 'Transcoding becomes impossible', 'Viewers must download chunks manually'],
-          a: 0, why: 'State per upload and a cleanup job for orphans. Small, but worth naming.'
+          opts: ['Tracking which chunks arrived, joining them, and clearing out abandoned uploads', 'Each upload chunk must be transcoded on its own, then the results stitched together', 'Viewers must download the upload chunks and join them before the video can play', 'A distributed transaction across every chunk, so the upload commits all or nothing'],
+          a: 0, no: [null, 'Upload chunks are arbitrary byte ranges, not playable pieces. Transcoders work from the assembled file, though they may split it by scene to run in parallel.', 'Viewers never see upload chunks. They stream transcoded segments from the CDN, which are a different set of pieces.', 'Object storage finishes a multipart upload with one atomic "complete" call. No two-phase commit is involved.'],
+          why: 'State per upload and a cleanup job for orphans. Small, but worth naming.'
         }
       },
       { id: 'bike', title: 'The exact red of the Subscribe button', kind: 'bikeshed', reply: 'Red. It\'s red. Next topic.', note: 'Chose to spend deep-dive time on button colour.' }

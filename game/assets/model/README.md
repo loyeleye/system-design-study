@@ -15,3 +15,11 @@ Hugging Face isn't reachable from the build environment, so the original `model.
 The int8 file was made with numpy: per row, `scale = max(abs(row)) / 127` and `q = round(row / scale)`. The largest error on any weight is 0.21, against row norms of about 100, so cosine similarities move by well under 0.01.
 
 `js/embed.js`'s tokenizer matches the Hugging Face `tokenizers` output for the model's `tokenizer.json` on mixed test text (punctuation, accents, unknown words).
+
+## Publishing as a claude.ai artifact
+
+The artifact host only serves known file types and refuses `.i8`, so the published game carries the table as base64 text, and `js/embed.js` falls back to it when the `.i8` fetch fails. Make that copy at publish time and publish it beside `vocab.txt`; don't commit it, since it is a 10 MB duplicate:
+
+```sh
+base64 -w0 game/assets/model/potion-base-8m.i8 > game/assets/model/potion-base-8m.i8.b64.txt
+```

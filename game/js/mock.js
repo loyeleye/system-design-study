@@ -430,6 +430,7 @@
     function reveal(q, r, extra) {
       sfx(r.ok ? 'right' : 'wrong');
       return step(`<div class="mi-card"><p class="mi-q">${esc(q.q)}</p><div class="mi-opts">${q.opts.map((t, i) => i === q.a || i === r.pick ? `<div class="mi-opt ${i === q.a ? 'good' : 'bad'}">${esc(t)}</div>` : '').join('')}</div>
+        ${!r.ok && q.no && q.no[r.pick] ? `<div class="mi-why bad"><b>Why not yours:</b> ${esc(q.no[r.pick])}</div>` : ''}
         <div class="mi-why ${r.ok ? 'good' : 'bad'}">${esc(q.why)}</div>${extra || ''}${next()}</div>`, onNext);
     }
 
