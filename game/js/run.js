@@ -12,7 +12,8 @@
     const sv = S.save;
     sv.run = {
       ch: ch || 1,
-      deck: SD.starterDeck.map(id => ({ id, up: false })),
+      // Cards bought at Ayo's Card Forge join the starter deck unless benched.
+      deck: SD.starterDeck.concat((sv.cardLib || []).filter(x => x.on).map(x => x.id)).map(id => ({ id, up: false })),
       sla: 0, bits: 20, floor: -1, pos: null, pending: null,
       map: genMap(), mercy: false, startedAt: Date.now(), firstFight: !sv.stats.fights,
       log: { fights: 0, concepts: {}, misses: 0, right: 0, xp: 0 }, boss: {}
@@ -23,6 +24,7 @@
     sv.run.sla = S.maxSla();   // after the run exists, so this dungeon's curses apply
     hook('start', sv.run);
     sv.stats.runs++;
+    sv.flags['entered' + (ch || 1)] = true;
     S.persist();
     SD.main.show('run');
     gateFx(() => R.showMap(), ch);
@@ -42,6 +44,8 @@
   const bossId = () => (S.save.run && S.save.run.bossId) || chap().boss;
   // Plot Devices (town quest rewards) and this dungeon's active curses.
   const dev = id => SD.quests.has(id);
+  // Keepsakes from Grandma Wen's café.
+  const rel = id => S.save.relics.includes(id);
   const curse = id => SD.quests.curses((S.save.run && S.save.run.ch) || 1).includes(id);
   function gateFx(done, ch) {
     const fx = document.createElement('div');
@@ -89,8 +93,9 @@
   R.NODE = NODE;
 
   R.showMap = function () {
-    const run = S.save.run;
-    AU.music('explore');
+    const run = S.save.run, ch = run.ch || 1;
+    AU.music(AU.has('map' + ch) ? 'map' + ch : 'explore');
+    AU.weather(weatherSound(ch));
     const floors = run.map.floors;
     const cur = run.pos ? findNode(run.pos) : null;
     const reach = cur ? cur.next : floors[0].map(n => n.id);
@@ -150,14 +155,17 @@
   }
   // Animated bits per chapter: Prod's torches flicker, the Archives' scrolls bob on the flood,
   // the Spire's gears turn and its vents puff steam. Everything else is painted once.
-  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam', d4a: 'bob', d4b: 'spin', d5a: 'torch' };
+  const LIVE = { d1a: 'torch', d2b: 'bob', d3a: 'spin', d3b: 'steam', d4a: 'bob', d4b: 'spin', d5a: 'torch', d6b: 'bob' };
   // A chapter uses its own art when it has some, and borrows the first three chapters' in turn otherwise.
   function artCh(have) {
     const ch = (S.save.run && S.save.run.ch) || 1;
     return have && (Array.isArray(have) ? have.includes(String(ch)) : have[ch]) ? ch : ((ch - 1) % 3) + 1;
   }
-  // Weather by chapter: sun and leaves early on, wind and drifting cloud in the Sky Harbour, storms elsewhere.
-  const WEATHER = R.weather = { 1: 'sun', 2: 'sun', 4: 'wind' };
+  // Weather by chapter: sun and leaves early on and in the Oracle Spire, wind and drifting cloud in the Sky Harbour, storms elsewhere.
+  const WEATHER = R.weather = { 1: 'sun', 2: 'sun', 4: 'wind', 6: 'sun' };
+  // What the map sounds like (js/audio.js): birdsong under the sun, rain in storms with gusts in the Sky Harbour,
+  // and a thunderstorm for the last chapter.
+  const weatherSound = ch => ch >= 10 ? 'storm' : ({ sun: 'sun', wind: 'wind' })[WEATHER[ch]] || 'rain';
   function paintMap(el, floors, xy, bend, rows, cur) {
     const A = dArt(), cv = el && el.querySelector('.map-bg');
     if (!A || !cv) return;
@@ -369,10 +377,11 @@
   }
   function rewards(opts, done) {
     const run = S.save.run;
-    const bits = opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9);
+    const bits = Math.round((opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9)) * (rel('luckybit') ? 1.25 : 1));
     const xp = opts.boss ? 120 : opts.elite ? 40 : 20;
-    const shards = opts.boss ? 5 : opts.elite ? 2 : 1;
+    const shards = opts.boss ? 40 : opts.elite ? 15 : 5;
     run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
+    if (rel('postnotes')) run.sla = Math.min(S.maxSla(), run.sla + 5);
     R.gainXp(xp);
     if (opts.boss) return done();
     const n = S.save.relics.includes('satchel') ? 4 : 3;
@@ -406,6 +415,7 @@
   function cafe(done) {
     const run = S.save.run;
     const price = { basic: 20, common: 30, uncommon: 45, rare: 65 };
+    if (rel('membercard')) for (const k in price) price[k] = Math.round(price[k] * 0.6);
     const stock = cardChoices(3);
     const sold = new Set();
     let removed = false, healed = false;
@@ -506,7 +516,7 @@
       draw: opts.tutorial ? deck : Q.shuffle(deck), hand: [], disc: [], exh: [], infra: [],
       sh: zero(), stale: 0, jitter: false, choice: null, known: new Set(known), diagBonus: 0,
       elite: !!opts.elite, boss: !!opts.boss, done, deepAsked: false, mercyScale: run.firstFight ? 0.75 : 1, log: '',
-      budget: dev('halo') ? 5 : 0
+      budget: dev('halo') ? 5 : 0, whistled: false, breakerUsed: false, vuln: 0, carry: 0
     };
     // Deeper chapters hit harder; Form 27B takes 10% off bosses.
     const scale = (opts.sevScale || 1) * (opts.tutorial ? 1 : chap().sevMult || 1) * (opts.boss && dev('form27b') ? 0.9 : 1);
@@ -558,21 +568,29 @@
     C.turn++;
     const sv = S.save;
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
-    C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0);
-    C.sh = zero(); C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false;
+    C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
+      + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry;
+    C.carry = 0;
+    if (C.vuln) C.vuln--;
+    // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
+    if (!C.infra.some(c => SD.cards[c.id].keepSh)) C.sh = zero();
+    if (C.turn === 1 && rel('standby')) C.sh.any += 8;
+    C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
       if (d.eachStale) C.stale += d.eachStale;
+      if (d.eachMit) mitigate(d.eachMit + (c.up ? 2 : 0), '', 'hit');
     });
-    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0));
+    if (C.sev <= 0) return win();
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0));
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();
     if (garyShouldCome()) garyRescue();
   }
 
   function mitigate(n, why, cls) {
-    n = Math.max(0, Math.round(n));
+    n = Math.max(0, Math.round(n * (C.vuln ? 1.5 : 1)));
     C.sev = Math.max(0, C.sev - n);
     if (n > 0) { U.float($('.foe'), '-' + n, cls || 'hit'); U.burst($('.foe'), cls === 'crit'); heroAnim('cast'); flash('.foe', 'hitflash'); if (cls === 'crit') U.shake('.stage'); }
     if (why) C.log = why;
@@ -589,6 +607,15 @@
     const sv = S.save, up = c.up ? 3 : 0;
     const cacheSpec = sv.spec === 'cache' && (d.tags || []).includes('cache');
     let msg = '';
+    // Keepsakes that boost a card's mitigation, once per card: the Badge always, the Whistle on the first
+    // such card each fight, and the Rubber Stamp doubles every 5th one in a run.
+    let plus = 0, times = 1, used = false;
+    if (d.mit || d.pow || d.xcost || d.slam || d.rca) {
+      if (rel('badge')) plus += 3;
+      if (rel('whistle') && !C.whistled) { plus += 8; C.whistled = true; }
+      if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
+    }
+    const boost = v => { const r = (v + (used ? 0 : plus)) * times; used = true; return r; };
     if (d.abs) for (const k in d.abs) {
       let v = d.abs[k] + up + (cacheSpec ? 3 : 0);
       if (c.id === 'addserver' && hasInfra('stateless')) v += 4;
@@ -607,13 +634,35 @@
     if (d.hb) C.hb = true;
     if (d.merge) C.merge = true;
     if (d.handoff) C.handoff = true;
-    if (d.mit) mitigate(d.mit + up - (sv.spec === 'warden' ? 2 : 0), '', 'hit');
+    if (d.failover) C.failover = true;
+    if (d.killswitch) C.killswitch = true;
+    if (d.streaming) C.streaming = true;
+    if (d.sandbox) C.sandbox = true;
+    if (d.steplimit) C.steplimit = true;
+    // Distributed Trace: show every weakness and resistance of this incident.
+    if (d.reveal) { Object.keys(C.e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(C.e.resist).forEach(t => C.known.add('r:' + t)); saveKnown(); }
+    // Shop cards (Ayo's Card Forge)
+    if (d.selfDmg) sv.run.sla = Math.max(1, sv.run.sla - d.selfDmg);
+    if (d.gain) C.energy += d.gain;
+    if (d.doubleSh) for (const k in C.sh) C.sh[k] *= 2;
+    if (d.xcost) { const n = C.energy; C.energy = 0; mitigate(boost((d.xmit + (c.up ? 2 : 0)) * n), n ? '' : 'No Capacity left to spend.', 'hit'); }
+    if (d.slam) mitigate(boost(Object.values(C.sh).reduce((a, b) => a + b, 0) + up), '', 'crit');
+    if (d.rca) { mitigate(boost(C.stale * 4 + up), C.stale ? `Root cause found in ${C.stale} wrong answers.` : 'No Stale to learn from.', 'hit'); C.stale = 0; }
+    if (d.upHand) C.hand.forEach(h => { h.up = true; });
+    if (d.mit) mitigate(boost(d.mit + up - (sv.spec === 'warden' ? 2 : 0)), '', 'hit');
+    if (d.vuln) C.vuln = Math.max(C.vuln, d.vuln);
     if (d.pow) {
       const tags = d.tags || [];
-      const wk = tags.find(t => C.e.weak[t]), rs = tags.find(t => C.e.resist[t]);
-      if (wk) { mitigate(d.pow + up, 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); AU.sfx('crit'); }
-      else if (rs) { C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); AU.sfx('resist'); }
-      else { mitigate(Math.floor((d.pow + up) / 2), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
+      const rs = tags.find(t => C.e.resist[t]);
+      // The Oracle's rare card is always effective: it names the incident's first weakness.
+      const wk = d.wild ? Object.keys(C.e.weak)[0] : tags.find(t => C.e.weak[t]);
+      if (wk) { mitigate(boost(d.pow + up), 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake('.foe'); AU.sfx('crit'); }
+      else if (rs) {
+        C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float($('.foe'), 'RESISTED', 'res'); AU.sfx('resist');
+        // Wen's Bottomless Mug: once a fight, a resisted card hands its Capacity back.
+        if (dev('mug') && !C.mugUsed) { C.energy += cost; C.mugUsed = true; C.log += ' The mug refilled your Capacity.'; }
+      }
+      else { mitigate(boost(Math.floor((d.pow + up) / 2)), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
       saveKnown();
     }
     if (d.concept) S.seeConcept(d.concept);
@@ -655,7 +704,13 @@
     if (t === 'flood') return (curse('botswarm') ? 1.4 : 1) * (dev('dougbot') ? 0.7 : 1);
     if (t === 'retry') return (curse('echo') ? 1.4 : 1) * (dev('waxseal') ? 0.7 : 1);
     if (t === 'stampede' || t === 'burst' || t === 'rush') return (curse('gears') ? 1.4 : 1) * (dev('strawhat') && t !== 'rush' ? 0.7 : 1);
-    if (t === 'crash') return dev('hammer') ? 0.5 : 1;
+    if (t === 'crash') return (curse('bigrelease') ? 1.4 : 1) * (dev('hammer') ? 0.5 : 1);
+    // Chapter 5
+    if (t === 'deploybad') return curse('bigrelease') ? 1.4 : 1;
+    if (t === 'lookup') return (curse('wrongaddr') ? 1.4 : 1) * (dev('phonebook') ? 0.7 : 1);
+    if (t === 'hot') return (curse('wrongaddr') ? 1.4 : 1) * (dev('phonebook') ? 0.7 : 1) * (dev('ringlight') ? 0.85 : 1);
+    if (t === 'read') return (curse('viral') ? 1.25 : 1) * (dev('ringlight') ? 0.85 : 1);
+    if (t === 'write') return dev('spider') ? 0.85 : 1;
     if (t === 'partition') return (curse('rifts') ? 1.4 : 1) * (dev('gavel') ? 0.7 : 1);
     if (t === 'race') return (curse('drift') ? 1.4 : 1) * (dev('timer') ? 0.7 : 1) * (hasInfra('vclock') ? 0.7 : 1);
     if (t === 'collide') return (curse('dbook') ? 1.4 : 1) * (dev('fencing') ? 0.7 : 1);
@@ -664,20 +719,21 @@
   }
   const auditPer = () => dev('shield') ? 2 : curse('rifts') ? 4 : 3;
   // Escalate: +3 load, +2 with Cron's Almanac, and +2 more under the Many Kings curse.
-  const escUp = () => (dev('almanac') ? 2 : 3) + (curse('kings') ? 2 : 0);
+  // SLO burn-rate alerts take 1 off: you are paged while the fire is small.
+  const escUp = () => (dev('almanac') ? 2 : 3) + (curse('kings') ? 2 : 0) - (hasInfra('observe') ? 1 : 0);
   function resolveIntent(it) {
     const r = C.rage, m = C.mercyScale, sv = S.save;
     const sc = v => Math.round((v + r) * m);
     const READ = [['cache', 1], ['replica', 1], ['read', 1], ['any', 1]];
     let dmg = 0, note = '';
     switch (it.t) {
-      case 'read': { const n = sc(it.n) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, READ); if (hasInfra('cdn')) note = 'CDN took the edge off. '; break; }
-      case 'write': { const n = sc(it.n) * (hasInfra('shard') ? 0.5 : 1); dmg = absorb(n, [['write', 1], ['any', 1]]); if (hasInfra('shard')) note = 'Shards split the writes. '; break; }
+      case 'read': { const n = sc(it.n) * mods(it.t) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, READ); if (hasInfra('cdn')) note = 'CDN took the edge off. '; break; }
+      case 'write': { const n = sc(it.n) * mods(it.t) * (hasInfra('shard') ? 0.5 : 1); dmg = absorb(n, [['write', 1], ['any', 1]]); if (hasInfra('shard')) note = 'Shards split the writes. '; break; }
       case 'mixed': {
-        const rn = sc(it.read) * (hasInfra('cdn') ? 0.6 : 1), wn = sc(it.write) * (hasInfra('shard') ? 0.5 : 1);
+        const rn = sc(it.read) * mods('read') * (hasInfra('cdn') ? 0.6 : 1), wn = sc(it.write) * mods('write') * (hasInfra('shard') ? 0.5 : 1);
         dmg = absorb(rn, READ) + absorb(wn, [['write', 1], ['any', 1]]); break;
       }
-      case 'hot': { const n = sc(it.n) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1], ['replica', 0.5]]); note = 'A hot key: replicas only half as useful. '; break; }
+      case 'hot': { const n = sc(it.n) * mods(it.t) * (hasInfra('cdn') ? 0.6 : 1); dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1], ['replica', 0.5]]); note = 'A hot key: replicas only half as useful. '; break; }
       case 'stampede': {
         let n = sc(it.n) * mods(it.t);
         if (hasInfra('coalesce')) { n *= 0.25; note = 'Coalescing: one request refilled the cache. '; }
@@ -688,6 +744,7 @@
       }
       case 'crash': {
         if (hasInfra('lb')) { dmg = 0; note = 'Health checks rerouted around the dead server. '; break; }
+        if (dev('canary') && !C.canaryUsed) { C.canaryUsed = true; dmg = 0; note = 'The canary keeled over first, and you rolled back in time. '; break; }
         let n = sc(it.n) * (sv.spec === 'warden' ? 0.5 : 1) * mods(it.t);
         dmg = absorb(n, [['any', 1]]); note = 'A server died and nothing routed around it. '; break;
       }
@@ -811,6 +868,88 @@
         if (!note) note = 'A node vanished, nobody noticed, and its keys went dark. ';
         dmg = absorb(n, [['any', 1], ['replica', 1]]); break;
       }
+      // Chapter 5
+      case 'lookup': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('dns')) { n *= 0.4; note = 'GeoDNS answered from cache with the nearest healthy region. '; }
+        else note = 'Every lookup went all the way to the root, and some got the wrong address. ';
+        dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1]]); break;
+      }
+      case 'regionfail': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('region')) { n *= 0.4; note = 'The other regions picked up the traffic. '; }
+        if (hasInfra('dns')) { n *= 0.7; note += 'Health checks pulled the dead region out of DNS. '; }
+        if (C.failover) { n *= 0.5; note += 'You failed over to the standby. '; }
+        if (!note) note = 'A whole region went dark, and every user in it with it. ';
+        dmg = absorb(n, [['any', 1], ['replica', 1]]); break;
+      }
+      case 'deploybad': {
+        let n = sc(it.n) * mods(it.t);
+        if (C.killswitch) { dmg = 0; note = 'You flipped the flag off. The bad code is still deployed, and nobody can reach it. '; break; }
+        if (dev('canary') && !C.canaryUsed) { C.canaryUsed = true; dmg = 0; note = 'The canary keeled over first, and you rolled back in time. '; break; }
+        if (hasInfra('canary')) { n *= 0.4; note = 'Only the 1% canary got the bad build before the rollback. '; }
+        else note = 'The bad build went to every server at once. ';
+        dmg = absorb(n, [['any', 1]]); break;
+      }
+      case 'transcode': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('transcode')) { n *= 0.4; note = 'The video was split and transcoded on many workers at once. '; }
+        else note = 'One server tried to transcode a 4K upload by itself. ';
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      case 'crawltrap': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('frontier')) { n *= 0.5; note = 'The frontier capped the depth and kept its manners. '; }
+        else { C.stale += 1; note = 'The crawler followed the calendar to the year 3000 (+1 Stale). '; }
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      case 'notifyflood': {
+        let n = sc(it.n) * mods(it.t);
+        if (hasInfra('notify')) { n *= 0.4; note = 'The fan-out queue sent at each provider\'s pace. '; }
+        else note = 'Ten million pushes, all at once, straight at the provider. ';
+        dmg = absorb(n, [['write', 1], ['any', 1]]); break;
+      }
+      // Chapter 6
+      case 'tokens': {
+        let n = sc(it.n);
+        if (hasInfra('batch')) { n *= 0.4; note = 'Continuous batching: many chats shared each GPU step. '; }
+        if (hasInfra('router')) { n *= 0.7; note += 'Easy questions went to the small model. '; }
+        if (C.throttle) { n *= 0.5; note += 'Token budgets clipped the heaviest users. '; }
+        if (!note) note = 'Every prompt got a GPU to itself, and waited for it. ';
+        dmg = absorb(n, [['cache', 1], ['any', 1]]); break;
+      }
+      case 'wait': {
+        let n = sc(it.n);
+        if (C.streaming) { n *= 0.4; note = 'The first words appeared at once; nobody minds watching the rest. '; }
+        if (hasInfra('batch')) { n *= 0.7; note += 'Batched GPUs kept the queue short. '; }
+        if (!note) note = 'Users stared at a blank box for eleven seconds, then left. ';
+        dmg = absorb(n, [['any', 1], ['read', 1]]); break;
+      }
+      case 'hallucinate': {
+        let n = sc(it.n);
+        if (hasInfra('rag')) { n *= 0.5; note = 'Answers came from retrieved passages, with sources. '; }
+        else { C.stale += 2; note = 'The model answered from memory, confidently and wrongly (+2 Stale). '; }
+        dmg = absorb(n, [['cache', 1], ['read', 1], ['any', 1]]); break;
+      }
+      case 'inject': {
+        let n = sc(it.n);
+        if (C.sandbox) { dmg = 0; note = 'The injected order reached a tool that could not touch anything. '; break; }
+        if (hasInfra('guard')) { n *= 0.4; note = 'Guardrails caught most of it on the way in and out. '; }
+        else { C.stale += 1; note = 'The model obeyed the hidden instructions, and leaked a little (+1 Stale). '; }
+        dmg = absorb(n, [['any', 1]]); break;
+      }
+      case 'regress': {
+        let n = sc(it.n);
+        if (hasInfra('eval')) { n *= 0.4; note = 'The golden set flagged the regression before it shipped. '; }
+        else { C.stale += 1; note = 'Nobody noticed one answer in ten got worse (+1 Stale). '; }
+        dmg = absorb(n, [['any', 1], ['write', 1]]); break;
+      }
+      case 'agentloop': {
+        let n = sc(it.n);
+        if (C.steplimit) { n *= 0.3; note = 'Ten steps, then the agent stopped and asked. '; }
+        else note = 'The agent called the same tool again. And again. ';
+        dmg = absorb(n, [['any', 1]]); break;
+      }
     }
     return { dmg, note };
   }
@@ -818,12 +957,16 @@
   function endTurn() {
     if (C.over || C.busy) return;
     const it = C.e.pattern[C.ii % C.e.pattern.length];
-    C.disc.push(...C.hand); C.hand = [];
+    // Pinned Tabs keeps your hand; the Leftover Croissant keeps unspent Capacity.
+    if (!rel('pinned')) { C.disc.push(...C.hand); C.hand = []; }
+    if (rel('croissant')) C.carry = C.energy;
     const held = hook('intent', C, it);
     let { dmg, note } = held || resolveIntent(it);
     const run = S.save.run;
     // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
     if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
+    if (dmg > 0 && rel('breaker') && !C.breakerUsed) { C.breakerUsed = true; dmg = 0; note += 'The circuit breaker tripped: nothing got through. '; }
+    if (dmg > 1 && dmg <= 5 && rel('torii')) { dmg = 1; note += 'The torii charm made it a scratch. '; }
     run.sla -= dmg;
     C.log = note + (dmg ? `You took ${dmg} SLA damage.` : 'No damage.');
     if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); } else AU.sfx('shield');
@@ -886,7 +1029,7 @@
     const run = S.save.run, e = C.e;
     const it = C.e.pattern[C.ii % C.e.pattern.length];
     const shown = Object.assign({}, it);
-    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale * (k === 'n' ? mods(it.t) : 1)); });
+    ['n', 'read', 'write'].forEach(k => { if (shown[k] != null) shown[k] = Math.round((shown[k] + C.rage) * C.mercyScale * mods(k === 'n' ? it.t : k)); });
     if (it.t === 'audit') shown.per = auditPer();
     if (it.t === 'escalate') shown.up = escUp();
     const weak = Object.keys(e.weak).filter(t => C.known.has('w:' + t));
@@ -898,6 +1041,7 @@
     if (C.stale) chips.push(`<span class="chip stale" title="Stale reads. Audits deal ${auditPer()} damage per stack.">Stale ${C.stale}</span>`);
     if (C.choice) chips.push(`<span class="chip choice">${C.choice === 'cp' ? 'Consistency' : 'Availability'}</span>`);
     if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
+    if (C.vuln) chips.push('<span class="chip">Load-tested: mitigation +50%</span>');
     if (C.throttle) chips.push('<span class="chip">Throttled</span>');
     if (C.backoff) chips.push('<span class="chip">Backing off</span>');
     if (C.chunk) chips.push('<span class="chip">Chunked</span>');
@@ -906,6 +1050,11 @@
     if (C.hb) chips.push('<span class="chip">Heartbeats on</span>');
     if (C.merge) chips.push('<span class="chip">Merging</span>');
     if (C.handoff) chips.push('<span class="chip">Handoff ready</span>');
+    if (C.failover) chips.push('<span class="chip">Failover ready</span>');
+    if (C.killswitch) chips.push('<span class="chip">Kill switch armed</span>');
+    if (C.streaming) chips.push('<span class="chip">Streaming</span>');
+    if (C.sandbox) chips.push('<span class="chip">Tools sandboxed</span>');
+    if (C.steplimit) chips.push('<span class="chip">Step limit</span>');
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     $('#run').innerHTML = `
       <div class="combat${C.boss ? ' bossfight' : ''}">
@@ -1105,9 +1254,12 @@
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
     const ch = run.ch || 1, boss = run.bossId || SD.chapters[ch].boss;
+    let rareNew = null;
     if (won) {
+      const firstClear = !sv.flags['ch' + ch];
       sv.stats.wins++; sv.flags['ch' + ch] = true; sv.flags['beat-' + boss] = true;
-      if (SD.chapters[ch + 1] && (sv.chapter || 1) < ch + 1) sv.chapter = ch + 1;
+      S.syncChapter();
+      if (firstClear) rareNew = SD.chapters[ch].rareCard;
     }
     sv.run = null;
     U.lastIncident = incident || 'A cascade';
@@ -1125,6 +1277,7 @@
       if (won) await U.dialog(SD.story[SD.enemies[boss].win || SD.chapters[ch].win]);
       else await U.dialog(SD.story.cascade);
       SD.main.toHub(true);
+      if (rareNew) setTimeout(() => U.system('RARE CARD UNLOCKED', `${U.esc(SD.cards[rareNew].name)} can now turn up in rewards and shops, in every dungeon.`, 'gold'), 1500);
     };
   }
   // The pieces js/arc.js builds chapter runs from.

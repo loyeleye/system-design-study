@@ -100,7 +100,7 @@ Every quest still teaches. Each has a signature mini-game, one or two whiteboard
 | After clearing chapter 3 (Clockwork Spire) | 11–15 | 5 |
 | After clearing chapter 4 (Sky Harbour) | 16–20 | 5 |
 
-Quests 1–15 are built. Quests 16–20 come with chapter 4, since they teach that chapter's material and lift its curses. Every quest mini-game has a ✕ Leave button: leaving pauses the quest at that step, and talking to the villager again restarts it. Rebuild the Recipe also has a Give up button next to Start over.
+Quests 1–20 are built. Each group of five is posted one chapter early, since it teaches the next chapter's material and lifts its curses. Every quest mini-game has a ✕ Leave button: leaving pauses the quest at that step, and talking to the villager again restarts it. Rebuild the Recipe also has a Give up button next to Start over.
 
 ### Built quests (1–10)
 
@@ -123,7 +123,7 @@ Quest data lives in `game/js/quests.js`. Each step names the villager it waits o
 
 Each dungeon after the first is harder in two ways:
 
-- A severity multiplier on every incident (`sevMult` in `SD.chapters`): 1.1 for chapter 2, 1.2 for chapter 3, planned at 1.3 and 1.4 for chapters 4 and 5.
+- A severity multiplier on every incident (`sevMult` in `SD.chapters`): 1.1 for chapter 2, 1.2 for chapter 3, 1.3 for chapter 4 and 1.4 for chapter 5.
 - **Curses** (`SD.curses`, listed per chapter). Each one is lifted for good by one Plot Device, so town quests are the intended way through. The gate shows each dungeon's curses, the map shows them as chips, and the quest log has a Curses tab with a hint for each.
 
 | Chapter | Curse | Effect | Lifted by |
@@ -134,13 +134,13 @@ Each dungeon after the first is harder in two ways:
 | 3 (built) | Thundering Gears | Stampede, burst and rush intents +40% | Cron's Straw Hat (quest 7) |
 | 3 (built) | Clockwork Rifts | Partitions +40%, and audits deal 4 per Stale | Seymour's Spare Shield (quest 9) |
 | 3 (built) | Unindexed Stacks | Scan intents +40%, and a correct diagnosis gives no Capacity | Lexi's Bookmark (quest 6) |
-| 4 | Dead Air | Turn 1 of every fight starts with 1 less Capacity | Mio's Walkie-Talkie (quest 11) |
-| 4 | Clock Drift | Race intents +40% and +1 Stale | Wen's Kitchen Timer (quest 12) |
-| 4 | Many Kings | Escalate adds +5 load instead of +3 | The Speaker's Gavel (quest 13) |
-| 4 | Double Booking | Collide intents +40% | Bru's Fencing Token (quest 14) |
-| 5 | Wrong Address | Hot-key intents +40% | Coo's Phonebook (quest 16) |
-| 5 | Big Bang Release | Crash intents +40% | Rollback the Canary (quest 17) |
-| 5 | Viral Surge | Read intents +25% | Kaito's Ring Light (quest 18) |
+| 4 (built) | Dead Air | Turn 1 of every fight starts with 1 less Capacity | Mio's Walkie-Talkie (quest 11) |
+| 4 (built) | Clock Drift | Race intents +40% and +1 Stale | Wen's Kitchen Timer (quest 12) |
+| 4 (built) | Many Kings | Escalate adds +5 load instead of +3 | The Speaker's Gavel (quest 13) |
+| 4 (built) | Double Booking | Collide intents +40% | Bru's Fencing Token (quest 14) |
+| 5 (built) | Wrong Address | Hot-key and lookup intents +40% | Coo's Phonebook (quest 16) |
+| 5 (built) | Big Bang Release | Crash and bad-deploy intents +40% | Rollback the Canary (quest 17) |
+| 5 (built) | Viral Surge | Read intents +25% | Kaito's Ring Light (quest 18) |
 
 Every dungeon is still beatable without its Plot Devices; it is just meant to feel unfair, the way a JRPG boss does when you skipped the side quests.
 
@@ -153,9 +153,41 @@ Every dungeon is still beatable without its Plot Devices; it is just meant to fe
 - **Lessons**: Mio's How a Post Reaches Your Feed, Seymour's Seat Rush (holds and a waiting room against 120 fans) and Wen's Top 3 Pastries (a min-heap).
 - **Oopsies**: three new ones for fan-out, booking and backpressure.
 
-### Quests 11–15 (built) and 16–20 (planned)
+### Chapter 4: the Sky Harbour (built)
 
-Posted after chapter 3 (they teach chapter 4's material and lift its curses). Their five concepts (`realtime`, `clocks`, `election`, `locks`, `sagas`) are in `SD.concepts` with `zone: 4`, with three questions each. The Plot Device effects work now; the chapter 4 curses they lift arrive with chapter 4.
+In `game/js/ch4.js`, loaded after `quests.js`.
+
+- **Concepts** (`zone: 4`): geospatial indexes, failure models, consistent hashing, task scheduling, distributed caches and collaborative editing, plus the five quest concepts. 29 questions with ELI5 help, and 12 glossary terms.
+- **Cards** (`ch: 4`): Geohash Grid, Quadtree Split, WebSocket Gateway, Heartbeat + Timeout, Vector Clocks, CRDT Merge, Raft Leader, Lease + Fencing Token, Saga Orchestrator, Consistent Hash Ring, Hinted Handoff, Gossip Protocol, Delay Queue Scheduler, Sharded Cache Tier.
+- **Incidents**: the Clock-Drift Gremlin, the Presence Phantoms, the Two Kings of Dock Three, the Vanishing Node, the Cache Avalanche and the Midnight Job Swarm; elites the Double-Charge Djinn, the Five-Star Basilisk and the Twin Scribes. New intents: nearby, connect, conflict and nodefail.
+- **Three bosses**: the Surge Rider (Uber), the Chatterwyrm (WhatsApp) and the Keykeeper Colossus (key-value store).
+- **Events**: Mio's Lost Balloon, Seymour's Telephone Tree, Kaito's Duel Schedule, Bru's One Big Notebook and The Shared Diary.
+
+### Chapter 5: Lord Latency's Castle (built)
+
+In `game/js/ch5.js`, which also holds quests 16–20 and their Plot Devices.
+
+- **Concepts** (`zone: 5`): DNS and GeoDNS, multi-region, observability and SLO alerts, safe deploys, video pipelines, web crawlers and notifications. 28 questions with ELI5 help, 15 glossary terms and 17 concept links.
+- **Cards** (`ch: 5`): GeoDNS + Health Checks, Resolver Cache + TTL, Active-Active Regions, Regional Failover, Canary Release, Feature Flag Kill Switch, Chunked Transcode Pipeline, Adaptive Bitrate Ladder, Pre-warm the CDN, Polite URL Frontier, Content Hash Dedupe, SLO Burn-Rate Alerts (escalate adds 1 less), Distributed Trace (reveals weaknesses) and Fan-out Notification Queue.
+- **Incidents**: the Misdirecting Signpost, the Crash-Loop Wheel, the Silent Wisp, the Pager Banshee, the Big Bang Release, the Impolite Spiders and the Push-Notification Imp; elites the Region Eater, the Infinite Calendar and the Unsubscribe Revenant. New intents: lookup, regionfail, deploybad, transcode, crawltrap and notifyflood.
+- **Three bosses**: the Streamlord (YouTube), the Crawler Queen (web crawler) and Lord Latency, Unbuffered (global multi-region service). Lord Latency ends up washing dishes at the Cache Café.
+- **Events**: Chad's Mega-Region, Mio's Treehouse Is Open, Gary's Silent Server, Wen's New Recipe and Seymour's Address Book.
+
+### Chapter 6: the Oracle Spire (built, optional)
+
+In `game/js/ch6.js`. It maps to the study plan's Applied AI add-on (Ema, Gradial).
+
+- **Gate**: opens when chapter 5 is cleared and sits beside the main path; it closes the first time you enter chapter 10 (`optional`, `after: 5`, `until: 10` in `SD.chapters[6]`). Main chapters skip it: chapter 7 opens from chapter 5. The gate helpers are `SD.state.chapterReached`, `chapterOpen` and `syncChapter`. Rank shows as EX. No curses.
+- **Reward**: clearing it unlocks a rare card, **The Oracle's Answer** (cost 2, always EFFECTIVE against the incident's first weakness, draw 1, exhaust). It has no `ch`, so it turns up in rewards and shops in every dungeon (`rareCard` in the chapter).
+- **Concepts** (`zone: 6`): serving an LLM (tokens, streaming, continuous batching, KV cache), retrieval (RAG), evals, guardrails, LLM cost and caching, agents and tool use. 24 questions with ELI5 help, 13 glossary terms and 12 concept links.
+- **Cards** (`ch: 6`): Continuous Batching, KV Cache, Stream the Tokens, Model Router, Vector Index (HNSW), Chunk + Embed, Rerank + Cite, Golden Eval Set, LLM-as-Judge, Input/Output Guardrails, Least-Privilege Tools, Semantic Cache, Token Budget, Step Limit + Timeouts.
+- **Incidents**: the Token Glutton, the Confident Mirage, the Whispering Prompt, the Recursive Agent, the Silent Regression, the Bill Goblin and the Outdated Index; elites the Jailbreak Jester, the GPU Furnace and the Biased Judge. New intents: tokens, wait, hallucinate, inject, regress and agentloop.
+- **Two bosses**: the Oracle of Everything (a ChatGPT-style chat service) and the Helpdesk Mimic (a support bot that answers from your own documents).
+- **Events**: Chad's Autonomous Agent, Mio's Homework Helper, Kaito's Perfect Prompt and Wen's Token Bill.
+
+### Quests 11–20 (built)
+
+Posted after chapter 3 (they teach chapter 4's material and lift its curses). Their five concepts (`realtime`, `clocks`, `election`, `locks`, `sagas`) are in `SD.concepts` with `zone: 4`, with three questions each. Chapter 5's seven concepts (`dns`, `multiregion`, `observe`, `deploy`, `video`, `crawler`, `notify`) arrive with quests 16–20, in `game/js/ch5.js`.
 
 | # | Quest | Giver | Story | Teaches | Mini-game (mechanic) | Plot Device |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -171,8 +203,8 @@ Posted after chapter 4 (chapter 5's material and curses):
 
 | # | Quest | Giver | Story | Teaches | Mini-game (mechanic) | Plot Device |
 | --- | --- | --- | --- | --- | --- | --- |
-| 16 | The Pigeon Phonebook | Coo | Pigeons keep flying to Kaito's old address. He moved. He wants everyone to know he moved. | DNS resolution, caching and TTLs, GeoDNS | **Resolver Relay**: route a lookup root → TLD → authoritative with caches on the way, then pick a TTL that survives the next move | **Coo's Phonebook:** hot-key intents −30%. Lifts Wrong Address |
-| 17 | Uptima's Canary | Uptima | Halo 2.0 is ready. Uptima wants to ship it to every prayer at once. | Canary releases, feature flags, rollbacks | **Canary Coop**: release to 1%, 10%, 50%, 100% while error graphs move; roll back at the right moment | **Rollback the Canary:** the first crash each fight deals nothing. Lifts Big Bang Release |
+| 16 | The Pigeon Phonebook | Coo | Pigeons keep flying to Kaito's old address. He moved. He wants everyone to know he moved. | DNS resolution, caching and TTLs, GeoDNS | **Resolver Relay**: route a lookup root → TLD → authoritative with caches on the way, then pick a TTL that survives the next move | **Coo's Phonebook:** hot-key and lookup intents −30%. Lifts Wrong Address |
+| 17 | Uptima's Canary | Uptima | Halo 2.0 is ready. Uptima wants to ship it to every prayer at once. | Canary releases, feature flags, rollbacks | **Canary Coop**: release to 1%, 10%, 50%, 100% while error graphs move; roll back at the right moment | **Rollback the Canary:** the first crash or bad deploy each fight deals nothing. Lifts Big Bang Release |
 | 18 | Kaito's Livestream | Kaito | Kaito livestreams his training to an audience of thousands (Mio and her class, many times). | Video pipelines: transcoding, adaptive bitrate, CDN push vs pull | **Bitrate Ladder**: pick renditions for viewers on different connections and pre-warm the CDN before the stream starts | **Kaito's Ring Light:** read and hot-key intents −15%. Lifts Viral Surge |
 | 19 | Lexi's Endless Catalogue | Lexi | Lexi wants to catalogue every book in every town. One town's library is a calendar with infinite pages. | Web crawlers: frontier, politeness, dedupe by content hash, crawler traps | **Crawler Garden**: send spiders through a web of pages, respect each site's pace, skip duplicates, escape the infinite calendar | **Lexi's Spider:** write intents −15% |
 | 20 | The Goddess Never Sleeps | Gary | Gary takes a holiday. You are on call for Heaven. | Monitoring, logging, alerting on SLO burn rate, multi-region failover | **Pager Panic**: triage a wall of alerts, separate symptoms from causes, silence the noisy ones, fail over a region | **Gary's Coffee Mug:** once per fight, a RESISTED card refunds its Capacity |
@@ -201,7 +233,29 @@ Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `
 | Ballot Box | Three calls in an election: timers, a partition, a returning leader with an old term | Raft-style election, majorities, terms | Productive failure: fixed timers split the vote first |
 | Lock & Lease | Choose a lease length, then accept or reject each write in Bru's ledger by fencing token | Leases, fencing tokens | Procedural practice with a vivid consequence (two heroes, one dragon) |
 | Saga Builder | Order four steps, pair each with its undo, then pick which undos run, and in what order, when the oven breaks | Sagas, compensating actions, 2PC's blocking | Building the structure, then applying it to a failure |
+| Resolver Relay | Tap where Coo's pigeon asks next for three lookups as the cache fills, then time a TTL around Kaito's move | DNS resolution, caching, TTLs | Feel the cache cut the trips (4, then 2, then 0) before it is named |
+| Canary Coop | Widen or roll back three builds stage by stage against the old version's errors and p99, then ship a risky button behind a flag | Canary releases, rollback, feature flags | Judgement under noise: rolling back on 1% noise is also a mistake; the third build is only slow (an Einstellung trap for "errors only") |
+| Bitrate Ladder | Choose renditions, pick one per segment as a viewer's signal changes, then pre-warm the CDN | Transcoding ladders, adaptive bitrate, CDN push vs pull | A concrete viewer first (Oakley), a vivid consequence (the spinning circle) |
+| Crawler Garden | Pick the spider's next page five times, each with one polite, new choice | Frontier, politeness, URL normalisation, content hashes, traps | Discrimination practice: near-identical URLs teach what "the same page" means |
+| Pager Panic | Page, ticket or silence five alerts, then fail a region over | Symptoms vs causes, SLO burn rate, failover | Interleaved judgement calls with a story consequence (Uptima's 400 pages) |
 | Rebuild the Recipe (revised) | The rules sit on screen, entries are listed by number, a live card shows the result, and Undo and Hint help when stuck | Snapshots and logs | Ladi found the first version confusing (2026-10-18); the goal and the three rules are now explicit before the first move |
+
+## Shards, Wen's café and Ayo's forge
+
+Ladi asked (2026-10-18) for more to buy with Memory Shards, rank-gated keepsakes in the spirit of Slay the Spire relics, a card shop, and bigger shard rewards.
+
+- **Earning:** quests pay 50 + 15 per unlock step (65 to 350), the daily quest board 100, Mio's drawing 10, blueprint stars 10 each, Uptima's loot 20 or 40, map pickups 5, and incidents 5, 15 or 40. Prices rose about twentyfold, so old saves multiply their balance by 20 once (`econ: 2` in `state.js`).
+- **Wen's keepsakes** (`SD.metaShop`, 80–400 shards) sit on shelves that open with Guild rank:
+
+| Shelf | Keepsakes (price) | Slay the Spire inspiration |
+|---|---|---|
+| Counter (E) | Pip's Monocle 80, Bottomless Teapot 90, Lucky Rubber Duck 100, Grandma's Thermos 120, Bag of Holding 150 | Early relics: Regal Pillow, Strawberry, Lantern, Question Card |
+| C-Rank | Lucky Bit 110 (+25% bits), Postmortem Notebook 140 (heal 5 after each incident), First Responder's Whistle 160 (first mitigating card each fight +8), Dog-Eared Runbook 180 (draw 2 more on turn 1) | Golden Idol, Burning Blood, Akabeko, Bag of Preparation |
+| B-Rank | Torii Gate Charm 190 (losses of 5 or less become 1), Warm Standby 200 (start with 8 Any absorb), Circuit Breaker 220 (first SLA loss each fight is zero), Coffee Drip 230 (+1 Capacity every third turn) | Torii, Anchor, Fossilized Helix, Happy Flower |
+| A-Rank | Guild Membership Card 240 (dungeon shops 40% off), Principal Engineer's Badge 260 (+3 to every mitigation), Rubber Stamp of Approval 270 (every 5th mitigating card in a run doubles) | Membership Card, Vajra, Pen Nib |
+| S-Rank | Pinned Tabs 300 (keep your hand between turns), Leftover Croissant 400 (unspent Capacity carries over; Ladi moved it up because Ice Cream is one of the strongest relics) | Runic Pyramid, Ice Cream |
+
+- **Ayo's Card Forge** (`SD.cardShop`, 150–400 shards, priced by expected value: Root Cause Analysis 150 is situational, Persistent Volumes 400 anchors an absorb engine): bought cards join the starting deck of every future run; the "Your cards" tab benches or restores them. One unowned card is half price each loop (`flags.saleId`). The cards borrow Slay the Spire effects: Defense in Depth and Graceful Degradation (Defend variants), Flow State (Adrenaline-like draw), Root Cause Analysis (scales with Stale), Backpressure Slam (Body Slam), Load Test (Vulnerable), All-Nighter (Offering), Autoscaling (Entrench), Hotfix Storm (an X-cost Whirlwind), Refactor Everything (Apotheosis), SRE Rotation (Demon Form, gently) and Persistent Volumes (Barricade).
 
 ## Audio
 
@@ -209,6 +263,7 @@ Recorded music and samples play when they load, with the original chiptune synth
 
 - **Music** (`game/assets/audio/m-*.mp3`): an anime-style title theme with koto and shakuhachi ("Kokoro no Yume" by kaazoom, from Pixabay), a cosy town theme ("Hot Springs Town"), a light puzzle theme for quests, mini-games and lessons, a piano theme for sad story moments, and a bustling festival track for the Adventurers' Guild. The dungeon map plays a looping anime RPG overworld theme ("Kaze no Kioku" by kaazoom, from Pixabay). Comedic Kevin MacLeod tracks stay for the office (elevator music) and Uptima's entrance ("Fluffing a Duck"), with a JRPG rock battle theme and an epic looping boss theme. Songs stream through `<audio>` elements routed into the Web Audio music bus, so mute and fades still work. If a quest, story or guild track fails to load, the town theme plays instead.
 - **Why not real anime OSTs:** Ladi suggested a YouTube playlist of anime soundtracks. Those are copyrighted, and this repo and the published game are public, so every track is CC0 or CC BY and credited, except the title and dungeon map tracks, which Ladi picked from Pixabay (Pixabay Content License: fine inside the game, never offered as standalone downloads) in `game/CREDITS.md`.
+- **Chapter maps and weather** (added 2026-10-18 from the Pixabay picks in `game-assets/pixabay-story-audio/CUES.md`): chapters 2 to 5 each have their own map track (`SONG.map2`–`map5`; `R.showMap` plays `mapN` when one is registered, else "Kaze no Kioku"). Under it `SD.audio.weather` loops a bed with occasional one-shots that matches the painted sky: birdsong and leaves in the sun (chapters 1, 2 and 6), rain with distant thunder in storms (3, 5, 7–9), rain with wind gusts in the Sky Harbour (4), and a heavy thunderstorm for chapter 10. Weather belongs to the song playing when it starts and stops when the music changes (fights, town). Ladi hasn't listened to the picks yet.
 - **Jingles:** Kenney's saxophone jingles for victory, defeat and Gary.
 - **Sound effects:** Kenney's interface and RPG sounds for clicks, confirms, errors, card flips, slashes, coins and doors. The synth still voices the typewriter blips (each speaker has a pitch; Lord Latency types slowly), the truck horn, the crash and the alarm.
 - **Controls:** Music and sound effects can each be toggled from the menu. The HUD has a mute button. Preferences are saved in the browser.
@@ -282,10 +337,10 @@ Chapters 1 and 2 match weeks 1 to 3 of the 10-week plan in `job-hunt-agent/inter
 | --- | --- | --- | --- | --- |
 | 1 (built) | Prod (E-Rank) | Delivery framework, estimation, vertical vs horizontal scaling, stateless services, load balancing, availability and nines, caching, CDN, stampedes, hot keys, replication, sharding, CAP/PACELC, SQL vs NoSQL, unique IDs, 301 vs 302 | The Goblin King of Links (URL shortener) | 1–2 |
 | 2 (built) | Tidewater Archives (D-Rank) | Rate limiting algorithms, where the limiter lives (gateway, 429, fail open), race conditions and atomic counters, message queues, retries with backoff and idempotency, object storage and presigned URLs, chunking and delta sync | Lord Latency, Demon King of Lag (rate limiter); the Sync Hydra elite (Dropbox) | 3 |
-| 3 | Clockwork Spire | Indexes (B-tree, LSM), quorums and the consistency spectrum (linearizable, causal, read-your-writes, eventual), pub-sub, fan-out on write vs read, distributed search and inverted indexes, sharded counters, queue ordering, backpressure, top-K, stream aggregation | News feed and Ticketmaster bosses; Typeahead and Quora elites; ad click aggregator | 4–5 |
-| 4 | Sky Harbour | Geospatial indexes, WebSockets and presence, failure models, consensus and leader election, Lamport and vector clocks, gossip and hinted handoff, distributed locks, task scheduling, sagas, distributed caches (Memcached vs Redis) | Uber, WhatsApp and key-value store bosses; Yelp, Google Docs (OT vs CRDT) and payment system elites | 6–7 |
-| 5 | Lord Latency's Castle | DNS and GeoDNS, global load balancing, CDN deep dive (push vs pull, invalidation), monitoring and logging, deployment systems (canaries, rollouts), video pipelines, crawlers, notifications, multi-region | YouTube and web crawler bosses; real-outage postmortem events | 8–9 |
-| 6 (post-game) | TBD | AI-era systems: LLM serving, ML data infrastructure, retrieval, support bots, code assistants | ChatGPT-style chat service | — |
+| 3 (built) | Clockwork Spire | Indexes (B-tree, LSM), quorums and the consistency spectrum (linearizable, causal, read-your-writes, eventual), pub-sub, fan-out on write vs read, distributed search and inverted indexes, sharded counters, queue ordering, backpressure, top-K, stream aggregation | News feed and Ticketmaster bosses; Typeahead and Quora elites; ad click aggregator | 4–5 |
+| 4 (built) | Sky Harbour | Geospatial indexes, WebSockets and presence, failure models, consensus and leader election, Lamport and vector clocks, gossip and hinted handoff, distributed locks, task scheduling, sagas, distributed caches (Memcached vs Redis) | Uber, WhatsApp and key-value store bosses; Yelp, Google Docs (OT vs CRDT) and payment system elites | 6–7 |
+| 5 (built) | Lord Latency's Castle | DNS and GeoDNS, global load balancing, CDN deep dive (push vs pull, invalidation), monitoring and logging, deployment systems (canaries, rollouts), video pipelines, crawlers, notifications, multi-region | YouTube and web crawler bosses; real-outage postmortem events | 8–9 |
+| 6 (built, optional) | The Oracle Spire (EX) | AI-era systems: LLM serving, retrieval (RAG), evals, guardrails, cost and caching, agents | ChatGPT-style chat service; RAG support bot | Applied AI add-on |
 
 Topic coverage is cross-checked against the public outline of Educative's *Grokking the Modern System Design Interview* (titles only; see `/mnt/project-files/curriculum/educative_grokking_mapping.md` in the project). The game repo is public, so every explanation is written fresh; nothing from the course is copied. Built refreshers from that check: availability and nines math (Uptima's temple lesson), and DNS in Mio's request walkthrough.
 
@@ -301,7 +356,8 @@ Topic coverage is cross-checked against the public outline of Educative's *Grokk
 - `game/js/quiz.js` — the retrieval loop: answer, confidence, feedback, confusion compass, ELI5 and Huh???.
 - `game/js/goddess.js` — Uptima's Oopsies: once a loop she breaks something in town on your way to the gate; one question fixes it, and her reward is rolled from a mostly-junk loot table (rarely a shard).
 - `game/js/lessons.js` — building lessons that prime the next dungeon: Uptima's How Many Nines?, Mio's illustrated walkthroughs (a request's journey, how a big file travels, how a post reaches a feed), Wen's mini-games (Cache Rush, Token Bucket, Top 3 Pastries) and Seymour's (Shard Sorter, Festival Queue, Seat Rush).
-- `game/js/minigames.js` — the quest mini-games (`SD.games`): Blueprint, What's Missing?, Requirements Sort, Napkin Math, Front Desk, Dedupe Desk, Rebuild the Recipe, Limiter Lab, Jitter Garden, The Forbidden Index, Quorum Dial, Performance Review and Declutter.
+- `game/js/minigames.js` — the quest mini-games (`SD.games`): Blueprint, What's Missing?, Requirements Sort, Napkin Math, Front Desk, Dedupe Desk, Rebuild the Recipe, Limiter Lab, Jitter Garden, The Forbidden Index, Quorum Dial, Performance Review, Declutter, Heartbeat Haunt, Timeline Detective, Ballot Box, Lock & Lease, Saga Builder, Resolver Relay, Canary Coop, Bitrate Ladder, Crawler Garden and Pager Panic.
+- `game/js/ch4.js`, `game/js/ch5.js`, `game/js/ch6.js` — one file per chapter from chapter 4 on: concepts, cards, incidents, bosses, curses, questions, events and story. `ch5.js` also holds quests 16–20 and their Plot Devices.
 - `game/js/quests.js` — town quests, the new villagers, Plot Devices (`SD.devices`), curses (`SD.curses`), the quest log and villagers' idle lines.
 - `game/js/eli5.js` — plain-language help: a game analogy per question, a game-terms summary per concept, and a jargon glossary.
 - `game/js/ui.js`, `game/js/art.js`, `game/js/main.js` — UI helpers and dialogue, code-drawn art, boot, cold open and hub buildings.
@@ -312,7 +368,7 @@ Saves go to localStorage. On claude.ai they also go to a private per-user docume
 
 ## Next steps
 
-- Town quests 11–15, as specified above, each with its new mini-game and Plot Device (Walkie-Talkie, Kitchen Timer, Gavel, Fencing Token, Almanac), then chapter 4 with quests 16–20.
+- Chapters 7–10 (being built separately).
 - Redraw the village map and the cast with PixelLab (generated with the owner's account; credit it in `CREDITS.md`, since it is not CC0 or CC BY).
 - Pixel-art dungeon scenes behind combat, and painted portraits for Pip and Lord Latency if good matches turn up.
 - A balance pass after real play: boss severity, card numbers, reward pacing, and how often Gary shows up.

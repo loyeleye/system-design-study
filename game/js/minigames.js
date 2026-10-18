@@ -974,4 +974,287 @@
       render();
     });
   };
+
+  // ---------- Chapter 5 quests ----------
+  // A row of labelled meters, for error rates, bitrates and the like.
+  const meters = rows => rows.map(([label, v, max, txt, hot]) => `<div class="mg-meter"><span>${esc(label)}</span><span class="bar"><i class="${hot ? 'hot' : ''}" style="width:${Math.min(100, v / max * 100)}%"></i></span><b>${esc(txt)}</b></div>`).join('');
+  // Ask one multiple-choice question; resolves to true when the first pick is right. Wrong picks explain and retry.
+  function pickOne(def, note, body, opts, onWrong) {
+    return new Promise(res => {
+      let tries = 0;
+      const order = shuffle(opts.map((_, i) => i));
+      const render = n => {
+        const b = U.panel(`${say(def.who, n)}${body}<div class="opts">${order.map(i => `<button class="opt" data-i="${i}">${esc(opts[i][0])}</button>`).join('')}</div>`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-i]').forEach(el => el.onclick = () => {
+          const [, ok, msg] = opts[+el.dataset.i];
+          sfx(ok ? 'right' : 'wrong');
+          if (ok) return res({ first: tries === 0, msg });
+          tries++; if (onWrong) onWrong(); render(msg);
+        });
+      };
+      render(note);
+    });
+  }
+
+  // ---------- Resolver Relay: send the pigeon down the DNS chain, then time a TTL around a move ----------
+  G.resolver = function (def) {
+    return new Promise(async res => {
+      const PRED = ['The root book, then the .guild book, then the Pingsby book', 'One giant book with every address in the realm', 'Every pigeon loft in town, until someone knows'];
+      const guess = await G.predict(def.title, def.who, 'A pigeon has never looked up <b>kaito.pingsby.guild</b>. Which books does it visit to find his address?', PRED);
+      const BOOKS = { cache: ['Coo\'s memory (resolver cache)', 'mailbox'], root: ['The Root Book', 'earth-asia-oceania'], tld: ['The .guild Book', 'open-book'], auth: ['The Pingsby Book (authoritative)', 'rotary-phone'] };
+      const LOOKUPS = [
+        { name: 'kaito.pingsby.guild', when: '9:00', path: ['cache', 'root', 'tld', 'auth'],
+          said: ['Coo checks his memory: nothing yet.', 'The root book: "I don\'t know Kaito, but .guild names are in the .guild Book."', 'The .guild book: "Pingsby has its own book. Ask that."', 'The Pingsby book knows: <b>12 Balcony Lane</b>, remember it for 1 day (TTL). Coo also remembers where the .guild and Pingsby books are, for 2 days.'],
+          hint: 'A resolver always checks its own memory first, then starts at the top: root, then the .guild book, then the book that owns the name.' },
+        { name: 'mio.pingsby.guild', when: '9:05', path: ['cache', 'auth'],
+          said: ['Coo remembers where the Pingsby book is, from the last trip.', 'The Pingsby book: Mio is at <b>The Treehouse</b>. Two hops, not four.'],
+          hint: 'Coo already remembers which book owns pingsby.guild names. Skip straight to it.' },
+        { name: 'kaito.pingsby.guild', when: '9:10', path: ['cache'],
+          said: ['Coo remembers: 12 Balcony Lane, still fresh for 23 hours and 50 minutes. Zero trips.'],
+          hint: 'Ten minutes ago you learned this address, with a 1-day TTL. Nobody needs to fly anywhere.' }
+      ];
+      let li = 0, pos = 0, trips = 0, mistakes = 0, note = def.intro;
+      const route = () => {
+        const L = LOOKUPS[li];
+        const b = U.panel(`${say(def.who, note)}<p class="q-ctx">Lookup ${li + 1} of ${LOOKUPS.length}, ${L.when}: where is <b>${esc(L.name)}</b>? Tap where the pigeon asks next.</p>
+          <div class="mg-chain">${L.path.slice(0, pos).map(k => `<span class="on">${esc(BOOKS[k][0])}</span>`).join('<i>→</i>') || '<span>Pigeon waiting at the Post</span>'}</div>
+          <div class="qd-reps">${Object.keys(BOOKS).map(k => `<button class="qd-rep opt" data-b="${k}">${icon(BOOKS[k][1])}<b>${esc(BOOKS[k][0])}</b></button>`).join('')}</div>
+          <p class="muted small">Trips so far: ${trips}</p>`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-b]').forEach(el => el.onclick = () => {
+          if (el.dataset.b !== L.path[pos]) { mistakes++; sfx('wrong'); note = L.hint; route(); return; }
+          sfx('blip'); if (L.path[pos] !== 'cache') trips++;
+          note = L.said[pos]; pos++;
+          if (pos < L.path.length) { route(); return; }
+          sfx('right'); li++; pos = 0;
+          if (li < LOOKUPS.length) { route(); return; }
+          ttl();
+        });
+      };
+      const ttl = async () => {
+        const a = await pickOne(def, `${note} Three lookups, ${trips} trips: caching did most of the work. Now the trouble. Kaito moves again on <b>Friday at noon</b>, and his address is remembered for 1 day.`,
+          '<p class="q-ctx">When do you change how long pigeons remember his address?</p>', [
+            ['Thursday morning: lower the TTL to 5 minutes, a day before the move', true, 'By Friday noon every 1-day answer has expired, and new ones only live 5 minutes. When the address changes, pigeons find out within 5 minutes.'],
+            ['Friday at noon, at the same time as the move', false, 'Pigeons that looked him up on Thursday keep the old address until Friday. Lowering the TTL only affects answers given out after you lower it.'],
+            ['Never: the pigeons will work it out', false, 'They will, a day later, after a day of fan mail to the goats.']
+          ], () => mistakes++);
+        const b2 = await pickOne(def, a.msg, '<p class="q-ctx">The move worked. What now?</p>', [
+          ['Put the TTL back up to a day', true, 'Short TTLs mean many more lookups for the Pingsby book. Keep them short only around a change.'],
+          ['Keep it at 5 minutes forever, just in case', false, 'Every pigeon would ask the Pingsby book every 5 minutes: 288 times the lookups for an address that rarely changes.']
+        ], () => mistakes++);
+        result(def.title, {
+          verdict: 'EVERY PIGEON AT THE RIGHT DOOR!', stats: [`${trips} trips for 3 lookups`, `${mistakes} wrong turn${mistakes === 1 ? '' : 's'}`], predicted: PRED[guess], predOk: guess === 0,
+          body: `<p class="small">${b2.msg}</p><p class="small"><b>DNS</b> turns a name into an address. A resolver checks its cache, then asks a <b>root</b> server, which points to the <b>TLD</b> servers (.com, .guild), which point to the domain's <b>authoritative</b> servers, which have the answer. Every answer is cached for its <b>TTL</b>, so most lookups never leave the resolver.</p>
+            <p class="small">Lower the TTL a day before a migration and raise it after. <b>GeoDNS</b> goes one step further: the authoritative server answers with the address of the region nearest the asker, and health checks drop regions that are down.</p>`
+        }).then(() => res({ ok: true, score: Math.max(0.4, 1 - mistakes * 0.1) }));
+      };
+      route();
+    });
+  };
+
+  // ---------- Canary Coop: widen or roll back a staged release by comparing it with the old version ----------
+  G.canary = function (def) {
+    return new Promise(async res => {
+      const PRED = ['Most of them, since every server got it at once', 'About 1%: only the canary got it', 'None: a good test suite catches everything'];
+      const guess = await G.predict(def.title, def.who, 'Uptima ships a broken halo to every server at once. How many prayers are hit before anyone notices?', PRED);
+      const STAGES = ['1%', '10%', '50%', '100%'];
+      // Error rate and p99 latency of the canary at each stage; the old halo runs at 0.5% and 120 ms.
+      const BUILDS = [
+        { name: 'Halo 2.0', good: true, err: [0.4, 0.5, 0.5], p99: [118, 121, 119], why: 'Same errors and latency as the old halo at every stage. Ship it.' },
+        { name: 'Halo 2.1 (now with sparkles)', good: false, bad: 1, err: [0.6, 3.8, 4.1], p99: [125, 130, 128], why: 'At 1% there were too few prayers to tell. At 10% the errors were seven times the old halo\'s. Roll back.' },
+        { name: 'Halo 2.2 (no sparkles)', good: false, bad: 0, err: [0.5, 0.5, 0.4], p99: [410, 420, 415], why: 'No extra errors, but every prayer took three times longer. Slow is broken too: watch latency, not just errors.' }
+      ];
+      let bi = 0, si = 0, mistakes = 0, hit = 0, note = def.intro;
+      const render = () => {
+        const B = BUILDS[bi];
+        const err = B.err[si], p99 = B.p99[si];
+        const b = U.panel(`${say(def.who, note)}<p class="q-ctx">${esc(B.name)} is on <b>${STAGES[si]}</b> of prayers. Compare it with the old halo.</p>
+          ${meters([['Old halo errors', 0.5, 5, '0.5%'], ['Canary errors', err, 5, err + '%', err > 1], ['Old halo p99', 120, 500, '120 ms'], ['Canary p99', p99, 500, p99 + ' ms', p99 > 200]])}
+          <p class="muted small">${si === 0 ? 'Only a few hundred prayers so far: small numbers are noisy.' : 'Thousands of prayers: these numbers mean something.'}</p>
+          <div class="row"><button class="primary" data-a="up">Widen to ${STAGES[si + 1]}</button><button class="ghost" data-a="back">Roll back</button></div>`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-a]').forEach(el => el.onclick = () => {
+          const up = el.dataset.a === 'up';
+          const shouldStop = !B.good && si >= (B.bad || 0) && (si > 0 || B.bad === 0);
+          if (up && !shouldStop) {
+            sfx('blip'); si++;
+            if (si < 3) { note = `Widened to ${STAGES[si]}. Watch the numbers again.`; render(); return; }
+            note = `${B.name} reached 100%. ${B.why}`; return next(true);
+          }
+          if (up) { mistakes++; hit += +STAGES[si + 1].replace('%', ''); sfx('wrong'); note = `Uh oh. ${STAGES[si + 1]} of prayers now glow the wrong colour. ${B.why}`; return next(false); }
+          if (B.good || si < (B.bad || 0) || (si === 0 && B.bad !== 0)) { mistakes++; sfx('wrong'); note = B.good ? 'You rolled back a good build. Compare with the old halo: same errors, same latency.' : 'At 1% there were only a few hundred prayers, and the canary looked like the old halo. Rolling back on noise means you never ship. Widen, and keep watching.'; render(); return; }
+          sfx('right'); note = `Rolled back at ${STAGES[si]}. ${B.why}`; next(false);
+        });
+      };
+      const next = () => { bi++; si = 0; if (bi < BUILDS.length) render(); else done(); };
+      const done = async () => {
+        const k = await pickOne(def, `${note} Last one: Halo 2.3 has a new "smite" button that looks risky.`, '<p class="q-ctx">How do you ship the smite button so you can turn it off in seconds?</p>', [
+          ['Behind a feature flag: deploy the code with it switched off, then turn it on for a few prayers', true, 'Deploying and releasing are now two different things. If smiting goes wrong, flip the flag off: no redeploy, no rollback.'],
+          ['Ship it on, and redeploy the old version if it goes wrong', false, 'A redeploy takes many minutes while everything is smitten. A flag turns it off in seconds.'],
+          ['Don\'t ship it', false, 'Uptima would never forgive you. Ship it, but behind a switch you control.']
+        ], () => mistakes++);
+        result(def.title, {
+          verdict: mistakes ? 'SHIPPED, MOSTLY SAFELY!' : 'NOT ONE PRAYER SET ON FIRE!', good: hit < 50, stats: [`${mistakes} wrong call${mistakes === 1 ? '' : 's'}`, hit ? `${hit}% extra prayers hit` : 'No bad build past the canary'], predicted: PRED[guess], predOk: guess === 0,
+          body: `<p class="small">${k.msg}</p><p class="small">A <b>canary release</b> ships to a small slice first (1%, 10%, 50%, then everyone) and compares its <b>errors and latency</b> with the old version running beside it. Wait for enough traffic to trust the numbers, and <b>roll back automatically</b> when the canary is clearly worse. <b>Blue-green</b> keeps the whole old version running so rollback is one switch; <b>feature flags</b> split deploying code from turning it on. Most outages begin with a change, so every change gets a way back.</p>`
+        }).then(() => res({ ok: true, score: Math.max(0.4, 1 - mistakes * 0.12) }));
+      };
+      render();
+    });
+  };
+
+  // ---------- Bitrate Ladder: choose renditions, then the right one per segment as a viewer's signal changes ----------
+  G.bitrate = function (def) {
+    return new Promise(async res => {
+      const PRED = ['Pick a smaller version for the next few seconds, then a bigger one when the signal returns', 'Pause and buffer until the signal comes back', 'Keep sending 4K: the crystal will cope'];
+      const guess = await G.predict(def.title, def.who, 'A viewer\'s signal drops from fast to slow halfway through the stream. What should their crystal do?', PRED);
+      const R = [['240p', 0.4], ['480p', 1], ['720p', 2.5], ['1080p', 5], ['4K', 16]];
+      let made = new Set(['4K']), mistakes = 0, stalls = 0, blurry = 0, note = def.intro, phase = 1, seg = 0;
+      // A viewer by the river: Mbps available for each 4-second segment.
+      const SIG = [8, 7, 1.4, 0.6, 0.7, 3.2, 7, 22];
+      const best = bw => { let k = -1; R.forEach(([n, r], i) => { if (made.has(n) && r <= bw * 0.8) k = i; }); return k; };
+      const render = () => {
+        let body;
+        if (phase === 1) body = `<p class="q-ctx">1. Which versions (renditions) should the pipeline make from each upload? Tap to toggle.</p>
+          <div class="qd-reps">${R.map(([n, r]) => `<button class="qd-rep opt${made.has(n) ? ' fresh' : ''}" data-r="${n}">${icon('film-strip')}<b>${n}</b><span>${r} Mbps</span></button>`).join('')}</div>
+          <div class="row"><button class="primary" id="br-go">Transcode these</button></div>`;
+        else {
+          const bw = SIG[seg];
+          body = `<p class="q-ctx">2. Segment ${seg + 1} of ${SIG.length}. The viewer by the river has <b>${bw} Mbps</b> right now. Which version for the next 4 seconds?</p>
+            ${meters([['Signal', bw, 25, bw + ' Mbps', bw < 1]])}
+            <div class="opts">${R.filter(([n]) => made.has(n)).map(([n, r]) => `<button class="opt" data-s="${n}">${n} (${r} Mbps)</button>`).join('')}</div>
+            <p class="muted small">Stalls: ${stalls} · Blurry segments: ${blurry}</p>`;
+        }
+        const b = U.panel(`${say(def.who, note)}${body}`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-r]').forEach(el => el.onclick = () => { const n = el.dataset.r; made.has(n) ? made.delete(n) : made.add(n); sfx('blip'); render(); });
+        const go = b.querySelector('#br-go');
+        if (go) go.onclick = () => {
+          if (!made.has('240p') && !made.has('480p')) { mistakes++; sfx('wrong'); note = 'Mio\'s class by the river sometimes has under 1 Mbps. Without a small version they get nothing at all.'; render(); return; }
+          if (made.size < 3) { mistakes++; sfx('wrong'); note = 'Too few rungs on the ladder: a viewer between two versions has to take the small one or stall. Make a spread from small to large.'; render(); return; }
+          sfx('right'); phase = 2; note = 'The ladder is ready: each upload becomes several versions, cut into 4-second segments. Now watch one viewer by the river. Pick the biggest version their signal can carry, with some room to spare.'; render();
+        };
+        b.querySelectorAll('[data-s]').forEach(el => el.onclick = () => {
+          const bw = SIG[seg], k = R.findIndex(([n]) => n === el.dataset.s), want = best(bw);
+          if (R[k][1] > bw) { stalls++; mistakes++; sfx('wrong'); note = `${R[k][0]} needs ${R[k][1]} Mbps and the signal is ${bw}: the crystal stalls and spins. Players pick what the connection can carry right now.`; }
+          else if (k < want) { blurry++; sfx('blip'); note = `It played, but blurrier than needed: ${R[want][0]} would have fit in ${bw} Mbps.`; }
+          else if (R[k][1] > bw * 0.8) { sfx('blip'); note = `It just fit, with no room for a wobble. Players keep some headroom.`; }
+          else { sfx('right'); note = `${R[k][0]} played smoothly.`; }
+          seg++;
+          if (seg < SIG.length) { render(); return; }
+          premiere();
+        });
+      };
+      const premiere = async () => {
+        const p = await pickOne(def, `${note} Now the big one: Kaito's premiere, "Kaito Trains (Legendary) II", 8 pm tonight. Everyone in the realm will press play in the same minute.`,
+          '<p class="q-ctx">How do the segments reach the CDN edges?</p>', [
+            ['Push the premiere\'s segments to every edge before 8 pm', true, 'Every edge already has the video when the crowd arrives, so the origin barely notices. The long tail of old videos can still be pulled on demand.'],
+            ['Let each edge pull a segment the first time someone asks', false, 'At 8 pm every edge misses at once and they all hit the origin together: a cache stampede, live on air.'],
+            ['Serve everyone from the origin in the plaza', false, 'One crystal in the plaza against the whole realm. Video is mostly bandwidth, and that is what the CDN is for.']
+          ], () => mistakes++);
+        result(def.title, {
+          verdict: stalls ? 'THE SHOW WENT ON!' : 'NOT ONE SPINNING CIRCLE!', good: stalls < 3, stats: [`Ladder: ${R.filter(([n]) => made.has(n)).map(([n]) => n).join(', ')}`, `${stalls} stall${stalls === 1 ? '' : 's'}`, `${blurry} blurry`], predicted: PRED[guess], predOk: guess === 0,
+          body: `<p class="small">${p.msg}</p><p class="small">A video pipeline stores the upload in object storage, then <b>transcodes</b> it (split into chunks, many workers in parallel) into a <b>ladder of renditions</b> cut into segments of a few seconds, listed in a manifest (HLS or DASH). The player measures its connection and picks the rendition for each next segment: <b>adaptive bitrate</b>. A <b>CDN</b> serves the segments; push the hits to the edge ahead of time and let the long tail be pulled.</p>`
+        }).then(() => res({ ok: true, score: Math.max(0.4, 1 - mistakes * 0.1) }));
+      };
+      render();
+    });
+  };
+
+  // ---------- Crawler Garden: pick the spider's next page, politely, without repeats or traps ----------
+  G.crawler = function (def) {
+    return new Promise(async res => {
+      const PRED = ['It never stops: there is always a next day', 'It stops at the last page', 'The site blocks it after one page'];
+      const guess = await G.predict(def.title, def.who, 'The Infinite Calendar has a "next day" link on every page, forever. What happens to a crawler that follows every link it finds?', PRED);
+      // Each round: candidate URLs for the spider; exactly one is a good next fetch. [url, ok, why]
+      const ROUNDS = [
+        { seen: 'Just fetched: riverside.lib/ (2 s ago)', c: [
+          ['riverside.lib/shelves', false, 'Riverside was hit 2 seconds ago. One queue per site and a delay between hits, or the librarian files another complaint.'],
+          ['forge.guild/catalogue', true, 'A different site, never fetched: polite and new.'],
+          ['riverside.lib/?ref=lexi', false, 'That is riverside.lib/ again with a tracking code, and the site was just hit. Normalise URLs before queuing.']] },
+        { seen: 'Already fetched: forge.guild/catalogue, riverside.lib/', c: [
+          ['FORGE.guild/catalogue/', false, 'Same page: hostnames are not case-sensitive and the trailing slash changes nothing. Normalised, it is forge.guild/catalogue, already fetched.'],
+          ['riverside.lib/shelves', true, 'Riverside has had its rest, and this page is new.'],
+          ['secret.vault/scrolls', false, 'secret.vault\'s robots.txt says "no spiders". Polite crawlers obey it.']] },
+        { seen: 'Just fetched: riverside.lib/shelves, whose page hash is 9f3a…', c: [
+          ['mirror.lib/shelves (hash 9f3a…)', false, 'The URL is new, but the content hash matches a page you stored: a mirror. Store it once.'],
+          ['tower.lib/index', true, 'New site, new page, no complaints.'],
+          ['riverside.lib/shelves#top', false, '#top is a spot on the same page. Strip fragments when normalising.']] },
+        { seen: 'In the Infinite Calendar: calendar.town/2026/10/18 (depth 3)', c: [
+          ['calendar.town/2026/10/19', false, 'And then the 20th, and the 21st... every page links to tomorrow. Cap depth and pages per site: this is a crawler trap.'],
+          ['calendar.town/9999/12/31', false, 'Still the calendar, just further in. The trap has no end in either direction.'],
+          ['forge.guild/blueprints', true, 'Out of the trap. The calendar\'s queue has hit its page cap, so the spider moves on.']] },
+        { seen: 'Frontier: 2 pages queued, 40,000 sites waiting', c: [
+          ['A small town library\'s page nobody links to', false, 'Fine eventually, but the frontier should rank pages: fetch the important, often-changing ones first.'],
+          ['The Guild front page, which changes every hour', true, 'Popular pages that change often get recrawled first. A frontier is a priority queue, not a list.'],
+          ['The Guild front page again, fetched 10 seconds ago', false, 'It just got fetched. Recrawl on a schedule that matches how often it changes.']] }
+      ];
+      let r = 0, mistakes = 0, pages = 0, note = def.intro;
+      const render = () => {
+        const R = ROUNDS[r], order = shuffle(R.c.map((_, i) => i));
+        const b = U.panel(`${say(def.who, note)}<p class="q-ctx">Page ${r + 1} of ${ROUNDS.length}. ${esc(R.seen)}. Where does the spider go next?</p>
+          <div class="opts">${order.map(i => `<button class="opt" data-c="${i}">${esc(R.c[i][0])}</button>`).join('')}</div>
+          <p class="muted small">Pages stored: ${pages} · Complaints: ${mistakes}</p>`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-c]').forEach(el => el.onclick = () => {
+          const [, ok, why] = R.c[+el.dataset.c];
+          sfx(ok ? 'right' : 'wrong'); note = why;
+          if (!ok) { mistakes++; render(); return; }
+          pages++; r++;
+          if (r < ROUNDS.length) { render(); return; }
+          result(def.title, {
+            verdict: 'EVERY PAGE ONCE, NO COMPLAINTS!', good: mistakes < 4, stats: [`${pages} pages`, `${mistakes} complaint${mistakes === 1 ? '' : 's'}`], predicted: PRED[guess], predOk: guess === 0,
+            body: `<p class="small">${why}</p><p class="small">A <b>crawler</b> keeps a <b>frontier</b> of URLs: a priority queue (important, fast-changing pages first) split into one queue per site, so <b>politeness</b> (a delay between hits, obeying robots.txt) is built in. <b>Normalise</b> URLs (lowercase host, drop tracking codes and fragments) and keep a seen-set or Bloom filter; <b>hash content</b> to catch mirrors. Cap depth and pages per site to escape <b>traps</b> like infinite calendars. Fetchers, parsers and storage scale separately behind queues.</p>`
+          }).then(() => res({ ok: true, score: Math.max(0.4, 1 - mistakes * 0.1) }));
+        });
+      };
+      render();
+    });
+  };
+
+  // ---------- Pager Panic: page, ticket or silence each alert, then fail a region over ----------
+  G.pager = function (def) {
+    return new Promise(async res => {
+      const PRED = ['Only the ones users can feel, like failing prayers', 'Every alert, so nothing is missed', 'None: check the dashboards in the morning'];
+      const guess = await G.predict(def.title, def.who, 'Heaven sent 400 alerts last night. Which ones should wake someone up at 3 a.m.?', PRED);
+      const ALERTS = [
+        ['CPU at 92% on halo-server-7', 'ticket', 'A busy server is a cause, not a symptom. If prayers are fine, it\'s a ticket for the morning.'],
+        ['Prayer error budget burning 14× too fast: 2% of prayers failing for 10 minutes', 'page', 'Users feel this, and at this rate the whole month\'s budget is gone in two days. Wake someone.'],
+        ['Health check on halo-3 flapped once, then recovered', 'silence', 'One blip that fixed itself. Paging for it trains people to ignore the pager.'],
+        ['Archive disk 81% full, growing 1% a week', 'ticket', 'Real, but weeks away. A ticket, not a 3 a.m. wake-up.'],
+        ['p99 prayer latency over the SLO for 20 minutes in Heaven (East)', 'page', 'Prayers in the east are slow enough to break the promise. That is a symptom users feel.']
+      ];
+      const ACT = { page: 'Page someone', ticket: 'Ticket for the morning', silence: 'Silence it' };
+      let k = 0, mistakes = 0, pages = 0, note = def.intro;
+      const render = () => {
+        const [txt] = ALERTS[k];
+        const b = U.panel(`${say(def.who, note)}<p class="q-ctx">Alert ${k + 1} of ${ALERTS.length}, 3:0${k} a.m.</p>
+          <div class="lw-say mg-alert">${icon('ringing-bell')}<p><b>${esc(txt)}</b></p></div>
+          <div class="opts">${Object.keys(ACT).map(a => `<button class="opt" data-a="${a}">${ACT[a]}</button>`).join('')}</div>
+          <p class="muted small">Pages sent tonight: ${pages}</p>`, { title: def.title, cls: 'wide', noClose: true });
+        b.querySelectorAll('[data-a]').forEach(el => el.onclick = () => {
+          const [, want, why] = ALERTS[k], a = el.dataset.a;
+          if (a === 'page') pages++;
+          const ok = a === want;
+          if (!ok) mistakes++;
+          sfx(ok ? 'right' : 'wrong');
+          note = (ok ? '' : want === 'page' ? 'That one mattered! ' : 'Not worth that. ') + why;
+          k++;
+          if (k < ALERTS.length) { render(); return; }
+          outage();
+        });
+      };
+      const outage = async () => {
+        const f = await pickOne(def, `${note} 3:07 a.m. Heaven (East) stops answering entirely. Every prayer routed there fails.`, `${meters([['Heaven', 0.3, 100, '0.3% errors'], ['Heaven (East)', 100, 100, '100% errors', true]])}<p class="q-ctx">What do you do first?</p>`, [
+          ['Fail over: take East out of DNS and send its prayers to Heaven', true, 'Health checks pull East out of the answers and Heaven takes the load. Stop the bleeding first, find the cause after.'],
+          ['Log into East and restart servers one by one', false, 'Every minute you spend restarting, East\'s prayers keep failing. Restore service first: fail over, then investigate.'],
+          ['Wait for Gary to get back from holiday', false, 'Gary is on a beach. The pager is yours.']
+        ], () => mistakes++);
+        const w = await pickOne(def, f.msg, '<p class="q-ctx">Heaven now carries everything. What did you need ready for that to work?</p>', [
+          ['Spare capacity in Heaven, and East\'s data already replicated there', true, 'A standby that can\'t carry the load just fails second. Rehearse failover before you need it, and know how many seconds of writes async replication might lose.'],
+          ['Nothing: a region can always take double', false, 'Only if it was sized for it. Otherwise Heaven falls over too, a minute after East.']
+        ], () => mistakes++);
+        result(def.title, {
+          verdict: 'HEAVEN STAYED UP!', good: mistakes < 4, stats: [`${pages} page${pages === 1 ? '' : 's'} sent`, `${mistakes} wrong call${mistakes === 1 ? '' : 's'}`], predicted: PRED[guess], predOk: guess === 0,
+          body: `<p class="small">${w.msg}</p><p class="small"><b>Observability</b>: metrics (how much, how often), logs (what happened), traces (one request across every service). Watch the golden signals: latency, traffic, errors, saturation. <b>Page on symptoms</b> measured against the <b>SLO</b>, with <b>burn-rate</b> alerts that fire when the error budget would run out in hours; everything else is a dashboard or a ticket. With several <b>regions</b>, health checks and DNS move users away from a dead one, but only if the others have room and the data is already there.</p>`
+        }).then(() => res({ ok: true, score: Math.max(0.4, 1 - mistakes * 0.1) }));
+      };
+      render();
+    });
+  };
 })();

@@ -875,13 +875,54 @@ SD.specs = {
   warden: { name: 'Reliability Warden', rank: 3, text: '+15 max SLA and Crash intents deal half. Weakness: flat mitigation is 2 lower.' }
 };
 
-// Meta shop (Grandma Wen, paid in Memory Shards that survive every loop).
+// Meta shop (Grandma Wen, paid in Memory Shards that survive every loop). Keepsakes past the first five
+// unlock with your Guild rank; most borrow an idea from a Slay the Spire relic (named in the comment).
 SD.metaShop = [
-  { id: 'thermos', name: "Grandma's Thermos", cost: 6, text: '+1 Capacity on the first turn of every fight.' },
-  { id: 'lantern', name: 'Lucky Rubber Duck', cost: 5, text: '+10 max SLA. You explain your bugs to it.' },
-  { id: 'pipeye', name: "Pip's Monocle", cost: 4, text: 'Diagnoses show one wrong answer crossed out.' },
-  { id: 'satchel', name: 'Bag of Holding (Cards)', cost: 7, text: 'Card rewards offer 4 choices instead of 3.' },
-  { id: 'teapot', name: 'Bottomless Teapot', cost: 5, text: 'Break rooms heal 15% more.' }
+  { id: 'pipeye', name: "Pip's Monocle", cost: 80, rank: 'E', text: 'Diagnoses show one wrong answer crossed out.' },
+  { id: 'teapot', name: 'Bottomless Teapot', cost: 90, rank: 'E', text: 'Break rooms heal 15% more.' },
+  { id: 'lantern', name: 'Lucky Rubber Duck', cost: 100, rank: 'E', text: '+10 max SLA. You explain your bugs to it.' },
+  { id: 'thermos', name: "Grandma's Thermos", cost: 120, rank: 'E', text: '+1 Capacity on the first turn of every fight.' },
+  { id: 'satchel', name: 'Bag of Holding (Cards)', cost: 150, rank: 'E', text: 'Card rewards offer 4 choices instead of 3.' },
+  // C-Rank
+  { id: 'luckybit', name: 'Lucky Bit', cost: 110, rank: 'C', text: 'Incidents drop 25% more bits.' },   // Golden Idol
+  { id: 'postnotes', name: 'Postmortem Notebook', cost: 140, rank: 'C', text: 'Heal 5 SLA after every incident you resolve. Writing it down helps.' },   // Burning Blood
+  { id: 'whistle', name: "First Responder's Whistle", cost: 160, rank: 'C', text: 'The first card that mitigates in each fight mitigates 8 more.' },   // Akabeko
+  { id: 'runbook', name: 'Dog-Eared Runbook', cost: 180, rank: 'C', text: 'Draw 2 extra cards on the first turn of every fight.' },   // Bag of Preparation
+  // B-Rank
+  { id: 'torii', name: 'Torii Gate Charm', cost: 190, rank: 'B', text: 'Whenever you would lose 5 SLA or less, lose only 1.' },   // Torii
+  { id: 'standby', name: 'Warm Standby', cost: 200, rank: 'B', text: 'Start every fight with 8 Any absorb already up.' },   // Anchor
+  { id: 'breaker', name: 'Circuit Breaker', cost: 220, rank: 'B', text: 'The first time you would lose SLA in each fight, lose none.' },   // Fossilized Helix
+  { id: 'drip', name: 'Coffee Drip', cost: 230, rank: 'B', text: 'Every third turn, +1 Capacity.' },   // Happy Flower
+  // A-Rank
+  { id: 'membercard', name: 'Guild Membership Card', cost: 240, rank: 'A', text: 'Shops inside dungeons charge 40% fewer bits.' },   // Membership Card
+  { id: 'badge', name: "Principal Engineer's Badge", cost: 260, rank: 'A', text: 'Every card that mitigates mitigates 3 more.' },   // Vajra, generously
+  { id: 'stamp', name: 'Rubber Stamp of Approval', cost: 270, rank: 'A', text: 'Every 5th card that mitigates in a run mitigates double.' },   // Pen Nib
+  // S-Rank
+  { id: 'pinned', name: 'Pinned Tabs', cost: 300, rank: 'S', text: 'Your hand is no longer discarded at the end of your turn.' },   // Runic Pyramid
+  { id: 'croissant', name: 'Leftover Croissant', cost: 400, rank: 'S', text: 'Capacity you don\'t spend carries over to your next turn.' }   // Ice Cream, the strongest here
+];
+
+// Ayo's Card Forge: cards bought with Memory Shards join your starting deck in every future run (you can
+// bench them). Most borrow an idea from a Slay the Spire card (named in the comment). One is on sale each loop.
+Object.assign(SD.cards, {
+  defdepth: { name: 'Defense in Depth', cost: 1, kind: 'action', mit: 5, abs: { any: 5 }, tags: ['ops'], text: 'Mitigate {mit}. Absorb {any} load of any kind.', art: 'lock', rarity: 'uncommon', shop: true },   // Iron Wave
+  graceful: { name: 'Graceful Degradation', cost: 1, kind: 'action', abs: { any: 8 }, draw: 1, tags: ['ops'], text: 'Absorb {any} load of any kind. Draw 1. Serve something rather than nothing.', art: 'shed', rarity: 'uncommon', shop: true },   // Shrug It Off
+  flowstate: { name: 'Flow State', cost: 0, kind: 'action', draw: 3, exhaust: true, tags: ['ops'], text: 'Draw 3. Exhaust. Phone face down, door closed.', art: 'hourglass', rarity: 'uncommon', shop: true },   // Battle Trance
+  rca: { name: 'Root Cause Analysis', cost: 1, kind: 'action', rca: true, tags: ['ops'], text: 'Mitigate 4 for every Stale, then remove all Stale. Every wrong answer is a clue.', art: 'eye', rarity: 'uncommon', shop: true },   // Catalyst, sort of
+  slam: { name: 'Backpressure Slam', cost: 1, kind: 'action', slam: true, tags: ['ops'], text: 'Mitigate as much as all your absorb added up. Push back with everything you are holding.', art: 'shed', rarity: 'rare', shop: true },   // Body Slam
+  loadtest: { name: 'Load Test', cost: 2, kind: 'action', mit: 8, vuln: 2, tags: ['ops'], text: 'Mitigate {mit}. For this turn and the next, all your mitigation is 50% stronger: you found where it breaks.', art: 'bolt2', rarity: 'rare', shop: true },   // Bash and Vulnerable
+  allnighter: { name: 'All-Nighter', cost: 0, kind: 'action', selfDmg: 6, gain: 2, draw: 3, exhaust: true, tags: ['ops'], text: 'Lose 6 SLA. +2 Capacity. Draw 3. Exhaust. You will regret this tomorrow.', art: 'clock', rarity: 'rare', shop: true },   // Offering
+  autoscale: { name: 'Autoscaling', cost: 2, kind: 'action', doubleSh: true, tags: ['ops', 'hscale'], text: 'Double all your absorb. More of everything you already have.', art: 'copy', rarity: 'rare', shop: true },   // Entrench
+  hotfixstorm: { name: 'Hotfix Storm', cost: 0, xcost: true, kind: 'action', xmit: 7, tags: ['ops'], text: 'Spend all your Capacity. Mitigate 7 for each one spent.', art: 'wrench', rarity: 'rare', shop: true },   // Whirlwind
+  refactorall: { name: 'Refactor Everything', cost: 1, kind: 'action', upHand: true, exhaust: true, tags: ['ops'], text: 'Upgrade every card in your hand for the rest of this fight. Exhaust.', art: 'undo', rarity: 'rare', shop: true },   // Armaments+
+  sre: { name: 'SRE Rotation', cost: 2, kind: 'infra', eachMit: 4, tags: ['ops', 'observe'], text: 'Infra. Mitigate 4 at the start of each of your turns. Someone is always on call.', art: 'radar', rarity: 'rare', shop: true },   // Demon Form, gently
+  persist: { name: 'Persistent Volumes', cost: 3, kind: 'infra', keepSh: true, tags: ['ops'], text: 'Infra. While it stands, your absorb is no longer cleared at the start of each turn.', art: 'cyl', rarity: 'rare', shop: true }   // Barricade
+});
+SD.cardShop = [
+  // Priced by expected value over a run: situational and one-off cards are cheap, engines that pay every turn are dear.
+  { id: 'rca', cost: 150 }, { id: 'graceful', cost: 160 }, { id: 'defdepth', cost: 170 }, { id: 'flowstate', cost: 190 },
+  { id: 'allnighter', cost: 220 }, { id: 'loadtest', cost: 230 }, { id: 'autoscale', cost: 240 }, { id: 'slam', cost: 250 },
+  { id: 'refactorall', cost: 270 }, { id: 'hotfixstorm', cost: 300 }, { id: 'sre', cost: 360 }, { id: 'persist', cost: 400 }
 ];
 
 SD.ranks = ['E', 'D', 'C', 'B', 'A', 'S'];

@@ -685,7 +685,9 @@
     const sv = S.save;
     s.done = true; s.items = [];
     if (!QS.has(q.device)) QS.devices().push(q.device);
-    sv.shards += 2;
+    // Later quests pay more: 50 shards for the first ones, up to 110 for quests 16-20.
+    const shards = 50 + 15 * (q.unlock || 0);
+    sv.shards += shards;
     SD.run.gainXp(q.xp);
     S.persist();
     AU.jingle('victory', 'town');
@@ -693,7 +695,7 @@
     const lifts = Object.keys(SD.curses).filter(k => SD.curses[k].lift === q.device);
     await new Promise(res => {
       const b = U.panel(`<div class="verdict ok">QUEST COMPLETE!</div><p class="center"><b>${esc(q.title)}</b></p>
-        <div class="loot"><span>+${q.xp} XP</span><span>+2 shards</span></div>
+        <div class="loot"><span>+${q.xp} XP</span><span>+${shards} shards</span></div>
         <div class="pd-get"><div class="pd-icon">${icon(d.icon)}</div><div><span class="q-ctx">Plot Device get!</span><b>${esc(d.name)}</b><p class="small">${esc(d.text)}</p>
         ${lifts.map(k => `<p class="small good">Lifts the <b>${esc(SD.curses[k].name)}</b> curse.</p>`).join('')}<p class="muted small"><i>${esc(d.flavor)}</i></p></div></div>
         <p class="muted small">Plot Devices survive every loop. Uptima says it's in her contract, clause 7: "the plot must go on".</p>
@@ -732,15 +734,20 @@
       }).join('') + '</div>';
     } else {
       body += '<p class="muted small">Deeper dungeons are cursed. Each curse is lifted for good by one Plot Device.</p>';
+      // Dungeons you have not reached stay secret, curses and all. A curse you lift before reaching its
+      // dungeon is listed under Other curses, without naming where it waits.
+      const line = id => {
+        const k = SD.curses[id], lifted = QS.has(k.lift);
+        return `<li class="${lifted ? 'good' : ''}">${lifted ? '✓' : '☠'} <b>${esc(k.name)}</b>: ${esc(k.text)} ${lifted ? `<span class="muted small">Lifted by ${esc(SD.devices[k.lift].name)}.</span>` : `<br><span class="muted small">${esc(k.hint)}</span>`}</li>`;
+      };
+      const early = [];
       Object.keys(SD.chapters).forEach(ch => {
         const c = SD.chapters[ch], list = c.curses || [];
         if (!list.length) return;
-        const open = ch === '1' || sv.flags['ch' + (ch - 1)];
-        body += `<p class="q-ctx">${esc(c.name.replace(/^the /, 'The '))}${open ? '' : ' (not yet open)'}</p><ul class="links">${list.map(id => {
-          const k = SD.curses[id], lifted = QS.has(k.lift);
-          return `<li class="${lifted ? 'good' : ''}">${lifted ? '✓' : '☠'} <b>${esc(k.name)}</b>: ${esc(k.text)} ${lifted ? `<span class="muted small">Lifted by ${esc(SD.devices[k.lift].name)}.</span>` : `<br><span class="muted small">${esc(k.hint)}</span>`}</li>`;
-        }).join('')}</ul>`;
+        if (!S.chapterReached(+ch)) { early.push(...list.filter(id => QS.has(SD.curses[id].lift))); return; }
+        body += `<p class="q-ctx">${esc(c.name.replace(/^the /, 'The '))}</p><ul class="links">${list.map(line).join('')}</ul>`;
       });
+      if (early.length) body += `<p class="q-ctx">Other curses</p><p class="muted small">Lifted already, for dungeons you have not reached yet.</p><ul class="links">${early.map(line).join('')}</ul>`;
     }
     const b = U.panel(body, { title: 'QUEST LOG', cls: 'wide' });
     b.querySelectorAll('[data-tab]').forEach(el => el.onclick = () => QS.log(el.dataset.tab));
