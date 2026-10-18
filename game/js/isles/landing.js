@@ -221,29 +221,43 @@
       'Did you know Kwame can\'t say "on time" without laughing? I tested it. Eleven times. For science.',
       'If I win, victory dance. If you win, victory dance for you. If it\'s a tie, we both dance. There are no losers in the Game Club. Only dancers.',
       'Detective Ploy is on the case! Who keeps moving the board pins? ...Oh. It\'s the wind. Case closed. Victory dance.',
-      'Interview tip from the president: say what you\'re thinking out loud. Silence is only good in hide-and-seek.'],
+      'Interview tip from the president: say what you\'re thinking out loud. Silence is only good in hide-and-seek.',
+      'Meron is our referee. She reads every rule I make up, then reads it back to me. It sounds much worse out loud. I love her. Don\'t tell her.',
+      'My members are the best members. Nok never gives up, Kai never gets surprised, Arjun never wakes up, and Meron never lets me cheat. It\'s perfect.'],
     nok: ['HERO! Ploy and I are tied at forty-nine wins each! Or fifty to forty-nine! The chalkboard got rained on! Our rivalry is ETERNAL and also slightly unclear!',
       'Today I challenged Ploy to a staring contest. She invented a rule where blinking is allowed if you blink in rhythm. I lost. MAGNIFICENTLY.',
       'When my youth burns too hot, I run laps of the island. Kwame says I\'ve lapped his ferry nine times. The ferry was moving. Slowly. But moving!',
-      'Kai says he knows how all our games end. So I invented a game with no end! We have been playing it since spring!'],
+      'Kai says he knows how all our games end. So I invented a game with no end! We have been playing it since spring!',
+      'Meron brews me a training tea! It is the most bitter thing on the island! She watches me drink it and writes things down! I think she is proud of me!'],
     kai: ['Hello. You\'re going to ask what I\'m doing. Standing. Next question.',
       'I know how every game ends before it starts. Ploy changes the rules halfway through. It\'s the only thing I can\'t see coming. It\'s exhausting. I come every day.',
       'Nok is about to shout. ...There it is.',
       'Arjun sleeps through every game and wins half of them. I knew that would happen. I still don\'t understand it.',
-      'If you bring me mango sticky rice, I\'ll tell you nothing about the future. That\'s the best thing I can offer anyone.'],
+      'If you bring me mango sticky rice, I\'ll tell you nothing about the future. That\'s the best thing I can offer anyone.',
+      'Everyone here thinks loudly. Except Meron. Her thoughts are a list of plants, in alphabetical order. I stand next to her when I need a rest.'],
     arjun: ['AAAH! Oh. It\'s you. Sorry. I thought you were a crab. A big crab. With opinions.',
       'I\'m the club treasurer. We have eleven shells. I count them every hour. What if one ESCAPES?',
       'Ploy says I won three games yesterday. I don\'t remember any of them. Was I good? Was I brave? Was I asleep?',
-      'zzz... shard by user ID... replicate to three... zzz... AAAH! What did I say? Was it embarrassing? Write it down. No, don\'t!']
+      'zzz... shard by user ID... replicate to three... zzz... AAAH! What did I say? Was it embarrassing? Write it down. No, don\'t!',
+      'Meron keeps offering me coffee. She says it\'s an experiment to see if I can stay awake. I think it\'s poison. She says "not today". WHAT DOES THAT MEAN?'],
+    meron: ['Meron. Club referee. Before you ask: yes, Ploy made up that game this morning. Yes, the rules changed twice while I wrote them down.',
+      'In my grandmother\'s coffee house in Addis, the coffee is served three times: abol, tona, baraka. A game has rounds too. Ploy\'s have more. Ploy\'s have no end.',
+      'Nok drinks the bitter tea I brew him and asks for more. Rue, wormwood, the stems nobody uses. Nothing happens to him. I\'ve never had a better subject.',
+      'Arjun thinks I want to poison him. I only want to see whether coffee keeps him awake. ...It doesn\'t. He fell asleep mid-sip and won the game.',
+      'Kai stands next to me when everyone is loud. He says it\'s quiet in my head. It isn\'t. It\'s full of plants. Plants are quiet, though.',
+      'That pink flower by the school? Pretty. Also, don\'t eat it. I did. A little. For science. I could hear colours until lunch.']
   });
   // After Game Night of the Gods (js/ploy-quest.js): the club is official.
   I.addIdle({
-    ploy: ['The club is OFFICIAL! Four members! I made us badges. Kai knew what they\'d look like. He wore his anyway.',
+    ploy: ['The club is OFFICIAL! Five members, five signatures! I made us badges. Kai knew what they\'d look like. He wore his anyway. Meron checked hers for lead paint.',
       'Next Game Night, Uptima and Aigerim are a team. Team Five Nines Append-Only. They\'re still arguing about the name. It\'s a great game.',
       'The scoreboard is a diary now. Every game, forever. Nok has read it start to finish four times. He cries at the same parts.'],
     nok: ['Defeated by a sleeping man! I have never been so inspired! I now train asleep! ...I keep waking up.', 'The scoreboard can never be rubbed out! Our rivalry is recorded for ALL TIME! Page 1: Ploy won. ...I will not read page 1 again.'],
     kai: ['I knew everything that happened at Game Night. Except the third spin. I think about the third spin a lot.', 'Valentin lost a game. He looked delighted. I didn\'t see that coming either. Two surprises in one year. Good grief.'],
-    arjun: ['I WON GAME NIGHT? Me? Asleep? Who told the goddess? Is she angry? Is she coming? AAAH!', 'zzz... snapshot every hundred games... zzz... the treasury is safe... zzz']
+    arjun: ['I WON GAME NIGHT? Me? Asleep? Who told the goddess? Is she angry? Is she coming? AAAH!', 'zzz... snapshot every hundred games... zzz... the treasury is safe... zzz'],
+    meron: ['Every entry in the club log now says who wrote it and when. Uptima\'s corrections are timestamped too. Three of them are from before the games started. Interesting.',
+      'Third place at Game Night. Nobody reads the rules, so nobody noticed you can pass on your turn forever. I passed forty times. Ploy has banned it. She also made it a new game.',
+      'Ploy wants me as vice president. I said I would taste the offer first. She brought me a mango. ...I\'m considering it.']
   }, () => SD.quests && SD.quests.status('gamenight') === 'done');
   // After chapter 7, Leilani talks about the apprentice who signed the schedule.
   I.addIdle({

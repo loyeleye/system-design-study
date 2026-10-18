@@ -115,10 +115,16 @@ Landing, so it opens with the Isles after chapter 3.
 - **Ploy** (after Kaguya-sama's Chika) runs the club. Talking to her offers the solo mock interview
   (`SD.mock.solo({ title })`) and the Guild Hall (`SD.guild.play()`), each shown only when that code is loaded. Her
   first meeting plays an intro (`S.save.isles.ployMet`); she has a "!" until then.
-- **Nok** (Naruto's Might Guy), **Kai** (Saiki K.) and **Arjun** (Demon Slayer's Zenitsu) stand in the cove with idle
-  lines in `landing.js`, and new ones once the quest is done.
+- **Nok** (Naruto's Might Guy), **Kai** (Saiki K.), **Arjun** (Demon Slayer's Zenitsu) and **Meron** (The Apothecary
+  Diaries' Maomao) are the club's members and stand in the cove, with idle lines in `landing.js` about each other, and new
+  ones once the quest is done. Meron is Ethiopian, the club's deadpan referee and herbalist: she reads every rule Ploy
+  invents, brews Nok bitter training tea, tries to keep Arjun awake with coffee, and Kai stands by her because her head
+  is quiet. Ploy's first meeting introduces all four. They haven't signed the club charter, which is what the quest is for.
+- **Saule Apai** (`js/saule-quest.js`) stands outside the Isles School. Her PixelLab art is drawn after Fullmetal
+  Alchemist's Izumi Curtis, the strict, warm teacher. Her busts are listed in `isles-data.js`'s `BUSTS`, because her
+  looks are added after that file loads.
 - **Game Night of the Gods** (`js/ploy-quest.js`, after chapter 5) is a town quest (`js/quests.js`) with steps on the
-  Isles, in Pingsby and on the North Road: Ploy, Nok, Kai, Arjun, Uptima, **Valentin** (Pingsby, outside the Cache
+  Isles, in Pingsby and on the North Road: Ploy, Nok, Kai, Arjun, Meron, Uptima, **Valentin** (Pingsby, outside the Cache
   Café; Haven't You Heard? I'm Sakamoto), Aigerim, Ploy, **Ren** (North Road, by the courier post; Death Note's L),
   Uptima and Ploy. It teaches event sourcing and CQRS (concept `eventsrc`, zone 98). The Isles map sends its
   islanders' talk to `SD.quests` first and shows the town quests' markers.

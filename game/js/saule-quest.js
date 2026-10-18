@@ -5,8 +5,8 @@
 // teacher who keeps one gradebook per subject shows her why, and builds her a warehouse in the temple basement.
 // Kazakh: "Apai" is what you call a woman teacher (and any auntie); baursak are little fried dough puffs.
 // Runs on the town's quest system (js/quests.js), which the Isles map routes islanders' talk to (js/ploy-quest.js
-// set that up). She has no PixelLab art yet: her portrait and map sprite are the code-drawn ones from I.looks,
-// which is why her looks are added here, after isles-data.js has listed the islanders that do have busts.
+// set that up). Her PixelLab sprite and busts (after Fullmetal Alchemist's Izumi Curtis) are in assets/img/isles; her
+// looks here drive the code-drawn fallback, and isles-data.js lists her busts because these looks are added after it loads.
 // Loads after js/ploy-quest.js. Shared-file hook-ups: her spot in PEOPLE (js/isles/isles-map.js) and the script tag.
 (function () {
   const U = SD.ui, S = SD.state, QS = SD.quests, I = SD.isles;

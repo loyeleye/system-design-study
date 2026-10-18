@@ -4,7 +4,7 @@
 // detective settles it by replaying the diary. The reward is a rare card of your choice, kept in your deck for every
 // run after (S.save.cardLib, like Aigerim's shop).
 // New people: Ploy's club on the Isles (js/isles: Ploy after Kaguya-sama's Chika, Nok after Naruto's Might Guy,
-// Kai after Saiki K., Arjun after Demon Slayer's Zenitsu), Valentin in Pingsby (Haven't You Heard? I'm Sakamoto)
+// Kai after Saiki K., Arjun after Demon Slayer's Zenitsu, Meron after The Apothecary Diaries' Maomao), Valentin in Pingsby (Haven't You Heard? I'm Sakamoto)
 // and Ren on the North Road (Death Note's L). Runs on the town's quest system (js/quests.js); the Isles map routes
 // its islanders' talk to it. Loads after js/sidequests.js.
 (function () {
@@ -18,6 +18,7 @@
   if (QS.HOME) Object.assign(QS.HOME, {
     ploy: 'the Tide Pool Game Club, south of Ferry Landing on the Eventual Isles', nok: 'the Tide Pool Game Club on the Eventual Isles',
     kai: 'the Tide Pool Game Club on the Eventual Isles', arjun: 'the Tide Pool Game Club on the Eventual Isles (under the umbrella)',
+    meron: 'the Tide Pool Game Club on the Eventual Isles',
     valentin: 'Pingsby, outside the Cache Café', ren: 'the North Road, by the courier post'
   });
 
@@ -63,7 +64,7 @@
     id: 'gamenight', title: 'Game Night of the Gods', giver: 'ploy', unlock: 5, shards: 400, xp: 220, concepts: ['eventsrc'],
     blurb: 'Ploy wants the Tide Pool Game Club made official with one public event: a Grand Game Night, with a celebrity guest. What could go wrong?',
     teaches: 'Event sourcing: keep every event in an append-only log, rebuild state by replaying it, fix mistakes with corrections, and build read models (CQRS)',
-    payoff: 'The Tide Pool Game Club is official, with four members and one very long scoreboard. Ploy\'s prize card is in your deck on every run.',
+    payoff: 'The Tide Pool Game Club is official, with five signed members and one very long scoreboard. Ploy\'s prize card is in your deck on every run.',
     items: {
       invite: 'A hand-drawn invitation: "GRAND GAME NIGHT! Celebrity guest: TBD (a goddess, hopefully)"',
       headshot: 'A signed headshot of Uptima, unrequested ("To my biggest fan. — U.")',
@@ -72,37 +73,48 @@
     },
     steps: [
       { at: 'ploy', hint: 'Talk to Ploy at the Tide Pool Game Club, south of Ferry Landing on the Isles.', do: [
-        { say: [['ploy', 'Big news! The Isles club charter says a club becomes OFFICIAL with four members and one public event. I have one member. It\'s me. I\'m very committed.', 'happy'],
+        { say: [['ploy', 'Big news! The Isles club charter says a club becomes OFFICIAL when every member signs it and the club holds one public event. I have four members. Five, with me! I\'m very committed.', 'happy'],
           ['ploy', 'So: a GRAND GAME NIGHT! Everyone plays everything, there\'s a scoreboard, and there\'s a celebrity guest. A real one. The goddess from Pingsby! Her posters say "Five Nines". That\'s a lot of nines!'],
-          ['you', 'And the other three members?'],
-          ['ploy', 'Nok, Kai and Arjun! They come every day. They play every game. They just haven\'t... signed anything. Could you ask them? They like you more than paperwork.', 'confused'],
-          ['pip', 'Recruiting, then a goddess. This is fine. This is a normal Tuesday.']] },
+          ['you', 'So why isn\'t it official already?'],
+          ['ploy', 'Nok, Kai, Arjun and Meron come every day and play every game. They just haven\'t... signed the charter. Nok wants a scoreboard first, Arjun fell asleep holding the pen, and Meron won\'t sign anything she hasn\'t tested.', 'confused'],
+          ['ploy', 'Kai says he\'ll sign when you ask him. He says he already knows you will. Could you ask them all? They like you more than paperwork.'],
+          ['pip', 'Signatures, then a goddess. This is fine. This is a normal Tuesday.']] },
         { item: 'invite' }] },
-      { at: 'nok', hint: 'Ask Nok at the Game Club to join (he\'s the one in green).', do: [
+      { at: 'nok', hint: 'Ask Nok at the Game Club to sign the charter (he\'s the one in green).', do: [
         { say: [['nok', 'HERO! You come to witness the eternal rivalry! Ploy and I stand at forty-nine wins EACH! Our youth burns at exactly the same temperature!', 'happy'],
           ['you', 'Ploy says it\'s fifty to forty-nine. To her.'],
           ['nok', 'IMPOSSIBLE! The chalkboard said forty-nine all! Then it rained. Then Ploy rewrote it from memory. Her memory is very generous to Ploy!', 'angry'],
-          ['nok', 'I will join her club on one condition: a scoreboard that cannot be rubbed out by rain, by Ploy, or by fate!']] },
+          ['nok', 'I have been a member of this club since the day I lost my first game to her! But I will SIGN on one condition: a scoreboard that cannot be rubbed out by rain, by Ploy, or by fate!']] },
         { ask: { id: 'sq-gn1', c: 'eventsrc', type: 'mc', q: 'The club\'s chalkboard keeps only the current totals, and when it gets smudged they argue about the score. What should the club write down instead?', opts: ['Every game\'s result, in order, never rubbed out; the totals are added up from that list', 'The totals, but in pen', 'The totals twice, on two chalkboards', 'Only the last game\'s winner'], a: 0, why: 'That\'s event sourcing: keep the events, derive the state. If the totals are ever wrong or lost, add the games up again. A second chalkboard is just a second copy of the same lost history.' } },
         { say: [['nok', 'A LIST OF EVERY GAME! Every victory and every defeat, kept forever! It\'s so beautiful I must run forty laps of the island!', 'happy'],
-          ['narr', 'Nok signs the invitation, gives you a thumbs up so bright it squeaks, and runs into the sea. He is back in a minute. He is very wet. He is still smiling.']] }] },
-      { at: 'kai', hint: 'Ask Kai at the Game Club to join (grey hair, glasses, no expression).', do: [
-        { say: [['kai', 'You\'re going to ask me to join. I\'m going to say yes. You\'re going to be surprised. Then you won\'t be.'],
-          ['you', '...Will you join?'],
+          ['narr', 'Nok signs the charter, gives you a thumbs up so bright it squeaks, and runs into the sea. He is back in a minute. He is very wet. He is still smiling.']] }] },
+      { at: 'kai', hint: 'Ask Kai at the Game Club to sign the charter (grey hair, glasses, no expression).', do: [
+        { say: [['kai', 'You\'re going to ask me to sign. I\'m going to say yes. You\'re going to be surprised. Then you won\'t be.'],
+          ['you', '...Will you sign?'],
           ['kai', 'Yes.'],
           ['kai', 'I already know how Game Night ends. The goddess comes. She keeps the score. She rubs things out. A girl with a diary objects. Two records disagree. Somebody calls a detective who eats sugar.'],
           ['kai', 'Then Arjun wins. In his sleep. Then Ploy dances.'],
           ['you', 'You know all that and you\'re still coming?'],
           ['kai', 'The dance is the only part I can never quite predict. Don\'t tell her. Good grief.']] }] },
-      { at: 'arjun', hint: 'Wake Arjun under the beach umbrella and ask him to join.', do: [
+      { at: 'arjun', hint: 'Wake Arjun under the beach umbrella and ask him to sign the charter.', do: [
         { say: [['narr', 'Arjun is asleep on a beach towel, hugging a pillow. You tap his shoulder.'],
           ['arjun', 'AAAAAH! DON\'T EAT ME! I\'M MOSTLY BONES! I TASTE LIKE SUNSCREEN!', 'angry'],
-          ['you', 'Ploy wants you to join the club. For Game Night. A goddess is coming.'],
+          ['you', 'Ploy needs you to sign the club charter. For Game Night. A goddess is coming.'],
           ['arjun', 'A GODDESS?! I\'ll say something wrong and she\'ll smite me and I\'ll die and I haven\'t even done my taxes, I\'m the TREASURER, the club has eleven shells and I counted them THREE TIMES-', 'confused'],
           ['narr', 'Arjun faints. He snores once. Then, eyes closed, he speaks in a calm, clear voice.'],
           ['arjun', 'Append each result to a log. Number the entries. Derive the scoreboard as a projection. Snapshot it every hundred games so the replay stays fast. Sign me up.'],
-          ['narr', 'He signs the invitation without waking up. The signature is beautiful.'],
-          ['pip', 'Three members and a president. Now we just need a goddess. The useful kind would be nice. We\'ll take what Pingsby has.']] }] },
+          ['narr', 'He signs the charter without waking up. The signature is beautiful.']] }] },
+      { at: 'meron', hint: 'Ask Meron, the club\'s referee, to sign the charter (white dress, herb satchel, a coffee cup).', do: [
+        { say: [['narr', 'Meron is sitting on an upturned crate, sniffing a leaf. She doesn\'t look up.'],
+          ['meron', 'You want my signature. Ploy sent you because I said no to her four times. Five, if you count the time I was chewing.'],
+          ['you', 'Why won\'t you sign?'],
+          ['meron', 'I don\'t sign what I haven\'t tested. And I\'ve tested this club\'s scoreboard. It says Uptima won a game at a quarter past eight. Game Night hasn\'t happened yet.', 'confused'],
+          ['meron', 'A result with no name and no time on it is a rumour. My grandmother\'s coffee house in Addis kept better records than this, and half the customers were goats.']] },
+        { ask: { id: 'sq-gn4', c: 'eventsrc', type: 'mc', q: 'Meron wants every entry in the club\'s game log to be trustworthy. What should each entry carry besides the result?', opts: ['A sequence number, when it happened, and who recorded it', 'Nothing: the result is all that matters', 'The current totals, so nobody has to add them up', 'A note saying it is correct'], a: 0, why: 'Events carry metadata: their position in the log, a timestamp and their source. That is how you order them, replay them to a moment in time, and audit who wrote what. Totals belong in a view, not in the event.' } },
+        { say: [['meron', 'Numbered, timed and signed. Good. Now it\'s evidence instead of gossip.', 'happy'],
+          ['narr', 'Meron signs the charter, then licks the ink to see what it\'s made of. She writes the answer down.'],
+          ['meron', 'Iron gall. Not poisonous. Disappointing.'],
+          ['pip', 'Four members, four signatures and a president. Now we just need a goddess. The useful kind would be nice. We\'ll take what Pingsby has.']] }] },
       { at: 'uptima', hint: 'Invite Uptima to Game Night as the celebrity guest (Goddess Temple, Pingsby).', do: [
         { say: [['uptima', 'A celebrity guest? Me? Finally, a mortal with TASTE.', 'happy'],
           ['uptima', 'I have three small conditions. One: I win every game. Two: I keep the scoreboard. Three: see condition one.'],
@@ -119,7 +131,7 @@
           ['narr', 'He adjusts his glasses. Somewhere, a bell rings. Nobody knows which bell.']] }] },
       { at: 'aigerim', hint: 'Ask Aigerim for a deck of cards (her card shop on the North Road).', do: [
         { say: [['aigerim', 'A GAME NIGHT? At NIGHT? With a club of new FRIENDS? And a goddess?', 'yandere'],
-          ['aigerim', 'I\'m writing that down. "Day 412. The hero has friends now. Four of them. One of them is very cool. I don\'t like him."', 'yandere'],
+          ['aigerim', 'I\'m writing that down. "Day 412. The hero has friends now. Five of them. One of them is very cool. I don\'t like him."', 'yandere'],
           ['you', 'You can come too. We need a deck.'],
           ['aigerim', 'You want me there? You WANT me there.', 'blush'],
           ['aigerim', 'Fine! Here is my best deck. And I\'ll keep the official record of every game, in my diary. Append-only, of course. I never rub anything out. Rubbing out is how you lose people.', 'happy']] },
@@ -134,6 +146,8 @@
           ['narr', 'Valentin wins game two without visibly moving. Uptima rubs it out. UPTIMA 2. Nok wins game three by running in circles until everyone else gives up. UPTIMA 3.'],
           ['uptima', 'As you can see, I am undefeated. Five nines!', 'happy'],
           ['nok', 'THE CHALKBOARD LIES! My youth was there! I SAW it!', 'angry'],
+          ['meron', 'Game three started at twenty past eight. Uptima\'s win was written at a quarter past. She wins before the games start now.'],
+          ['uptima', 'That\'s called being PROACTIVE.', 'happy'],
           ['aigerim', 'My diary says Uptima has lost nine games, quit two, and eaten four of Ploy\'s prize mangoes.', 'yandere'],
           ['uptima', 'Your diary is a SMEAR CAMPAIGN!', 'angry'],
           ['ploy', 'Two scoreboards! They disagree! This is a disaster! ...This is also a great game. No! Focus, Ploy!', 'confused'],
@@ -189,9 +203,11 @@
           ['arjun', 'zzz... projections... snapshot every hundred... zzz', 'neutral'],
           ['nok', 'DEFEATED BY A SLEEPING MAN! It is the most glorious loss of my youth! I must run a hundred laps!', 'happy'],
           ['valentin', 'Second place. How refreshing. I\'ve never lost before. I\'d like to do it again sometime.', 'happy'],
+          ['meron', 'Third place, me. I read the rules. You can pass on your turn forever. Nobody else read them.'],
+          ['ploy', 'That rule is BANNED. It\'s also a new game now. It\'s called Meron.', 'happy'],
           ['kai', 'Here it comes.'],
           ['narr', 'Ploy does the victory dance. It involves a stopwatch, a deck of cards, three spins and a move nobody has a name for. Kai\'s eyes go very slightly wide. He did not predict the third spin.'],
-          ['ploy', 'Four members! One public event! The Tide Pool Game Club is OFFICIAL! And the scoreboard is an append-only log forever, by order of the president!', 'happy']] },
+          ['ploy', 'Five members! Five signatures! One public event! The Tide Pool Game Club is OFFICIAL! And the scoreboard is an append-only log forever, by order of the president!', 'happy']] },
         { ask: { id: 'sq-gn3', c: 'eventsrc', type: 'mc', q: 'The club wants a new board on the wall: wins per game type. The log of every game already exists. What\'s the CQRS way to add it?', opts: ['Build a new read model by replaying the log, then keep it updated as new games are appended', 'Change how every game is recorded so it fits the new board', 'Ask everyone to remember their wins per game type', 'Add a column to the chalkboard and rub out the old one'], a: 0, why: 'In CQRS the write side just appends events; each question gets its own read model built from them. A new view is a replay, not a migration, and if it ever goes wrong you throw it away and rebuild it.' } },
         { say: [['ploy', 'And now: the PRIZE TABLE! You recruited everyone, so you get first pick. That\'s a rule. I made it up just now. It\'s a good rule.', 'happy']] },
         { fn: () => C.prize() }] }
@@ -202,6 +218,7 @@
   Object.assign(SD.eli5, {
     'sq-gn1': 'Like a match history in an online game: the rank is worked out from every match you played, so a glitch in the rank screen can always be fixed.',
     'sq-gn2': 'Like a refund in a shop: the receipt for the sale stays, and a new receipt for the refund is added.',
+    'sq-gn4': 'Like a match history that shows the date and which server recorded each match, so a match that "happened" tomorrow stands out.',
     'sq-gn3': 'Like a stats page added to a game years later: it is worked out from the match history, which was there all along.'
   });
 

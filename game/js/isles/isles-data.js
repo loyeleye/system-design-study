@@ -20,10 +20,11 @@
     minh: { name: 'Cartographer Minh', title: 'Map & Tool Shop · Knows Where Everything Goes', hue: 30, hair: 'isle', eye: '#2b2340' },
     kids: { name: 'The Isles School', title: 'Ages 6 to 9 · Asks "But why?"', hue: 55, hair: 'isle', eye: '#2b2340' },
     keeper: { name: 'The Keeper', title: 'The Lighthouse · Never Seen', hue: 50, hair: 'isle', eye: '#2b2340' },
-    ploy: { name: 'Ploy', title: 'Tide Pool Game Club · President, Founder, Only Member', hue: 330, hair: 'isle', eye: '#2b2340' },
+    ploy: { name: 'Ploy', title: 'Tide Pool Game Club · President, Founder, Maker of Rules', hue: 330, hair: 'isle', eye: '#2b2340' },
     nok: { name: 'Nok', title: 'Tide Pool Game Club · Ploy\'s Eternal Rival (Self-Appointed)', hue: 110, hair: 'isle', eye: '#2b2340' },
     kai: { name: 'Kai', title: 'Tide Pool Game Club · Already Knows How It Ends', hue: 150, hair: 'isle', eye: '#2b2340' },
     arjun: { name: 'Arjun', title: 'Tide Pool Game Club · Treasurer, Mostly Asleep', hue: 45, hair: 'isle', eye: '#2b2340' },
+    meron: { name: 'Meron', title: 'Tide Pool Game Club · Referee, Herbalist, Tastes Everything', hue: 95, hair: 'isle', eye: '#2b2340' },
     valentin: { name: 'Valentin', title: 'Pingsby\'s Coolest Man · Has Never Spilled Tea', hue: 140, hair: 'isle', eye: '#2b2340' },
     ren: { name: 'Ren', title: 'Detective of the North Road · Sugar-Powered', hue: 220, hair: 'isle', eye: '#2b2340' }
   });
@@ -46,13 +47,14 @@
     nok: { skin: '#d9a070', hair: 'short', hc: '#1d1d2a', cloth: '#5cb84a', acc: 'none', note: 'Thai rival in the springtime of youth: shiny black bowl cut, huge eyebrows, green tracksuit with orange stripes, orange leg warmers, thumbs up' },
     kai: { skin: '#f1d2b8', hair: 'short', hc: '#b8bcc4', cloth: '#9aa0a8', acc: 'glasses', note: 'deadpan psychic: neat grey hair with two green antenna clips, round green-tinted glasses, white shirt and grey vest, hands in pockets' },
     arjun: { skin: '#a8714a', hair: 'short', hc: '#ffd23f', cloth: '#ff9a2e', acc: 'none', note: 'nervous treasurer: spiky yellow hair, orange lightning-bolt hoodie, white shorts, sweating, a genius only when asleep' },
+    meron: { skin: '#6b4026', hair: 'bun', hc: '#16101a', cloth: '#f4f1ea', acc: 'none', note: 'Ethiopian herbalist and club referee: curly black hair in a puffy high bun with a green ribbon, sleepy deadpan eyes, freckles, white habesha kemis with a green, yellow and red woven border, an herb satchel and a small clay coffee cup' },
     valentin: { skin: '#f3d9c4', hair: 'short', hc: '#1d1d2a', cloth: '#2b2b3a', acc: 'glasses', note: 'impossibly cool: slicked-back black hair with one perfect strand, thin glasses, white shirt and green tie, dark blazer, a teacup' },
     ren: { skin: '#f4e6dc', hair: 'short', hc: '#1d1d2a', cloth: '#f2f2f2', acc: 'none', note: 'genius detective: messy black hair, dark eye circles, baggy white long-sleeve shirt, jeans, barefoot, hunched, sugar cubes' },
     keeper: { skin: '#fff3dc', hair: 'note', hc: '#2b2340', cloth: '#fff3dc', acc: 'none', note: 'Never seen: shown as a folded note in K.\'s handwriting' }
   });
 
   // <isles-art> Made by tools/isles_art.py: sprite sheet and object sizes in assets/img/isles.
-  I.ART = {"chars": {"arjun": {"w": 32, "h": 80, "n": [4, 0, 0, 0]}, "bloom": {"w": 48, "h": 42, "n": [8, 0, 0, 0]}, "farida": {"w": 34, "h": 84, "n": [4, 0, 0, 0]}, "haeun": {"w": 30, "h": 76, "n": [4, 0, 0, 0]}, "hajin": {"w": 30, "h": 78, "n": [4, 0, 0, 0]}, "kai": {"w": 28, "h": 75, "n": [4, 0, 0, 0]}, "kid1": {"w": 32, "h": 75, "n": [4, 0, 0, 0]}, "kid2": {"w": 36, "h": 72, "n": [4, 0, 0, 0]}, "kid3": {"w": 28, "h": 75, "n": [4, 0, 0, 0]}, "kwame": {"w": 30, "h": 76, "n": [4, 0, 0, 0]}, "leilani": {"w": 38, "h": 78, "n": [4, 0, 0, 0]}, "lucia": {"w": 34, "h": 76, "n": [4, 0, 0, 0]}, "minh": {"w": 40, "h": 75, "n": [4, 0, 0, 0]}, "mutex": {"w": 30, "h": 74, "n": [4, 0, 0, 0]}, "nok": {"w": 30, "h": 78, "n": [4, 0, 0, 0]}, "ploy": {"w": 44, "h": 78, "n": [4, 0, 0, 0]}, "ren": {"w": 20, "h": 53, "n": [4, 0, 0, 0]}, "ruth": {"w": 32, "h": 76, "n": [4, 0, 0, 0]}, "tomas": {"w": 46, "h": 77, "n": [4, 0, 0, 0]}, "valentin": {"w": 22, "h": 51, "n": [4, 0, 0, 0]}}, "objects": {"bank": [142, 133], "boat": [19, 28], "bollard": [10, 29], "club": [84, 87], "ferry": [73, 56], "gtable": [47, 44], "hallE": [70, 75], "hallW": [80, 91], "light": [62, 186], "mill": [76, 136], "note": [22, 26], "office": [142, 131], "pilings": [20, 64], "planks": [35, 29], "sails": [108, 109], "school": [138, 156], "shop": [139, 138], "stallB": [52, 56], "stallG": [56, 44], "stallR": [54, 47], "tide": [25, 48], "tower": [78, 204], "umbrella": [38, 46]}};
+  I.ART = {"chars": {"arjun": {"w": 32, "h": 80, "n": [4, 0, 0, 0]}, "bloom": {"w": 48, "h": 42, "n": [8, 0, 0, 0]}, "farida": {"w": 34, "h": 84, "n": [4, 0, 0, 0]}, "haeun": {"w": 30, "h": 76, "n": [4, 0, 0, 0]}, "hajin": {"w": 30, "h": 78, "n": [4, 0, 0, 0]}, "kai": {"w": 28, "h": 75, "n": [4, 0, 0, 0]}, "kid1": {"w": 32, "h": 75, "n": [4, 0, 0, 0]}, "kid2": {"w": 36, "h": 72, "n": [4, 0, 0, 0]}, "kid3": {"w": 28, "h": 75, "n": [4, 0, 0, 0]}, "kwame": {"w": 30, "h": 76, "n": [4, 0, 0, 0]}, "leilani": {"w": 38, "h": 78, "n": [4, 0, 0, 0]}, "lucia": {"w": 34, "h": 76, "n": [4, 0, 0, 0]}, "minh": {"w": 40, "h": 75, "n": [4, 0, 0, 0]}, "mutex": {"w": 30, "h": 74, "n": [4, 0, 0, 0]}, "nok": {"w": 30, "h": 78, "n": [4, 0, 0, 0]}, "ploy": {"w": 44, "h": 78, "n": [4, 0, 0, 0]}, "ren": {"w": 20, "h": 53, "n": [4, 0, 0, 0]}, "ruth": {"w": 32, "h": 76, "n": [4, 0, 0, 0]}, "tomas": {"w": 46, "h": 77, "n": [4, 0, 0, 0]}, "valentin": {"w": 22, "h": 51, "n": [4, 0, 0, 0]}, "meron": {"w": 38, "h": 84, "n": [4, 0, 0, 0]}, "saule": {"w": 30, "h": 81, "n": [4, 0, 0, 0]}}, "objects": {"bank": [142, 133], "boat": [19, 28], "bollard": [10, 29], "club": [84, 87], "ferry": [73, 56], "gtable": [47, 44], "hallE": [70, 75], "hallW": [80, 91], "light": [62, 186], "mill": [76, 136], "note": [22, 26], "office": [142, 131], "pilings": [20, 64], "planks": [35, 29], "sails": [108, 109], "school": [138, 156], "shop": [139, 138], "stallB": [52, 56], "stallG": [56, 44], "stallR": [54, 47], "tide": [25, 48], "tower": [78, 204], "umbrella": [38, 46]}};
   // </isles-art>
 
   const FACE = 'M37 60 Q37 99 60 104 Q83 99 83 60 Q83 32 60 32 Q37 32 37 60Z';
@@ -132,7 +134,8 @@
 
   // Portraits for the islanders; everyone else falls through to art.js. PixelLab busts (assets/img/isles/portraits)
   // come first, as the villagers' do; the code-drawn chibi is the fallback for anyone without one.
-  const BUSTS = { keeper: ['neutral'] };
+  // Saule's looks are added later (js/saule-quest.js), so her busts are listed here.
+  const BUSTS = { keeper: ['neutral'], saule: ['neutral', 'happy', 'angry', 'confused'] };
   Object.keys(I.looks).forEach(w => { if (!BUSTS[w]) BUSTS[w] = ['neutral', 'happy', 'angry', 'confused']; });
   I.bust = who => !!BUSTS[who];
   let uid = 0;
@@ -176,11 +179,11 @@
     SD.art._islesMood = true;
   }
   // Typewriter voices for the islanders.
-  I.VOICE = { leilani: 760, kwame: 300, farida: 840, mutex: 240, tomas: 380, bloom: 1500, lucia: 900, haeun: 1050, hajin: 1000, ruth: 600, minh: 700, kids: 1300, keeper: 520, ploy: 1150, nok: 420, kai: 560, arjun: 980, valentin: 480, ren: 640 };
+  I.VOICE = { leilani: 760, kwame: 300, farida: 840, mutex: 240, tomas: 380, bloom: 1500, lucia: 900, haeun: 1050, hajin: 1000, ruth: 600, minh: 700, kids: 1300, keeper: 520, ploy: 1150, nok: 420, kai: 560, arjun: 980, meron: 700, valentin: 480, ren: 640 };
 
   // The islands, their waves and residents. Geometry lives in isles-map.js.
   I.ISLANDS = {
-    landing: { name: 'Ferry Landing', wave: 1, residents: ['ploy', 'nok', 'kai', 'arjun', 'leilani', 'kwame', 'kids'], blurb: 'The harbour town on the mainland: the ferry, the school and the Harbourmaster\'s board.' },
+    landing: { name: 'Ferry Landing', wave: 1, residents: ['ploy', 'nok', 'kai', 'arjun', 'meron', 'leilani', 'kwame', 'kids'], blurb: 'The harbour town on the mainland: the ferry, the school and the Harbourmaster\'s board.' },
     ledger: { name: 'Ledger Isle', wave: 1, residents: ['farida', 'mutex'], blurb: 'The Bank of the Isles, and a harbour where only one ship may sail at a time.' },
     mill: { name: 'Mill Island', wave: 1, residents: ['tomas', 'bloom'], blurb: 'The Log Mill: planks are only ever added, and merged at night.' },
     tower: { name: 'Tower of Tongues', wave: 2, residents: ['lucia'], blurb: 'Where every island\'s message formats are kept working while they change.' },

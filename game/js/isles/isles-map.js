@@ -55,7 +55,7 @@
   ];
   // Islanders stand by their landmarks. The keeper is a note pinned to the lighthouse door.
   const PEOPLE = [
-    { id: 'ploy', x: 16, y: 43 }, { id: 'kai', x: 19, y: 44 }, { id: 'nok', x: 21, y: 44 }, { id: 'arjun', x: 26, y: 45 },
+    { id: 'ploy', x: 16, y: 43 }, { id: 'kai', x: 19, y: 44 }, { id: 'nok', x: 21, y: 44 }, { id: 'arjun', x: 26, y: 45 }, { id: 'meron', x: 23, y: 42 },
     { id: 'leilani', x: 10, y: 19 }, { id: 'kwame', x: 12, y: 22 }, { id: 'kids', x: 10, y: 28 }, { id: 'saule', x: 5, y: 30 },
     { id: 'farida', x: 24, y: 8 }, { id: 'mutex', x: 26, y: 10 },
     { id: 'tomas', x: 22, y: 31 }, { id: 'bloom', x: 25, y: 31 },
@@ -331,7 +331,9 @@
       I.st().ployMet = true; S.persist();
       await I.say('ployMeet', [
         ['ploy', 'A visitor! A real one! Hi hi! I\'m Ploy, president of the Tide Pool Game Club.'],
-        ['ploy', 'Founder too. And treasurer. And, um, the only member. Membership is very exclusive right now.'],
+        ['ploy', 'Founder too. And maker of rules. These are my members! Nok is my eternal rival, Kai already knows how every game ends, Arjun is our treasurer (he\'s asleep), and Meron is our referee.'],
+        ['meron', 'I read the rules. Somebody has to. Ploy changes them every eleven minutes. I\'ve timed it.'],
+        ['ploy', 'None of them has signed the club charter yet. But they come every day, so they count. That\'s a rule. I made it up.', 'happy'],
         ['ploy', 'I invent games! Rock-paper-scissors-load-balancer. Two truths and a race condition. Musical chairs, but the chairs are leaders and someone has to hold an election.'],
         ['ploy', 'My best one is the interview game. I play the interviewer, you play the candidate, and if you win I do the victory dance. It\'s very good. Ask anyone. Ask the kids. They\'ve seen it forty times.'],
         ['ploy', 'You can play it alone, or bring friends to the Guild Hall and play it together. Come talk to me whenever you want a round!']
