@@ -8,6 +8,8 @@ The first version, "Last Uptime", was a dark sci-fi time-loop story. Ladi asked 
 
 To play, serve the `game/` folder (for example, run `python3 -m http.server` inside `game/`) and open it in a browser. You can also use the published claude.ai link in the project thread.
 
+The published link is built with `python3 tools/artifact_page.py index.html OUT --inline --pack` from `game/`. `--inline` puts every script into the page, and `--pack` puts every image under `assets/img` into the page as one pack that `tools/asset_pack.js` serves from memory. Only the audio is published as separate files, so new art needs no extra files and stays clear of the artifact's 511-file limit. The repo keeps each image as its own file, so art changes on different branches don't conflict.
+
 ## The core idea
 
 Every system design interview is a trade-off fight. A requirement or a failure mode shows up, and you answer it with a component that has a cost. The game turns that into combat.
