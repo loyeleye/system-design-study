@@ -87,8 +87,9 @@
   };
 
   R.showMap = function () {
-    const run = S.save.run;
-    AU.music('explore');
+    const run = S.save.run, ch = run.ch || 1;
+    AU.music(AU.has('map' + ch) ? 'map' + ch : 'explore');
+    AU.weather(weatherSound(ch));
     const floors = run.map.floors;
     const cur = run.pos ? findNode(run.pos) : null;
     const reach = cur ? cur.next : floors[0].map(n => n.id);
@@ -156,6 +157,9 @@
   }
   // Weather by chapter: sun and leaves early on and in the Oracle Spire, wind and drifting cloud in the Sky Harbour, storms elsewhere.
   const WEATHER = { 1: 'sun', 2: 'sun', 4: 'wind', 6: 'sun' };
+  // What the map sounds like (js/audio.js): birdsong under the sun, rain in storms with gusts in the Sky Harbour,
+  // and a thunderstorm for the last chapter.
+  const weatherSound = ch => ch >= 10 ? 'storm' : ({ sun: 'sun', wind: 'wind' })[WEATHER[ch]] || 'rain';
   function paintMap(el, floors, xy, bend, rows, cur) {
     const A = dArt(), cv = el && el.querySelector('.map-bg');
     if (!A || !cv) return;
