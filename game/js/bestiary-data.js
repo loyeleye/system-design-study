@@ -90,5 +90,31 @@ SD.bestiaryNotes = {
   powerspike: 'A huge spike hits alerts, storage and queues at once. Downsample, alert on burn rate and keep a buffer queue in front of the database.',
   ginyu: 'Distributed message queue: partitioned, replicated logs (Kafka-style), ordering per key, acks from in-sync replicas, and consumer offsets.',
   scouter: 'Metrics monitoring: agents push or collectors pull into a time-series database, downsample old data, and alert on SLOs.',
-  clicku: 'Ad click aggregation: stream clicks through a queue into windowed counts by event time, dedupe by click ID, and reconcile in batch for billing.'
+  clicku: 'Ad click aggregation: stream clicks through a queue into windowed counts by event time, dedupe by click ID, and reconcile in batch for billing.',
+  // Chapter 9: the Abyss Beneath the Temple
+  unreadimp: 'Partition mail metadata by user ID: inbox, folders and search are always one user, so one user lives on one shard.',
+  spamslime: 'Filter at the door (sender reputation, content, links) and queue inbound mail, so a flood of junk never delays real mail.',
+  bitrot: 'Disks corrupt silently. Checksum every chunk, scrub in the background and repair from a good replica or parity before a second failure.',
+  orphanchunk: 'Deletes, overwrites and failed multipart uploads leave chunks nothing points to. A garbage collector finds and compacts them.',
+  rankrat: 'Never ORDER BY on every request. A sorted set gives rank, top 10 and neighbours in O(log n).',
+  hotshard: 'Sharding a leaderboard by score range makes the top shard hot. Shard by player and scatter-gather each shard\'s top K instead.',
+  mailstorm: 'Outbound mail goes through a queue and retries with exponential backoff for hours before bouncing; inbound bursts queue too.',
+  leviathan9: 'Distributed email: SMTP in, filter, metadata sharded by user, bodies and attachments in object storage, a search index per mailbox, push plus incremental sync.',
+  vaultgolem: 'S3-like storage: metadata apart from data, replicas or erasure coding across failure domains, checksums and scrubbing, multipart upload and versioning.',
+  whistleboard: 'Real-time leaderboard: a Redis sorted set per board per season, rank and neighbours in O(log n), sharded by player with a top-K merge, rebuilt from the database.',
+  shadowarmy: 'Burnout is an availability risk. A real rotation, runbooks and a secondary mean no person is a single point of failure.',
+  // Chapter 10: the Promised Day
+  doublebook: 'Two guests, one last room: make the booking an atomic update guarded by a constraint (reserved <= total) or an optimistic version check.',
+  chargeback: 'A retried payment must not charge twice. Generate an idempotency key once per payment and send it on every retry.',
+  forgedcoin: 'A cross-shard transfer that crashes half-way loses money. Use TCC or a saga with compensations, and keep events so balances can be replayed.',
+  orderflood: 'One sequencer numbers every order, so all matchers and observers agree on a single order of events.',
+  shadowhero: 'Alert storms burn people out: page on symptoms, dedupe and group alerts, and share the rotation.',
+  homunculus: 'Double-entry bookkeeping: every debit has a matching credit, so the books always sum to zero and a missing entry is visible.',
+  gluttony: 'Hotel reservation: inventory per room type per night, an atomic booking with a constraint or version check, idempotent reservation IDs, and deliberate overbooking as a rule.',
+  greed: 'Payment system: a PSP for cards, idempotency keys on every call, webhooks plus status checks, a double-entry ledger and nightly reconciliation.',
+  envy: 'Digital wallet: cross-shard transfers with 2PC, TCC or sagas, and event sourcing so any balance can be rebuilt and audited, with snapshots for speed.',
+  marketopen: 'Stock exchange: risk checks, a sequencer, a single-threaded deterministic matcher per symbol with price-time priority, and fair market data fan-out.',
+  pride: 'The sequencer is the source of truth: a total-order log that anyone can replay to reach the same state.',
+  kyuburnout: 'Remove the single point of failure with a hot-warm standby that replays the same sequence; determinism makes the failover instant.',
+  pager: 'Retries without backoff are a self-inflicted DDoS. Exponential backoff, jitter and a circuit breaker let the failing side recover.'
 };
