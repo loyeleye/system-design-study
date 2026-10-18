@@ -47,6 +47,7 @@
     const p = AU.prefs;
     const b = U.panel(`<div class="opts">
       <button class="opt" id="m-help">How to play</button>
+      ${S.save && S.save.flags.ch1 && SD.guild ? '<button class="opt" id="m-guild">Multiplayer: the Guild Hall</button>' : ''}
       <button class="opt" id="m-music">Music: <b>${p.music ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-sfx">Sound effects: <b>${p.sfx ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-name">Change name</button>
@@ -55,6 +56,8 @@
       <button class="opt" id="m-debug">Debug start (testing): <b>${SD.debug ? 'On' : 'Off'}</b></button></div>
       <p class="muted small">Progress saves automatically${S.db ? ' to your claude.ai account, so it follows you across devices' : ' in this browser'}.</p>`, { title: 'MENU' });
     b.querySelector('#m-help').onclick = help;
+    // Multiplayer (js/guild.js), once chapter 1 is cleared.
+    const mg = b.querySelector('#m-guild'); if (mg) mg.onclick = () => SD.guild.play();
     b.querySelector('#m-music').onclick = () => { AU.set('music', !p.music); menu(); M.hud(); };
     b.querySelector('#m-sfx').onclick = () => { AU.set('sfx', !p.sfx); menu(); M.hud(); };
     b.querySelector('#m-credits').onclick = credits;

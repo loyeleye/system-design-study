@@ -2,7 +2,7 @@
 (function () {
   const J = SD.journal = {};
   const U = SD.ui, M = SD.meta;
-  const TABS = [['bestiary', 'Bestiary'], ['achievements', 'Achievements'], ['ascension', 'Ascension']];
+  const TABS = [['bestiary', 'Bestiary'], ['achievements', 'Achievements'], ['ascension', 'Escalation']];
 
   J.open = function (tab) {
     tab = tab || J.last || 'bestiary';
@@ -18,7 +18,7 @@
   // The HUD button (js/main.js): its label shows how many badges are earned.
   J.button = function () {
     const all = SD.achievements.list().length, got = Object.keys(M.st().ach).length;
-    return `<button class="ghost" id="hud-journal" title="Bestiary, achievements and ascension">Journal <span class="muted small">${got}/${all}</span></button>`;
+    return `<button class="ghost" id="hud-journal" title="Bestiary, achievements and escalation levels">Journal <span class="muted small">${got}/${all}</span></button>`;
   };
   J.wire = function (root) {
     const b = root.querySelector('#hud-journal');

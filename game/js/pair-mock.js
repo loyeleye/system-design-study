@@ -123,7 +123,9 @@
     const nickOf = p => net.clean(p && p.presence && p.presence.nick, 24) || 'Your partner';
     const hostP = () => o.create ? null : others().find(p => p.presence.host);
     const unsub = [];
-    const leave = () => { unsub.forEach(f => f()); room.leave(); done(); };
+    let left = false;
+    const leave = () => { if (left) return; left = true; unsub.forEach(f => f()); room.leave(); done(); };
+    if (o.bind) o.bind(leave);
 
     // ---------- Lobby ----------
     function lobby() {
@@ -159,6 +161,7 @@
         onTick: m => { if (Date.now() - lastTick > 2000) { lastTick = Date.now(); room.presence({ clock: Math.round(m * 60) / 60 }); } }
       });
       myRes = res;
+      if (o.onResult && res && res.ok !== false) try { o.onResult(res); } catch (e) { /* the debrief still shows */ }
       debriefC();
     }
     function debriefC() {
