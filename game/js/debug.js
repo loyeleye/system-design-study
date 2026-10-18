@@ -1,5 +1,5 @@
 // Debug start: for testing and reviewing only. Remove this file and its script tag in index.html before release.
-// Turn it on with ?debug in the URL (or #debug, or window.SD_DEBUG = true before this script). It keeps its own save
+// Turn it on with ?debug in the URL (or #debug, window.SD_DEBUG = true before this script, or Menu > Debug start). It keeps its own save
 // (localStorage 'last-uptime-save-debug', never the cloud save), so testing never touches a real game.
 //
 // URL options, all optional (each load with `ch` builds a fresh debug save):
@@ -12,7 +12,9 @@
 // Examples: index.html?debug&ch=9&rank=A&at=camp   index.html?debug&ch=10&at=run&floor=4
 // While on, a 🐞 button (bottom left) opens a panel to pick these, win the current fight, or add shards.
 (function () {
-  const on = /[?&]debug\b/.test(location.search) || /debug/.test(location.hash) || !!window.SD_DEBUG;
+  // The menu's "Debug start" switch sets the localStorage key too, for pages that can't take a URL (the published game).
+  let stored = false; try { stored = localStorage.getItem('last-uptime-debug') === '1'; } catch (e) { /* ignore */ }
+  const on = /[?&]debug\b/.test(location.search) || /debug/.test(location.hash) || !!window.SD_DEBUG || stored;
   if (!on) return;
   const D = SD.debug = {};
   const S = SD.state, U = SD.ui;

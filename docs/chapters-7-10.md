@@ -25,7 +25,7 @@ The story and the design decisions live in the "Chapters 7–10" Claude Doc. Thi
 | `game/js/ch8.js`, `ch9.js`, `ch10.js` | Chapters 8 (the Tournament of Power Levels), 9 (the Abyss Beneath the Temple) and 10 (the Promised Day), in the same shape as `ch7.js` |
 | `game/js/roadquests.js` | North Road quests with Plot Devices that work on the road |
 | `game/js/sidequests.js` | Chapter 7-10 side quests that pay shards: Aigerim's Rare Shelf quest, five new characters (Suzu, Baldwin, Explodia, Hypewagon, President Akane), Hero #12's vending machine, Uptima's Purification Consulting, Wen's Packed Lunch and Missing, One Gary. Also the timed sorting minigame (`SD.games.rushSort`) and the Cryptic Note's effect |
-| `game/js/debug.js` | **Testing only; remove it and its script tag before release.** `?debug&ch=9&rank=A&at=run&floor=3&quests=done` starts on any chapter, rank, place or floor, on a separate save |
+| `game/js/debug.js` | **Testing only; remove it and its script tag before release.** `?debug&ch=9&rank=A&at=run&floor=3&quests=done` starts on any chapter, rank, place or floor, on a separate save. In the published game, where the link can't change, **Menu > Debug start** switches it on or off (a localStorage key) and reloads; then the 🐞 button picks the chapter and rank |
 | `game/js/arc-art.js`, `arc-dungeon-art.js`, `arc-battle-art.js` | Art manifests (made by `tools/village_art.py` and `tools/arc_art.py`) |
 | `game/tools/arc_art.py` | Builds the arc's monsters, backdrops and `arc-battle-art.js` from PixelLab downloads |
 | `game/CREDITS-arc.md` | Credits for the arc's PixelLab art and Pixabay audio |

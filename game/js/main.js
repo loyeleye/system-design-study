@@ -51,12 +51,18 @@
       <button class="opt" id="m-sfx">Sound effects: <b>${p.sfx ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-name">Change name</button>
       <button class="opt" id="m-credits">Credits</button>
-      <button class="opt" id="m-reset">Erase save and start over</button></div>
+      <button class="opt" id="m-reset">Erase save and start over</button>
+      <button class="opt" id="m-debug">Debug start (testing): <b>${SD.debug ? 'On' : 'Off'}</b></button></div>
       <p class="muted small">Progress saves automatically${S.db ? ' to your claude.ai account, so it follows you across devices' : ' in this browser'}.</p>`, { title: 'MENU' });
     b.querySelector('#m-help').onclick = help;
     b.querySelector('#m-music').onclick = () => { AU.set('music', !p.music); menu(); M.hud(); };
     b.querySelector('#m-sfx').onclick = () => { AU.set('sfx', !p.sfx); menu(); M.hud(); };
     b.querySelector('#m-credits').onclick = credits;
+    // Testing only (js/debug.js; remove with it before release): a separate save that starts on any chapter or rank.
+    b.querySelector('#m-debug').onclick = () => {
+      try { if (SD.debug) localStorage.removeItem('last-uptime-debug'); else localStorage.setItem('last-uptime-debug', '1'); } catch (e) { /* ignore */ }
+      location.reload();
+    };
     b.querySelector('#m-name').onclick = () => askName(() => { U.closePanel(); M.hud(); });
     b.querySelector('#m-reset').onclick = () => {
       const c = U.panel('<p>Erase everything: levels, cheat sheet pages, Mio\'s drawings? Uptima will pretend she never met you. This cannot be undone.</p><div class="row"><button class="danger" id="r-y">Erase</button><button class="ghost" id="r-n">Cancel</button></div>', { title: 'ARE YOU SURE?' });
