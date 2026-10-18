@@ -151,7 +151,7 @@
     await new Promise(res => {
       const b = U.panel(`<div class="verdict ok">ISLES QUEST COMPLETE!</div><p class="center"><b>${esc(c.title)}</b></p>
         <div class="loot"><span>+${c.xp || 100} XP</span><span>+${I.REWARD.chain} shards</span><span>+${shells} shells</span></div>
-        ${k ? `<div class="pd-get"><div class="pd-icon">${K.icon(k.icon)}</div><div><span class="q-ctx">Keepsake</span><b>${esc(k.name)}</b><p class="muted small"><i>${esc(k.text)}</i></p></div></div>` : ''}
+        ${k ? `<div class="pd-get"><div class="pd-icon">${K.icon(k.icon)}</div><div><span class="q-ctx il-k">Keepsake</span><b>${esc(k.name)}</b><p class="muted small"><i>${esc(k.text)}</i></p></div></div>` : ''}
         <button class="primary" id="il-done">Excellent</button>`, { title: 'QUEST COMPLETE', noClose: true });
       b.querySelector('#il-done').onclick = () => { U.closePanel(); res(); };
     });
@@ -348,7 +348,7 @@
     await new Promise(res => {
       const b = U.panel(`<div class="verdict ok">COMMISSION COMPLETE · SLA ${sla}%</div><p class="center"><b>${esc(c.title)}</b><br><span class="muted small">${esc(c.problem || '')}</span></p>
         <div class="loot"><span>+${xp} XP</span><span>+${shards} shards</span><span>+${shells} shells</span></div>
-        ${first && k ? `<div class="pd-get"><div class="pd-icon">${K.icon(k.icon)}</div><div><span class="q-ctx">Keepsake</span><b>${esc(k.name)}</b><p class="muted small"><i>${esc(k.text)}</i></p></div></div>` : ''}
+        ${first && k ? `<div class="pd-get"><div class="pd-icon">${K.icon(k.icon)}</div><div><span class="q-ctx il-k">Keepsake</span><b>${esc(k.name)}</b><p class="muted small"><i>${esc(k.text)}</i></p></div></div>` : ''}
         <p class="muted small">Requirements, core entities, API, high-level design, deep dives: the same five steps work on any problem an interviewer gives you.</p>
         <button class="primary" id="il-cw">Excellent</button>`, { title: 'COMMISSION', cls: 'isles-game', noClose: true });
       b.querySelector('#il-cw').onclick = () => { U.closePanel(); res(); };

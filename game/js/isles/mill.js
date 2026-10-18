@@ -420,7 +420,7 @@
         } else if (step.t === 'flush') {
           note = nightPick === 'skip' ? 'Now tie the basket off and carry it to a shed. Er. Any shed. Is there a shed?' : 'Now tie the basket off and carry it to a shed.';
         } else if (step.t === 'bloom') {
-          who = 'bloom'; note = 'Woof! (Bloom trots in, fully awake, tail going. Mang Tomas: "He will sniff each bundle for you. He has never once been wrong about no.")';
+          who = 'bloom'; note = `${nightPick === 'skip' ? '(The emergency merge took all morning. The queue now reaches the next island.) ' : ''}Woof! (Bloom trots in, fully awake, tail going. Mang Tomas: "He will sniff each bundle for you. He has never once been wrong about no.")`;
         }
         render();
       };
