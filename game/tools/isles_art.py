@@ -65,9 +65,9 @@ for f in sorted(os.listdir(os.path.join(SRC, 'port'))):
     m = re.match(r'([a-z]+)-([a-z]+)\.png$', f)
     if m and m.group(2) in MOODS and not m.group(1).startswith('kid'):
         bust(port(m.group(1), m.group(2))).save(os.path.join(OUT, 'portraits', f[:-4] + '.webp'), lossless=True, method=6)
-# The Isles School: three students in one frame, the middle one in front.
+# The Isles School: three students in one frame, the middle one in front (kid3, at Ladi's request; kid2 stands back right).
 for m in MOODS:
-    k1, k2, k3 = [crop(port(k, m)) for k in ['kid1', 'kid2', 'kid3']]
+    k1, k3, k2 = [crop(port(k, m)) for k in ['kid1', 'kid2', 'kid3']]
     sm = lambda im: im.resize((im.width * 3 // 4, im.height * 3 // 4), Image.NEAREST)
     a, c = sm(k1), sm(k3)
     W = a.width + c.width + k2.width // 3; H = k2.height
