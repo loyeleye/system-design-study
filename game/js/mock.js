@@ -1,4 +1,4 @@
-// Mock interview mode: a timed 45-minute system design round with Ploy as the interviewer (see M.interviewers).
+// Mock interview mode: a timed system design round (45 interview minutes in 5 to 15 real ones) with Ploy as the interviewer (see M.interviewers).
 // It runs in Hello Interview's delivery order (requirements, entities and API, an estimate, high-level design,
 // two deep dives, your questions) and ends with a debrief scored on a five-line senior rubric, with the interviewer's notes.
 //
@@ -25,7 +25,9 @@
   const COST = { clarify: 1, nudge: 2, estBest: 2, estSlow: 6, bikeshed: 2 };
   // Fixed maximum points per rubric line, so a round cut short by the clock scores the unreached parts as zero.
   const MAX = { nav: 6, design: 5.5, depth: 5.5, trade: 6 };
-  const PACES = { brisk: { label: 'Brisk', sub: '15 real minutes', x: 3 }, full: { label: 'Full length', sub: '45 real minutes', x: 1 }, untimed: { label: 'Untimed', sub: 'practice, no clock', x: 3, free: true } };
+  // The clock counts a real round's 45 interview minutes, sped up so a multiple-choice round takes 5 to 15 real minutes.
+  const PACES = M.paces = { quick: { label: 'Quick', sub: '5 real minutes', x: 9 }, standard: { label: 'Standard', sub: '10 real minutes', x: 4.5 }, relaxed: { label: 'Relaxed', sub: '15 real minutes', x: 3 }, untimed: { label: 'Untimed', sub: 'practice, no clock', x: 4.5, free: true } };
+  M.pace = k => PACES[k] ? k : 'standard';
   const CONF = [['Guess', 0], ['Think so', 1], ['Sure', 2]];
   const ORDER = ['users', 'cdn', 'waitroom', 'lb', 'gateway', 'limiter', 'socket', 'app', 'idgen', 'counter', 'hold', 'cache', 'feedcache', 'search', 'sql', 'nosql', 'queue', 'worker', 'transcode', 'stream', 'notify', 'blob'];
   const VERDICT = {
@@ -234,7 +236,7 @@
   M.interviewers = {
     ploy: {
       id: 'ploy', name: 'Ploy',
-      intro: 'Welcome to my newest game: The Interview! Forty-five minutes, just like the real thing. I take notes, you take the win. Probably!',
+      intro: 'Welcome to my newest game: The Interview! Forty-five interview minutes, squeezed into ten real ones. I take notes, you take the win. Probably!',
       verdict: {
         strong: 'You won the whole game! Senior, strong. I barely got to use my buzzer, and I LOVE my buzzer.',
         senior: 'Hire, senior! A couple of wobbly turns, but you always knew where the boss fights were.',
@@ -295,7 +297,7 @@
     },
     gary: {
       id: 'gary', name: 'Gary',
-      intro: 'I run mock interviews. 45 minutes, like the real thing. I\'ll take notes. Payment is one croissant.',
+      intro: 'I run mock interviews. 45 interview minutes, done in ten. I\'ll take notes. Payment is one croissant.',
       verdict: {
         strong: 'That was a senior round. You drove it. I barely had to talk. I liked not talking.',
         senior: 'Hire. Senior. A couple of soft spots, but you knew where the hard parts were.',
@@ -326,7 +328,7 @@
     injectCss();
     opts = opts || {};
     const P = SD.mock.problems.find(p => p.id === opts.pid) || SD.mock.problems[0];
-    const pace = PACES[opts.pace] || PACES.brisk;
+    const pace = PACES[M.pace(opts.pace)];
     const think = opts.think !== false;
     const W = M.who(opts.interviewer);
     const L = (k, x) => String(W.lines[k] != null ? W.lines[k] : M.interviewers.gary.lines[k]).replace('{x}', x == null ? '' : x);
@@ -349,7 +351,7 @@
 
     root.innerHTML = `<div class="mi">
       <div class="mi-top">${face(W.id, 64)}<div class="mi-bubble"><p></p></div>
-        <div class="mi-clock"><span class="mi-t">0:00</span><small>of ${TOTAL}:00 · ${esc(pace.label)}</small>${pace.free ? '' : '<button class="mi-btn sm mi-pause" type="button">Pause</button>'}</div></div>
+        <div class="mi-clock"><span class="mi-t">0:00</span><small title="Interview minutes, sped up to fit ${esc(pace.sub)}">of ${TOTAL}:00 · ${esc(pace.label)}${pace.free ? '' : ' (' + esc(pace.sub.replace(' real minutes', ' min')) + ')'}</small>${pace.free ? '' : '<button class="mi-btn sm mi-pause" type="button">Pause</button>'}</div></div>
       <div class="mi-note" aria-live="polite">✎ ${esc(W.name)} writes something down.</div>
       <div class="mi-partner" aria-live="polite" hidden></div>
       <div class="mi-line">${SD.mock.phases.map(p => `<div class="mi-seg" data-ph="${p.id}" style="--w:${p.min}"><b><i></i></b><span>${esc(p.name)} · ${p.min}m</span></div>`).join('')}</div>
@@ -762,7 +764,7 @@
         : avg >= 3 && g.nav >= 3 && g.depth >= 3 && g.trade >= 3 && min >= 2 ? 'senior'
           : avg >= 2.4 && g.design >= 3 ? 'mid' : 'no';
       const concepts = [...new Set(answers.filter(a => !a.ok).map(a => a.c))];
-      return { ok: verdict !== 'no', verdict, pid: P.id, grades: g, scores: s, avg, notes, lessons, answers, concepts, cut, mins: Math.round(mins()), spent: Object.assign({}, spent), pace: opts.pace || 'brisk', who: W.id, at: Date.now() };
+      return { ok: verdict !== 'no', verdict, pid: P.id, grades: g, scores: s, avg, notes, lessons, answers, concepts, cut, mins: Math.round(mins()), spent: Object.assign({}, spent), pace: M.pace(opts.pace), who: W.id, at: Date.now() };
     }
 
     return run();
@@ -796,7 +798,7 @@
   // Plain text, for pasting into a study log.
   M.debriefText = function (res) {
     const P = SD.mock.problems.find(p => p.id === res.pid), V = VERDICT[res.verdict];
-    const out = [`Mock interview: ${P.name} (${new Date(res.at).toLocaleDateString()}, ${res.mins} min, ${PACES[res.pace].label})`, `Verdict: ${V.label}, ${V.sub}`, ''];
+    const out = [`Mock interview: ${P.name} (${new Date(res.at).toLocaleDateString()}, ${res.mins} min, ${PACES[M.pace(res.pace)].label})`, `Verdict: ${V.label}, ${V.sub}`, ''];
     SD.mock.rubric.forEach(r => {
       if (res.grades[r.id] === undefined) return;
       out.push(`${r.name}: ${res.grades[r.id]}/4 (${SD.mock.scoreNames[res.grades[r.id]]})`);
@@ -813,7 +815,7 @@
     opts = opts || {};
     const store = opts.store || defaultStore;
     const open = opts.open || (() => true);
-    const data = () => { const d = store.load() || {}; d.best = d.best || {}; d.runs = d.runs || []; d.pace = d.pace || 'brisk'; if (d.think === undefined) d.think = true; return d; };
+    const data = () => { const d = store.load() || {}; d.best = d.best || {}; d.runs = d.runs || []; d.pace = M.pace(d.pace); if (d.think === undefined) d.think = true; return d; };
     const shelf = () => {
       const d = data();
       root.innerHTML = `<div class="mi">
@@ -821,7 +823,7 @@
           <p class="mi-small">The round runs in the interview's real order: requirements, entities and API, an estimate, the high-level design, two deep dives, then your questions. You're scored on a senior-level rubric, and the verdict can down-level you.</p>
           <div class="mi-row"><span class="mi-small"><b>Pace</b></span><div class="mi-pick" role="group" aria-label="Pace">${Object.keys(PACES).map(k => `<button type="button" data-pace="${k}" class="${d.pace === k ? 'on' : ''}">${PACES[k].label}<small>${PACES[k].sub}</small></button>`).join('')}</div></div>
           <div class="mi-row"><span class="mi-small"><b>Think aloud</b></span><div class="mi-pick" role="group" aria-label="Think aloud"><button type="button" data-think="1" class="${d.think ? 'on' : ''}">On<small>options hidden until you've said yours</small></button><button type="button" data-think="0" class="${d.think ? '' : 'on'}">Off<small>options shown at once</small></button></div></div>
-          <p class="mi-small mi-muted">Full length matches your Saturday 45-minute run. Talk through every answer out loud, as you would in the room.</p></div>
+          <p class="mi-small mi-muted">The clock counts a real round's 45 minutes, sped up to fit the pace you pick. Talk through every answer out loud, as you would in the room.</p></div>
         <div class="mi-probs">${SD.mock.problems.map(p => {
           const ok = open(p), b = d.best[p.id];
           return `<button class="mi-prob ${ok ? '' : 'locked'}" type="button" data-p="${p.id}" ${ok ? '' : 'disabled'}><span class="mi-tag">${ok ? 'Chapter ' + p.ch : '🔒 Clear chapter ' + p.ch}</span><strong>${esc(p.name)}</strong><span class="mi-small mi-muted">Like ${esc(p.like)}</span><br>
