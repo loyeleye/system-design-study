@@ -175,6 +175,7 @@
       if (c === 'W') await bunker();
       if (c === 'B') await board();
       if (c === 'gary') await gary();
+      if (c === 'aigerim') await SD.peddler.visit();
       if (c === 'G') await gate();
     } finally {
       atDoor = false;
@@ -297,55 +298,10 @@
     if (lesson) await SD.lessons.play(lesson);
   }
 
-  // Ayo's Card Forge: buy cards with shards; they join your starting deck in every future run unless benched.
-  // One card is half price each loop.
-  function saleId() {
-    const sv = S.save, f = sv.flags;
-    if (f.saleLoop !== sv.loop) {
-      const lib = (sv.cardLib || []).map(x => x.id), pool = SD.cardShop.filter(x => !lib.includes(x.id));
-      f.saleLoop = sv.loop; f.saleId = pool.length ? pool[Math.floor(Math.random() * pool.length)].id : null;
-      S.persist();
-    }
-    return f.saleId;
-  }
   async function forge() {
     await SD.quests.idle('ayo');
-    const sv = S.save;
-    sv.cardLib = sv.cardLib || [];
-    let tab = 'shop', devices = false;
-    const render = () => {
-      const sale = saleId(), owned = id => sv.cardLib.find(x => x.id === id);
-      const price = it => it.id === sale ? Math.round(it.cost / 2) : it.cost;
-      let body = `<div class="shopkeep">${SD.art.portrait('ayo', 72)}<p>"Every card here is forged on-prem, by hand, by me. Buy one and it's in your deck for every run after this. HA!"</p></div>
-        <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span></div>
-        <div class="tabs" role="tablist">${[['shop', 'Forge'], ['lib', `Your cards (${sv.cardLib.length})`]].map(([k, l]) => `<button role="tab" class="tab${k === tab ? ' on' : ''}" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
-      if (tab === 'shop') {
-        body += `<p class="muted small">Bought cards join your starting deck in every future run. One card is half price each loop.</p>
-          <div class="cardgrid pick">${SD.cardShop.map(it => {
-            const have = owned(it.id), p = price(it);
-            return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || sv.shards < p })}<span class="price">${have ? 'Owned' : it.id === sale ? `<s>${it.cost}</s> <b>${p}</b> · SALE` : p + ' shards'}</span></div>`;
-          }).join('')}</div>`;
-      } else {
-        body += sv.cardLib.length ? `<p class="muted small">Tap a card to bench it or put it back. Benched cards stay yours but skip your next runs.</p>
-          <div class="cardgrid pick">${sv.cardLib.map(x => `<div class="buy">${U.cardHtml({ id: x.id }, { i: x.id, dim: !x.on })}<span class="price">${x.on ? 'In your deck' : 'Benched'}</span></div>`).join('')}</div>`
-          : '<p class="muted small">Nothing yet. Ayo says the first one is the hardest. Then he says it again, louder.</p>';
-      }
-      body += '<div class="row"><button class="ghost" id="fg-dev">Plot Devices</button></div>';
-      const b = U.panel(body, { title: "AYO'S CARD FORGE", cls: 'wide' });
-      b.querySelectorAll('[data-tab]').forEach(el => el.onclick = () => { tab = el.dataset.tab; render(); });
-      b.querySelector('#fg-dev').onclick = () => { devices = true; U.closePanel(); };
-      b.querySelectorAll('.card').forEach(el => el.onclick = () => {
-        const id = el.dataset.i;
-        if (tab === 'lib') { const x = owned(id); x.on = !x.on; S.persist(); AU.sfx('blip'); render(); return; }
-        const it = SD.cardShop.find(x => x.id === id), p = price(it);
-        if (owned(id) || sv.shards < p) return;
-        sv.shards -= p; sv.cardLib.push({ id, on: true }); S.persist();
-        U.system('CARD FORGED!', `${U.esc(SD.cards[id].name)} joins your starting deck from your next run.`, 'gold'); render();
-      });
-    };
-    render();
+    SD.quests.log('devices');
     await waitClose();
-    if (devices) { SD.quests.log('devices'); await waitClose(); }
   }
 
   async function treehouse() {

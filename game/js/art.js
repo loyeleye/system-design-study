@@ -9,7 +9,7 @@
     uptima: ['neutral', 'happy', 'sad', 'angry', 'blush', 'confused'], seymour: ['neutral', 'happy', 'smug', 'angry'],
     wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral', 'confused', 'happy'],
     bru: ['neutral', 'happy', 'angry', 'confused', 'sad'], ayo: ['neutral', 'smug', 'happy', 'confused', 'sad'], lexi: ['neutral', 'happy', 'angry', 'blush', 'smug'],
-    kaito: ['neutral'], doug: ['neutral', 'smug', 'happy', 'angry']
+    kaito: ['neutral'], doug: ['neutral', 'smug', 'happy', 'angry'], aigerim: ['neutral', 'happy', 'blush', 'yandere', 'sad']
   };
   A.painted = who => !!PAINTED[who];
   // Guess a mood from the line when the script doesn't give one.

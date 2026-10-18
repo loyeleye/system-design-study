@@ -52,12 +52,20 @@
     { id: 'lexi', name: 'LEXI', x: 45, y: 14, door: 'K', emo: 'idea' },
     { id: 'cron', name: 'CRON', x: 43, y: 16, emo: 'sleep' },
     { id: 'kaito', name: 'KAITO', x: 18, y: 5, emo: 'star' },
-    { id: 'doug', name: 'DOUG', x: 34, y: 10, emo: 'dots' }
+    { id: 'doug', name: 'DOUG', x: 34, y: 10, emo: 'dots' },
+    // Aigerim (js/peddler.js) turns up somewhere new each loop from chapter 3, until she moves to the North Road.
+    { id: 'aigerim', name: 'AIGERIM', x: -1, y: -1, emo: 'heart', roam: () => SD.peddler && SD.peddler.spot() }
   ];
+  // Villagers in town right now; roaming ones take today's spot or stay away.
+  const people = () => NPCS.filter(n => {
+    if (!n.roam) return true;
+    const s = n.roam(); if (!s) return false;
+    n.x = s[0]; n.y = s[1]; return true;
+  });
   const PAGE_SPOTS = [[9, 1], [20, 3], [28, 10], [2, 15], [12, 18], [22, 16], [30, 6], [10, 10], [35, 1], [44, 10], [38, 18]];
 
   const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
-  const npcAt = (x, y) => NPCS.find(n => n.x === x && n.y === y);
+  const npcAt = (x, y) => people().find(n => n.x === x && n.y === y);
   const walkable = (x, y) => ('.,=*pf' + DOORS).includes(tile(x, y)) && !npcAt(x, y);
   const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
@@ -247,7 +255,7 @@
       for (let x = x0; x < x1; x++) drawObject(x, y, tile(x, y), t);
       if (y === 5) drawWell();
       if (y === 6) drawBoard(t);
-      NPCS.forEach(n => { if (n.y === y) drawNpc(n, t); });
+      people().forEach(n => { if (n.y === y) drawNpc(n, t); });
       WANDER.forEach(w => { if (Math.round(w.py) === y) person(w.id, w.px, w.py, t, w.face, Math.abs(w.px - w.x) + Math.abs(w.py - w.y) > 0.01); });
       if (Math.round(P.py) === y) { drawPip(t); drawPlayer(t); }
     }
@@ -258,7 +266,7 @@
     }
     label(15.5, 5.6, 'QUEST BOARD', t, H.markers && H.markers.B);
     label(38, 15.2, "CRON'S FARM", t, false);
-    NPCS.forEach(n => label(n.x, n.y + 1.45, n.name, t, H.npcMarks && H.npcMarks[n.id], true));
+    people().forEach(n => label(n.x, n.y + 1.45, n.name, t, H.npcMarks && H.npcMarks[n.id], true));
     petals.forEach(f => {
       const fx = (f.x + Math.sin(t * 0.4 + f.p) * 0.8) * ts, fy = (f.y + Math.cos(t * 0.3 + f.p) * 0.6) * ts;
       const flap = Math.abs(Math.sin(t * 8 + f.p));
