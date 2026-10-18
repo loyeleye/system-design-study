@@ -11,7 +11,7 @@ The story and the design decisions live in the "Chapters 7–10" Claude Doc. Thi
 - Lord Latency can delay an incident's next move once per fight.
 - Kyu has her own map node, a design duel, and leaves Runbook pages.
 - Cutscenes play on small tile maps, or in Pingsby, and then cut back to the next floor.
-- The first clear of an arc chapter pays a quest-sized shard bonus: `clearShards`, 150 for chapter 7, sized for the new economy.
+- The first clear of an arc chapter pays a quest-sized shard bonus (`clearShards`). Chapter 7 pays 150. Chapters 8 to 10 should stay inside the main game's final economy, where quests pay 65 to 350 shards, the quest board pays 100, Wen's keepsakes cost 80 to 300, and the Card Forge sells cards for 100 to 280.
 - Add `?arc` to the URL to open the arc without clearing chapter 5 first, for previews and testing.
 
 ## New files

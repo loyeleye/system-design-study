@@ -13,8 +13,11 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MON, BAT = os.path.join(HERE, 'assets/img/monsters'), os.path.join(HERE, 'assets/img/battle')
 # Hit-flash colour and idle motion per monster (the CSS classes in js/art.js's enemy SVGs).
 COLS = {'cellgremlin': '#7ed957', 'pingswarm': '#4aa8ff', 'stalepin': '#ff8a8a', 'detour': '#ff9f43', 'tilehoarder': '#9b7bff',
-        'mimic': '#c98b4a', 'chestboss': '#ffd23f', 'statue': '#d8d8e8', 'wyrm': '#5fbf7f'}
-ANIMS = {'cellgremlin': 'squish', 'pingswarm': 'shake', 'detour': 'shake', 'tilehoarder': 'squish', 'mimic': 'squish', 'chestboss': 'squish'}
+        'mimic': '#c98b4a', 'chestboss': '#ffd23f', 'statue': '#d8d8e8', 'wyrm': '#5fbf7f',
+        'heralds': '#b78cff', 'lagwraith': '#8fd0ff', 'alertbanshee': '#ff4d4d', 'cardhydra': '#b06bff', 'doublecount': '#9bd16b',
+        'lateclick': '#ffb36b', 'powerspike': '#ffd23f', 'ginyu': '#a07bff', 'scouter': '#ff5a5a', 'clicku': '#ff8ad8'}
+ANIMS = {'cellgremlin': 'squish', 'pingswarm': 'shake', 'detour': 'shake', 'tilehoarder': 'squish', 'mimic': 'squish', 'chestboss': 'squish',
+         'heralds': 'shake', 'cardhydra': 'squish', 'doublecount': 'squish', 'lateclick': 'squish', 'powerspike': 'shake', 'clicku': 'squish'}
 
 def save(im, path):
     im.save(path, lossless=True, quality=100, method=6)
