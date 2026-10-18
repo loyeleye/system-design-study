@@ -194,6 +194,7 @@
       if (c === 'B') await board();
       if (c === 'gary') await gary();
       if (c === 'aigerim') await SD.peddler.visit();
+      if (c === 'valentin' && SD.cove) await SD.cove.idle(c);
       if (c === 'G') await gate();
     } finally {
       atDoor = false;
