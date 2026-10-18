@@ -24,12 +24,20 @@ SD.wb.parts = {
   limiter: { name: 'Rate Limiter', icon: 'funnel', concept: 'ratelimit', does: 'counts requests per client and turns the excess away with a 429', mix: ['lb', 'gateway'] },
   counter: { name: 'Counter Store', icon: 'abacus', concept: 'atomic', does: 'keeps per-key counters that update atomically with an expiry', mix: ['sql', 'cache'] },
   idgen: { name: 'ID Generator', icon: 'perspective-dice-six-faces-random', concept: 'idgen', does: 'hands out unique IDs that never collide', mix: ['counter', 'cache'] },
-  socket: { name: 'WebSocket Server', icon: 'walkie-talkie', does: 'holds an open connection to each online user so messages are pushed instantly', mix: ['lb', 'app'] },
+  socket: { name: 'WebSocket Server', icon: 'walkie-talkie', concept: 'realtime', does: 'holds an open connection to each online user so messages are pushed instantly', mix: ['lb', 'app'] },
   notify: { name: 'Push Notifications', pl: true, icon: 'megaphone', concept: 'queue', does: 'wake up phones that are offline with a push message', mix: ['socket', 'queue'] },
   transcode: { name: 'Transcoders', pl: true, icon: 'clockwork', concept: 'blob', does: 'turn one uploaded video into many resolutions and formats', mix: ['worker', 'cdn'] },
   stream: { name: 'Stream Processor', icon: 'histogram', concept: 'streams', does: 'counts events in time windows as they arrive', mix: ['queue', 'sql'] },
   hold: { name: 'Seat Holds', pl: true, icon: 'padlock', concept: 'booking', does: 'reserve one seat for one fan for a few minutes, atomically, then let it go', mix: ['cache', 'sql'] },
-  waitroom: { name: 'Waiting Room', icon: 'hourglass', concept: 'backpressure', does: 'lines visitors up and admits them at a rate the system can handle', mix: ['limiter', 'lb'] }
+  waitroom: { name: 'Waiting Room', icon: 'hourglass', concept: 'backpressure', does: 'lines visitors up and admits them at a rate the system can handle', mix: ['limiter', 'lb'] },
+  // Chapters 4 to 6 (the Design Board's load tests, js/board-data.js).
+  lock: { name: 'Lock Store', icon: 'padlock-open', concept: 'locks', does: 'grants short leases, so only one server can claim a thing at a time', mix: ['hold', 'cache', 'sql'] },
+  geo: { name: 'Geo Index', icon: 'radar-sweep', concept: 'geo', does: 'keeps live positions in memory, bucketed by geohash cell, so "who is near here?" is one lookup', mix: ['search', 'cache', 'sql'] },
+  dns: { name: 'Geo DNS', icon: 'earth-america', concept: 'dns', does: 'answers each user with the address of the nearest healthy region', mix: ['lb', 'cdn'] },
+  gpu: { name: 'Model Servers', pl: true, icon: 'cpu', concept: 'llmserve', does: 'run the model on GPUs, batching many chats into each step and streaming tokens back', mix: ['app', 'worker'] },
+  vector: { name: 'Vector Index', icon: 'star-formation', concept: 'rag', does: 'finds the stored passages whose embeddings sit closest to the question\'s', mix: ['search', 'nosql'] },
+  semcache: { name: 'Semantic Cache', icon: 'brain', concept: 'llmcost', does: 'reuses a recent answer when a new question means the same thing as an old one', mix: ['cache', 'vector'] },
+  guard: { name: 'Guardrails', pl: true, icon: 'checked-shield', concept: 'guardrails', does: 'check what goes into and comes out of the model and block what breaks the rules', mix: ['limiter', 'gateway'] }
 };
 
 // Blueprints. Coordinates are node centres on a w x h grid. Edge labels are the clues Smudge can smear.

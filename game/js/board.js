@@ -3,7 +3,8 @@
 // rather than comparing it to one right picture. Then the interviewer points at one of your boxes and asks why it's there.
 // Problems live in js/board-data.js; parts and icons are Smudge's (js/whiteboard-data.js).
 //
-//   SD.board.play(id, { title }) -> Promise<{ ok, passed, max, extras, perfect, defended, nodes, edges }>
+//   SD.board.play(id, { title }) -> Promise<{ ok, passed, max, extras, perfect, defended, load, nodes, edges }>
+//                                   load: null, or { held, rounds, ok, perfect, tests } for problems with a load test
 //   SD.board.bossStep(enemyId)   -> the boss version, with buffs announced; null when that boss has no board.
 (function () {
   const B = SD.board = SD.board || {};
@@ -16,16 +17,21 @@
   // ---- Graph helpers (also used by the checks and by tools/board_check.js) ----
   const key = (a, b) => a < b ? a + '|' + b : b + '|' + a;
   B.neighbours = (edges, id) => edges.filter(e => e[0] === id || e[1] === id).map(e => e[0] === id ? e[1] : e[0]);
-  // Can `to` be reached from `from` inside `ids`, without stepping on any node in `blocked`?
-  function reach(edges, ids, from, to, blocked) {
+  // Stores hold data and never call anything, so a request can end at one but never pass through it. That keeps a
+  // shared box (one Object Storage written by the upload and read by the transcoders) from counting as a way round a queue.
+  B.STORES = ['sql', 'nosql', 'blob', 'search', 'counter', 'idgen', 'hold', 'lock', 'geo', 'vector'];
+  // Can `to` be reached from `from` inside `ids`, without stepping on any node in `blocked` or through a store?
+  B.reach = function (design, ids, from, to, blocked) {
+    const store = new Set(design.nodes.filter(n => B.STORES.includes(n.p)).map(n => n.id));
     const seen = new Set([from]), q = [from];
     while (q.length) {
       const n = q.shift();
       if (n === to) return true;
-      for (const m of B.neighbours(edges, n)) if (ids.has(m) && !seen.has(m) && !blocked.has(m)) { seen.add(m); q.push(m); }
+      if (n !== from && store.has(n)) continue;
+      for (const m of B.neighbours(design.edges, n)) if (ids.has(m) && !seen.has(m) && !blocked.has(m)) { seen.add(m); q.push(m); }
     }
     return false;
-  }
+  };
   const ofPart = (nodes, ids, ps) => nodes.filter(n => ids.has(n.id) && ps.includes(n.p));
 
   // One check against a finished board. design = { nodes, edges, flows: { flowId: [nodeIds] } }.
@@ -50,13 +56,13 @@
       const users = nodes.find(n => n.p === 'users');
       const blocked = new Set(ofPart(nodes, flowIds, as(t.via)).map(n => n.id));
       if (!blocked.size) return false;
-      return targets.every(n => !reach(edges, flowIds, users.id, n.id, blocked));
+      return targets.every(n => !B.reach(design, flowIds, users.id, n.id, blocked));
     }
     return false;
   };
 
   // Parts a user's device may talk to directly. Anything else (a database, a cache, a queue) belongs behind a server.
-  B.FRONT = ['cdn', 'lb', 'gateway', 'app', 'limiter', 'waitroom', 'socket', 'blob', 'notify'];
+  B.FRONT = ['cdn', 'dns', 'lb', 'gateway', 'app', 'limiter', 'waitroom', 'socket', 'blob', 'notify'];
 
   // Score a finished design against a problem. Each extra box, and each store the users reach directly, costs a
   // point (2 at most).
@@ -88,6 +94,7 @@
     return new Promise(resolve => {
       let nodes = [{ id: 'u', p: 'users', r: 0, c: 1 }], edges = [], seq = 0;
       let sel = null, pick = null, phase = 'draw', fi = 0, path = [], flows = {}, note = '', showBrief = true;
+      let score = null, counts = {}, lt = null, tests = 0;
       const nodeAt = (r, c) => nodes.find(n => n.r === r && n.c === c);
       const nodeById = id => nodes.find(n => n.id === id);
       const label = n => n.label || P[n.p].name;
@@ -114,14 +121,25 @@
         }
         return s + '</svg>';
       }
-      function grid(mode) {
-        let h = `<div class="bd-board${mode === 'view' ? ' view' : ''}">${boardSvg(mode === 'trace' ? path : null)}<div class="bd-grid">`;
+      // Modes: draw, trace, view (read-only), size (tap a box to set its instances; info = this round's sim) and
+      // run (read-only, each box coloured by how busy it is; info = the round's sim).
+      function grid(mode, info) {
+        const live = mode === 'size' || mode === 'run';
+        let h = `<div class="bd-board${mode === 'view' || mode === 'run' || mode === 'size' ? ' view' : ''}">${boardSvg(mode === 'trace' ? path : null)}<div class="bd-grid">`;
         const can = mode === 'trace' ? new Set(nodes.filter(n => !path.includes(n.id) && path.some(p => B.neighbours(edges, p).includes(n.id))).map(n => n.id)) : null;
         for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
           const n = nodeAt(r, c);
           if (n) {
-            const cls = ['bd-node', n.p === 'users' ? 'users' : '', pick === n.id ? 'pick' : '', mode === 'trace' && path.includes(n.id) ? 'on' : '', mode === 'trace' && can.has(n.id) ? 'can' : ''].join(' ');
-            h += `<button class="${cls}" data-n="${n.id}" ${mode === 'view' || (mode === 'trace' && !can.has(n.id) && !path.includes(n.id)) ? 'disabled' : ''}>${icon(P[n.p].icon)}<span>${U.esc(label(n))}</span>${mode === 'trace' && path.includes(n.id) ? `<i class="bd-step">${path.indexOf(n.id) + 1}</i>` : ''}</button>`;
+            const st = live && info && info.nodes[n.id];
+            const cls = ['bd-node', n.p === 'users' ? 'users' : '', pick === n.id ? 'pick' : '', mode === 'trace' && path.includes(n.id) ? 'on' : '', mode === 'trace' && can.has(n.id) ? 'can' : '', st ? 'st-' + st.status : ''].join(' ');
+            const off = mode === 'view' || mode === 'run' || (mode === 'trace' && !can.has(n.id) && !path.includes(n.id)) || (mode === 'size' && n.p === 'users');
+            let extra = mode === 'trace' && path.includes(n.id) ? `<i class="bd-step">${path.indexOf(n.id) + 1}</i>` : '';
+            if (st) {
+              const pct = st.util === Infinity ? 'DOWN' : Math.round(st.util * 100) + '%';
+              extra += `<i class="bd-count">${B.fixed(n.p) ? '∞' : '×' + (mode === 'run' && st.live !== st.count ? st.live + '/' + st.count : st.count)}</i>`
+                + (st.load ? `<i class="bd-util">${pct}</i>` : '');
+            }
+            h += `<button class="${cls}" data-n="${n.id}" ${off ? 'disabled' : ''}>${icon(P[n.p].icon)}<span>${U.esc(label(n))}</span>${extra}</button>`;
           } else h += `<button class="bd-cell${mode === 'draw' && (sel || pick) ? ' open' : ''}" data-cell="${r},${c}" ${mode === 'draw' ? '' : 'disabled'} aria-label="Empty square"></button>`;
         }
         return h + '</div></div>';
@@ -196,7 +214,8 @@
           <ul class="bd-checks">${s.results.map(r => `<li class="${r.ok ? 'ok' : 'bad'}"><b>${r.ok ? '✓' : '✗'} ${U.esc(r.c.text)}</b><br><span class="small">${U.esc(r.ok ? r.c.good || r.c.why : r.c.why)}</span></li>`).join('')}
           ${s.extras.map(n => `<li class="bad"><b>✗ Extra: ${U.esc(label(n))}</b><br><span class="small">${U.esc(prob.useful.includes(n.p) ? 'No flow uses it. Every box on the board should earn its place.' : (prob.extraWhy && prob.extraWhy[n.p]) || `This design doesn't need ${P[n.p].name.toLowerCase()}. The interviewer will ask what it's for.`)}</span></li>`).join('')}
           ${s.direct.map(n => `<li class="bad"><b>✗ Users reach the ${U.esc(label(n))} directly</b><br><span class="small">Phones and browsers talk to your servers, not to your ${U.esc(P[n.p].name.toLowerCase())}. A server in between checks who is asking, validates the request and can change the storage later without shipping a new app.</span></li>`).join('')}</ul>`;
-        h += `<div class="row bd-tools">${s.ok ? '' : '<button class="ghost" id="bd-fix">Fix my design</button>'}${prob.ref ? '<button class="ghost" id="bd-ref">See a strong design</button>' : ''}<button class="primary" id="bd-go">${s.ok ? 'Continue' : 'Move on'}</button></div>`;
+        const loadNext = s.ok && prob.load;
+        h += `<div class="row bd-tools">${s.ok ? '' : '<button class="ghost" id="bd-fix">Fix my design</button>'}${prob.ref ? '<button class="ghost" id="bd-ref">See a strong design</button>' : ''}<button class="primary" id="bd-go">${loadNext ? 'Load test →' : s.ok ? 'Continue' : 'Move on'}</button></div>`;
         const p = show('check', h);
         const fx = p.querySelector('#bd-fix');
         if (fx) fx.onclick = () => { flows = {}; phase = 'draw'; note = 'Fix the design, then trace the flows again.'; draw(); };
@@ -210,11 +229,67 @@
             <button class="primary" id="bd-back2">Back</button>`);
           q.querySelector('#bd-back2').onclick = () => { ({ nodes, edges } = mine); check(); };
         };
-        p.querySelector('#bd-go').onclick = async () => {
-          const defended = s.ok && !opts.noDefend ? await defend() : null;
-          U.closePanel();
-          resolve({ ok: s.ok, passed: s.passed, max: s.max, extras: s.extras.length, perfect: s.perfect, defended, nodes, edges, flows });
-        };
+        p.querySelector('#bd-go').onclick = () => { score = s; if (loadNext) { pick = null; size(); } else finish(null); };
+      }
+      async function finish(load) {
+        const s = score;
+        const defended = s.ok && !opts.noDefend ? await defend() : null;
+        U.closePanel();
+        resolve({ ok: s.ok, passed: s.passed, max: s.max, extras: s.extras.length, perfect: s.perfect, defended, load, nodes, edges, flows });
+      }
+
+      // ---- Load test (problems with `load`, js/board-load.js) ----
+      // Size each box within the budget, watching normal traffic; then run tonight's rounds. One rerun is allowed.
+      function size() {
+        const L = prob.load, design = { nodes, edges, flows };
+        const sim = B.sim(prob, design, counts, null), spent = B.cost(design, counts), over = spent > L.budget;
+        const n = pick && nodeById(pick), unit = id => (L.flows[id] && L.flows[id].unit) || '';
+        const fmt = v => v === Infinity ? 'unlimited' : Math.round(v).toLocaleString('en-US');
+        let ctl = '<p class="bd-note">Tap a box to change how many instances it runs. The percentages are normal traffic; tonight brings more.</p>';
+        if (n) {
+          const st = sim.nodes[n.id], cap = B.capOf(prob, n.p), k = counts[n.id] || 1;
+          ctl = B.fixed(n.p) ? `<p class="bd-note"><b>${U.esc(label(n))}</b> is a managed service: it scales by itself and costs ${B.CAP[n.p].cost}.</p>`
+            : `<div class="bd-size"><div><b>${U.esc(label(n))}</b> ×${k}<br><span class="small">${fmt(cap)}/s each · costs ${B.CAP[n.p].cost} each · now ${fmt(st.load)}/s</span></div>
+              <button class="ghost" id="bd-minus" ${k <= 1 ? 'disabled' : ''} aria-label="One fewer">−</button><button class="ghost" id="bd-plus" ${k >= B.MAX_COUNT ? 'disabled' : ''} aria-label="One more">+</button></div>`;
+        }
+        const p = show('size', `<div class="bd-head"><b>Load test: ${U.esc(prob.name)}</b></div>
+          <div class="bd-brief"><p>${U.esc(L.normal)}</p><p class="small"><b>Traffic:</b> ${prob.flows.filter(f => L.flows[f.id]).map(f => `${U.esc(f.name)}, ${fmt(L.flows[f.id].rate)} ${U.esc(unit(f.id) || 'a second')}`).join(' · ')}</p>
+          <p class="small"><b>Tonight:</b> ${B.rounds(prob).slice(1).map(e => U.esc(e.name)).join(' · ')}</p></div>
+          ${grid('size', sim)}${ctl}
+          <p class="bd-budget ${over ? 'bad' : ''}">Budget: ${spent} of ${L.budget}${over ? '. Over budget: take something away.' : ''}</p>
+          <div class="row bd-tools"><button class="primary" id="bd-run" ${over ? 'disabled' : ''}>Start the load test</button></div>`);
+        p.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { pick = pick === b.dataset.n ? null : b.dataset.n; sfx('card'); size(); });
+        const bump = d => { counts[pick] = Math.max(1, Math.min(B.MAX_COUNT, (counts[pick] || 1) + d)); sfx('ok'); size(); };
+        const mi = p.querySelector('#bd-minus'), pl = p.querySelector('#bd-plus');
+        if (mi) mi.onclick = () => bump(-1);
+        if (pl) pl.onclick = () => bump(1);
+        p.querySelector('#bd-run').onclick = () => { pick = null; tests++; lt = B.loadTest(prob, design, counts); round(0); };
+      }
+      function round(i) {
+        const r = lt.results[i], ev = lt.rounds[i], last = i === lt.rounds.length - 1;
+        const why = nodes.filter(n => r.nodes[n.id] && r.nodes[n.id].status !== 'ok').map(n => {
+          const st = r.nodes[n.id], bad = st.status === 'bad' || st.status === 'down';
+          return `<li class="${bad ? 'bad' : 'warn'}"><b>${bad ? '✗' : '!'} ${U.esc(label(n))}${st.util === Infinity ? ' is down' : ` at ${Math.round(st.util * 100)}%`}</b><br><span class="small">${U.esc(bad || st.why ? B.loadWhy(prob, n, st, label(n)) : 'Busy but holding. Under 70% leaves room for a spike.')}</span></li>`;
+        }).join('');
+        const killed = r.notes.filter(x => x.kind === 'kill').map(x => label(nodeById(x.id)));
+        sfx(r.held ? 'ok' : 'wrong');
+        const p = show('round' + i, `<div class="bd-flow"><span class="q-ctx">Round ${i + 1} of ${lt.rounds.length}</span> <b>${U.esc(ev.name)}</b><p class="small">${U.esc(ev.text || '')}${killed.length ? ` It took out one ${U.esc(killed[0])}.` : ''}${r.waiting ? ` ${Math.round(r.waiting).toLocaleString('en-US')} a second wait in the waiting room instead of crashing booking.` : ''}</p></div>
+          ${grid('run', r)}
+          <div class="verdict ${r.held ? 'ok' : 'bad'} bd-round">${r.held ? 'HELD' : 'FELL OVER'}</div>
+          ${why ? `<ul class="bd-checks">${why}</ul>` : '<p class="small">Every box stayed under 70%.</p>'}
+          <div class="row bd-tools"><button class="primary" id="bd-next">${last ? 'Results' : 'Next round →'}</button></div>`);
+        p.querySelector('#bd-next').onclick = () => last ? summary() : round(i + 1);
+      }
+      function summary() {
+        const t = lt;
+        sfx(t.ok ? 'right' : 'wrong');
+        const p = show('summary', `<div class="verdict ${t.ok ? 'ok' : 'bad'}">${t.perfect ? 'NOTHING BROKE!' : t.ok ? 'IT MOSTLY HELD!' : 'IT FELL OVER!'}</div>
+          <p class="muted small">Held ${t.held} of ${t.rounds.length} rounds. You need ${t.need}, including normal traffic.</p>
+          <ul class="bd-checks">${t.rounds.map((e, i) => `<li class="${t.results[i].held ? 'ok' : 'bad'}"><b>${t.results[i].held ? '✓' : '✗'} ${U.esc(e.name)}</b>${!t.results[i].held && e.lesson ? `<br><span class="small">${U.esc(e.lesson)}</span>` : ''}</li>`).join('')}</ul>
+          <div class="row bd-tools">${!t.perfect && tests < 2 ? '<button class="ghost" id="bd-resize">Resize and run again</button>' : ''}<button class="primary" id="bd-done2">Continue</button></div>`);
+        const rs = p.querySelector('#bd-resize');
+        if (rs) rs.onclick = () => size();
+        p.querySelector('#bd-done2').onclick = () => finish({ held: t.held, rounds: t.rounds.length, ok: t.ok, perfect: t.perfect, tests });
       }
       // The interviewer points at one of your boxes. A typed answer when there is one for that concept, else a question.
       async function defend() {
@@ -249,9 +324,13 @@
     const id = B.forBoss(enemyId);
     if (!id) return null;
     const r = await B.play(id, { title: '[BOSS] HIGH-LEVEL DESIGN' });
-    const e = SD.enemies[enemyId];
-    if (r.ok) U.system(r.perfect ? 'CLEAN DESIGN!' : 'THE DESIGN HOLDS!', `${U.esc(e ? e.short || e.name : 'The boss')} starts ${r.perfect ? 15 : 10}% weaker.`, 'gold');
+    const e = SD.enemies[enemyId], who = U.esc(e ? e.short || e.name : 'The boss');
+    // With a load test, the head start needs the design to survive the night too.
+    const held = !r.load || r.load.ok, perfect = r.perfect && (!r.load || r.load.perfect);
+    const mult = !r.ok ? 1 : perfect ? 0.85 : held ? 0.9 : 0.95;
+    if (r.ok && held) U.system(perfect ? (r.load ? 'NOTHING BROKE!' : 'CLEAN DESIGN!') : 'THE DESIGN HOLDS!', `${who} starts ${perfect ? 15 : 10}% weaker.`, 'gold');
+    else if (r.ok) U.system('RIGHT SHAPE, WRONG SIZE!', `The design was sound but fell over under load. ${who} starts 5% weaker.`, 'gold');
     if (r.defended) U.system('DEFENDED!', 'You explained your box. +1 Capacity on turn 1.', 'gold');
-    return { sevMult: r.perfect ? 0.85 : r.ok ? 0.9 : 1, bonusEnergy: r.defended ? 1 : 0, ok: r.ok };
+    return { sevMult: mult, bonusEnergy: r.defended ? 1 : 0, ok: r.ok };
   };
 })();

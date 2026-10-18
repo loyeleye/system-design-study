@@ -2,7 +2,10 @@
 // Checks the Design Board problems in js/board-data.js against the real scoring code (js/board.js).
 //
 //   node tools/board_check.js        every problem: parts exist, the reference design is laid out legally and scores
-//                                    perfect, and a naive design (users -> server -> database) fails
+//                                    perfect, and a naive design (users -> server -> database) fails. With a load test:
+//                                    the reference sizing fits the budget and holds every round, and one instance of
+//                                    everything does not
+//   node tools/board_check.js --load [id]   also print how busy each reference box is in every round
 //
 // Warnings (not failures) name reference boxes that no check needs: fine in a strong design, but worth a look.
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -27,6 +30,7 @@ function load() {
 }
 
 const SD = load(), B = SD.board, P = SD.wb.parts;
+const showLoad = process.argv.includes('--load'), showId = process.argv.slice(2).find(a => !a.startsWith('--'));
 const COLS = 4, ROWS = 6;
 let problems = 0, warnings = 0;
 for (const [id, prob] of Object.entries(SD.boardData)) {
@@ -78,6 +82,29 @@ for (const [id, prob] of Object.entries(SD.boardData)) {
       const cut = { nodes: ref.nodes.filter(m => m !== n), edges: ref.edges.filter(e => !e.includes(n.id)).concat(bypass), flows: {} };
       for (const [f, fl] of Object.entries(ref.flows)) cut.flows[f] = fl.filter(m => m !== n.id);
       if (B.score(prob, cut).results.every(r => r.ok)) warns.push(`reference box ${n.id} (${n.p}) isn't needed by any check`);
+    }
+  }
+  if (prob.load && prob.ref) {
+    const L = prob.load, ref = B.ref(prob), counts = prob.ref.counts || {};
+    for (const f of prob.flows) if (!L.flows[f.id]) errs.push('load test has no traffic for flow ' + f.id);
+    for (const p of allParts) if (p !== 'users' && !B.CAP[p]) errs.push(`part ${p} has no capacity in SD.board.CAP`);
+    for (const e of L.events || []) {
+      if (e.kill && e.kill !== 'busiest' && !ref.nodes.some(n => n.p === e.kill)) errs.push(`event ${e.id} kills ${e.kill}, which the reference doesn't use`);
+      if (e.hot && !prob.flows.some(f => f.id === e.hot.flow)) errs.push(`event ${e.id}: hot flow ${e.hot.flow} doesn't exist`);
+      if (!e.lesson) warns.push(`event ${e.id} has no lesson line`);
+    }
+    if (!prob.ref.counts) errs.push('reference has no counts for the load test');
+    const spent = B.cost(ref, counts);
+    if (spent > L.budget) errs.push(`reference sizing costs ${spent}, over the budget of ${L.budget}`);
+    const t = B.loadTest(prob, ref, counts);
+    t.results.forEach((r, i) => {
+      if (!r.held) errs.push(`reference sizing falls over in "${t.rounds[i].name}": ` + Object.entries(r.nodes).filter(([, st]) => st.status === 'bad' || st.status === 'down').map(([n, st]) => `${n} ${st.util === Infinity ? 'down' : Math.round(st.util * 100) + '%'}`).join(', '));
+    });
+    const ones = B.loadTest(prob, ref, {});
+    if (ones.ok) errs.push('one instance of everything passes the load test, so sizing doesn\'t matter');
+    if (showLoad && (!showId || showId === id)) {
+      console.log(`${id}: reference sizing costs ${spent} of ${L.budget}; one of everything holds ${ones.held} of ${ones.rounds.length}`);
+      t.rounds.forEach((e, i) => console.log(`  ${e.name.padEnd(28)} ` + Object.entries(t.results[i].nodes).map(([n, st]) => `${n}${st.live !== st.count ? '(' + st.live + '/' + st.count + ')' : ''} ${st.util === Infinity ? 'DOWN' : Math.round(st.util * 100) + '%'}`).join('  ')));
     }
   }
   // A naive design: users -> one server -> one database, used for every flow.

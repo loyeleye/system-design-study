@@ -182,6 +182,21 @@ blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a
 .bd .bd-checks li { margin: 6px 0; padding: 6px 8px; border-radius: 8px; background: #f6f6f6; }
 .bd .bd-checks li.ok { background: #e9fbf2; }
 .bd .bd-checks li.bad { background: #fff1f1; }
+.bd .bd-checks li.warn { background: #fff6dd; }
+/* Load test (js/board-load.js): instance counts, how busy each box is, sizing controls */
+.bd .bd-count { position: absolute; bottom: -7px; left: -5px; background: var(--ink); color: #fff; border-radius: 999px; font-style: normal; font-size: 0.75em; padding: 0 5px; }
+.bd .bd-util { position: absolute; top: -8px; right: -6px; background: #fff; border: 2px solid var(--ink); border-radius: 999px; font-style: normal; font-size: 0.7em; padding: 0 4px; }
+.bd .bd-node.st-ok { background: #e9fbf2; border-color: #2f9e63; }
+.bd .bd-node.st-warn { background: #fff6dd; border-color: #d99a00; }
+.bd .bd-node.st-bad { background: #ffe3e3; border-color: #d93a3a; }
+.bd .bd-node.st-down { background: #dddddd; border-color: #777; }
+.bd .bd-node.st-down span { text-decoration: line-through; }
+.bd .bd-size { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.bd .bd-size > div { flex: 1; }
+.bd .bd-size button { min-width: 44px; font-size: 1.2em; padding: 4px 0; }
+.bd .bd-budget { font-weight: bold; margin: 4px 0; }
+.bd .bd-budget.bad { color: #c02f2f; }
+.bd .bd-round { font-size: 1.4em; margin: 6px 0 2px; }
 .say-first { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #fff8e6; border: 2px dashed #e7b84a; }
 .say-first p { margin: 0 0 8px; }
 .helpbox { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #f1ecff; border: 2px solid #b9a6ff; }
@@ -828,6 +843,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/explain-data.js"></script>
 <script src="js/board-data.js"></script>
 <script src="js/board.js"></script>
+<script src="js/board-load.js"></script>
 <script src="js/village-art.js"></script>
 <script src="js/dungeon-art.js"></script>
 <script src="js/battle-art.js"></script>
