@@ -173,7 +173,9 @@
   };
   S.dueCount = function () {
     const now = Date.now();
-    return Object.keys(S.save.concepts).filter(id => S.save.concepts[id].seen && S.save.concepts[id].due <= now).length;
+    // Only concepts the town's reviews can ask: the Isles (zone 99) review theirs at their own tide posts.
+    const ch = S.save.chapter || 1;
+    return Object.keys(S.save.concepts).filter(id => SD.concepts[id] && SD.concepts[id].zone <= ch && S.save.concepts[id].seen && S.save.concepts[id].due <= now).length;
   };
   S.pickQuestion = function (conceptId, avoid) {
     const qs = SD.questions.filter(q => q.c === conceptId && !(avoid || []).includes(q.id));

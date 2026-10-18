@@ -367,7 +367,7 @@
     // From chapter 4 on, older incidents come back, so their answers have to be findable too.
     const ch = S.save.run.ch || 1;
     const pool = S.unlockedCards().filter(id => { const c = SD.cards[id].ch; return !c || c === ch || (ch >= 4 && c < ch); });
-    const focus = new Set(S.pickConcepts(5));
+    const focus = new Set(S.pickConcepts(5, Object.keys(SD.concepts).filter(id => SD.concepts[id].zone <= ch)));
     const weighted = [];
     pool.forEach(id => { const d = SD.cards[id]; const w = (d.concept && focus.has(d.concept) ? 3 : 1) + (d.ch === ch && ch > 1 ? 2 : 0); for (let i = 0; i < w; i++) weighted.push(id); });
     const out = [];
