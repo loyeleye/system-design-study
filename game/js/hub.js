@@ -787,6 +787,8 @@
     // A quest marker replaces any bubble, so the two never overlap.
     if (n.moving || (H.npcMarks && H.npcMarks[n.id])) return;
     const X = xx(n) * ts + ts / 2, Y = n.bird ? yy(n) * ts : headY(yy(n)) + (a && a.dy ? a.dy * ts : 0);
+    // Now and then a sleepy villager yawns (js/clock.js decides who and when).
+    if (SD.clock && SD.clock.yawning(n.id, t)) return SD.clock.drawYawn(ctx, X, Y, ts);
     if (a) { if (a.bub) emote(a.bub, X, Y); return; }
     // Without an act: Gary sips coffee, everyone else occasionally has a feeling about something.
     if ((t + n.x) % 9 < 2.2) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', X, Y);
