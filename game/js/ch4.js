@@ -1,4 +1,4 @@
-// Chapter 4: the Sky Harbour. Ride hailing, chat and a Dynamo-style key-value store (Hello Interview weeks 6-7):
+// Chapter 4: the Sky Harbour. Ride hailing, chat and a Dynamo-style key-value store:
 // geospatial indexes, WebSockets and presence, failure detection and gossip, consensus, clocks, consistent hashing,
 // distributed locks, job scheduling, sagas, distributed caches and collaborative editing.
 // Loaded after quests.js, so it can add to every table the earlier chapters fill.
@@ -199,7 +199,7 @@
 
   SD.chapters[4] = {
     name: 'the Sky Harbour', rank: 'B', boss: 'rider', intro: 'boss4aIntro', win: 'boss4aWin',
-    // Three bosses, one per run: ride hailing, chat, or a key-value store (Hello Interview weeks 6-7).
+    // Three bosses, one per run: ride hailing, chat, or a key-value store.
     bosses: ['rider', 'chatwyrm', 'colossus'],
     gate: 'SAILING UP TO THE SKY HARBOUR...',
     blurb: 'Eight floors of docks in the clouds. The Surge Rider, the Chatterwyrm or the Keykeeper Colossus waits at the top berth.',

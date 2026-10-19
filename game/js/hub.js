@@ -5,7 +5,7 @@
   // Two roads leave town: N (top edge) to the North Road and E (east edge, below the Forge) to the Eventual Isles ferry.
   // Each is blocked until its story opens it (see EXITS below).
   const MAP = [
-    'TTTTTTTTTTTTTTTTTTTTNTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTpTTTTTTTTTTTTTTTTTTTTTT....T',
     'T..............................................T',
     'T.#######......L.......#######....#########.###T',
     'T.#######..............#######....#########.###T',
@@ -49,6 +49,16 @@
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
   ];
   const W = MAP[0].length, HT = MAP.length;
+  // The forge yard behind the Forge, up a lane between the Guild and the Forge: Mio's anvil (m) and Ayo's, with its
+  // fire (a), side by side so the two of them work facing each other, and a stump with a red-hot blade cooling on it (s). These rows sit above the town at negative y (-NY to -1), so
+  // nothing else on the map moved when they were added. The North Road leaves from their top edge.
+  const YARD = [
+    'TTTTTTTTTTTTTTTTTTTTNTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTpTTTTTTTTTTTTTTTTTTTTT.ma.sT',
+    'TTTTTTTTTTTTTTTTTTTTpTTTTTTTTTTTTTTTTTTTT......T',
+    'TTTTTTTTTTTTTTTTTTTTpTTTTTTTTTTTTTTTTTTTT......T'
+  ];
+  const NY = YARD.length;
   const INK = '#2b2340';
   const BUILD = {
     A: { name: 'GODDESS TEMPLE' }, C: { name: 'CACHE CAFÉ' },
@@ -118,7 +128,7 @@
   });
   const PAGE_SPOTS = [[9, 1], [20, 3], [28, 10], [2, 15], [12, 18], [22, 16], [30, 6], [10, 10], [35, 1], [44, 10], [38, 18]];
 
-  const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
+  const tile = (x, y) => (y < -NY || y >= HT || x < 0 || x >= W) ? 'T' : y < 0 ? YARD[y + NY][x] : MAP[y][x];
   const npcAt = (x, y) => people().find(n => n.x === x && n.y === y);
   const walkable = (x, y) => ('.,=*pf' + DOORS).includes(tile(x, y)) && !npcAt(x, y);
   const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
@@ -133,6 +143,9 @@
     cv = canvas; ctx = cv.getContext('2d');
     onDoor = id => {
       const n = NPCS.find(m => m.id === id);
+      // Someone waiting at a relationship scene's place starts it when you talk to them (js/folk-scenes.js).
+      const sc = n && SD.folkScenes && SD.folkScenes.talk(id);
+      if (sc) return doorHandler('scene:' + sc.id);
       // Found away from their usual spot, a villager just chats (js/folk.js) instead of opening their building.
       if (n && !fixture(n) && !n.roam && SD.folk && (n.x !== n.stand[0] || n.y !== n.stand[1])) return doorHandler('away:' + id);
       doorHandler(n && n.door ? n.door : id);
@@ -141,7 +154,7 @@
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
       // The Enter that closes a conversation must not open the next one: the dialogue box already used it.
-      if (!active || drop || staging || e.defaultPrevented) return;
+      if (!active || drop || e.defaultPrevented) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = talkTarget(); if (t) { e.preventDefault(); onDoor(t); } }
@@ -227,9 +240,9 @@
   function cam() {
     const vw = cv.width / dpr, vh = cv.height / dpr;
     let cx = P.px * ts + ts / 2 - vw / 2, cy = P.py * ts + ts / 2 - vh / 2;
-    cx = Math.max(0, Math.min(W * ts - vw, cx)); cy = Math.max(0, Math.min(HT * ts - vh, cy));
+    cx = Math.max(0, Math.min(W * ts - vw, cx)); cy = Math.max(-NY * ts, Math.min(HT * ts - vh, cy));
     if (W * ts < vw) cx = (W * ts - vw) / 2;
-    if (HT * ts < vh) cy = (HT * ts - vh) / 2;
+    if ((HT + NY) * ts < vh) cy = ((HT - NY) * ts - vh) / 2;
     return { cx, cy };
   }
   function tap(e) {
@@ -258,7 +271,7 @@
   }
   function nearestDoor(tx, ty) {
     let best = null, bd = 1e9;
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       if (DOORS.includes(tile(x, y))) {
         const d = Math.abs(x - tx) + Math.abs(y - ty);
         if (d < bd && d < 6) { bd = d; best = [x, y]; }
@@ -381,43 +394,8 @@
       }
     });
   }
-  // ---------- Relationship scenes ----------
-  // Walking up to a scene that's due (js/folk-scenes.js) gathers its people round you, from wherever they were, and
-  // plays it; afterwards they walk back to wherever their schedule says.
-  let staging = false;
-  function sceneCheck(x, y) {
-    const s = SD.folkScenes.near(x, y);
-    if (!s) return;
-    staging = true; P.path = []; P.want = null;
-    Object.keys(keys).forEach(k => keys[k] = false);
-    gather(s.who);
-    setTimeout(() => { staging = false; if (active) onDoor('scene:' + s.id); }, 450);
-  }
-  function gather(ids) {
-    // Open ground within two steps of you, nearest first.
-    const k = (x, y) => x + ',' + y, seen = new Set([k(P.x, P.y)]), q = [[P.x, P.y, 0]], free = [];
-    while (q.length) {
-      const [x, y, d] = q.shift();
-      if (d && !npcAt(x, y)) free.push([x, y]);
-      if (d >= 2) continue;
-      for (const [dx, dy] of DIRS) {
-        const nx = x + dx, ny = y + dy;
-        if (!seen.has(k(nx, ny)) && '.,=*pf'.includes(tile(nx, ny))) { seen.add(k(nx, ny)); q.push([nx, ny, d + 1]); }
-      }
-    }
-    ids.forEach(id => {
-      const n = NPCS.find(m => m.id === id);
-      if (!n || fixture(n) || n.roam && !n.roam()) return;
-      if (n.here && !n.hide && Math.abs(n.x - P.x) + Math.abs(n.y - P.y) <= 2) { n.path = []; n.route = null; return; }
-      const t = free.shift();
-      if (!t) return;
-      Object.assign(n, { x: t[0], y: t[1], px: t[0], py: t[1], here: true, hide: false, placed: true, path: [], route: null, act: null, goal: null });
-      n.face = t[0] < P.x ? 'east' : t[0] > P.x ? 'west' : t[1] < P.y ? 'south' : 'north';
-    });
-  }
-
   // Where a villager's door is (for js/folk.js), their name on the map, and where everyone is (the board).
-  H.doorTile = c => { for (let y = 0; y < HT; y++) { const x = MAP[y].indexOf(c); if (x >= 0) return [x, y]; } return null; };
+  H.doorTile = c => { for (let y = -NY; y < HT; y++) { const x = (y < 0 ? YARD[y + NY] : MAP[y]).indexOf(c); if (x >= 0) return [x, y]; } return null; };
   H.npcName = id => { const n = NPCS.find(m => m.id === id); return n ? n.name : null; };
   H.folkNow = () => SD.folk && SD.state.save ? folkPlan().plan : {};
   // Where a villager is standing right now, or null if they're indoors or away (for playtest scripts).
@@ -434,7 +412,7 @@
     pip.x += (P.px - 0.9 * P.dir - pip.x) * Math.min(1, dt * 4);
     pip.y += (P.py - 0.4 - pip.y) * Math.min(1, dt * 4);
     stepT -= dt;
-    if (P.moving || stepT > 0 || staging) return;
+    if (P.moving || stepT > 0) return;
     let nx = P.x, ny = P.y;
     if (keys.arrowup || keys.w) ny--; else if (keys.arrowdown || keys.s) ny++;
     else if (keys.arrowleft || keys.a) nx--; else if (keys.arrowright || keys.d) nx++;
@@ -452,7 +430,6 @@
       const t = tile(nx, ny);
       // A door with a room behind it takes you inside (js/interiors.js); the others open their building.
       if (DOORS.includes(t)) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => onDoor(SD.interiors && SD.interiors.has(t) ? 'in:' + t : t), 140); }
-      else if (SD.folkScenes) sceneCheck(nx, ny);
       checkPage();
     } else if (nx !== P.x || ny !== P.y) {
       // Bumping into a villager starts a conversation.
@@ -494,7 +471,7 @@
     const since = drop && drop.landed ? drop.t - drop.dur : 1, shake = since < 0.25 ? (1 - since / 0.25) * 2 : 0;
     ctx.save(); ctx.translate(-Math.round(cx) + (Math.random() - 0.5) * shake, -Math.round(cy) + (Math.random() - 0.5) * shake);
     const x0 = Math.max(0, Math.floor(cx / ts) - 1), x1 = Math.min(W, Math.ceil((cx + vw) / ts) + 1);
-    const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
+    const y0 = Math.max(-NY, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) drawCorner(x, y, t);
     drawGroundDeco();
     // Chapter files can draw on the ground here (js/ch10.js: Gary's cold coffee while he is missing).
@@ -518,7 +495,7 @@
     ctx.restore();
     if (SD.clock) SD.clock.shade(ctx, vw, vh, lights(t, cx, cy));
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if (BUILD[c] && !'BNE'.includes(c)) label(x, y, BUILD[c].name, t, (H.markers && H.markers[c]) || doorMarks[c]);
       // In the storm everyone is inside, worrying: a little bubble at each door with someone behind it.
@@ -542,7 +519,7 @@
     const dk = dark();
     clouds.forEach(c => {
       c.x += c.v * dt; if (c.x > 1.2) c.x = -0.2;
-      puff(c.x * vw, c.y * vh * 0.5 - cy * 0.1, 26 * c.s, `rgba(${dk ? '110,120,170' : '255,255,255'},${0.75 - 0.5 * dk})`, false);
+      puff(c.x * vw, c.y * vh * 0.5 - cy * 0.1, 26 * c.s, `rgba(${dk > 0.6 ? '110,120,170' : dk ? '255,205,180' : '255,255,255'},${0.75 - 0.5 * dk})`, false);
     });
     drawTheCloud(vw, t, cx, dk);
     // Weather over everything (js/weather.js).
@@ -556,9 +533,10 @@
     // With the Cloud down (chapter 10) the lamps and windows are out too: only the Forge and the portal glow.
     const down = SD.clock.frozen();
     const out = [], at = (x, y, r, rgb) => out.push({ x: x * ts - cx, y: y * ts - cy, r: r * ts, rgb });
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if ((c === 'l' || c === 'L' && DECO[hash(x, y) % DECO.length] === 'lamp') && !down) at(x + 0.5, y - 0.7, 2.6);
+      if (c === 'a') at(x + 0.5, y + 0.3, 1.8 * (1 + 0.08 * Math.sin(t * 11)), '255,140,60');
       if (BUILD[c] && !'BNE'.includes(c) && (!down || 'FG'.includes(c))) {
         const b = bbox(c);
         if (!b) continue;
@@ -653,7 +631,7 @@
   const TERRAIN = { '~': 'water', '=': 'water', ',': 'plaza', B: 'plaza', p: 'dirt', f: 'farm' };
   const TOP = ['water', 'plaza', 'farm', 'dirt'];
   // The North Road exit is just the dirt path carrying on north through the trees, off the top of the map.
-  const terrain = (x, y) => (y < 0 && x === 20) ? 'dirt' : TERRAIN[tile(x, y)] || (DOORS.includes(tile(x, y)) ? 'dirt' : 'grass');
+  const terrain = (x, y) => (y < -NY && x === 20) ? 'dirt' : TERRAIN[tile(x, y)] || (DOORS.includes(tile(x, y)) ? 'dirt' : 'grass');
   function drawCorner(x, y, t) {
     const c = [terrain(x - 1, y - 1), terrain(x, y - 1), terrain(x - 1, y), terrain(x, y)];
     const T = TOP.find(k => c.includes(k)) || 'dirt';
@@ -668,7 +646,7 @@
   }
   function drawGroundDeco() {
     // Footbridges over the river, and the farm's crops
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if (c === '=' && tile(x - 1, y) !== '=' && tile(x, y - 1) !== '=' && ok(pic('bridge'))) ctx.drawImage(pic('bridge'), (x - 0.1) * ts, (y - 0.35) * ts, ts * 2.2, ts * 2.7);
     }
@@ -688,11 +666,13 @@
   // Each building is one picture standing on the bottom row of its footprint, fitted to the footprint's width.
   // 'L' is a bit of street clutter picked by position; 'l' is always a street lamp (round the cul-de-sac).
   const DECO = ['bush', 'lamp', 'bush', 'barrel', 'sign'];
+  const YARD_ART = { a: 'anvil-fire', m: 'anvil', s: 'sword-stump' };
   function drawObject(x, y, c, t) {
     if (c === 'T') { obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2); return; }
     if (c === 'L') { obj(DECO[hash(x, y) % DECO.length], (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
     if (c === 'l') { obj('lamp', (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
     if (c === 'f' && (x + y) % 2 === 0) { obj('crops', (x + 0.5) * ts, (y + 0.9) * ts, 0.8); return; }
+    if (YARD_ART[c]) { const nm = YARD_ART[c]; obj(nm, (x + 0.5) * ts, (y + 1) * ts, 42 / ART().objects[nm][0]); return; }
     if (c !== '#' && !DOORS.includes(c)) return;
     if (c === 'N') return;   // no gate: a plain path leads north (Ladi, 2026-10-18)
     const o = blockOwner(x, y), b = bbox(o);
@@ -730,7 +710,7 @@
     if (!o) return null;
     if (boxes[o]) return boxes[o];
     let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1, door = null;
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if ((c === '#' || c === o) && blockOwner(x, y) === o) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
       if (c === o) door = [x, y];
@@ -741,7 +721,7 @@
   // People: the player, Gary, villagers who stand by their doors, and wanderers who just like walking.
   // Each has a PixelLab sheet: rows face south, west, east and north; column 0 stands, then walk or idle frames.
   const ROW = { south: 0, west: 1, east: 2, north: 3 };
-  function person(id, px, py, t, face, moving, noShadow, pace) {
+  function person(id, px, py, t, face, moving, noShadow, pace, yawn) {
     const c = ART().chars[id], im = pic('c-' + id);
     ctx.fillStyle = 'rgba(43,35,64,0.22)';
     if (!noShadow) { ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
@@ -751,7 +731,9 @@
     const col = n && (moving || !c.walk) ? 1 + Math.floor(t * (moving ? 8 * (pace || 1) : 5)) % n : 0;
     // Villagers without walk frames hop along instead.
     const bob = moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
-    const w = c.w * ts / 32, h = c.h * ts / 32;
+    const w = c.w * ts / 32, h = c.h * ts / 32, y = yawn >= 0 && pic('y-' + id);
+    // Mid-yawn (yawn is 0 or 1): the hand-pixelled yawn frames stand in for the usual sheet.
+    if (y && ok(y)) return ctx.drawImage(y, yawn * c.w, 0, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h, w, h);
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h + bob, w, h);
   }
   const headY = y => (y - 0.55) * ts;
@@ -794,19 +776,23 @@
     if (n.block) return obj(n.block, (n.x + 0.5) * ts, (n.y + 1) * ts, 0.8);
     if (n.bench) return drawBench(n.x, n.y);
     const a = !n.moving && n.act ? doing(n, t) : null;
+    let face = 'south', yawn = -1;
     if (n.bird) drawBird(n, t);
     else {
       // You walking up gets their attention; otherwise they face their work.
       const near = Math.abs(P.x - n.x) + Math.abs(P.y - n.y) <= 1;
-      const face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
+      face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
       ctx.save(); if (a && a.dy) ctx.translate(0, a.dy * ts);
-      person(n.id, xx(n), yy(n), t, face, !!n.moving || !!(a && a.anim), false, n.moving ? pace(n) : 1);
+      yawn = !n.moving && face === 'south' && SD.clock ? SD.clock.yawnFrame(n.id, t) : -1;
+      person(n.id, xx(n), yy(n), t, face, !!n.moving || !!(a && a.anim), false, n.moving ? pace(n) : 1, yawn);
       ctx.restore();
       if (a && a.fx) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
     }
     // A quest marker replaces any bubble, so the two never overlap.
     if (n.moving || (H.npcMarks && H.npcMarks[n.id])) return;
     const X = xx(n) * ts + ts / 2, Y = n.bird ? yy(n) * ts : headY(yy(n)) + (a && a.dy ? a.dy * ts : 0);
+    // Now and then a sleepy villager yawns (js/clock.js decides who and when), with a yawn bubble over their head.
+    if (SD.clock && SD.clock.yawning(n.id, t)) return SD.clock.drawYawn(ctx, X, Y, ts);
     if (a) { if (a.bub) emote(a.bub, X, Y); return; }
     // Without an act: Gary sips coffee, everyone else occasionally has a feeling about something.
     if ((t + n.x) % 9 < 2.2) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', X, Y);
@@ -823,7 +809,9 @@
       case 'smith': {
         // Raise, strike, clang: a hop down onto the anvil and a spray of sparks in front.
         const s = (k * 1.25) % 1, hit = s < 0.15;
-        return { face: 'north', dy: s > 0.6 ? -0.06 : hit ? 0.03 : 0, bub: every(n, t, 11, ['bang', 'sweat', 'happy']),
+        // At the forge yard they face the anvil next to them; anywhere else, north.
+        const face = Object.keys(ahead).find(f => YARD_ART[tile(n.x + ahead[f][0], n.y + ahead[f][1])] && tile(n.x + ahead[f][0], n.y + ahead[f][1]) !== 's') || 'north';
+        return { face, dy: s > 0.6 ? -0.06 : hit ? 0.03 : 0, bub: every(n, t, 11, ['bang', 'sweat', 'happy']),
           fx: (x, y, f) => { if (s < 0.35) sparks(x + ahead[f][0] * ts * 0.45, y - ts * 0.55 + ahead[f][1] * ts * 0.2, s / 0.35, n.id); } };
       }
       case 'talk': {

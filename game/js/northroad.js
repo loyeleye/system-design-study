@@ -38,6 +38,7 @@
     m.rect(5, 27, 8, 28, 'b');                               // courier post
     m.rect(19, 16, 23, 17, 'b');                             // bard's stage
     m.rect(18, 39, 22, 40, 'b');                             // Marta's caravan
+    m.rect(15, 32, 16, 32, 'b');                             // the pilgrim's shrine
     m.rect(22, 30, 26, 32, '~'); m.rect(3, 40, 6, 42, '~');
     m.trees([[21, 9], [6, 10], [9, 8], [25, 11], [3, 17], [11, 18], [24, 20], [27, 16], [2, 24], [9, 25], [20, 22],
       [26, 21], [3, 31], [19, 33], [27, 35], [8, 38], [23, 36], [4, 44], [10, 43], [20, 44], [25, 42], [18, 11], [11, 11], [27, 29], [6, 33]]);
@@ -59,7 +60,9 @@
         { name: 'nr-signpost', x: 11, y: 34 }, { name: 'nr-signpost', x: 17, y: 24 }, { name: 'nr-signpost', x: 13, y: 12 },
         { name: 'nr-milestone', x: 16, y: 43 }, { name: 'nr-milestone', x: 11, y: 30 }, { name: 'nr-milestone', x: 13, y: 10 },
         { name: 'nr-fence', x: 18, y: 37 }, { name: 'nr-fence', x: 21, y: 37 }, { name: 'nr-fence', x: 8, y: 16 },
-        { name: 'nr-rock', x: 24, y: 14 }, { name: 'nr-rock', x: 5, y: 8 }, { name: 'nr-rock', x: 21, y: 28 }, { name: 'nr-cart', x: 9, y: 40 }
+        { name: 'nr-rock', x: 24, y: 14 }, { name: 'nr-rock', x: 5, y: 8 }, { name: 'nr-rock', x: 21, y: 28 }, { name: 'nr-cart', x: 9, y: 40 },
+        // A little roadside shrine with a candle in it, turned towards the pilgrim, who stops here to pray.
+        { name: 'o-shrine', x: 15.6, y: 32, flip: true }
       ],
       labels: [
         { x: 2, y: 37.6, text: '← WAYSTATION' }, { x: 27, y: 27.6, text: 'THE ARENA →' }, { x: 2, y: 15.6, text: "← HEROES' CAMP" },
@@ -251,16 +254,82 @@
     const q = $('#nr-hud [data-nr="quests"]'); if (q) q.onclick = () => QS().log();
   }
   // Who is around, and who has a quest for you, depends on how far the story has got.
-  function cast() {
+  function cast(snap) {
     const marks = (QS() && QS().marks) ? QS().marks() : {};
     Object.values(sc.actors).forEach(a => { if (!a.player && !a.pip) a.marker = !!marks[a.id]; });
+    schedule(snap);
     if (cur === 'camp') { sc.hide('hero1023', !flags().ch8); sc.hide('hero500', !flags().ch8); }
     if (cur === 'arena') sc.hide('hero500', !!flags().ch8);
     if (cur === 'waystation') sc.actors.latency.marker = sc.actors.latency.marker || (A.open(7) && !flags().ch7);
     if (SD.roadTalk && SD.roadTalk.cast) SD.roadTalk.cast(sc, cur);
-    if (cur === 'road') sc.hide('aigerim', !(NR.shop && NR.shop.ready()));
+    // Aigerim stands outside her shop, or minds the counter inside it once it has a room (js/interiors.js).
+    if (cur === 'road') sc.hide('aigerim', !(NR.shop && NR.shop.ready()) || inside());
     const shop = road.labels.find(l => l.id === 'shop');
     if (shop) shop.text = NR.shop && NR.shop.name ? NR.shop.name.toUpperCase() : 'CARD SHOP';
+    // Whoever their schedule put indoors stays out of sight, whatever the story says about them.
+    Object.values(sc.actors).forEach(a => { if (a.schedIn) a.hidden = true; });
+  }
+
+  // ---------- Daily schedules (js/folk-far.js) ----------
+  // Each block of the day puts people somewhere: walking the road, at a spot doing something, or gone indoors.
+  // Arriving on a map puts everyone straight in place; a block that changes while you're there (a quest step, a
+  // lesson) sends them walking. Anyone with a quest marker stays at their usual spot.
+  const block = () => SD.clock ? SD.clock.block() : 'morning';
+  function schedule(snap) {
+    const def = MAPS[cur], table = (SD.folkFar && SD.folkFar.road[cur]) || {};
+    Object.values(sc.actors).forEach(a => {
+      const d = def.actors[a.id];
+      if (!d || a.player || a.pip) return;
+      if (a.route0 === undefined) a.route0 = a.route || null;
+      let e = table[a.id] && table[a.id][block()];
+      if (a.marker || !e) e = a.route0 ? 'route' : [d.x, d.y, d.face];
+      const key = JSON.stringify(e);
+      if (a.plan === key && !snap) return;
+      a.plan = key; a.goal = null; a.home = null; a.emoK = null; a.path = [];
+      // Back out of wherever the last plan (or a walk along the route) put them.
+      if (a.schedIn || a.away) { a.schedIn = false; a.away = 0; sc.hide(a.id, false); a.alpha = null; }
+      a.route = e === 'route' ? a.route0 : null;
+      if (e === 'route') return;
+      a.goal = e[0] === 'in' ? { x: e.length > 1 ? e[1] : a.x, y: e.length > 1 ? e[2] : a.y, into: true } : { x: e[0], y: e[1], face: e[2], emo: e[3] };
+      if (snap) { sc.place(a.id, a.goal.x, a.goal.y); arrived(a, true); }
+    });
+  }
+  function arrived(a, snap) {
+    const g = a.goal; a.goal = null;
+    if (g.into) {
+      a.schedIn = true;
+      if (snap) sc.hide(a.id, true); else fade(a, 0, () => { if (a.schedIn) sc.hide(a.id, true); });
+      return;
+    }
+    if (g.face) sc.face(a.id, g.face);
+    a.home = [g.x, g.y]; a.emoK = g.emo || null; a.leg = 0;
+    a.nextStroll = performance.now() + 4000 + Math.random() * 4000;
+  }
+  // A path over open ground, round trees, walls, water and people.
+  function bfs(a, gx, gy) {
+    const k = (x, y) => x + ',' + y, prev = new Map([[k(a.x, a.y), null]]), q = [[a.x, a.y]];
+    while (q.length) {
+      const [x, y] = q.shift();
+      if (x === gx && y === gy) {
+        const out = []; let c = k(x, y);
+        while (c !== k(a.x, a.y)) { const [px, py] = c.split(',').map(Number); out.unshift([px, py]); c = prev.get(c); }
+        return out;
+      }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (prev.has(k(nx, ny)) || !(sc.walkable(nx, ny) || (nx === gx && ny === gy && !(sc.def.solid || 'T#').includes(sc.tile(nx, ny))))) continue;
+        prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]);
+      }
+    }
+    return null;
+  }
+  function toGoal(a) {
+    const g = a.goal;
+    if (a.x === g.x && a.y === g.y) return arrived(a);
+    const p = bfs(a, g.x, g.y);
+    if (!p) { sc.place(a.id, g.x, g.y); return arrived(a); }
+    a.speed = 2.2; a.path = p;
+    a.arrive = () => { if (a.goal === g && a.x === g.x && a.y === g.y) arrived(a); };
   }
   function go(key, at) {
     if (sc) sc.stop();
@@ -269,14 +338,27 @@
     if (!scenes[key]) {
       scenes[key] = SD.scene.create($('#north-canvas'), def);
       scenes[key].onDoor = door; scenes[key].onTalk = talk;
+      if (key === 'road') scenes[key].fx.push(candle);
       const [x, y, f] = def.enter || def.back.S;
       scenes[key].player(x, y, f);
     }
     sc = scenes[key];
     if (at) { sc.place('you', at[0], at[1]); sc.face('you', at[2] || 'south'); }
-    cast(); hud(); sc.start();
+    cast(true); hud(); sc.start();
     AU.music(def.music);
     if (SD.weather) SD.weather.sync(SD.weather.now(def.weather));
+  }
+
+  // The candle in the pilgrim's shrine: a small flame that flickers, with a warm glow around it.
+  function candle(ctx, t, ts) {
+    const k = ts / 32, x = (15.6 + 0.5) * ts + 6.5 * k, y = 33 * ts - 28 * k;
+    const f = 0.75 + 0.15 * Math.sin(t * 13) + 0.1 * Math.sin(t * 29 + 1.3);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 9 * k * f);
+    g.addColorStop(0, 'rgba(255,200,110,.55)'); g.addColorStop(1, 'rgba(255,160,60,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 9 * k * f, 0, Math.PI * 2); ctx.fill();
+    const sway = Math.sin(t * 7) * 0.6 * k;
+    ctx.fillStyle = '#ff9a2e'; ctx.beginPath(); ctx.ellipse(x + sway * 0.5, y, 1.6 * k, 3 * k * f, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(x + sway, y + 0.6 * k, 0.8 * k, 1.6 * k * f, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   NR.enter = async function (fromRun) {
@@ -374,8 +456,16 @@
   // The card shop: Aigerim moves her stall here from Pingsby once the road opens (js/peddler.js has her and her stock).
   // NR.shop = { name, open(), ready() } is all the road needs, so another shop could take the spot.
   if (SD.peddler) NR.shop = { name: "Aigerim's Cards", open: () => SD.peddler.open({ full: true }), ready: () => SD.peddler.moved() };
+  const inside = () => !!(SD.interiors && SD.interiors.room && SD.interiors.room('cards')) && !!NR.shop && NR.shop.name === "Aigerim's Cards";
   async function shop() {
-    if (NR.shop && (!NR.shop.ready || NR.shop.ready())) return NR.shop.open();
+    if (NR.shop && (!NR.shop.ready || NR.shop.ready())) {
+      if (!inside()) return NR.shop.open();
+      // The road stops while you're inside; door() starts it again on the way out.
+      sc.stop();
+      await SD.interiors.open('cards', 'north-canvas');
+      AU.music(MAPS[cur].music);
+      return;
+    }
     await U.dialog([{ s: 'pip', t: 'A sign in the window: "OPENING SOON. Cards, rare and less rare. Discounts for heroes who have died at least once." That\'s everyone!' }]);
   }
 
@@ -401,6 +491,8 @@
     const who = sc.actors[id];
     if (who && sc.P && !STILL[id]) { if (who.path.length) { who.path = []; if (who.route && who.leg) who.leg--; } sc.face(id, toward(who, sc.P)); }
     try {
+      // A relationship scene that's due with them on this map comes first (js/folk-scenes.js); it waits out quest steps.
+      if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('road:' + cur, id)) { AU.music(MAPS[cur].music); return; }
       // Explodia runs her own Blast Academy (js/explodia.js), quest steps included; the road's ordinary
       // people are in js/roadfolk.js.
       if (id === 'explodia' && SD.explodia) { await SD.explodia.talk(); AU.music(MAPS[cur].music); return; }
@@ -453,7 +545,7 @@
   setInterval(() => {
     if (!sc || !sc.active || cur !== 'camp') return;
     const a = sc.actors; beat++;
-    if (a.hero77 && !a.hero77.path.length) {
+    if (a.hero77 && !a.hero77.path.length && a.hero77.y === 18 && !a.hero77.goal && !a.hero77.emoK) {
       const lunge = beat % 4 === 1, back = beat % 4 === 3;
       if (lunge) { sc.walk('hero77', 8, 18, { speed: 6 }).then(() => { sc.face('hero77', 'east'); sc.emote('hero256', beat % 8 === 1 ? 'alert' : 'star', 1); }); }
       if (back) { sc.walk('hero77', 7, 18, { speed: 3 }).then(() => sc.face('hero77', 'east')); }
@@ -480,7 +572,11 @@
     if (!sc || !sc.active || busy || !document.getElementById('dialog').hidden) return;
     const now = performance.now(), P = sc.P;
     Object.values(sc.actors).forEach(a => {
-      if (a.player || a.pip || STILL[a.id]) return;
+      if (a.player || a.pip) return;
+      // On the way somewhere for this time of day: they keep going, and squeeze past you if you're in the way.
+      if (a.goal && !a.hidden) { if (!a.path.length && !a.moving) toGoal(a); return; }
+      if (a.emoK && !a.moving && !a.hidden && Math.random() < 0.015) sc.emote(a.id, a.emoK, 1.6);
+      if (STILL[a.id]) return;
       // Someone who went indoors comes back out after a while, at the door they used.
       if (a.away) {
         if (now < a.away) return;
@@ -524,6 +620,8 @@
       a.nextStroll = now + 3500 + Math.random() * 5000;
     });
   }, 250);
+  // A block that changes while you're on the road sends everyone walking to their next spot.
+  if (SD.clock) SD.clock.onChange(() => { if (sc && sc.active) cast(); });
   NR.go = go;
   NR.where = () => cur;
   NR.scene = () => sc;

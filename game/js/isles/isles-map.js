@@ -48,11 +48,16 @@
     { id: 'shop', isle: 'carto', x: 45, y: 27, w: 5, h: 3, name: 'MAP & TOOL SHOP' },
     { id: 'hallW', isle: 'twins', x: 32, y: 1, w: 3, h: 2, name: 'WEST TWIN' },
     { id: 'hallE', isle: 'twins', x: 39, y: 1, w: 3, h: 2, name: 'EAST TWIN' },
-    { id: 'light', isle: 'lighthouse', x: 57, y: 16, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [57.5, 12.4] },
+    { id: 'light', isle: 'lighthouse', x: 57, y: 16, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [57.5, 12.4], door: [57, 17] },
     { id: 'club', isle: 'landing', x: 16, y: 39, w: 4, h: 3, name: 'TIDE POOL GAME CLUB' },
     { id: 'gtable', isle: 'landing', x: 20, y: 44, w: 1, h: 1, name: '' },
     { id: 'umbrella', isle: 'landing', x: 26, y: 44, w: 1, h: 1, name: '' }
   ];
+  // Buildings with a room inside (js/interiors.js): walk into the door, the middle of the bottom row unless the
+  // landmark says otherwise (the Keeper's note stands in front of the lighthouse), to go in.
+  const ROOM = { office: 'office', school: 'school', bank: 'bank', mill: 'mill', tower: 'tower', shop: 'carto', hallW: 'hallW', hallE: 'hallE', light: 'light', club: 'club' };
+  const roomOf = l => l && ROOM[l.id] && SD.interiors && SD.interiors.room && SD.interiors.room(ROOM[l.id]) ? ROOM[l.id] : null;
+  const doorOf = l => l.door || [l.x + Math.floor(l.w / 2), l.y + l.h - 1];
   // Islanders stand by their landmarks. The keeper is a note pinned to the lighthouse door.
   const PEOPLE = [
     { id: 'ploy', x: 16, y: 43 }, { id: 'kai', x: 19, y: 44 }, { id: 'nok', x: 21, y: 44 }, { id: 'arjun', x: 26, y: 45 }, { id: 'meron', x: 23, y: 42 },
@@ -131,7 +136,7 @@
   const dockAt = (x, y) => Object.keys(DOCK).find(k => DOCK[k].at[0] === x && DOCK[k].at[1] === y);
   // Who's out today: Gary fishes on Sundays, until he goes missing in chapter 9.
   const sunday = () => new Date().getDay() === 0 || (I.dev && I.dev.sunday);
-  const people = () => PEOPLE.filter(p => (!p.sunday || (sunday() && !S.save.flags.ch9)) && I.islandOpen(isleOf(p)));
+  const people = () => PEOPLE.filter(p => !p.hide && (!p.sunday || (sunday() && !S.save.flags.ch9)) && I.islandOpen(isleOf(p)));
   const isleOf = p => Object.keys(ISLE).find(id => (ISLE[id].parts || [ISLE[id].box]).some(([x0, y0, x1, y1]) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1)) || 'landing';
   function walkable(x, y) {
     const c = get(x, y);
@@ -141,6 +146,76 @@
     const isl = isleAt(x, y);
     return !isl || I.islandOpen(isl) || isl === 'landing';
   }
+
+  // ---------- Daily schedules (js/folk-far.js) ----------
+  // Islanders keep to their own island: at work, out and about, inside their building (its room in js/interiors.js),
+  // or gone home for the night. Arriving on the Isles puts everyone straight in place; a block that changes while
+  // you're here sends them walking. Anyone with a quest marker waits at their usual spot.
+  PEOPLE.forEach(p => { p.stand = [p.x, p.y]; p.px = p.x; p.py = p.y; p.path = []; });
+  const isleBlock = () => SD.clock ? SD.clock.block() : 'morning';
+  function plan(snap) {
+    const marks = Object.assign({}, I.marks(), SD.quests ? SD.quests.marks() : {}), table = (SD.folkFar && SD.folkFar.isles) || {};
+    PEOPLE.forEach(p => {
+      if (p.note || p.sunday) return;
+      let e = marks[p.id] || (p.id === 'ploy' && !I.st().ployMet) ? null : table[p.id] && table[p.id][isleBlock()];
+      let l = typeof e === 'string' && e.startsWith('room:') ? LAND.find(m => m.id === e.slice(5)) : null;
+      if (l && (!roomOf(l) || !I.islandOpen(l.isle))) { e = null; l = null; }
+      const key = JSON.stringify(e || null);
+      if (p.plan === key && !snap) return;
+      p.plan = key; p.path = []; p.room = null;
+      // Out of the building or back from home: step out where they went in.
+      if (p.hide) { p.hide = false; p.alpha = null; }
+      if (e === 'home') { p.goal = null; p.hide = true; return; }
+      if (l) { const d = doorOf(l); p.goal = { x: d[0], y: d[1] + 1, room: ROOM[l.id] }; }
+      else p.goal = Array.isArray(e) ? { x: e[0], y: e[1] } : { x: p.stand[0], y: p.stand[1] };
+      if (snap) { p.x = p.px = p.goal.x; p.y = p.py = p.goal.y; arrive(p); }
+    });
+  }
+  function arrive(p) {
+    const g = p.goal; p.goal = null;
+    if (g && g.room) { p.room = g.room; p.hide = true; }
+  }
+  // A path for an islander over open ground and boardwalks, round everyone else.
+  function islePath(p, gx, gy) {
+    const k = (x, y) => x + ',' + y, prev = new Map([[k(p.x, p.y), null]]), q = [[p.x, p.y]];
+    while (q.length) {
+      const [x, y] = q.shift();
+      if (x === gx && y === gy) {
+        const out = []; let c = k(x, y);
+        while (c !== k(p.x, p.y)) { out.unshift(c.split(',').map(Number)); c = prev.get(c); }
+        return out;
+      }
+      for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        if (prev.has(k(nx, ny)) || (nx === P.x && ny === P.y) || !walkable(nx, ny)) continue;
+        prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]);
+      }
+    }
+    return null;
+  }
+  let planT = 0;
+  function moveFolk(dt) {
+    if ((planT -= dt) <= 0) { planT = 0.5; plan(false); }
+    PEOPLE.forEach(p => {
+      if (!p.goal && !p.path.length) return;
+      const sp = dt * 2.4;
+      p.moving = Math.abs(p.px - p.x) + Math.abs(p.py - p.y) > 0.01;
+      p.px += Math.sign(p.x - p.px) * Math.min(Math.abs(p.x - p.px), sp);
+      p.py += Math.sign(p.y - p.py) * Math.min(Math.abs(p.y - p.py), sp);
+      if (p.moving || busyTalk) return;
+      if (p.goal && p.x === p.goal.x && p.y === p.goal.y) { arrive(p); return; }
+      if (!p.path.length) { p.path = islePath(p, p.goal.x, p.goal.y) || []; if (!p.path.length) { p.wait = (p.wait || 0) + 1; if (p.wait > 6) { p.x = p.px = p.goal.x; p.y = p.py = p.goal.y; p.wait = 0; } return; } }
+      const [nx, ny] = p.path[0];
+      // Someone (or you) stepped into the way: wait a beat and find another way round.
+      if ((nx === P.x && ny === P.y) || PEOPLE.some(o => o !== p && !o.hide && o.x === nx && o.y === ny)) { p.path = []; return; }
+      p.path.shift(); p.wait = 0; p.x = nx; p.y = ny;
+    });
+  }
+  // Who is inside a building right now, for its room (js/interiors.js): room key, as in ROOM.
+  I.inside = key => PEOPLE.filter(p => p.hide && p.room === key).map(p => p.id);
+  I.talkTo = w => talk(w);
+  // For playtests: where every islander is, and what they're doing.
+  I.folkNow = () => PEOPLE.map(p => ({ id: p.id, x: p.x, y: p.y, hide: !!p.hide, room: p.room, plan: p.plan, goal: p.goal }));
 
   // ---------- Screen ----------
   let cv, ctx, raf, dpr = 1, ts = 32, t0 = 0, active = false, built = false, busyTalk = false;
@@ -154,8 +229,8 @@
     built = true;
     const sec = document.createElement('section');
     sec.id = 'screen-isles'; sec.className = 'screen'; sec.hidden = true;
-    sec.innerHTML = `<div id="isles-hud"></div><canvas id="isles-canvas" aria-label="The Eventual Isles. Tap to walk; walk into people, docks and posts."></canvas>
-      <div class="hub-hint isles-hint">Tap to walk · walk into people, docks and tide posts</div>`;
+    sec.innerHTML = `<div id="isles-hud"></div><canvas id="isles-canvas" aria-label="The Eventual Isles. Tap to walk; walk into people, doors, docks and posts."></canvas>
+      <div class="hub-hint isles-hint">Tap to walk · walk into people, doors, docks and tide posts</div>`;
     document.body.appendChild(sec);
     cv = sec.querySelector('#isles-canvas'); ctx = cv.getContext('2d');
     window.addEventListener('resize', resize);
@@ -204,6 +279,7 @@
     const st = I.st();
     const back = st.pos && walkable(st.pos[0], st.pos[1]) ? st.pos : [9, 21];
     place(back[0], back[1]);
+    plan(true);
     active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
     AU.music('explore');
     hud();
@@ -258,6 +334,7 @@
   function thingAt(x, y) {
     const p = personAt(x, y); if (p) return { kind: 'person', id: p.id };
     const l = landAt(x, y); if (l && l.id === 'board') return { kind: 'board' };
+    if (roomOf(l) && doorOf(l)[0] === x && doorOf(l)[1] === y) return { kind: 'room', id: l.id };
     const t = tideAt(x, y); if (t) return { kind: 'tide', id: t };
     const b = bridgeAt(x, y); if (b && !I.bridgeBuilt(b) && I.bridges.some(z => z.id === b)) return { kind: 'bridge', id: b };
     return null;
@@ -269,7 +346,10 @@
   function tap(e) {
     if (!active || busyTalk) return;
     const r = cv.getBoundingClientRect(), { cx, cy } = cam();
-    const tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
+    let tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
+    // Tapping anywhere on a building with a room walks you to its door and in.
+    const tl = get(tx, ty) === '#' && landAt(tx, ty);
+    if (roomOf(tl)) [tx, ty] = doorOf(tl);
     const th = thingAt(tx, ty);
     if (th) {
       const near = (x, y) => DIRS.some(([dx, dy]) => x + dx === tx && y + dy === ty);
@@ -317,8 +397,18 @@
       else if (th.kind === 'tide') await I.tideRound(th.id);
       else if (th.kind === 'bridge') await I.buildBridge(th.id);
       else if (th.kind === 'dock') await ferry(th.id);
+      else if (th.kind === 'room') await inside(th.id);
       else if (th.kind === 'exit') { busyTalk = false; I.close(); return; }
     } finally { busyTalk = false; hud(); }
+  }
+
+  // Going into a building: the room covers the map, which stops until you walk back out.
+  async function inside(id) {
+    AU.sfx && AU.sfx('door');
+    active = false; cancelAnimationFrame(raf);
+    try { await SD.interiors.open(roomOf(LAND.find(l => l.id === id)), 'isles-canvas'); } finally {
+      if (!document.getElementById('screen-isles').hidden) { active = true; resize(); t0 = 0; raf = requestAnimationFrame(loop); }
+    }
   }
 
   // Leilani, Kwame and Ploy have services as well as quests; everyone else just talks.
@@ -342,6 +432,8 @@
     }
     // Town quests can have steps on the Isles (js/ploy-quest.js): they come first, as they do in Pingsby.
     if (SD.quests && SD.quests.pending(w).length && await SD.quests.talk(w)) { AU.music('explore'); hud(); return; }
+    // Then a relationship scene that's due with them (js/folk-scenes.js); it waits out their commissions.
+    if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('isles', w)) { hud(); return; }
     const services = SERVICES[w] ? SERVICES[w]() : [];
     if (!services.length) { await I.talk(w); return; }
     const pend = I.pending(w);
@@ -442,7 +534,7 @@
   function loop(ms) {
     if (!active) return;
     const dt = Math.min(0.05, (ms - (t0 || ms)) / 1000); t0 = ms;
-    update(dt);
+    update(dt); moveFolk(dt);
     draw(ms / 1000, dt);
     if (SD.weather) SD.weather.sync();
     raf = requestAnimationFrame(loop);
@@ -703,7 +795,7 @@
     return true;
   }
   function islander(p, t) {
-    const X = (p.x + 0.5) * ts, Y = (p.y + 0.95) * ts, s = ts / 32;
+    const X = (p.px + 0.5) * ts, Y = (p.py + 0.95 - (p.moving ? Math.abs(Math.sin(t * 14)) * 0.08 : 0)) * ts, s = ts / 32;
     if (p.note) {
       // The keeper: a folded note on the lighthouse door, lifting in the wind.
       if (!ok(ipic('note'))) return false;
@@ -724,7 +816,7 @@
   function chibi(p, t) {
     if (p.id !== 'gary' && islander(p, t)) return;
     const L = I.looks[p.id]; if (!L && p.id !== 'gary') return;
-    const X = (p.x + 0.5) * ts, Y = (p.y + 0.95) * ts, s = ts / 32, bob = Math.sin(t * 2.4 + p.x) * s;
+    const X = (p.px + 0.5) * ts, Y = (p.py + 0.95 - (p.moving ? Math.abs(Math.sin(t * 14)) * 0.08 : 0)) * ts, s = ts / 32, bob = Math.sin(t * 2.4 + p.x) * s;
     ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
     if (p.id === 'gary') {
       // Gary, on his rock, with a rod that never catches anything.
@@ -819,7 +911,7 @@
       }
       LAND.forEach(l => { if (l.y + l.h - 1 === y && I.islandOpen(l.isle) && !(PIXEL[l.id] && PIXEL[l.id](l, t))) DRAW[l.id](l, t); });
       Object.keys(TIDE).forEach(id => { if (TIDE[id][1] === y) drawTide(id, t); });
-      ppl.forEach(p => { if (p.y === y) chibi(p, t); });
+      ppl.forEach(p => { if (Math.round(p.py) === y) chibi(p, t); });
       if (Math.round(P.py) === y) { obj('pip', pip.x * ts + ts / 2, pip.y * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, P.dir < 0); person(t); }
     }
     // The time of day (js/clock.js) under the signs and names.
@@ -828,7 +920,7 @@
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     LAND.forEach(l => { if (I.islandOpen(l.isle) && l.name && l.id !== 'board') label(l.lab ? l.lab[0] : l.x + l.w / 2 - 0.5, l.lab ? l.lab[1] : l.y + l.h + 0.7, l.name, null, false, t); });
     if (I.islandOpen('landing')) label(10, 16.6, 'BOARD', I.commissions.some(c => I.commissionStatus(c.id) === 'open') ? '!' : null, true, t);
-    ppl.forEach(p => label(p.x, p.y + 1.45, p.note ? 'NOTE' : (I.who(p.id).split(' ').slice(-1)[0] || '').toUpperCase(), marks[p.id], true, t));
+    ppl.forEach(p => label(p.px, p.py + 1.45, p.note ? 'NOTE' : (I.who(p.id).split(' ').slice(-1)[0] || '').toUpperCase(), marks[p.id], true, t));
     label(EXIT[0] + 0.6, EXIT[1] - 0.2, '← PINGSBY', null, true, t);
     Object.keys(ISLE).forEach(id => { if (id !== 'landing' && !I.islandOpen(id)) fog(id, t); });
     ctx.restore();

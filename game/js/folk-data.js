@@ -24,6 +24,9 @@
     guild: { label: "the Adventurers' Guild", tiles: [[36, 6], [40, 6]] },
     'guild:in': { label: "inside the Adventurers' Guild", door: 'U' },
     forge: { label: 'the Forge', tiles: [[44, 5], [44, 6], [46, 6]] },
+    // The forge yard behind the Forge (negative y: rows added above the town in js/hub.js). Each smith stands beside an anvil.
+    yard: { label: 'the forge yard', tiles: [[45, -3], [42, -3]] },
+    'yard-mio': { label: 'the forge yard', tiles: [[42, -3], [45, -3]] },
     'forge:in': { label: 'inside the Forge', door: 'F' },
     'west-bridge': { label: 'the west footbridge', tiles: [[15, 9], [16, 8]] },
     'east-bridge': { label: 'the east footbridge', tiles: [[40, 9], [41, 8]] },
@@ -88,7 +91,7 @@
     },
     mio: {
       act: 'play',
-      morning: ['forge', "At school: Ayo's class hammers at the Forge", "Shh! I'm at SCHOOL. Ayo says today we learn to hit things on purpose.", 'smith'],
+      morning: ['yard-mio', "At school: Ayo's class hammers in the forge yard", "Shh! I'm at SCHOOL. Ayo says today we learn to hit things on purpose.", 'smith'],
       afternoon: c => c.f.ch7 && c.loop % 2 === 0 ? ['north-gate', 'Watching the North Road for her mum', "Mum carries letters up and down that road. If I watch hard enough, she'll come round the corner.", 'watch']
         : c.loop % 2 ? ['cafe:in', 'Helping Wen in the café']
         : [['treehouse', 'west-bridge', 'plaza', 'bench'], 'Running about town on an adventure', "I'm on a QUEST. It's secret. It's to find the best stick.", 'play'],
@@ -115,8 +118,8 @@
     },
     ayo: {
       act: 'smith',
-      morning: ['stand', "Teaching Mio's class at the anvil", null, 'smith'],
-      afternoon: c => c.f.ch7 ? ['road', 'Selling at the North Road market'] : ['stand', 'Apprentices at the anvils', null, 'smith'],
+      morning: ['yard', "Teaching Mio's class at the anvils", null, 'smith'],
+      afternoon: c => c.f.ch7 ? ['road', 'Selling at the North Road market'] : ['yard', 'Hammering out the day\'s orders in the forge yard', null, 'smith'],
       evening: ['stand', "Writing the day's post-mortem", null, 'write'],
       night: ['row:ayo', 'Asleep at home. The Forge stays lit.'],
       board: 'AYO: {spot}. On-prem. Does not use the board, but tells Bru in person.'

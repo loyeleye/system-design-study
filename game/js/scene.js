@@ -14,7 +14,7 @@
   const ROW = { south: 0, west: 1, east: 2, north: 3 };
   const hash = (x, y) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
 
-  // Art lookups: arc art (js/arc-art.js) first, then Pingsby's.
+  // Art lookups: arc art (js/arc-art.js) first, then Pingsby's, the dungeons' and the interiors'.
   function objArt(name) {
     const a = SD.arcArt && SD.arcArt.objects[name];
     if (a) return { src: 'assets/img/arc/' + name + '.webp', w: a[0], h: a[1] };
@@ -22,6 +22,8 @@
     if (v) return { src: 'assets/img/village/' + name + '.webp', w: v[0], h: v[1] };
     const d = SD.dungeonArt && SD.dungeonArt.objects[name];
     if (d) return { src: 'assets/img/dungeon/' + name + '.webp', w: d[0], h: d[1] };
+    const n = SD.interiorsArt && SD.interiorsArt.objects[name];
+    if (n) return { src: 'assets/img/interiors/' + name + '.webp', w: n[0], h: n[1] };
     return null;
   }
   function charArt(id) {
@@ -29,6 +31,9 @@
     if (a) return Object.assign({ src: 'assets/img/arc/c-' + id + '.webp' }, a);
     const v = SD.villageArt && SD.villageArt.chars[id];
     if (v) return Object.assign({ src: 'assets/img/village/c-' + id + '.webp' }, v);
+    // Islanders, inside their buildings on the Isles (js/interiors.js).
+    const i = SD.isles && SD.isles.ART && SD.isles.ART.chars[id];
+    if (i) return Object.assign({ src: 'assets/img/isles/c-' + id + '.webp' }, i);
     return null;
   }
   // Terrain sheets: Pingsby's (dirt, water, plaza, farm over grass) or a dungeon floor's (path over floor).
@@ -431,7 +436,8 @@
     // Lamps, fires and windows that glow after dark: [art height fraction above the base, radius in tiles, colour].
     const LIGHT = { lamp: [0.88, 2.6], 'ex-firepit': [0.3, 3.6, '255,140,60'], 'cp-fire': [0.3, 3.6, '255,140,60'], camp: [0.3, 3.6, '255,140,60'],
       'ws-inn': [0.4, 3], 'ex-townhouse': [0.45, 2.4], 'ex-townhouse2': [0.45, 2.4], 'nr-roofs': [0.4, 2.2], 'nr-shop': [0.4, 2.4],
-      'ex-stall': [0.4, 1.8], 'cp-tent1': [0.4, 1.6], 'cp-tent2': [0.4, 1.6], 'ex-tower': [0.5, 3.6], 'nr-citygate': [0.4, 2.6], 'ws-stable': [0.4, 2], 'b-C': [0.4, 3] };
+      'ex-stall': [0.4, 1.8], 'cp-tent1': [0.4, 1.6], 'cp-tent2': [0.4, 1.6], 'ex-tower': [0.5, 3.6], 'nr-citygate': [0.4, 2.6], 'ws-stable': [0.4, 2], 'b-C': [0.4, 3],
+      'o-shrine': [0.45, 1.8, '255,170,80'] };
     function lights(objs, cx, cy) {
       if (!SD.clock.dark()) return [];
       return objs.filter(o => !ISO && LIGHT[o.name] && objArt(o.name)).map(o => {

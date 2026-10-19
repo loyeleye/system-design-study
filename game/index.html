@@ -141,6 +141,10 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .nots li { margin: 4px 0; }
 .nots li.mine { background: #fff1f1; border-radius: 8px; padding: 2px 6px; }
 .nots .tag { font-size: 0.8em; color: #b23b3b; font-weight: 700; }
+.tiers ol { margin: 4px 0 0; padding-left: 20px; }
+.tier { display: inline-block; font-size: 0.78em; font-weight: 800; padding: 0 6px; border-radius: 6px; background: #eee; }
+.tier-broken { background: #f3d3d3; color: #8a2020; } .tier-bad { background: #fde3e3; color: #b23b3b; }
+.tier-good { background: #fff1c2; color: #7a5a00; } .tier-great { background: #e3f5e9; color: #1d7a43; }
 .q-text { width: 100%; box-sizing: border-box; font: inherit; padding: 8px 10px; border: 3px solid var(--ink, #2b2340); border-radius: 12px; resize: vertical; }
 blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a6ff; background: #f7f4ff; border-radius: 0 10px 10px 0; white-space: pre-wrap; }
 .rubric { display: grid; gap: 6px; margin: 6px 0; }
@@ -274,7 +278,7 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 .good { color: #1f8a57; }
 .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--sun); border: 2px solid var(--ink); font-size: 11px; line-height: 14px; }
 .curses { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.curses .chip { white-space: normal; }
+.curses .chip, .order-done .chip { white-space: normal; }
 .pred { padding: 6px 10px; border-radius: 10px; background: #fff3c4; border: 2px dashed #e0b84a; }
 .pred.ok { background: #dcf7e8; border-color: #5bc28c; }
 .quest-opt .pill { vertical-align: middle; }
@@ -888,6 +892,8 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/meta.js"></script>
 <script src="js/clock.js"></script>
 <script src="js/folk-data.js"></script>
+<script src="js/folk-far.js"></script>
+<script src="js/folk-far-arcs.js"></script>
 <script src="js/folk.js"></script>
 <script src="js/weather.js"></script>
 <script src="js/interiors.js"></script>
@@ -914,7 +920,16 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/kevin-quest.js"></script>
 <script src="js/ayo-quest.js"></script>
 <script src="js/kaito-quest.js"></script>
+<script src="js/coo-quest.js"></script>
+<script src="js/lexi-quest.js"></script>
+<script src="js/aigerim-quest.js"></script>
+<script src="js/wen-quest.js"></script>
+<script src="js/whitehat-quest.js"></script>
+<script src="js/seymour-quest.js"></script>
+<script src="js/cron-quest.js"></script>
+<script src="js/manifest-quest.js"></script>
 <script src="js/sidequest-reviews.js"></script>
+<script src="js/review-bank.js"></script>
 <!-- Debug start (testing only; remove before release) -->
 <script src="js/debug.js"></script>
 <!-- @page-end -->
