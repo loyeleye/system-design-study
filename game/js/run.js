@@ -424,13 +424,15 @@
     const tea = mod('heal', 15);
     const stock = cardChoices(3);
     const sold = new Set();
-    let removed = false, healed = false;
+    // Wen's Feather Duster allows a second removal.
+    let removed = 0, healed = false;
+    const removals = rel('duster') ? 2 : 1;
     function render() {
       const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Grandma Wen runs a branch down here too, dear. Don't ask how. Everything is fresh. Well. Fresh enough."</p></div>
         <div class="loot"><span>You have <b>${run.bits}</b> bits</span></div>
         <div class="cardgrid pick">${stock.map((id, i) => sold.has(i) ? '<div class="card sold">SOLD</div>' : `<div class="buy">${U.cardHtml({ id }, { i, dim: run.bits < price[SD.cards[id].rarity] })}<span class="price">${price[SD.cards[id].rarity]} bits</span></div>`).join('')}</div>
         <div class="row">
-          <button id="rm" ${removed || run.bits < 35 ? 'disabled' : ''}>Remove a card · 35</button>
+          <button id="rm" ${removed >= removals || run.bits < 35 ? 'disabled' : ''}>Remove a card · 35${removals > 1 ? ` (${removals - removed} left)` : ''}</button>
           <button id="heal" ${healed || run.bits < 20 ? 'disabled' : ''}>Tea: +${tea} SLA · 20</button>
           <button class="primary" id="leave">Leave</button>
         </div>`, { title: 'CACHE CAFÉ', noClose: true, cls: 'wide' });
@@ -440,7 +442,7 @@
         run.bits -= p; run.deck.push({ id, up: false }); sold.add(i); AU.sfx('coin'); S.persist(); render();
       });
       b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + tea); healed = true; AU.sfx('heal'); S.persist(); render(); };
-      b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed = true; S.persist(); render(); }, render);
+      b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed++; S.persist(); render(); }, render);
       b.querySelector('#leave').onclick = () => { U.closePanel(); done(); };
     }
     render();
@@ -455,16 +457,27 @@
   function campfire(done) {
     const run = S.save.run;
     const heal = mod('heal', Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0))));
+    // The Exchange's Clearing House (js/relic-exchange.js) adds Clear the Books.
+    const clear = rel('clearing') && run.deck.length > 2;
     const b = U.panel(`<p>A quiet break room between floors: a squashy sofa, a humming vending machine, and Pip burning popcorn in the microwave. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
       <p class="muted small">Diffuse mode: stepping back is part of learning. Choose one.</p>
       <div class="opts">
         <button class="opt" id="g-rest"><b>Rest</b> · Recover ${heal} SLA</button>
         <button class="opt" id="g-forge"><b>Refactor</b> · Upgrade a card (+3 to its numbers)</button>
         <button class="opt" id="g-reflect"><b>Reflect</b> · Connect two ideas for XP and a notebook link</button>
+        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Remove 2 cards from your deck, +5 max SLA this run</button>` : ''}
       </div>`, { title: 'BREAK ROOM', noClose: true });
     b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); AU.sfx('heal'); S.persist(); U.closePanel(); done(); };
     b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => campfire(done), c => !c.up && SD.cards[c.id].rarity);
     b.querySelector('#g-reflect').onclick = () => reflect(done);
+    const remove = c => { run.deck.splice(run.deck.indexOf(c), 1); S.persist(); };
+    if (b.querySelector('#g-clear')) b.querySelector('#g-clear').onclick = () => pickCard('Remove which card? (1 of 2)', c => {
+      remove(c);
+      // The second pick can be skipped; the max SLA comes with the first.
+      run.maxPlus = (run.maxPlus || 0) + 5; run.sla = Math.min(S.maxSla(), run.sla + 5); S.persist();
+      const fin = () => { U.closePanel(); U.system('BOOKS CLEARED', '+5 max SLA for this run.', 'gold'); done(); };
+      pickCard('Remove which card? (2 of 2)', c2 => { remove(c2); fin(); }, fin);
+    }, () => campfire(done));
   }
   async function reflect(done) {
     const sv = S.save;
@@ -708,6 +721,8 @@
       if (rel('badge')) plus += 3;
       if (rel('whistle') && !C.whistled) { plus += 8; C.whistled = true; }
       if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
+      // Compound Interest (js/relic-exchange.js): every 3rd such card in a fight adds 2 to every one after it.
+      if (rel('interest')) { plus += C.interest || 0; C.mits = (C.mits || 0) + 1; if (C.mits % 3 === 0) C.interest = (C.interest || 0) + 2; }
     }
     const boost = v => { const r = (v + (used ? 0 : plus)) * times; used = true; return r; };
     if (d.abs) for (const k in d.abs) {
@@ -775,9 +790,9 @@
     } else if (d.exhaust) C.exh.push(c); else C.disc.push(c);
     if (d.draw) drawN(d.draw);
     // The Exchange's relics that count cards: the Sequencer every 3rd card in a turn, the Order Book every 10th in a fight.
-    C.turnPlayed = (C.turnPlayed || 0) + 1; C.played = (C.played || 0) + 1;
+    C.turnPlayed = (C.turnPlayed || 0) + 1; C.fightPlayed = (C.fightPlayed || 0) + 1;
     if (rel('sequencer') && C.turnPlayed % 3 === 0) C.sh.any += 4;
-    if (rel('orderbook') && C.played % 10 === 0) drawN(1);
+    if (rel('orderbook') && C.fightPlayed % 10 === 0) drawN(1);
     if (msg) C.log = msg;
     if (settle()) return;
     if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {

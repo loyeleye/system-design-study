@@ -117,14 +117,15 @@
   const cap = s => s.charAt(0) + s.slice(1).toLowerCase();
 
   // Chapter 10: nobody is out in the storm. Knocking gets a worried word from whoever lives there, a different one
-  // each visit; the Forge, where the homeless shelter, has a word from each of them, and their quests still work.
+  // each visit; the Forge, where the homeless shelter, has a word from each of them (their own rotation if they have
+  // one), and their quests still work.
   F.indoors = async function (door) {
     const home = F.residents(door), owner = home.includes(D.DOOR_OWNER[door]) ? D.DOOR_OWNER[door] : null;
     const inside = home.filter(id => id !== owner);
     if (!owner && !inside.length) return;
     const lines = [];
     if (owner && D.WORRY[owner]) lines.push(F.worry(owner));
-    inside.forEach(id => { const l = D.SHELTER[id]; if (l) { lines.push({ s: id, t: l }); F.meet(id); } });
+    inside.forEach(id => { const l = D.WORRY[id] ? F.worry(id) : D.SHELTER[id] && { s: id, t: D.SHELTER[id] }; if (l) { lines.push(l); F.meet(id); } });
     if (lines.length) await U.dialog(lines);
     for (const id of inside) if (SD.quests.pending(id).length) await SD.quests.talk(id);
   };

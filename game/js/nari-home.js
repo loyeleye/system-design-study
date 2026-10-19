@@ -184,6 +184,8 @@
     return out;
   }
   // Downstairs, whoever is home by day is rehearsing and dances while they stand; Nari dances whenever she's up.
+  // Eun-ho's name keeps its hyphen.
+  const NAMES = { eunho: 'EUN-HO' };
   function dancers(key) {
     return function (ctx, ts, t, sc) {
       if (!sc) return;
@@ -193,7 +195,6 @@
         if (!a || a.asleep) return;
         a.sprite = still(a) && (id === 'nari' || rehearsal) ? dance(id) : id;
       });
-      if (sc.actors.eunho) sc.actors.eunho.name = 'EUN-HO';
     };
   }
   async function talk(id) {
@@ -206,7 +207,7 @@
       map: ['############', '############', '############', '##......####', '##.......#U#',
         '##.........#', '###......###', '#####..#####', '#####DD#####'],
       enter: [5, 7, 'north'], up: [UP, 6, 7, 'west'],
-      get spots() { return spots(KEY); },
+      get spots() { return spots(KEY); }, names: NAMES,
       windows: [{ r: [131, 39, 32, 34] }, { r: [229, 39, 32, 34] }],
       lights: [{ x: 5.16, y: 0.73, r: 1.4 }, { x: 9.75, y: 1.2, r: 1.4 }, { x: 3.38, y: 3.08, r: 1.2 }, { x: 4.31, y: 3.08, r: 1.2 },
         { x: 6.19, y: 3.08, r: 1.2 }, { x: 7.81, y: 3.08, r: 1.2 }, { x: 10.84, y: 6.25, r: 1 }],
@@ -230,7 +231,7 @@
       map: ['############', '############', '############', '############', '####....####',
         '####....####', '####...#####', '#####..S####', '############'],
       enter: [6, 7, 'west'], down: [KEY, 10, 5, 'south'],
-      get spots() { return spots(UP); },
+      get spots() { return spots(UP); }, names: NAMES,
       sleep: { at: [3, 4], zz: [3, 3.2], t: [['narr', 'Nari is asleep under the yellow quilt with her veil still on. One foot is keeping time on the blanket.'], ['pip', 'She\'s counting in her sleep. We\'re on bar forty-one.']] },
       windows: [{ c: [199, 34, 16] }],
       lights: [{ x: 2.06, y: 5.27, r: 1.6 }, { x: 3.7, y: 6.98, r: 1.6 }],

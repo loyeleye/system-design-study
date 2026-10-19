@@ -91,7 +91,8 @@
     const dev = Q ? (Q.has('recipe') ? 8 : 0) : 0;
     // The Damp Archives curse drains max SLA while you are down there, until Hiro's recipe lifts it.
     const curse = Q && sv.run && sv.run.ch && Q.curses(sv.run.ch).includes('damp') ? 12 : 0;
-    return 60 + (sv.level - 1) * 4 + (sv.relics.includes('lantern') ? 10 : 0) + (sv.relics.includes('genesis') ? 25 : 0) + (sv.spec === 'warden' ? 15 : 0) + dev - curse;
+    return 60 + (sv.level - 1) * 4 + (sv.relics.includes('lantern') ? 10 : 0) + (sv.relics.includes('genesis') ? 25 : 0) + (sv.spec === 'warden' ? 15 : 0) + dev - curse
+      + (sv.run && sv.run.maxPlus || 0);   // Clear the Books in break rooms (the Clearing House, js/relic-exchange.js)
   };
   // Chapter gates. A main chapter opens when the main chapter before it is cleared. An optional chapter
   // (chapter 6) opens when the chapter in its `after` is cleared, and closes once you first enter the chapter

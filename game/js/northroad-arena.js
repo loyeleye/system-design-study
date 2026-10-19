@@ -143,6 +143,19 @@
       : 'Halt. ...Sorry, I say that to everyone. You can go in if you\'re fighting. Are you fighting? You look like you\'re fighting.'];
   });
 
+  // Chapter 10's storm: the tournament is long over and nobody stands about in the rain, so the crowd and the door
+  // guards go home and the sand is empty (js/ch10-folk.js shelters Gong, Suzu, Zen, the fans and the bookie).
+  // Anyone with quest business waiting stays where you'd look for them.
+  if (SD.roadTalk) {
+    const cast = SD.roadTalk.cast;
+    SD.roadTalk.cast = function (sc, where) {
+      if (cast) cast.apply(this, arguments);
+      if (where !== 'arena') return;
+      const away = !!(SD.folk && SD.folk.storm());
+      Object.keys(crowd).forEach(id => { const a = sc.actors[id]; if (a) sc.hide(id, away && !a.marker); });
+    };
+  }
+
   // ---------- The tournament arena (chapter 8) ----------
   NR.maps.arena = (function () {
     const W = 44, H = 36, m = grid(W, H);
