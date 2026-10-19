@@ -1,6 +1,6 @@
 // The Exchange's relic dealer. Once the Exchange is open, the trader at its market sells keepsakes as well as
-// panicking: four A-rank and two S-rank ones Grandma Wen doesn't stock, and three Ancient ones nobody else has.
-// Five borrow an idea from a Slay the Spire relic the café doesn't use (named in the comment).
+// panicking: four A-rank and three S-rank ones Grandma Wen doesn't stock, and three Ancient ones nobody else has.
+// Six borrow an idea from a Slay the Spire relic the café doesn't use (named in the comment).
 // They are bought with Memory Shards and kept in S.save.relics like Wen's, so they last through every loop; their
 // effects are in js/run.js (and the Genesis Ledger's in js/state.js). Shelves open with your Guild rank; the Ancient
 // shelf opens at S-Rank. Talk to the trader to browse, or choose to just chat for the trader's usual lines.
@@ -15,6 +15,7 @@
     // S-Rank
     { id: 'heartbeat', name: 'Heartbeat Ticker', cost: 1100, rank: 'S', text: 'Heal 3 SLA at the start of each of your turns after the first.' },
     { id: 'marketdepth', name: 'Market Depth', cost: 1200, rank: 'S', text: 'Draw 1 more card every turn. There is always another order behind the first.' },
+    { id: 'margin', name: 'Margin Account', cost: 1300, rank: 'S', text: 'The first card costing 2 or more that you play each turn mitigates double. Borrowed power, settled by Friday.' },   // Necronomicon
     // Ancient
     { id: 'openingbell', name: 'The Opening Bell', cost: 1500, rank: 'Ancient', text: '+1 Capacity every turn. It rang before the Cloud, and it will ring after.' },
     { id: 'tradinghalt', name: 'Trading Halt', cost: 1650, rank: 'Ancient', text: 'The first time in a run you would drop to 0 SLA, come back at half instead. Then the bell rings again.' },   // Lizard Tail

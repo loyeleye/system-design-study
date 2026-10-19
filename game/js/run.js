@@ -664,7 +664,7 @@
     if (!C.infra.some(c => SD.cards[c.id].keepSh)) C.sh = zero();
     if (C.turn === 1 && rel('standby')) C.sh.any += 8;
     if (C.turn > 1 && rel('heartbeat') && sv.run) sv.run.sla = Math.min(S.maxSla(), sv.run.sla + 3);
-    C.turnPlayed = 0; C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
+    C.turnPlayed = 0; C.margined = false; C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
       if (d.each) for (const k in d.each) C.sh[k] += d.each[k] + (c.up ? 2 : 0);
@@ -703,6 +703,8 @@
       if (rel('badge')) plus += 3;
       if (rel('whistle') && !C.whistled) { plus += 8; C.whistled = true; }
       if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
+      // The Margin Account (js/relic-exchange.js) doubles the first one costing 2 or more each turn.
+      if (rel('margin') && cost >= 2 && !C.margined) { C.margined = true; times *= 2; }
     }
     const boost = v => { const r = (v + (used ? 0 : plus)) * times; used = true; return r; };
     if (d.abs) for (const k in d.abs) {
