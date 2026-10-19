@@ -4,7 +4,8 @@
 //   node tools/club_loft_check.js [--shots DIR]
 //
 // Serves the game and, in a debug save at night, walks into the foot of the studio's stairs and checks:
-//   - the hero climbs the stairs drawn over the studio, with its railing drawn over them, and goes into the lounge
+//   - the hero climbs the stairs drawn over the studio, with its railing drawn over them, clipped below the stairs,
+//     and goes into the lounge
 //   - Imani is in the lounge at night, with her books sheet
 //   - walking out of the lounge brings the hero back down the stairs to the foot of them, railing hidden again
 //   - in chapter 10's storm, Paz, Imani, Leon and Thea are in the lounge, and the board says so
@@ -58,13 +59,14 @@ const server = http.createServer((req, res) => {
     await page.waitForTimeout(100);
     const s = await page.evaluate(() => {
       const P = SD.northRoad.scene().P, rail = SD.northRoad.maps.club.objects.find(o => o.name === 'pr-studio-rail');
-      return { x: P.px, y: P.py, front: !!P.front, rail: !rail.hidden, face: P.face };
+      return { x: P.px, y: P.py, front: !!P.front, rail: !rail.hidden, face: P.face, clip: !!P.clip };
     });
     climb.push(s);
     if (i === 8 || i === 16) await shot('climbing');
   }
   if (!(await room())) bad('never got into the lounge');
   if (!climb.some(s => s.front && s.rail)) bad('the hero was never drawn over the studio with the railing over them');
+  if (!climb.some(s => s.clip)) bad('the hero was never clipped below the stairs on the way up');
   const top = climb.reduce((m, s) => Math.min(m, s.y), 99);
   console.log(`climb: ${climb.length} samples, highest y ${top.toFixed(2)}`);
   if (top > 7.4) bad(`the hero only got up to y ${top.toFixed(2)}, not the landing`);
@@ -82,7 +84,7 @@ const server = http.createServer((req, res) => {
   const down = [];
   for (let i = 0; i < 40; i++) {
     await page.waitForTimeout(100);
-    const s = await page.evaluate(() => { const P = SD.northRoad.scene().P; return { x: P.px, y: P.py, front: !!P.front, a: P.alpha }; });
+    const s = await page.evaluate(() => { const P = SD.northRoad.scene().P; return { x: P.px, y: P.py, front: !!P.front, a: P.alpha, clip: !!P.clip }; });
     down.push(s);
     if (i === 6 || i === 12) await shot('going-down');
     if (!s.front && i > 2) break;
@@ -90,6 +92,7 @@ const server = http.createServer((req, res) => {
   const end = down[down.length - 1];
   console.log(`down: ${down.length} samples, ended at ${end.x.toFixed(2)}, ${end.y.toFixed(2)}`);
   if (!down.some(s => s.front && s.y < 7.6)) bad('the hero did not come back out on the landing');
+  if (end.clip) bad('the hero is still clipped below the stairs after coming down');
   if (end.front || Math.abs(end.x - 3) > 0.01 || Math.abs(end.y - 9) > 0.01) bad('the hero did not end at the foot of the stairs');
   const after = await page.evaluate(() => SD.northRoad.maps.club.objects.find(o => o.name === 'pr-studio-rail').hidden);
   if (!after) bad('the railing is still drawn over everything after the climb');

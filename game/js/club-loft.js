@@ -24,7 +24,18 @@
   const studio = yard.objects.find(o => o.name === 'pr-studio'), rail = yard.objects.find(o => o.name === 'pr-studio-rail');
   const on = (px, py) => [studio.x - 84 / 32 + px / 32, studio.y + 1 - 182 / 32 + py / 32 - 0.95];
   // The bottom step, the top one, and the upper door on the landing.
-  const PATH = L.PATH = [on(34, 178), on(63, 143), on(84, 141)];
+  const PATH = L.PATH = [on(28, 171), on(63, 143), on(84, 141)];
+  // On the stairs, nothing of you shows below them: you're drawn only above the stair's underside (its lower edge
+  // runs from (22, 180) to (62, 145) on the picture), between the newel post and the landing's post.
+  const UNDER = [[22, 180], [62, 145]];
+  function under(ctx, ts) {
+    const k = ts / 32, X = px => (studio.x + 0.5) * ts + (px - 84) * k, Y = py => (studio.y + 1) * ts + (py - 182) * k;
+    const [[x0, y0], [x1, y1]] = UNDER, far = 40 * ts;
+    ctx.beginPath();
+    ctx.rect(-far, -far, 2 * far, 2 * far);
+    ctx.moveTo(X(x0), Y(y0)); ctx.lineTo(X(x0), far); ctx.lineTo(X(x1), far); ctx.lineTo(X(x1), Y(y1)); ctx.closePath();
+    ctx.clip('evenodd');
+  }
   const wait = ms => new Promise(res => setTimeout(res, ms));
   // Walk the player to (x, y), facing face, along a straight line at CLIMB tiles a second; taps and keys do nothing
   // on the way. The scene moves people across and down at the same pace (js/scene.js), so the pace is set for the
@@ -59,6 +70,7 @@
     const outside = up => { P.front = up; if (pip) pip.front = up; if (rail) rail.hidden = !up; };
     outside(true);
     await glide(sc, PATH[0], 'east');
+    P.clip = under;
     await glide(sc, PATH[1], 'east');
     await glide(sc, PATH[2], 'east');
     P.face = 'north';
@@ -74,6 +86,7 @@
     await fade(P, 1, 250);
     await glide(sc, PATH[1], 'west');
     await glide(sc, PATH[0], 'west');
+    P.clip = null;
     await glide(sc, yard.back.L, 'south');
     outside(false);
     P.alpha = null; P.speed = speed;

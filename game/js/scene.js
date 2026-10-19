@@ -299,8 +299,14 @@
     const feet = (px, py) => ISO ? [ix(px + 0.5, py + 0.5), iy(px + 0.5, py + 0.5) - (ISO.lift ? ISO.lift(px, py) : 0) * ts / 32] : [px * ts + ts / 2, py * ts + ts * 0.95];
     const CS = ISO ? (ISO.cs || 1.6) : 1;
     let drawn = [];                     // isometric maps: the people drawn this frame and where, front last, for taps
+    // clip(ctx, ts): an optional clipping path (world pixels) a person is drawn inside, like the hero going up the
+    // studio's outside stairs, hidden below them (js/club-loft.js).
     function person(a, t) {
       if (a.hidden) return;
+      if (!a.clip) return drawPerson(a, t);
+      ctx.save(); a.clip(ctx, ts); drawPerson(a, t); ctx.restore();
+    }
+    function drawPerson(a, t) {
       const [fx, fy] = feet(a.px, a.py), gy = fy - (ISO ? 0 : ts * 0.05);
       if (a.pip) { obj('pip', fx, fy - ts * (ISO ? 0.15 : 0.4) + Math.sin(t * 3) * 3, 0.8 * CS, (sc.P && sc.P.face === 'west')); return; }
       if (a.draw) return a.draw(ctx, fx, fy, ts, t);
