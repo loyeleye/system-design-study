@@ -32,7 +32,8 @@
   // can look at, on solid tiles next to the floor. windows (in picture pixels) show the weather; lights glow at night.
   // sleep: where the owner sleeps on a night outside the storm: the tile you talk to them from (on the bed, next to
   // the floor), where the "Zz" floats (in tiles), and what you see. mat: the picture has no door, so a doormat is
-  // drawn over the way out.
+  // drawn over the way out. Rooms keep the music and sounds from outside unless they have a theme of their own:
+  // music (a song in js/audio.js), ambience (its PLACE sound, or null for quiet), bell: a shop bell over the door.
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -199,7 +200,7 @@
     // building as before. Some things open part of it without them: the Guild's board opens the quest log, the
     // Forge's workbench your plot devices, and the library's back door the Hall of Blueprints once it's open.
     temple: {
-      name: 'GODDESS TEMPLE', door: 'A', owner: 'uptima', mat: true,
+      name: 'GODDESS TEMPLE', door: 'A', owner: 'uptima', mat: true, music: 'goddess', ambience: 'temple',
       map: ['############', '############', '############', '############', '############',
         '####......##', '#####...####', '####..#...##', '####DD######'],
       enter: [5, 7, 'north'],
@@ -235,7 +236,7 @@
       ]
     },
     forge: {
-      name: 'THE FORGE', door: 'F', owner: 'ayo', mat: true,
+      name: 'THE FORGE', door: 'F', owner: 'ayo', mat: true, ambience: 'forge',
       map: ['############', '############', '############', '############', '#####.##..##',
         '##.......###', '##........##', '#####...####', '#####DD#####'],
       enter: [5, 7, 'north'],
@@ -256,7 +257,7 @@
       ]
     },
     post: {
-      name: 'THE PIGEON POST', door: 'P', owner: 'coo', mat: true,
+      name: 'THE PIGEON POST', door: 'P', owner: 'coo', mat: true, ambience: 'post', bell: true,
       map: ['############', '############', '############', '############', '##......#.##',
         '###.......##', '###.......##', '###.....#.##', '#####DD#####'],
       enter: [5, 7, 'north'],
@@ -276,7 +277,7 @@
       ]
     },
     library: {
-      name: 'GRAND LIBRARY', door: 'K', owner: 'lexi', mat: true,
+      name: 'GRAND LIBRARY', door: 'K', owner: 'lexi', mat: true, ambience: 'library',
       map: ['############', '############', '############', '############', '####.###..##',
         '####......##', '##........##', '##.#####..##', '########DD##'],
       enter: [8, 7, 'north'],
@@ -473,7 +474,7 @@
     // ---------- Aigerim's Cards, on the North Road (js/northroad.js) ----------
     // Aigerim minds the shop; talking to her opens it (NR.shop.open), so her diary scene in js/folk-scenes.js still plays.
     cards: {
-      name: "AIGERIM'S CARDS", road: true,
+      name: "AIGERIM'S CARDS", road: true, music: 'shop', bell: true,
       map: ['############', '############', '############', '############', '###.......##',
         '###.......##', '####......##', '#####...####', '#####DD#####'],
       enter: [5, 7, 'north'],
@@ -580,22 +581,25 @@
   const pic = key => PICS[key] || (PICS[key] = load('assets/img/interiors/r-' + key + '.webp'));
   const ok = im => im.complete && im.naturalWidth > 0;
 
-  // Windows: the time of day through the glass, and the weather drawn over the whole room but only seen through them.
+  // Windows: the sky outside through the glass (js/sky.js: clouds going by, the sunset, stars at night; a dark
+  // storm in chapter 10), and the weather drawn over the whole room but only seen through them.
   const GLASS = { evening: 'rgba(255,140,70,.35)', night: 'rgba(16,20,64,.78)' };
   function windows(ctx, r, ts, t) {
     if (!r.windows) return;
     const k = ts / 32;
-    ctx.save();
-    ctx.beginPath();
-    r.windows.forEach(w => {
-      if (w.c) { ctx.moveTo((w.c[0] + w.c[2]) * k, w.c[1] * k); ctx.arc(w.c[0] * k, w.c[1] * k, w.c[2] * k, 0, Math.PI * 2); }
-      else ctx.rect(w.r[0] * k, w.r[1] * k, w.r[2] * k, w.r[3] * k);
+    r.windows.forEach((w, i) => {
+      const [x, y, ww, hh] = w.c ? [w.c[0] - w.c[2], w.c[1] - w.c[2], w.c[2] * 2, w.c[2] * 2] : w.r;
+      ctx.save();
+      ctx.beginPath();
+      if (w.c) ctx.arc(w.c[0] * k, w.c[1] * k, w.c[2] * k, 0, Math.PI * 2);
+      else ctx.rect(x * k, y * k, ww * k, hh * k);
+      ctx.clip();
+      if (storm()) { ctx.fillStyle = GLASS.night; ctx.fillRect(x * k, y * k, ww * k, hh * k); }
+      else if (SD.sky) SD.sky.pane(ctx, x * k, y * k, ww * k, hh * k, t, i + r.name.length);
+      else if (GLASS[block()]) { ctx.fillStyle = GLASS[block()]; ctx.fillRect(x * k, y * k, ww * k, hh * k); }
+      if (SD.weather) SD.weather.draw(ctx, t, 12 * ts, 9 * ts);
+      ctx.restore();
     });
-    ctx.clip();
-    const g = GLASS[block()];
-    if (g || storm()) { ctx.fillStyle = g || GLASS.night; ctx.fillRect(0, 0, 12 * ts, 9 * ts); }
-    if (SD.weather) SD.weather.draw(ctx, t, 12 * ts, 9 * ts);
-    ctx.restore();
   }
   // The bunker has no door in its picture: a hatch with steps up, drawn in the bottom wall.
   function hatch(ctx, ts) {
@@ -614,10 +618,13 @@
     ctx.strokeRect(x0 + ts * 0.1, y * ts + ts * 0.3, w - ts * 0.2, ts * 0.5);
   }
   let sc = null, cur = null, busy = false, done = null, greeted = false;
+  // What was playing outside, to keep in rooms without a theme of their own and to go back to on the way out.
+  let outside = { song: null, place: null };
   function def(key) {
     const r = ROOMS[key];
     return {
       map: r.map, ground: false, bg: '#1a1530', solid: '#', indoors: true,
+      ambience: r.ambience !== undefined ? r.ambience : outside.place,
       doors: { D: 'out', U: 'up', S: 'down' },
       lights: r.lights,
       under(ctx, ts, t) {
@@ -747,6 +754,12 @@
     guard();
     canvas(on || 'hub-canvas');
     host.hidden = true; cv.hidden = false;
+    const AU = SD.audio, r = ROOMS[key];
+    outside = { song: AU.loopName, place: AU.placeName ? AU.placeName() : null };
+    // The other maps knock on their own doors; Pingsby's doors open here. Shops ring a bell as you come in.
+    if (!on) AU.sfx('door');
+    if (r.bell) AU.sfx('shopbell');
+    if (r.music) AU.music(r.music);
     go(key);
     if (ROOMS[key].owner) F().meet(ROOMS[key].owner);
     greeted = false;
@@ -756,6 +769,13 @@
   I.room = key => !!ROOMS[key] && !!SD.interiorsArt && !!SD.interiorsArt.rooms[key];
   function leave() {
     if (!cv) return;
+    const AU = SD.audio, room = ROOMS[cur];
+    if (room) {
+      AU.sfx('doorclose');
+      // Back to the music from outside, unless something (a quest, a mini-game) has changed it since.
+      if (room.music && AU.loopName === room.music && outside.song) AU.music(outside.song);
+      if (AU.place) AU.place(outside.place);
+    }
     if (sc) sc.stop();
     sc = null; cur = null;
     cv.hidden = true; if (host) host.hidden = false;

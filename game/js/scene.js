@@ -47,7 +47,8 @@
   //   labels: [{ x, y, text }], tint, sky: 'sun'|'dusk'|'dark'|'grey', weather: a map's own weather (js/weather.js),
   //   clock: false to keep the time of day off a walkable map (js/clock.js), under(ctx, ts, t): paint the ground
   //   (a room's backdrop, js/interiors.js), ground: false for no terrain tiles under it, indoors: true to hear the
-  //   weather without drawing it }
+  //   weather without drawing it, clouds: true for cloud shadows and high clouds (js/sky.js), ambience: the place's
+  //   own sound under the music (js/audio.js PLACE, or a function returning it; null for none) }
   // Walkable maps (ones with a player) show the time of day and the weather; cutscenes only show weather they ask for.
   SC.create = function (canvas, def) {
     const sc = { def, actors: {}, P: null, active: false, onTalk: null, onDoor: null, follow: null, fx: [] };
@@ -288,6 +289,8 @@
       }
       Object.values(sc.actors).forEach(a => { if (!a.hidden && a.emoT > 0 && a.emo) emote(a.emo, a.px * ts + ts / 2, (a.py - 0.55 - (a.scale || 1) * 0.5 + 0.5) * ts); });
       const sk = typeof def.sky === 'function' ? def.sky() : def.sky;
+      const wk = SD.weather ? SD.weather.now(def.weather) : 'clear';
+      if (def.clouds && SD.sky) { ctx.restore(); SD.sky.shadows(ctx, t, vw, vh, cx, cy, wk); ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy)); }
       if (SD.clock && (def.clock === true || (sc.P && def.clock !== false))) {
         // The time of day under the signs and names, dimmed where the map's own sky is already dark.
         ctx.restore();
@@ -298,6 +301,7 @@
       Object.values(sc.actors).forEach(a => { if (a.name && !a.hidden) label(a.px, a.py + 1.45, a.name, a.marker, true); });
       sc.fx.forEach(f => f(ctx, t, ts));
       ctx.restore();
+      if (def.clouds && SD.sky) SD.sky.clouds(ctx, t, vw, vh, cx, cy, wk);
       const tint = SKY[sk] || (/^(rgba?|#)/.test(sk || '') ? sk : null);
       if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, vw, vh); }
       if (SD.weather && (sc.P || def.weather) && !def.indoors) SD.weather.draw(ctx, t, vw, vh, SD.weather.now(def.weather));
@@ -321,6 +325,7 @@
       const dt = Math.min(0.05, (now - (t0 || now)) / 1000); t0 = now;
       update(dt); draw(now / 1000);
       if (sc.P && SD.weather) SD.weather.sync(SD.weather.now(def.weather));
+      if (sc.P && 'ambience' in def && SD.audio.place) SD.audio.place(typeof def.ambience === 'function' ? def.ambience() : def.ambience);
       raf = requestAnimationFrame(frame);
     }
     sc.start = function () {

@@ -44,10 +44,10 @@
     return k;
   };
 
-  // The ambient sound for a kind (js/audio.js SKY), quiet at night apart from the rain.
+  // The ambient sound for a kind (js/audio.js SKY): birdsong by day, crickets on a clear night.
   W.sound = function (kind) {
     const night = SD.clock && SD.clock.block() === 'night';
-    return ({ clear: night ? null : 'sun', drizzle: 'rain', rain: 'rain', storm: 'storm', wind: 'wind', gusty: 'wind' })[kind] || null;
+    return ({ clear: night ? 'night' : 'sun', drizzle: 'rain', rain: 'rain', storm: 'storm', wind: 'wind', gusty: 'wind' })[kind] || null;
   };
   W.sync = function (kind) {
     const AU = SD.audio;

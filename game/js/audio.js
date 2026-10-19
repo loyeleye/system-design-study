@@ -29,7 +29,7 @@
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     Object.values(SAMPLE).concat(Object.values(JING)).forEach(loadBuf);
     if (want) { const w = want; want = null; A.music(w); }
-    if (wantWx) { const w = wantWx; wantWx = null; A.weather(w); }
+    [wxL, placeL].forEach(l => { if (l.want !== undefined) { const w = l.want; l.want = undefined; l.set(w); } });
   };
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, A.unlock, { passive: true }));
   document.addEventListener('visibilitychange', () => {
@@ -178,13 +178,18 @@
   const BASE = 'assets/audio/';
   // mapN is chapter N's dungeon map; chapters without one use explore.
   const SONG = { title: 'm-opening', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild', journey: 'm-journey',
-    map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5' };
+    map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5',
+    // The newer places' own themes (OpenGameArt, credited in CREDITS.md): the Eventual Isles, the PR Club and its
+    // yoga studio, and Aigerim's card shop. Rooms otherwise keep the music from outside.
+    isles: 'm-isles', gym: 'm-gym', studio: 'm-studio', shop: 'm-shop' };
   // Songs without a synth version fall back to this one if the file fails to load.
-  const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore' };
+  const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore',
+    isles: 'explore', gym: 'explore', studio: 'heaven', shop: 'town' };
   // Per-song loudness: the piano is gentle on purpose, and the chapter maps are mastered hotter than explore.
-  const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65 };
+  const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65, studio: 0.8, shop: 0.85 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
-  const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door' };
+  const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door',
+    doorclose: 's-doorclose', shopbell: 's-shopbell' };
   const SONG_GAIN = 1.5;  // recorded tracks are mastered quieter than the synth
   const bufs = {}, failed = new Set();
   function loadBuf(file) {
@@ -250,8 +255,8 @@
   A.has = name => !!(SONG[name] || TRACKS[name]);
   A.music = function (name) {
     A.loopName = name;
-    if (wx && wx.song !== name) A.weather(null);
-    if (!ctx) { want = name; wantWx = null; return; }
+    [wxL, placeL].forEach(l => { if (l.me && l.me.song !== name) l.set(null); });
+    if (!ctx) { want = name; wxL.want = placeL.want = undefined; return; }
     if (cur && cur.name === name) return;
     stopCur();
     if (name) play(name);
@@ -265,7 +270,7 @@
     if (JING[name] && playBuf(JING[name], musicBus, 1.6, () => setTimeout(resume, 250))) return;
     play(name, resume);
   };
-  A.stop = function () { A.loopName = null; want = null; A.weather(null); if (ctx) stopCur(0.3); };
+  A.stop = function () { A.loopName = null; want = null; A.weather(null); A.place(null); if (ctx) stopCur(0.3); };
   // Later chapters bring their own recordings (js/arc.js): { songs: {name: file}, samples: {...}, jingles: {...} }.
   A.add = function (o) {
     Object.assign(SONG, o.songs || {}); Object.assign(SAMPLE, o.samples || {}); Object.assign(JING, o.jingles || {});
@@ -326,48 +331,74 @@
     if (FX[name]) FX[name](t);
   };
 
-  // ---------- Weather ----------
-  // A looping bed under the dungeon map with occasional one-shots: birdsong and leaves in the sun, rain with distant
-  // thunder in storms (and wind gusts in the Sky Harbour), and a thunderstorm at the end. It belongs to the song playing
-  // when it starts and stops when the music changes. Pixabay sound effects, credited in CREDITS.md.
-  const AMB = { birds: 'a-birds', leaves: 'a-leaves', rain: 'a-rain', storm: 'a-storm', wind: 'a-wind', rumble: 'a-rumble', clap1: 'a-thunder1', clap2: 'a-thunder2', clap3: 'a-thunder3' };
-  // bed and its volume, then extras: [sounds to pick from, volume, min and max seconds between them].
+  // ---------- Weather and places ----------
+  // Two looping beds that play under the music, each with occasional one-shots on top. The weather: birdsong and
+  // leaves in the sun, crickets on a clear night, rain with distant thunder in storms (and wind gusts in the Sky
+  // Harbour), and a thunderstorm at the end. The place: what the spot itself sounds like (waves and gulls on the
+  // Isles, a campfire, the Forge's anvil, the library's clock). Each belongs to the song playing when it starts and
+  // stops when the music changes; the maps set them again every frame. Pixabay and OpenGameArt sounds, credited in
+  // CREDITS.md.
+  const AMB = { birds: 'a-birds', leaves: 'a-leaves', rain: 'a-rain', storm: 'a-storm', wind: 'a-wind', rumble: 'a-rumble', clap1: 'a-thunder1', clap2: 'a-thunder2', clap3: 'a-thunder3',
+    crickets: 'a-crickets', sea: 'a-sea', fire: 'a-fire', clock: 'a-clock', gull1: 's-gull1', gull2: 's-gull2', gull3: 's-gull3',
+    anvil1: 's-anvil1', anvil2: 's-anvil2', chime1: 's-chime1', chime2: 's-chime2', clank1: 's-clank1', clank2: 's-clank2', thud: 's-thud', page: 's-page' };
+  // bed (or none) and its volume, then extras: [sounds to pick from, volume, min and max seconds between them].
   const SKY = {
     sun: { bed: 'birds', vol: 0.35, extra: [[['leaves'], 0.4, 12, 28]] },
+    night: { bed: 'crickets', vol: 0.3, extra: [] },
     rain: { bed: 'rain', vol: 1.5, extra: [[['rumble'], 0.3, 30, 60]] },
     wind: { bed: 'rain', vol: 1.3, extra: [[['wind'], 0.3, 10, 22], [['rumble'], 0.25, 30, 60]] },
     storm: { bed: 'storm', vol: 0.4, extra: [[['clap1', 'clap2', 'clap3'], 0.5, 10, 25], [['wind'], 0.35, 14, 30]] }
   };
-  let wx = null, wantWx = null;
-  A.weather = function (kind) {
-    if (!ctx) { wantWx = kind; return; }
-    if (wx && wx.kind === kind) return;
-    if (wx) {
-      const old = wx; wx = null;
-      old.timers.forEach(clearTimeout);
-      old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
-      setTimeout(() => { if (old.src) old.src.stop(); old.gain.disconnect(); }, 2500);
-    }
-    const W = SKY[kind];
-    if (!W) return;
-    [W.bed].concat(...W.extra.map(e => e[0])).forEach(k => loadBuf(AMB[k]));
-    const gain = ctx.createGain(); gain.gain.value = 0; gain.connect(sfxBus);
-    const me = wx = { kind, song: A.loopName, gain, src: null, timers: [] };
-    const later = (fn, ms) => me.timers.push(setTimeout(() => { if (wx === me) fn(); }, ms));
-    const startBed = () => {
-      const b = bufs[AMB[W.bed]];
-      if (!b || b === 'loading') { if (!failed.has(AMB[W.bed])) later(startBed, 400); return; }
-      const src = me.src = ctx.createBufferSource();
-      src.buffer = b; src.loop = true; src.connect(gain); src.start();
-      gain.gain.setTargetAtTime(W.vol, ctx.currentTime, 0.8);
-    };
-    startBed();
-    W.extra.forEach(([names, vol, lo, hi]) => {
-      const go = () => {
-        playBuf(AMB[names[Math.floor(Math.random() * names.length)]], gain, vol / W.vol);
-        later(go, (lo + Math.random() * (hi - lo)) * 1000);
-      };
-      later(go, (lo / 2 + Math.random() * (hi - lo) / 2) * 1000);
-    });
+  const PLACE = {
+    sea: { bed: 'sea', vol: 0.55, extra: [[['gull1', 'gull2', 'gull3'], 0.22, 8, 20]] },
+    fire: { bed: 'fire', vol: 0.45, extra: [] },
+    forge: { bed: 'fire', vol: 0.4, extra: [[['anvil1', 'anvil2'], 0.35, 2.5, 7]] },
+    library: { bed: 'clock', vol: 0.22, extra: [[['page'], 0.3, 9, 22]] },
+    post: { extra: [[['page'], 0.28, 8, 20]] },
+    temple: { extra: [[['chime1', 'chime2'], 0.22, 9, 20]] },
+    gym: { extra: [[['clank1', 'clank2', 'thud'], 0.3, 1.8, 5]] },
+    yard: { extra: [[['clank1', 'clank2', 'thud'], 0.12, 4, 10]] }
   };
+  function bedLayer(table) {
+    const L = { me: null, want: undefined };
+    L.set = function (kind) {
+      if (!ctx) { L.want = kind; return; }
+      kind = kind || null;
+      if (L.me && L.me.kind === kind) return;
+      if (L.me) {
+        const old = L.me; L.me = null;
+        old.timers.forEach(clearTimeout);
+        old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
+        setTimeout(() => { if (old.src) old.src.stop(); old.gain.disconnect(); }, 2500);
+      }
+      const W = table[kind];
+      if (!W) return;
+      const vol = W.bed ? W.vol : 1;
+      (W.bed ? [W.bed] : []).concat(...W.extra.map(e => e[0])).forEach(k => loadBuf(AMB[k]));
+      const gain = ctx.createGain(); gain.gain.value = W.bed ? 0 : 1; gain.connect(sfxBus);
+      const me = L.me = { kind, song: A.loopName, gain, src: null, timers: [] };
+      const later = (fn, ms) => me.timers.push(setTimeout(() => { if (L.me === me) fn(); }, ms));
+      const startBed = () => {
+        const b = bufs[AMB[W.bed]];
+        if (!b || b === 'loading') { if (!failed.has(AMB[W.bed])) later(startBed, 400); return; }
+        const src = me.src = ctx.createBufferSource();
+        src.buffer = b; src.loop = true; src.connect(gain); src.start();
+        gain.gain.setTargetAtTime(W.vol, ctx.currentTime, 0.8);
+      };
+      if (W.bed) startBed();
+      W.extra.forEach(([names, v, lo, hi]) => {
+        const go = () => {
+          playBuf(AMB[names[Math.floor(Math.random() * names.length)]], gain, v / vol);
+          later(go, (lo + Math.random() * (hi - lo)) * 1000);
+        };
+        later(go, (lo / 2 + Math.random() * (hi - lo) / 2) * 1000);
+      });
+    };
+    return L;
+  }
+  const wxL = bedLayer(SKY), placeL = bedLayer(PLACE);
+  A.weather = kind => wxL.set(kind);
+  // A place's own sound (PLACE above), or null for none. A.placeName() is the one playing (or asked for).
+  A.place = kind => placeL.set(kind);
+  A.placeName = () => placeL.want !== undefined ? placeL.want : placeL.me ? placeL.me.kind : null;
 })();

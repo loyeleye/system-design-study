@@ -45,10 +45,16 @@ Smudge's rebuild-the-diagram loop is inspired by InterviewReady's [The Joy of Sy
 | "JRPG Epic Rock Battle Theme #1" | HydroGene, https://opengameart.org/content/jrpg-epic-rock-battle-theme-1 | CC0 | Battles |
 | "Epic Boss Battle [Seamlessly Looping]" | Juhani Junkala (SubspaceAudio), https://opengameart.org/content/boss-battle-music | CC0 | Boss |
 | Music Jingles (SAX set) | Kenney, via OpenGameArt | CC0 | Victory, defeat and Gary jingles |
+| "Feel Good Island Loop" | Brandon Morris, uploaded by AntumDeluge, https://opengameart.org/content/feel-good-island-loop | CC0 (dual-licensed CC0 / OGA-BY 3.0; used under CC0) | The Eventual Isles |
+| "Synth Wave Aerobics" | Alex McCulloch (Pro Sensory), https://opengameart.org/content/aerobics-synth-wave | CC0 | The PR Club yard and gym |
+| "The Oasis (or Resting Place)", from Indie Meditations | Yanni Ziangos (YannZ), https://yannz.itch.io, https://opengameart.org/content/indie-meditations-free-music-pack | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The PR Club studio |
+| "Bossa" (shop theme, HD) | SpringySpringo, https://opengameart.org/content/bossa-shop-theme-in-low-fi-and-hd | CC0 (dual-licensed CC0 / CC BY 3.0; used under CC0) | Aigerim's card shop |
 
 Kevin MacLeod credit line: "Fluffing a Duck" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
 
 Techspired Minds credit line: "Orchestral: Our Journey Awaits" by Techspired Minds (joschjava), licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/, via https://opengameart.org/content/orchestral-our-journey-awaits
+
+YannZ credit line: "The Oasis (or Resting Place)" by Yanni Ziangos (YannZ), https://yannz.itch.io, licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/, via https://opengameart.org/content/indie-meditations-free-music-pack. Re-encoded and loudness-normalised.
 
 Matthew Pablo credit line: "Enchanted Festival" by Matthew Pablo (http://www.matthewpablo.com), licensed under CC BY 3.0, https://creativecommons.org/licenses/by/3.0/, via https://opengameart.org/content/enchanted-festival
 
@@ -63,6 +69,8 @@ Music was re-encoded to 80 kbps MP3 and loudness-normalised; nothing else was ch
 Interface Sounds and RPG Audio by Kenney (CC0), via OpenGameArt: clicks, confirms, errors, card flips, slashes, coins and doors. The typewriter voices, the crash and a few other comic effects are synthesized at runtime in `js/audio.js`, which also stands in for any track that fails to load.
 
 Weather on the dungeon map (`assets/audio/a-*.mp3`), via Pixabay under the [Pixabay Content License](https://pixabay.com/service/license-summary/), none AI-generated or registered with Content ID: "Birds Forest Nature" by Jurij (SoundReality), "Soft Wind Leaves" by storegraphic, "Gentle Rain 07", "Heavy rainstorm", "Dry Thunder" and "Harsh Wind" by DRAGON-STUDIO, "Thunder For Anime" by LordSonny, and "Thunder Strike" and "Loud Thunder" by Universfield. The rain and birdsong loops were cross-faded end to start so they loop without a seam, and everything was re-encoded to MP3; the same no-standalone-redistribution rule applies.
+
+Places and the night (`assets/audio/a-sea`, `a-fire`, `a-crickets`, `a-clock` and the `s-gull`, `s-anvil`, `s-chime`, `s-clank`, `s-thud`, `s-shopbell`, `s-doorclose` and `s-page` one-shots), via OpenGameArt: "Beach Ocean Waves" (four waves strung together with cross-fades) and "Doorbell Ring" by qubodup, "Solo Seagull Sound Effects" by Rango Mango, "Fire Crackling" by AntumDeluge (looped), "Hammer on Anvil" by themightyglider, "Blacksmith's Hammer" by vishwajai, "Bell Dings/Chimes" by pwl, "Metal Impact Sounds" by bmaczero, "Crickets Ambient Noise (Loopable)" by wolfgang, all CC0; "Slow Clock Ticking (Seamless Looping)", Sound Effect By Nicole Marie T (medicinestorm), https://opengameart.org/content/slow-clock-ticking-seamless-looping-sfx-sound-effect, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); and Kenney's RPG Audio (CC0) for the closing door and the page turn. All re-encoded to MP3 and loudness-normalised.
 
 ## Fonts
 

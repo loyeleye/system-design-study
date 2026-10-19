@@ -109,7 +109,8 @@
         bidder: { x: 23, y: 9, face: 'north', name: 'BIDDER', sprite: 'v1' }
       },
       back: { E: [1, 12, 'east'], G: [15, 10, 'south'], U: [5, 9, 'south'] }, enter: [1, 12, 'east'],
-      music: 'ch8', weather: 'sun',
+      // The club's own workout theme, and the clank of weights from the lifters out in the yard.
+      music: 'gym', weather: 'sun', clouds: true, ambience: 'yard',
       // The yard's animals (js/critters.js): the gym cat by the door, a dog on the path, a goat in the bushes, and
       // a few butterflies and a sparrow. The pets go home at night.
       critters: [
@@ -150,7 +151,7 @@
   // ---------- The gym hall and the studio (rooms in js/interiors.js) ----------
   if (I && I.ROOMS) {
     I.ROOMS.prgym = {
-      name: 'THE PR CLUB', mat: true, map: ['############', '############', '############', '#.###...####', '#.###...####',
+      name: 'THE PR CLUB', mat: true, ambience: 'gym', map: ['############', '############', '############', '#.###...####', '#.###...####',
         '#.###...####', '#.......####', '###.....####', '#####DD#####'],
       enter: [5, 7, 'north'],
       spots: { sunny: [6, 3, 'south'], leon: [1, 6, 'east'], thea: [7, 6, 'east'], rico: [9, 4, 'south'] },
@@ -165,12 +166,13 @@
       talk: id => C.talk(id, 'prgym')
     };
     I.ROOMS.prstudio = {
-      name: 'THE STUDIO', map: ['############', '############', '############', '####.....###', '#..........#',
+      // A calm theme of its own upstairs, away from the clanking.
+      name: 'THE STUDIO', music: 'studio', ambience: null, map: ['############', '############', '############', '####.....###', '#..........#',
         '#..........#', '##.........#', '#####...####', '#####DDD####'],
       enter: [6, 7, 'north'],
       spots: { delphine: [6, 3, 'south'], kofi: [9, 5, 'west'] },
       lights: [{ x: 2.6, y: 0.8, r: 2.4 }, { x: 9.4, y: 0.8, r: 2.4 }, { x: 0.4, y: 2.2, r: 2 }, { x: 11.5, y: 2.4, r: 2 }],
-      windows: [{ r: [196, 32, 60, 52] }, { r: [358, 32, 60, 52] }],
+      windows: [{ r: [98, 14, 32, 49] }, { r: [182, 14, 31, 49] }, { r: [265, 14, 30, 49] }],
       props: [
         { x: 3, y: 3, t: () => ['The sign-up board for Dawn Flow, 6 a.m. Twenty pegs for twenty mats.', C.matsLine()] },
         { x: 2, y: 3, t: () => ['A potted plant. Delphine waters it at exactly 5:55 every morning. It is thriving. It is a little intimidated.'] }

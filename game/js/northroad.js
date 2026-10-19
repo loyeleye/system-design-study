@@ -94,7 +94,7 @@
       ],
       // Where you stand when you come back through each door.
       back: { L: [1, 35, 'east'], R: [28, 25, 'west'], K: [1, 13, 'east'], X: [14, 8, 'south'], S: [14, 44, 'north'], C: [7, 23, 'south'] },
-      music: 'ch7', weather: 'sun'
+      music: 'ch7', weather: 'sun', clouds: true, ambience: null
     };
   })();
 
@@ -129,7 +129,7 @@
         { kind: 'sparrow', x: 12, y: 14 }, { kind: 'sparrow', x: 22, y: 9 },
         { kind: 'bfly1', x: 5, y: 16 }, { kind: 'bfly3', x: 2, y: 13 }, { kind: 'bee', x: 7, y: 15 }, { kind: 'bee', x: 4, y: 13 }, { kind: 'ladybug', x: 8, y: 16, range: 2 }
       ],
-      back: { D: [19, 6, 'south'], E: [24, 11, 'west'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun'
+      back: { D: [19, 6, 'south'], E: [24, 11, 'west'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun', clouds: true, ambience: null
     };
   })();
 
@@ -210,7 +210,9 @@
         { kind: 'snail', x: 3, y: 18, range: 2 }, { kind: 'snail', x: 13, y: 19, range: 2 }, { kind: 'snail', x: 27, y: 9, range: 2 }, { kind: 'snail', x: 1, y: 13, range: 2 },
         { kind: 'duck', x: 19, y: 21 }, { kind: 'duck', x: 6, y: 21 }
       ],
-      back: { D: [8, 8, 'south'], E: [28, 10, 'west'] }, enter: [28, 10, 'west'], ch: 9, music: 'ch9', weather: 'rain'
+      back: { D: [8, 8, 'south'], E: [28, 10, 'west'] }, enter: [28, 10, 'west'], ch: 9, music: 'ch9', weather: 'rain',
+      // Rain on the tents, under grey clouds, and the campfire crackling.
+      clouds: true, ambience: 'fire'
     };
   })();
 

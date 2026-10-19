@@ -72,14 +72,14 @@
       if (e !== QUIT) throw e;
       s.items = held; S.persist();
       U.system('QUEST PAUSED', `${esc(c.title)}: talk to ${esc(who(step.at))} to try again.`);
-      AU.music('town'); I.refresh(); return;
+      AU.music(I.song ? I.song() : 'town'); I.refresh(); return;
     }
     s.step++;
     if (SD.clock) SD.clock.advance('quest');
     if (s.step >= c.steps.length) { await school(c); await complete(c, s); }
     else U.system('QUEST UPDATED', `${esc(c.title)}: ${esc(c.steps[s.step].hint)}`);
     S.persist();
-    AU.music('town');
+    AU.music(I.song ? I.song() : 'town');
     I.refresh();
   }
   I.runChain = runStep;

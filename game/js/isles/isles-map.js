@@ -281,7 +281,7 @@
     place(back[0], back[1]);
     plan(true);
     active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
-    AU.music('explore');
+    AU.music('isles');
     hud();
     // First arrival, then one short scene for each wave that has opened since the last visit.
     busyTalk = true;
@@ -431,7 +431,7 @@
       ]);
     }
     // Town quests can have steps on the Isles (js/ploy-quest.js): they come first, as they do in Pingsby.
-    if (SD.quests && SD.quests.pending(w).length && await SD.quests.talk(w)) { AU.music('explore'); hud(); return; }
+    if (SD.quests && SD.quests.pending(w).length && await SD.quests.talk(w)) { AU.music(I.song()); hud(); return; }
     // Then a relationship scene that's due with them (js/folk-scenes.js); it waits out their commissions.
     if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('isles', w)) { hud(); return; }
     const services = SERVICES[w] ? SERVICES[w]() : [];
@@ -531,12 +531,16 @@
       if (th) { Object.keys(keys).forEach(k => keys[k] = false); interact(th); }
     }
   }
+  // The Isles' own theme on the map (and back to Pingsby's when a chain step ends anywhere else), with the sea and its
+  // gulls under it, out here and in the rooms.
+  I.song = () => { const el = document.getElementById('screen-isles'); return el && !el.hidden ? 'isles' : 'town'; };
   function loop(ms) {
     if (!active) return;
     const dt = Math.min(0.05, (ms - (t0 || ms)) / 1000); t0 = ms;
     update(dt); moveFolk(dt);
     draw(ms / 1000, dt);
     if (SD.weather) SD.weather.sync();
+    if (AU.place) AU.place('sea');
     raf = requestAnimationFrame(loop);
   }
 
@@ -914,8 +918,10 @@
       ppl.forEach(p => { if (Math.round(p.py) === y) chibi(p, t); });
       if (Math.round(P.py) === y) { obj('pip', pip.x * ts + ts / 2, pip.y * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, P.dir < 0); person(t); }
     }
-    // The time of day (js/clock.js) under the signs and names.
+    // Cloud shadows over the sea and the islands, then the time of day (js/clock.js) under the signs and names.
     ctx.restore();
+    const wk = SD.weather ? SD.weather.now() : 'clear';
+    if (SD.sky) SD.sky.shadows(ctx, t, vw, vh, cx, cy, wk);
     if (SD.clock) SD.clock.shade(ctx, vw, vh, lights(t, cx, cy));
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     LAND.forEach(l => { if (I.islandOpen(l.isle) && l.name && l.id !== 'board') label(l.lab ? l.lab[0] : l.x + l.w / 2 - 0.5, l.lab ? l.lab[1] : l.y + l.h + 0.7, l.name, null, false, t); });
@@ -924,6 +930,7 @@
     label(EXIT[0] + 0.6, EXIT[1] - 0.2, '← PINGSBY', null, true, t);
     Object.keys(ISLE).forEach(id => { if (id !== 'landing' && !I.islandOpen(id)) fog(id, t); });
     ctx.restore();
+    if (SD.sky) SD.sky.clouds(ctx, t, vw, vh, cx, cy, wk);
     if (SD.weather) SD.weather.draw(ctx, t, vw, vh);
   }
   // After dark: street lamps, a warm glow from each open landmark, and the lighthouse's great lamp.
