@@ -110,6 +110,12 @@
       },
       back: { E: [1, 12, 'east'], G: [15, 10, 'south'], U: [5, 9, 'south'] }, enter: [1, 12, 'east'],
       music: 'ch8', weather: 'sun',
+      // The yard's animals (js/critters.js): the gym cat by the door, a dog on the path, a goat in the bushes, and
+      // a few butterflies and a sparrow. The pets go home at night.
+      critters: [
+        { kind: 'cat', x: 13, y: 10, range: 2 }, { kind: 'dog', x: 10, y: 12, range: 4 }, { kind: 'goat', x: 8, y: 8, range: 2 },
+        { kind: 'bfly1', x: 9, y: 5 }, { kind: 'bfly3', x: 19, y: 17 }, { kind: 'sparrow', x: 12, y: 17 }
+      ],
       // The running track: one picture laid on the grass under everything else (made by tools/club_art.py).
       // And the path runs right up to the pen's gate: where dirt meets cobbles the terrain leaves a strip of grass,
       // so plain dirt is laid over it.
