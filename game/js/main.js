@@ -48,7 +48,7 @@
     const b = U.panel(`<div class="opts">
       <button class="opt" id="m-help">How to play</button>
       ${S.save && SD.folk ? '<button class="opt" id="m-board">The Brújula Board: where is everyone?</button>' : ''}
-      ${S.save && S.save.flags.ch1 && SD.guild ? '<button class="opt" id="m-guild">Multiplayer: the Guild Hall</button>' : ''}
+      ${SD.guild ? '<button class="opt" id="m-guild">Multiplayer: the Guild Hall</button>' : ''}
       <button class="opt" id="m-music">Music: <b>${p.music ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-sfx">Sound effects: <b>${p.sfx ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-say">Say it first: <b>${{ boss: 'Boss questions', all: 'Every question', off: 'Off' }[SD.quiz.sayMode()]}</b></button>
@@ -62,7 +62,7 @@
     b.querySelector('#m-help').onclick = help;
     // Bru's board of who is where right now (js/folk.js).
     const mb = b.querySelector('#m-board'); if (mb) mb.onclick = () => SD.folk.board();
-    // Multiplayer (js/guild.js), once chapter 1 is cleared.
+    // Multiplayer (js/guild.js). Also on the title screen.
     const mg = b.querySelector('#m-guild'); if (mg) mg.onclick = () => SD.guild.play();
     b.querySelector('#m-music').onclick = () => { AU.set('music', !p.music); menu(); M.hud(); };
     b.querySelector('#m-sfx').onclick = () => { AU.set('sfx', !p.sfx); menu(); M.hud(); };
@@ -159,10 +159,14 @@
     AU.music('title');
     const sv = S.save;
     const has = sv.flags.prologue;
+    const mp = SD.guild ? '<button class="ghost" id="t-guild">Multiplayer</button>' : '';
     $('#title-actions').innerHTML = has
-      ? `<button class="primary" id="t-go">Continue · Loop ${sv.loop}</button><button class="ghost" id="t-help">How to play</button>`
-      : `<button class="primary" id="t-new">New game</button><button class="ghost" id="t-help">How to play</button>`;
+      ? `<button class="primary" id="t-go">Continue · Loop ${sv.loop}</button>${mp}<button class="ghost" id="t-help">How to play</button>`
+      : `<button class="primary" id="t-new">New game</button>${mp}<button class="ghost" id="t-help">How to play</button>`;
     $('#t-help').onclick = help;
+    // Multiplayer (js/guild.js) from the title too. A party link (#join-CODE) opens it straight away.
+    const tg = $('#t-guild');
+    if (tg) { tg.onclick = () => SD.guild.play({ after: 'title' }); if (SD.guild.pending()) SD.guild.play({ after: 'title' }); }
     if (has) $('#t-go').onclick = () => M.toHub(false);
     else $('#t-new').onclick = coldOpen;
   };
@@ -459,7 +463,7 @@
     await U.dialog(SD.story.seymour.map(t => ({ s: 'seymour', t })));
     const render = () => {
       const unlocked = S.unlockedCards();
-      const locked = Object.keys(SD.cards).filter(id => !unlocked.includes(id) && !SD.starterDeck.includes(id));
+      const locked = Object.keys(SD.cards).filter(id => !unlocked.includes(id) && !SD.starterDeck.includes(id) && !SD.cards[id].champ);
       const b = U.panel(`<p class="muted small">Specs are hero classes. Each is best at something and weak at something else. Switch freely between runs. Seymour recommends all of them at once. That is not allowed.</p>
         <div class="opts">${Object.entries(SD.specs).map(([k, s]) => {
           const ok = sv.level >= s.rank, on = sv.spec === k;

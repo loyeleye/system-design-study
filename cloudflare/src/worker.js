@@ -3,7 +3,7 @@
 //   GET  /api/hello            -> { game: 'isekaid' }: tells js/cloud.js this copy has a backend
 //   GET  /api/room/<name>      -> WebSocket into one Room (the Guild Hall lobby or a table), see Room below
 //   GET  /api/lobby/<game>     -> WebSocket into that game's table directory, see Directory below
-//   GET  /api/save/<token>     -> { json, updatedAt } or 404
+//   GET  /api/save/<token>     -> { json, updatedAt }, or { json: null } before the first save
 //   PUT  /api/save/<token>     -> stores { json, updatedAt } unless the stored copy is newer
 //
 // Everything else is served from ../game by the static assets binding, which costs no Worker requests
@@ -143,8 +143,10 @@ export class Room extends DurableObject {
 // keeps a socket here and gets the list pushed when it changes; a host's socket also carries its table, so a
 // table drops off the list the moment its host leaves, closes the page or loses the connection.
 //
-// Client -> directory:  { t: 'host', code, nick, players, max, open }  (upsert this socket's table)  |  { t: 'unhost' }
-// Directory -> client:  { t: 'tables', tables: [{ code, nick, players, max, since }] }
+// Client -> directory:  { t: 'host', code, nick, players, max, open, champ, info }  (upsert this socket's table)  |  { t: 'unhost' }
+// Directory -> client:  { t: 'tables', tables: [{ code, nick, players, max, since, champ, info }], count }
+// champ is the leader's champion id and info a short line about the party (its problem and pace, or its boss);
+// count is how many open tables there are in all, listed or not.
 //
 // The list is the first LISTED open tables, oldest first (since = when the table was first listed). A table
 // stops being listed when its host marks it not open (private, started or full), and comes back at its old place.
@@ -172,7 +174,8 @@ export class Directory extends DurableObject {
       const max = Math.min(8, Math.max(2, Math.floor(Number(m.max)) || 2));
       const players = Math.min(max, Math.max(1, Math.floor(Number(m.players)) || 1));
       const keep = a.table && a.table.code === code ? a.table.since : Date.now();
-      a.table = { code, nick: cleanNick(m.nick), players, max, open: !!m.open && players < max, since: keep };
+      const champ = /^[a-z]{2,12}$/.test(String(m.champ || '')) ? String(m.champ) : null;
+      a.table = { code, nick: cleanNick(m.nick), players, max, open: !!m.open && players < max, since: keep, champ, info: cleanNick(m.info, 48) };
     } else if (m.t === 'unhost') {
       a.table = null;
     } else return;
@@ -194,11 +197,11 @@ export class Directory extends DurableObject {
     for (const a of all) {
       if (seen.has(a.table.code)) continue; // two hosts on one code: the older table keeps it
       seen.add(a.table.code);
-      const { code, nick, players, max, since } = a.table;
-      tables.push({ code, nick, players, max, since });
-      if (tables.length >= LISTED) break;
+      if (tables.length >= LISTED) continue;
+      const { code, nick, players, max, since, champ, info } = a.table;
+      tables.push({ code, nick, players, max, since, champ: champ || null, info: info || '' });
     }
-    return JSON.stringify({ t: 'tables', tables });
+    return JSON.stringify({ t: 'tables', tables, count: seen.size });
   }
 
   // Push only when the visible list changed, so a host's player count ticking inside a full list costs nothing.
@@ -210,9 +213,9 @@ export class Directory extends DurableObject {
   }
 }
 
-// Display names from other players: one line, no control characters, at most 24 characters.
-function cleanNick(s) {
-  return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 24);
+// Display text from other players: one line, no control characters, at most 24 characters (or n).
+function cleanNick(s, n) {
+  return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n || 24);
 }
 
 async function label(k) {
@@ -226,7 +229,8 @@ export class SaveSlot extends DurableObject {
   async fetch(req) {
     if (req.method === 'GET') {
       const v = await this.ctx.storage.get('save');
-      return v ? json(v) : json({ error: 'no save' }, 404);
+      // No save yet is an ordinary answer (200, empty), so a first visit logs no error in the browser.
+      return json(v || { json: null });
     }
     if (req.method === 'PUT') {
       const body = await req.text();

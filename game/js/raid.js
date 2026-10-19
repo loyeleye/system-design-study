@@ -9,7 +9,11 @@
 // never touches the save's run. One page is the authority (the host) and sends the whole raid on `state`
 // after every change and every few seconds. Players send only their moves on `pick`. If the host leaves, the
 // present player with the lowest peer label takes over from the last state. Pays no rewards.
-//   SD.raid.play(root, hub, code, { create, bind }) -> Promise (resolves when the player leaves)
+// Before the fight the table waits in the party room (js/party.js): everyone picks a champion (js/champions.js),
+// whose three signature cards go into their deck, the leader (the host) picks the boss, and starts once everyone
+// is ready. In the fight each player stands on the left as their champion, facing the boss.
+//   SD.raid.play(root, hub, code, { create, settings: { boss }, status, vis, bind })
+//     -> Promise of how the player left: undefined, 'full' or 'kicked'
 //   SD.raid.available() -> whether this page has the game's cards and styles (the in-game Guild Hall does)
 (function () {
   const RD = SD.raid = {};
@@ -29,10 +33,12 @@
     const sv = SD.state && SD.state.save, ch = Math.max(1, (sv && sv.chapter) || 1);
     return Object.keys(SD.enemies).filter(k => SD.enemies[k].boss && !SD.enemies[k].tutorial && (SD.enemies[k].ch || 1) <= ch);
   };
-  // This player's deck: the starter deck plus their quest prizes kept on and Kagemaru's pins, as for a dungeon run.
-  RD.myDeck = () => {
+  // This player's deck: the starter deck plus their quest prizes kept on and Kagemaru's pins, as for a dungeon run,
+  // with their champion's three signature cards in place of a Hotfix and two Bigger Boxes.
+  RD.myDeck = champ => {
     const sv = SD.state && SD.state.save;
-    return (SD.starterDeck || []).concat(((sv && sv.cardLib) || []).filter(x => x.on).map(x => x.id), SD.dealer ? SD.dealer.pins() : []).filter(id => card(id)).slice(0, 40);
+    const base = (SD.starterDeck || []).concat(((sv && sv.cardLib) || []).filter(x => x.on).map(x => x.id), SD.dealer ? SD.dealer.pins() : []);
+    return (SD.champions && champ ? SD.champions.deck(champ, base) : base).filter(id => card(id)).slice(0, 40);
   };
 
   function css() {
@@ -51,6 +57,18 @@
 .rd-wait { font-size: 13px; color: var(--muted); }
 .rd-lobby select { font: inherit; padding: 6px 10px; border: 3px solid var(--ink); border-radius: 10px; background: #fff; max-width: 100%; }
 .rd-end { text-align: center; }
+.rd-stage .rd-party { position: absolute; left: 4%; bottom: 5%; display: flex; gap: 3%; align-items: flex-end; width: 56%; }
+.rd-fighter { position: relative; display: grid; justify-items: center; gap: 2px; flex: none; }
+.rd-fighter .rd-spr { position: relative; overflow: hidden; }
+.rd-fighter .rd-spr > i { position: absolute; left: 0; top: 0; background-repeat: no-repeat; image-rendering: pixelated; transform-origin: 0 0; filter: drop-shadow(0 1px 0 rgba(0,0,0,.6)); }
+.rd-fighter .rd-name { font: 700 11px var(--f-body); background: rgba(43,35,64,.85); color: #fff; border-radius: 6px; padding: 0 6px; white-space: nowrap; max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
+.rd-fighter.me .rd-name { background: var(--blue, #3b8bff); }
+.rd-fighter.ready .rd-name::after { content: ' ✓'; }
+.rd-fighter.cast .rd-spr { animation: rd-lunge .5s ease-out; }
+.rd-fighter.hurt .rd-spr { animation: rd-hurt .5s ease-out; }
+@keyframes rd-lunge { 40% { transform: translateX(10px); filter: drop-shadow(0 0 6px #fff6a8); } }
+@keyframes rd-hurt { 20% { transform: translateX(-6px); filter: brightness(2) saturate(0); } 50% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .rd-fighter .rd-spr { animation: none !important; } }
 .rd-end h2 { font-family: var(--f-head); margin: 4px 0; }
 `;
     document.head.appendChild(st);
@@ -297,10 +315,17 @@
     if (G.sla <= 0) { G.sla = 0; G.ph = 'lost'; return; }
     newTurn(G);
   }
-  function addPlayer(G, peer, nick, deck) {
-    if (G.players[peer] || Object.keys(G.players).length >= MAX_PLAYERS) return;
+  // A player's seat. In the party room a new hello (another champion, a new name) replaces their deck.
+  function addPlayer(G, peer, nick, deck, champ) {
     const ids = (Array.isArray(deck) ? deck : []).filter(id => typeof id === 'string' && card(id)).slice(0, 40);
-    const p = { n: net.clean(nick, 24) || 'A hero', draw: shuffle(ids.length >= 5 ? ids : (SD.starterDeck || [])), disc: [], hand: [], cap: 3, ready: false, played: [] };
+    const c = SD.champions && SD.champions.get(champ) ? champ : null;
+    const cur = G.players[peer];
+    if (cur) {
+      if (G.ph === 'lobby') Object.assign(cur, { n: net.clean(nick, 24) || cur.n, c, draw: shuffle(ids.length >= 5 ? ids : (SD.starterDeck || [])), disc: [], hand: [] });
+      return;
+    }
+    if (Object.keys(G.players).length >= MAX_PLAYERS) return;
+    const p = { n: net.clean(nick, 24) || 'A hero', c, draw: shuffle(ids.length >= 5 ? ids : (SD.starterDeck || [])), disc: [], hand: [], cap: 3, ready: false, played: [] };
     if (G.ph === 'fight') drawN(p, 5);
     G.players[peer] = p;
   }
@@ -313,20 +338,30 @@
     let done = null;
     const finished = new Promise(r => { done = r; });
     const bosses = RD.bosses();
-    let G = { v: 0, host: o.create ? me.peer : null, ph: 'lobby', boss: bosses[0] || 'ledger', sev: 0, max: 0, sla: SLA, turn: 0, ii: 0, rage: 0, stale: 0, vuln: 0, taken: 0, sh: zero(), flags: {}, infra: [], known: [], eff: [], log: '', players: {} };
+    const boss0 = o.settings && bosses.includes(o.settings.boss) ? o.settings.boss : bosses[0] || 'ledger';
+    let G = { v: 0, host: o.create ? me.peer : null, ph: 'lobby', boss: boss0, sev: 0, max: 0, sla: SLA, turn: 0, ii: 0, rage: 0, stale: 0, vuln: 0, taken: 0, sh: zero(), flags: {}, infra: [], known: [], eff: [], log: '', players: {} };
     let hosting = !!o.create;
     const players = () => room.peers().filter(p => p.presence && p.presence.kind === 'raid');
-    const pres = () => room.presence({ kind: 'raid', nick: me.nick, host: hosting });
+    let party = null, sentP = '';
+    // Presence goes out only when it changes (a room's own presence change calls onPeers, which redraws).
+    const pres = () => {
+      const v = Object.assign({ kind: 'raid', host: hosting }, party ? party.fields() : { nick: me.nick });
+      const j = JSON.stringify(v);
+      if (j !== sentP) { sentP = j; room.presence(v); }
+    };
     let left = false;
-    const leave = () => { if (left) return; left = true; unsub.forEach(f => f()); clearInterval(iv); room.leave(); done(); };
+    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); clearInterval(iv); room.leave(); done(typeof why === 'string' ? why : undefined); };
     if (o.bind) o.bind(leave);
-    // For the Guild Hall's open-table list (js/guild.js): open while the table is in its lobby.
-    if (o.status) o.status(() => ({ players: Math.max(1, players().length), max: MAX_PLAYERS, open: G.ph === 'lobby' }));
+    // For the Guild Hall's Quest Board (js/guild.js): open while the table is in its party room.
+    if (o.status) o.status(() => ({ players: Math.max(1, players().length), max: MAX_PLAYERS, open: G.ph === 'lobby', lead: hosting, champ: party && party.champ(), info: (SD.enemies[G.boss] || {}).name || '' }));
     const unsub = [];
 
     // ---------- Host ----------
     function push() { G.v++; G.host = me.peer; room.emit('state', G); render(); }
     function start() {
+      // Only the players still here fight.
+      const here = new Set(players().map(p => p.peer));
+      Object.keys(G.players).forEach(k => { if (!here.has(k) && k !== me.peer) delete G.players[k]; });
       const e = SD.enemies[G.boss], n = Math.max(1, Object.keys(G.players).length);
       G.max = G.sev = Math.round(e.sev * (0.4 + 0.6 * n));
       Object.assign(G, { ph: 'fight', sla: SLA, turn: 0, ii: 0, rage: 0, stale: 0, vuln: 0, taken: 0, sh: zero(), flags: {}, infra: [], known: [], eff: [], log: `${e.name} appears. Plan it out loud, then play.` });
@@ -348,6 +383,58 @@
     }
     function become() { hosting = true; pres(); push(); check(); }
 
+    // ---------- The battle stage: each player as their champion, facing the boss ----------
+    // Battle art (js/champion-art.js, tools/champion_art.py) when it's there, else the map sheet's east-facing idle.
+    // A player who lands a card casts; when the boss deals damage everyone flinches. One ticker drives the frames,
+    // since the raid repaints on every state.
+    const anim = {};
+    let seen = null;
+    function cue() {
+      if (G.ph !== 'fight') { seen = null; return; }
+      const now = performance.now(), played = {};
+      Object.keys(G.players).forEach(k => { played[k] = G.players[k].played.length; });
+      if (seen && seen.turn === G.turn) Object.keys(played).forEach(k => { if (played[k] > (seen.played[k] || 0)) anim[k] = { a: 'cast', t0: now }; });
+      if (seen && G.taken > seen.taken) Object.keys(played).forEach(k => { anim[k] = { a: 'hurt', t0: now }; });
+      seen = { turn: G.turn, taken: G.taken, played };
+    }
+    function artOf(c) {
+      const BA = SD.championArt && SD.championArt[c], CH = SD.champions && SD.champions.get(c);
+      if (BA) return { sheet: `assets/img/battle/champ-${c}.webp`, w: BA.w, h: BA.h, rows: BA.rows };
+      if (CH) return { sheet: CH.sheet, w: CH.w, h: CH.h, rows: { idle: [2, CH.n + 1] }, map: true };
+      return null;
+    }
+    function stageHtml(e) {
+      const ids = Object.keys(G.players), small = matchMedia('(max-width: 520px)').matches;
+      const fighters = ids.map(k => {
+        const p = G.players[k], a = artOf(p.c || 'uptima');
+        if (!a) return '';
+        // About 100px tall (70 on a phone), smaller in a party of four.
+        const s = Math.max(1, Math.min(2.6, (small ? 70 : 100) / a.h * (ids.length > 3 ? 0.85 : 1)));
+        const st = anim[k] && performance.now() - anim[k].t0 < 500 ? ' ' + anim[k].a : '';
+        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}" style="width:${a.w}px;height:${a.h}px;background-image:url(${a.sheet});transform:scale(${s.toFixed(2)})"></i></div><span class="rd-name">${esc(p.n)}</span></div>`;
+      }).join('');
+      const bd = SD.battleArt ? SD.battleArt.backdrops : null, b = bd && bd.includes(String(e.ch || 1)) ? String(e.ch || 1) : '1';
+      return `<div class="stage rd-stage" style="background-image:url(assets/img/battle/bg-${b}.webp)"><div class="rd-party">${fighters}</div>
+        <div class="foe" style="--foe:${SD.art.enemyColor ? SD.art.enemyColor(e.sprite) : '#f66'}">${SD.art.enemy(e.sprite, true, e.hue)}</div></div>`;
+    }
+    let raf = 0;
+    (function tick() {
+      if (left) return;
+      root.querySelectorAll('.rd-fighter').forEach(el => {
+        const k = el.dataset.peer, p = G.players[k], i = el.querySelector('i'), a = p && artOf(p.c || 'uptima');
+        if (!a || !i) return;
+        let st = anim[k] || { a: 'idle', t0: 0 };
+        let row = a.rows[st.a];
+        const fps = st.a === 'idle' ? 8 : 12;
+        let f = Math.floor((performance.now() - st.t0) / 1000 * fps);
+        if (!row || (st.a !== 'idle' && f >= row[1])) { if (st.a !== 'idle' && (!row || f >= row[1])) { anim[k] = st = { a: 'idle', t0: performance.now() }; f = 0; } row = a.rows.idle; }
+        // A map sheet's first column is the standing frame, so its idle runs from column 0 like the party room's.
+        i.style.backgroundPosition = `${-(f % row[1]) * a.w}px ${-row[0] * a.h}px`;
+      });
+      raf = requestAnimationFrame(tick);
+    })();
+    unsub.push(() => cancelAnimationFrame(raf));
+
     // ---------- What everyone sees ----------
     function paint(html) {
       const h = root.querySelector('.hand'), sx = h ? h.scrollLeft : 0;
@@ -355,23 +442,23 @@
       root.querySelector('#rd-leave').onclick = leave;
       const h2 = root.querySelector('.hand'); if (h2 && sx) h2.scrollLeft = sx;
     }
-    const head = t => `<span class="mi-tag">Incident Raid · table ${esc(code.toUpperCase())}</span><h2 style="margin:2px 0 6px">${esc(t)}</h2>`;
+    const head = t => `<span class="mi-tag">Incident Raid · party ${esc(code.toUpperCase())}</span><h2 style="margin:2px 0 6px">${esc(t)}</h2>`;
     function render() {
       if (!G.host) return paint(`<div class="mi-card">${head('Finding the host…')}</div>`);
       const mine = G.players[me.peer];
       const seatList = Object.keys(G.players).map(k => esc(G.players[k].n) + (k === me.peer ? ' (you)' : '')).join(', ');
       if (G.ph === 'lobby') {
-        paint(`<div class="mi-card rd-lobby">${head('Raid an incident together')}
-          <p class="small">Everyone brings their own deck and hand, and you share the boss, the SLA, your defences and six infra slots. You both play at the same time, press Ready, then the boss acts. Every third turn it hits reads and writes at once, so split the work out loud. When you both land an effective card in the same turn, that's a Tag Team: +${TAG_TEAM} mitigation. No shards; this one is for practice.</p>
-          <p class="small"><b>At the table:</b> ${seatList || 'nobody yet'}</p>
-          ${hosting ? `<div class="row"><label for="rd-boss"><b>Boss</b></label><select id="rd-boss">${bosses.map(k => `<option value="${esc(k)}" ${k === G.boss ? 'selected' : ''}>${esc(SD.enemies[k].name)}</option>`).join('')}</select>
-            <button class="primary" type="button" id="rd-start" ${Object.keys(G.players).length ? '' : 'disabled'}>Start the raid</button></div>
-            <p class="muted small">Send your partner the table code <b>${esc(code.toUpperCase())}</b>. The boss gets tougher with each player.</p>` : `<p class="muted small">${esc((G.players[G.host] || {}).n || 'The host')} picks the boss.</p>`}</div>`);
-        if (hosting) {
-          const s = root.querySelector('#rd-boss');
-          s.onchange = () => { G.boss = s.value; push(); };
-          root.querySelector('#rd-start').onclick = start;
-        }
+        pres();
+        party.render(root, {
+          mode: 'Incident Raid', code, leader: G.host, max: MAX_PLAYERS, listed: o.vis && o.vis.get(), vis: o.vis, leave,
+          what: 'the raid', startLabel: 'Start the raid', boss: G.boss, deck: true,
+          settings: hosting ? `<label class="pt-lbl" for="rd-boss">Boss<select id="rd-boss">${bosses.map(k => `<option value="${esc(k)}" ${k === G.boss ? 'selected' : ''}>${esc(SD.enemies[k].name)}</option>`).join('')}</select></label>`
+            : `<span class="mi-tag">Boss</span><b>${esc(SD.enemies[G.boss].name)}</b><small class="mi-muted">${esc((G.players[G.host] || {}).n || 'The leader')} picks the boss.</small>`,
+          note: `You share the boss, the SLA, your defences and six infra slots, and each bring your own deck. Everyone plays at once, presses Ready, then the boss acts. Every third turn it hits reads and writes together, so split the work out loud. Two effective cards in one turn make a Tag Team: +${TAG_TEAM} mitigation. The boss gets tougher with each player. No shards; this one is for practice.`,
+          startWhy: () => (Object.keys(G.players).length ? null : 'Waiting for the table to answer.'),
+          start,
+          bind: r => { const sl = r.querySelector('#rd-boss'); if (sl) sl.onchange = () => { G.boss = sl.value; push(); }; }
+        });
         return;
       }
       const e = SD.enemies[G.boss];
@@ -383,6 +470,7 @@
         const ag = root.querySelector('#rd-again'); if (ag) ag.onclick = () => { G.ph = 'lobby'; push(); };
         return;
       }
+      cue();
       const it = intentOf(G);
       const weak = Object.keys(e.weak).filter(t => G.known.includes('w:' + t)), res = Object.keys(e.resist).filter(t => G.known.includes('r:' + t));
       const chips = [];
@@ -393,7 +481,7 @@
       const mates = Object.keys(G.players).filter(k => k !== me.peer).map(k => { const p = G.players[k]; return `<div class="rd-mate${p.ready ? ' ready' : ''}"><b>${esc(p.n)}</b><span>${p.cap} Capacity left · ${p.hand.length} cards</span><span class="rd-played">${p.played.length ? 'Played ' + p.played.map(id => esc(card(id).name)).join(', ') : 'Nothing played yet'}</span>${p.ready ? '<span>Ready</span>' : ''}</div>`; }).join('');
       const slots = Array.from({ length: SLOTS }, (_, i) => G.infra[i] ? `<span class="slot on" title="${esc(card(G.infra[i].id).text)}">${esc(card(G.infra[i].id).name)}<small>${esc((G.players[G.infra[i].by] || {}).n || '')}</small></span>` : '<span class="slot">Infra slot</span>').join('');
       paint(`<div class="combat bossfight">
-        <div class="foe-zone"><div class="foe" style="--foe:${SD.art.enemyColor ? SD.art.enemyColor(e.sprite) : '#f66'}">${SD.art.enemy(e.sprite, true, e.hue)}</div>
+        <div class="foe-zone">${stageHtml(e)}
           <div class="foe-info"><div class="foe-name">${esc(e.name)} <span class="tier boss">RAID</span></div>
             <div class="bar sev"><i style="width:${G.sev / G.max * 100}%"></i><span>Severity ${G.sev}/${G.max}</span></div>
             <div class="intent${it.front ? ' rd-front' : ''}"><span class="lbl">${it.front ? 'TWO FRONTS' : 'NEXT'}</span> ${esc(intentText(G))}</div>
@@ -418,7 +506,13 @@
 
     // ---------- Messages ----------
     function send(d) { if (hosting) act(me.peer, d); else room.emit('pick', d); }
-    function hello() { const d = { deck: RD.myDeck(), nick: me.nick }; if (hosting) { addPlayer(G, me.peer, me.nick, d.deck); push(); } else room.emit('hello', d); }
+    // This player's seat at the host: name, champion and deck. Sent again whenever the champion or name changes.
+    let helloSent = '';
+    function hello() {
+      const champ = party ? party.champ() : null, d = { deck: RD.myDeck(champ), nick: me.nick, champ };
+      helloSent = me.nick + '|' + champ;
+      if (hosting) { addPlayer(G, me.peer, me.nick, d.deck, champ); push(); } else room.emit('hello', d);
+    }
     unsub.push(room.on('state', msg => {
       const d = msg.data;
       if (msg.isMe || !d || typeof d !== 'object' || !SD.enemies[d.boss] || !['lobby', 'fight', 'won', 'lost'].includes(d.ph) || typeof d.players !== 'object') return;
@@ -429,18 +523,19 @@
       // Card ids in the state must be real cards; anything else is dropped.
       const ok = a => (Array.isArray(a) ? a : []).filter(id => typeof id === 'string' && card(id));
       const pl = {};
-      Object.keys(d.players).slice(0, MAX_PLAYERS).forEach(k => { const x = d.players[k] || {}; pl[k] = { n: net.clean(x.n, 24) || 'A hero', draw: ok(x.draw), disc: ok(x.disc), hand: ok(x.hand).slice(0, 10), cap: Math.max(0, x.cap | 0), ready: !!x.ready, played: ok(x.played) }; });
+      Object.keys(d.players).slice(0, MAX_PLAYERS).forEach(k => { const x = d.players[k] || {}; pl[k] = { n: net.clean(x.n, 24) || 'A hero', c: SD.champions && SD.champions.get(x.c) ? x.c : null, draw: ok(x.draw), disc: ok(x.disc), hand: ok(x.hand).slice(0, 10), cap: Math.max(0, x.cap | 0), ready: !!x.ready, played: ok(x.played) }; });
       G = Object.assign({}, d, { host: msg.peer, players: pl, infra: (Array.isArray(d.infra) ? d.infra : []).filter(x => x && card(x.id)).slice(0, SLOTS), known: Array.isArray(d.known) ? d.known.filter(x => typeof x === 'string') : [], sh: Object.assign(zero(), d.sh), flags: d.flags || {}, eff: Array.isArray(d.eff) ? d.eff : [] });
       ['sev', 'max', 'sla', 'turn', 'ii', 'rage', 'stale', 'vuln', 'taken'].forEach(k => { G[k] = Number(G[k]) || 0; });
       G.log = net.clean(G.log, 400);
       if (!G.players[me.peer] && G.ph !== 'won' && G.ph !== 'lost') hello();
+      if (G.ph !== 'lobby' && party.ready()) party.setReady(false);
       render();
     }));
     unsub.push(room.on('pick', msg => { if (hosting && !msg.isMe) act(msg.peer, msg.data); }));
     unsub.push(room.on('hello', msg => {
       if (!hosting || msg.isMe) return;
       const d = msg.data || {};
-      if (!G.players[msg.peer]) addPlayer(G, msg.peer, (players().find(x => x.peer === msg.peer) || { presence: {} }).presence.nick || d.nick, d.deck);
+      addPlayer(G, msg.peer, (players().find(x => x.peer === msg.peer) || { presence: {} }).presence.nick || d.nick, d.deck, d.champ);
       push();
     }));
     unsub.push(room.onPeers(list => {
@@ -452,6 +547,12 @@
     }));
     const iv = setInterval(() => { if (hosting) room.emit('state', G); }, BEAT);
 
+    // The leader's Remove: the host takes the player's seat away too.
+    unsub.push(room.on('kick', msg => { const d = msg.data || {}; if (hosting && msg.peer === me.peer && typeof d.peer === 'string' && G.ph === 'lobby') { delete G.players[d.peer]; push(); } }));
+    party = SD.party.join(hub, room, 'raid', {
+      leader: () => G.host, max: MAX_PLAYERS, onKick: () => leave('kicked'), onFull: () => { if (G.ph === 'lobby') leave('full'); },
+      onChange: () => { pres(); if (G.ph === 'lobby' && helloSent !== me.nick + '|' + party.champ()) hello(); render(); }
+    });
     pres();
     hello();
     render();

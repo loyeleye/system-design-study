@@ -4,10 +4,10 @@ This folder deploys the game to Cloudflare Workers. One Worker serves everything
 
 - **The game itself:** every file in `game/` (except `game/tools/`, see `game/.assetsignore`) as static assets. Static requests are free and not metered.
 - **Multiplayer rooms:** `/api/room/<name>`, a WebSocket per table (Durable Object `Room`). Same shape as the claude.ai `room` capability, so Pair Mock, Whiteboard Showdown and Incident Raid run unchanged.
-- **Open lobbies:** `/api/lobby/<game>`, one table directory per game (Durable Object `Directory`): the first 10 open tables, oldest first, pushed live to everyone on the Guild Hall screen.
+- **Open lobbies:** `/api/lobby/<game>`, one party directory per game (Durable Object `Directory`): the Quest Board's first 10 open parties, oldest first, and how many are open in all, pushed live to everyone on the Guild Hall screen.
 - **Cloud saves:** `/api/save/<code>` (Durable Object `SaveSlot`). Each browser gets a 32-character save code. Menu > Play on another device shows it and accepts one from another device.
 
-The game finds the backend by asking `api/hello` (`game/js/cloud.js`). The claude.ai artifact and a local `python3 -m http.server` copy get no answer, so they behave exactly as before.
+The game knows it's on this Worker from a `Server-Timing: sd-cloud` header on its static files (`game/_headers`), and only then asks `api/hello` (`game/js/cloud.js`). The claude.ai artifact and a local `python3 -m http.server` copy send no request at all, so they log no errors and behave exactly as before.
 
 ## One-time setup (about 10 minutes)
 

@@ -1,22 +1,34 @@
 // The Cloudflare build's backend (cloudflare/src/worker.js), for copies of the game that aren't on claude.ai.
 // It gives js/net.js a room shaped like the claude.ai `room` capability, and js/state.js a save store keyed by
-// a save code. Both are off unless GET api/hello answers, so a local `python3 -m http.server` copy and the
-// claude.ai artifact never use it.
+// a save code. Both are off unless the page came from the Worker: its static files carry a `Server-Timing: sd-cloud`
+// mark (game/_headers), and only then is api/hello asked. The claude.ai artifact and a local
+// `python3 -m http.server` copy never send a request, so they log no 404.
 //
 //   await SD.cloud.available()  -> true when this copy is served by the Worker
 //   await SD.cloud.room()       -> the hub's lobby, shaped like a room; join(name) opens a table's room
-//   SD.cloud.directory(game)    -> that game's open tables: tables(), onTables(fn), host(info), unhost(), leave()
+//   SD.cloud.directory(game)    -> that game's open tables: tables(), count(), onTables(fn), host(info), unhost(), leave()
 //   SD.cloud.saves              -> { code(), setCode(c), get(), set({ json, updatedAt }) }
 (function () {
   const C = SD.cloud = SD.cloud || {};
   const CODE_KEY = 'sd-save-code';
   const api = p => new URL('api/' + p, location.href);
 
+  // The Worker build's mark on this page's own response. A *.workers.dev address counts too, for a browser that
+  // doesn't share Server-Timing with the page.
+  function marked() {
+    try {
+      const nav = performance.getEntriesByType('navigation')[0];
+      if (nav && Array.isArray(nav.serverTiming) && nav.serverTiming.some(t => t.name === 'sd-cloud')) return true;
+    } catch (e) { /* no timing API */ }
+    return /\.workers\.dev$/.test(location.hostname);
+  }
+
   let probe = null;
   C.available = function () {
     if (probe) return probe;
     probe = (async () => {
       if (!/^https?:$/.test(location.protocol)) return false;
+      if (!marked()) return false;
       try {
         const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
         const r = await fetch(api('hello'), { cache: 'no-store', signal: ctl.signal });
@@ -118,7 +130,7 @@
   // A host's table rides on the socket, so it is re-sent after a reconnect and gone when the socket closes.
   C.directory = function (game) {
     const fns = new Set();
-    let ws = null, list = [], mine = null, closed = false, wait = 500;
+    let ws = null, list = [], count = 0, mine = null, closed = false, wait = 500;
     const fire = () => fns.forEach(f => { try { f(list); } catch (e) { /* a listener's own error */ } });
     const send = o => { if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify(o)); } catch (e) { /* resent on reconnect */ } } };
     function connect() {
@@ -129,7 +141,7 @@
       ws.onopen = () => { wait = 500; if (mine) send(Object.assign({ t: 'host' }, mine)); };
       ws.onmessage = e => {
         let m; try { m = JSON.parse(e.data); } catch (err) { return; }
-        if (m && m.t === 'tables' && Array.isArray(m.tables)) { list = m.tables; fire(); }
+        if (m && m.t === 'tables' && Array.isArray(m.tables)) { list = m.tables; count = Math.max(list.length, Math.floor(+m.count) || 0); fire(); }
       };
       ws.onclose = () => {
         if (closed) return;
@@ -141,6 +153,7 @@
     connect();
     return {
       tables: () => list,
+      count: () => count,
       onTables(fn) { fns.add(fn); return () => fns.delete(fn); },
       host(info) { mine = info; send(Object.assign({ t: 'host' }, info)); },
       unhost() { mine = null; send({ t: 'unhost' }); },
@@ -178,7 +191,9 @@
       const r = await fetch(api('save/' + C.saves.code()), { cache: 'no-store' });
       if (r.status === 404) return null;
       if (!r.ok) throw new Error('save ' + r.status);
-      return r.json();
+      // Before the first save the Worker answers { json: null }.
+      const d = await r.json();
+      return d && typeof d.json === 'string' ? d : null;
     },
     async set(doc) {
       const r = await fetch(api('save/' + C.saves.code()), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) });
