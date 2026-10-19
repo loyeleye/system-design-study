@@ -242,6 +242,8 @@
     if (c === 'G') await gate();
   }
   M.visit = visit;
+  // The Grand Library's room (js/interiors.js) opens the Hall of Blueprints from its back door.
+  M.hall = hall;
   // What blocks each road until the story opens it. The boulder is Lord Latency's: a loading bar stuck at 99%.
   // The Isles barricade's sign keeps flipping between OPEN and CLOSED, because its two halves haven't synced.
   const BLOCK = {
