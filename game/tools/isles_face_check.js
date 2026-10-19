@@ -13,7 +13,8 @@
 // turn back after. Then, standing well away from everyone each morning, afternoon and evening, it checks everyone
 // out on the Isles faces their spot's way (a scheduled spot's own, from js/folk-far.js) and that they don't all face
 // the same way; and in a few rooms, at different times of day, that each resident stands at their own spot facing
-// what they're doing there, and a storm guest doesn't take anyone's spot. Needs Playwright (npm i -g playwright).
+// what they're doing there, and a storm guest doesn't take anyone's spot. Last, it talks to Kagemaru in his cave
+// from beside his table and checks he faces you and turns back after. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..');
@@ -213,6 +214,34 @@ const server = http.createServer((req, res) => {
       else if (Object.values(want).some(w => w[0] === got[id][0] && w[1] === got[id][1])) bad(`${key} (${block}): ${id} is standing on someone's spot`);
     });
     console.log(`${key} (${block}): ` + Object.entries(got).map(([id, a]) => `${id} ${a[2]} at ${a[0]},${a[1]}`).join(', '));
+  }
+
+  // Kagemaru's cave in the hills (js/card-dealer.js): talked to from beside his table, he turns to you, and back to
+  // the cave mouth after.
+  page.evaluate(() => SD.interiors.open('cave', 'isles-canvas')).catch(() => {});
+  await page.waitForTimeout(800);
+  const cave = await page.evaluate(() => {
+    const sc = window.LAST_SC, k = sc && sc.actors.kagemaru;
+    if (!k) return null;
+    sc.place('you', k.x - 1, k.y);
+    const was = k.face;
+    sc.onTalk('kagemaru');
+    return { was };
+  });
+  if (!cave) bad('Kagemaru isn\'t in his cave');
+  else {
+    await page.waitForTimeout(600);
+    const during = await page.evaluate(() => LAST_SC.actors.kagemaru.face);
+    if (during !== 'west') bad(`in the cave, Kagemaru faced ${during} while you talked from his west`);
+    // Through his greeting, then "Just chat" on his pins, and his line.
+    await finish();
+    await page.click('#kg-chat');
+    await page.waitForTimeout(300);
+    await finish();
+    const after = await page.evaluate(() => LAST_SC.actors.kagemaru && LAST_SC.actors.kagemaru.face);
+    if (after !== cave.was) bad(`in the cave, Kagemaru faced ${after} after the talk, not back ${cave.was}`);
+    console.log(`cave: Kagemaru turned ${during} to you, then back to ${after}`);
+    await page.evaluate(() => LAST_SC.onDoor('out'));
   }
 
   if (errors.length) bad('page errors: ' + errors.join(' | '));
