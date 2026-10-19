@@ -26,6 +26,9 @@
     if (n) return { src: 'assets/img/interiors/' + name + '.webp', w: n[0], h: n[1] };
     return null;
   }
+  // Objects that move: a strip of frames, each w x h (the still's art padded, standing on the same bottom edge), n of
+  // them at fps. The heroes' camp campfire flickers (tools/campfire_anim.py).
+  const ANIM = { 'cp-fire': { src: 'assets/img/arc/cp-fire-anim.webp', w: 64, h: 72, n: 8, fps: 9 } };
   function charArt(id) {
     const a = SD.arcArt && SD.arcArt.chars[id];
     if (a) return Object.assign({ src: 'assets/img/arc/c-' + id + '.webp' }, a);
@@ -55,6 +58,8 @@
     const ctx = canvas.getContext('2d');
     const MAP = def.map, W = MAP[0].length, HT = MAP.length;
     let dpr = 1, ts = 32, raf = 0, t0 = 0;
+    let clockT = 0;                      // seconds, for animated objects
+
     const keys = {};
     const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
     const terr = (x, y) => (def.terrain || {})[tile(x, y)] || 'ground';
@@ -241,6 +246,17 @@
       if (s.at && ok(s.im) && s.at[i]) ctx.drawImage(s.im, s.at[i][0], s.at[i][1], 32, 32, (x - 0.5) * ts, (y - 0.5) * ts, ts, ts);
     }
     function obj(name, x, y, k, flip) {
+      const n = ANIM[name];
+      if (n) {
+        // An animated object: its frames side by side in one strip, played in a loop (falls back to the still).
+        const im = pic(n.src);
+        if (ok(im)) {
+          const w = n.w * ts / 32 * (k || 1), h = n.h * ts / 32 * (k || 1), f = Math.floor(clockT * n.fps) % n.n;
+          if (flip) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(im, f * n.w, 0, n.w, n.h, -w / 2, y - h, w, h); ctx.restore(); }
+          else ctx.drawImage(im, f * n.w, 0, n.w, n.h, x - w / 2, y - h, w, h);
+          return;
+        }
+      }
       const a = objArt(name); if (!a) return;
       const im = pic(a.src); if (!ok(im)) return;
       const w = a.w * ts / 32 * (k || 1), h = a.h * ts / 32 * (k || 1);
@@ -395,6 +411,7 @@
     }
     const SKY = { dusk: 'rgba(255,120,60,.16)', dark: 'rgba(14,10,40,.45)', grey: 'rgba(120,120,130,.0)', night: 'rgba(20,24,70,.35)' };
     function draw(t) {
+      clockT = t;
       const vw = canvas.width / dpr, vh = canvas.height / dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
@@ -454,7 +471,9 @@
       if (!SD.clock.dark()) return [];
       return objs.filter(o => !ISO && LIGHT[o.name] && objArt(o.name)).map(o => {
         const [f, r, rgb] = LIGHT[o.name], a = objArt(o.name);
-        return { x: (o.x + 0.5) * ts - cx, y: (o.y + 1) * ts - a.h * ts / 32 * (o.k || 1) * f - cy, r: r * ts, rgb };
+        // An animated fire's glow breathes with its flames.
+        const flick = ANIM[o.name] ? 1 + 0.06 * Math.sin(clockT * 11) + 0.03 * Math.sin(clockT * 23 + 1.7) : 1;
+        return { x: (o.x + 0.5) * ts - cx, y: (o.y + 1) * ts - a.h * ts / 32 * (o.k || 1) * f - cy, r: r * ts * flick, rgb };
       }).concat((def.lights || []).map(l => ISO
         // Isometric lights sit over a cell's centre, raised by h pixels (at ts 32) for lamp heads and windows.
         ? { x: ix(l.x + 0.5, l.y + 0.5) - cx, y: iy(l.x + 0.5, l.y + 0.5) - (l.h || 0) * ts / 32 - cy, r: (l.r || 3) * ts, rgb: l.rgb }
