@@ -1036,7 +1036,9 @@ SD.metaShop = [
   { id: 'badge', name: "Principal Engineer's Badge", cost: 410, rank: 'A', text: 'Every card that mitigates mitigates 3 more.' },   // Vajra, generously
   // S-Rank
   { id: 'pinned', name: 'Pinned Tabs', cost: 450, rank: 'S', text: 'Your hand is no longer discarded at the end of your turn.' },   // Runic Pyramid
-  { id: 'croissant', name: 'Leftover Croissant', cost: 600, rank: 'S', text: 'Capacity you don\'t spend carries over to your next turn.' }   // Ice Cream, the strongest here
+  { id: 'croissant', name: 'Leftover Croissant', cost: 600, rank: 'S', text: 'Capacity you don\'t spend carries over to your next turn.' },   // Ice Cream, the strongest here
+  // Gifts (gift: true) are never sold: a quest gives them, and Wen's shop shows them once owned (js/main.js).
+  { id: 'metronome', name: "The Rollouts' Metronome", cost: 0, rank: 'B', gift: true, text: 'If you play 3 or fewer cards in a turn, draw 3 extra cards at the start of your next turn.' }   // Pocketwatch
 ];
 
 // Ayo's Card Forge: cards bought with Memory Shards join your starting deck in every future run (you can
