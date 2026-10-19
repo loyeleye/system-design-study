@@ -12,7 +12,8 @@
 //     inside; talk to its wall to knock, and each person in there says one worried line, a different one each time.
 //     The waystation has a real inn (js/interiors.js), where Lord Latency and his guest already spend the night, so
 //     they say their worried lines in there.
-//   - The PR Club's members who sleep outdoors move into the gym (js/club-life.js), and say a worried line there.
+//   - The PR Club's members who sleep outdoors move into the gym, and those who'd be away shelter in the lounge up
+//     the studio's stairs (js/club-life.js, js/club-loft.js). Each says a worried line there.
 //   - Islanders go into their island's building (js/interiors.js has the rooms) and talk from there.
 //   - The Exchange's townsfolk go home, and the Arena's crowd too (js/northroad-arena.js). The Exchange's trader
 //     stays at his stall to keep the relic shop open, with a worried word first.
@@ -273,11 +274,12 @@
   }
 
   // ---------- The PR Club ----------
-  // Kofi, Kenji and Magnus sleep in the gym in the storm (js/club-life.js); the bidder goes home. Members say a
-  // worried word before anything else when there's no quest step waiting.
+  // Kofi, Kenji and Magnus sleep in the gym in the storm, and Paz, Imani, Leon and Thea sit it out in the lounge
+  // (js/club-life.js); the bidder goes home. Members say a worried word before anything else when there's no quest
+  // step waiting.
   const CLUB = {
     sunny: ['The bar remembers when we don\'t. Tonight I\'m checking the board by candle, line by line, in case the storm takes the chalk. Log it.',
-      'Leon\'s out in this. Thea\'s out in this. Everyone I\'ve ever chalked is out in this. Count heads. LOG IT.'],
+      'Count heads. Five in here, four up in the lounge, Delphine in the studio. Ten. Everyone I\'ve ever chalked is under a roof tonight. LOG IT.'],
     leon: ['Ninety-nine titles, and not one of them was in weather like this. Mostly. Generously.',
       'Kyu beat me once. Fair and square. She said "good form" and limped off to fix the scoreboard. Nobody ever fixes her.'],
     thea: ['Shield up, eyes on your opponent. Tonight the opponent is the sky. I don\'t like the bracket.',

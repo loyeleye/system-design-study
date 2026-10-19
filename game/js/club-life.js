@@ -3,7 +3,7 @@
 // (js/folk-data.js, js/folk-scenes.js) and the North Road's (js/folk-far.js). Backstories, the relationship web and
 // the scene outlines are in docs/pr-club-cast.md.
 //
-// A member's place is one of: 'prgym' or 'prstudio' (inside, at their spot in that room), a yard tile
+// A member's place is one of: 'prgym', 'prstudio' or 'prloft' (inside, at their spot in that room), a yard tile
 // [x, y, face, emote], a route round the track ('laps', 'intervals' or 'sprints') or 'away' (off the map: down the
 // road, or up into the hills).
 // Like everyone else, anyone with a quest marker stays at their usual spot, and a scene that's due sends its people
@@ -33,8 +33,9 @@
 
   // ---------- Schedules ----------
   // [place, what they're doing]. Delphine lives in the studio and Sunny in the loft over the gym; Kofi sleeps under
-  // a different tree every night; Kenji camps in the infield; the rest go home down the road.
-  const G = 'prgym', ST = 'prstudio';
+  // a different tree every night; Kenji camps in the infield; Imani does the books in the lounge (js/club-loft.js); the
+  // rest go home down the road.
+  const G = 'prgym', ST = 'prstudio', LO = 'prloft';
   const TREES = [[3, 3, 'south'], [10, 3, 'south'], [8, 19, 'east'], [23, 19, 'west'], [29, 12, 'west']];
   const DAY = {
     sunny: { morning: [G, 'Coaching the morning lifts at the PR Board'], afternoon: [[14, 17, 'north', 'alert'], 'Timing sprints from the infield'],
@@ -54,18 +55,19 @@
     kenji: { morning: ['away', 'Up in the hills, out of signal'], afternoon: ['away', 'Somewhere on the Ridge Loop'],
       evening: [[20, 21, 'west', 'dots'], 'Back from the hills, stretching'], night: [[24, 17, 'north', 'sleep'], 'Camped in the infield, under the stars'] },
     imani: { morning: [[24, 7, 'south', 'dots'], 'Doing the club\'s books at the auction block'], afternoon: [G, 'Coaching deadlifts'],
-      evening: [[24, 7, 'south', 'dots'], 'Counting the day\'s takings. Twice'], night: ['away', 'Home, with the ledger'] },
+      evening: [[24, 7, 'south', 'dots'], 'Counting the day\'s takings. Twice'], night: [LO, 'Doing the club\'s books in the lounge, by lamplight'] },
     magnus: { morning: [[27, 7, 'north', 'star'], 'Lifting, and talking to the weights between reps'], afternoon: [[27, 7, 'south'], 'Polishing hammers'],
       evening: [G, 'At the rack, in a staring contest with Leon'], night: [[28, 7, 'north', 'sleep'], 'Asleep beside his hammers. Gerald keeps watch'] }
   };
   const MEMBERS = Object.keys(DAY);
   // Chapter 10's storm (js/ch10-folk.js): the clock is stuck at night, and nobody sleeps outdoors in it. Those who
-  // would (under a tree, in the infield, beside the hammers) sleep in the gym; the rest keep their night.
+  // would (under a tree, in the infield, beside the hammers) sleep in the gym; those who'd be away (home, the arena)
+  // can't get there, so they shelter in the lounge with Imani; the rest keep their night.
   const storm = () => !!(SD.folk && SD.folk.storm());
-  const STORM = { kofi: G, kenji: G, magnus: G };
+  const STORM = { kofi: G, kenji: G, magnus: G, paz: LO, leon: LO, thea: LO };
   // Where they go when they leave the map, and what the board says about it.
   const EXIT = { kenji: [30, 17] }, OUT = [0, 13];
-  const AWAY = { leon: 'The arena', thea: 'The arena', paz: 'Home', imani: 'Home', kenji: 'The hills' };
+  const AWAY = { leon: 'The arena', thea: 'The arena', paz: 'Home', kenji: 'The hills' };
   // Usual spots: the gym and studio people inside, the rest where the yard has them (js/club.js).
   const HOME = { sunny: G, leon: G, thea: G, rico: G, delphine: ST, kofi: ST };
   const home = id => HOME[id] || (yard.actors[id] ? [yard.actors[id].x, yard.actors[id].y, yard.actors[id].face] : G);
@@ -362,6 +364,7 @@
     const p = where(id);
     if (p === G) return ['in', 15, 9];
     if (p === ST) return ['in', 5, 8];
+    if (p === LO) return ['in', 3, 8];
     if (p === 'away') return ['in'].concat(EXIT[id] || OUT);
     if (ROUTES[p]) return 'route';
     return p;
@@ -397,8 +400,8 @@
       if (Array.isArray(p) && p[3] === 'sleep') a.nextStroll = Infinity;
     });
   }, 500);
-  // The gym and the studio have whoever is inside right now.
-  if (I && I.ROOMS) [G, ST].forEach(key => {
+  // The gym, the studio and the lounge have whoever is inside right now.
+  if (I && I.ROOMS) [G, ST, LO].forEach(key => {
     const r = I.ROOMS[key];
     if (!r) return;
     const at = Object.assign({}, r.spots, VISIT[key]);
@@ -453,13 +456,14 @@
   function placeLabel(id) {
     const p = where(id);
     if (p === G) return 'The PR Club gym';
-    if (p === ST) return 'The studio, upstairs';
+    if (p === ST) return 'The studio';
+    if (p === LO) return 'The lounge, up the outside stairs';
     if (p === 'away') return AWAY[id] || 'Away';
     if (ROUTES[p]) return 'On the track';
     const [x, y] = p;
     return x >= 22 && y <= 10 ? 'The auction block' : y >= 15 ? 'The track' : 'The club yard';
   }
-  const room = { 'room:prgym': 'in the gym', 'room:prstudio': 'up in the studio' };
+  const room = { 'room:prgym': 'in the gym', 'room:prstudio': 'in the studio', 'room:prloft': 'up in the lounge' };
   const where1 = at => room[at] || PLACES[at].label;
   function hint(arc, c, m) {
     const nx = next(arc);

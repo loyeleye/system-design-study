@@ -238,9 +238,91 @@
   }
   // Who is inside a building right now, for its room (js/interiors.js): room key, as in ROOM.
   I.inside = key => PEOPLE.filter(p => p.hide && p.room === key).map(p => p.id);
-  I.talkTo = w => talk(w);
+  I.talkTo = (w, one) => talk(w, one);
   // For playtests: where every islander is, and what they're doing.
   I.folkNow = () => PEOPLE.map(p => ({ id: p.id, x: p.x, y: p.y, px: p.px, py: p.py, face: p.face || 'south', rest: p.rest || 'south', moving: !!p.moving, hide: !!p.hide, room: p.room, plan: p.plan, goal: p.goal }));
+
+  // ---------- Wildlife (js/critters.js) ----------
+  // Gulls wheel over the sea and stand about on the docks, crabs scuttle along the beaches, and the islands have the
+  // North Road's sparrows, rabbits, butterflies, bees and dragonflies, with frogs and snails by the mill. critters.js
+  // runs the ones on the ground on a stand-in for a scene (wild below): wild ones hide when it rains (frogs, snails and
+  // crabs stay out, and only hide from a thunderstorm), and birds and insects roost at night. The gulls in the air are
+  // drawn here, and fly off when it rains.
+  const WILD = [
+    // Ferry Landing: gulls on the pier and the harbour square, crabs on the shore, sparrows in the town.
+    { kind: 'gull', x: 13, y: 23, range: 2 }, { kind: 'gull', x: 11, y: 21, range: 2 }, { kind: 'gull', x: 11, y: 8, range: 3 },
+    { kind: 'crab', x: 12, y: 33, range: 3 }, { kind: 'crab', x: 12, y: 12, range: 3 }, { kind: 'sparrow', x: 7, y: 21, range: 3 },
+    { kind: 'sparrow', x: 7, y: 31, range: 3 }, { kind: 'bfly1', x: 6, y: 12, range: 3 }, { kind: 'rabbit', x: 5, y: 9, range: 3 },
+    // The cove: crabs and gulls on the beach by the club, a butterfly in the yard.
+    { kind: 'crab', x: 28, y: 46, range: 3 }, { kind: 'crab', x: 22, y: 47, range: 3 }, { kind: 'gull', x: 29, y: 43, range: 3 },
+    { kind: 'bfly2', x: 13, y: 45, range: 3 },
+    // The islands.
+    { kind: 'gull', x: 26, y: 11, range: 2 }, { kind: 'crab', x: 19, y: 10, range: 3 }, { kind: 'sparrow', x: 21, y: 9, range: 3 },
+    { kind: 'frog', x: 19, y: 33, range: 2 }, { kind: 'snail', x: 26, y: 33, range: 2 }, { kind: 'ladybug', x: 20, y: 31, range: 2 }, { kind: 'bee', x: 27, y: 31, range: 2 },
+    { kind: 'bfly3', x: 38, y: 21, range: 3 }, { kind: 'dragonfly', x: 33, y: 16, range: 3 },
+    { kind: 'gull', x: 47, y: 9, range: 2 }, { kind: 'gull', x: 51, y: 7, range: 2 }, { kind: 'crab', x: 53, y: 9, range: 3 },
+    { kind: 'rabbit', x: 52, y: 32, range: 3 }, { kind: 'bfly1', x: 45, y: 33, range: 3 },
+    { kind: 'sparrow', x: 34, y: 5, range: 2 }, { kind: 'crab', x: 59, y: 19, range: 2 }
+  ];
+  const wild = { actors: {}, def: {}, P: null };
+  wild.walkable = (x, y) => walkable(x, y) && get(x, y) !== '~';
+  wild.tile = () => null;
+  wild.place = (id, x, y) => { const a = wild.actors[id]; if (a) { a.x = a.px = x; a.y = a.py = y; a.path = []; } };
+  wild.emote = () => {};
+  wild.addActor = (id, a) => { Object.assign(a, { id, px: a.x, py: a.y, path: [] }); wild.actors[id] = a; return a; };
+  let wildMade = false;
+  function makeWild() {
+    if (wildMade || !SD.critters || !SD.critterArt) return;
+    wildMade = true; wild.P = P;
+    // Each one starts on open ground at or next to its spot.
+    const near = ([x, y]) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [2, 0], [0, 2], [-2, 0], [0, -2]].map(([a, b]) => [x + a, y + b]).find(([a, b]) => wild.walkable(a, b));
+    SD.critters.add(wild, WILD.map(c => { const at = near([c.x, c.y]); return at && Object.assign({}, c, { x: at[0], y: at[1] }); }).filter(Boolean));
+  }
+  // Ground critters walk the paths critters.js gives them, as scene.js walks its actors.
+  function moveWild(dt) {
+    makeWild();
+    Object.values(wild.actors).forEach(a => {
+      if (a.tick) a.tick(dt);
+      let sp = dt * (a.speed || 1);
+      a.moving = Math.abs(a.px - a.x) + Math.abs(a.py - a.y) > 0.01;
+      a.px = Math.abs(a.x - a.px) <= sp ? a.x : a.px + Math.sign(a.x - a.px) * sp;
+      a.py = Math.abs(a.y - a.py) <= sp ? a.y : a.py + Math.sign(a.y - a.py) * sp;
+      if (a.moving || !a.path.length) return;
+      const [nx, ny] = a.path.shift();
+      if (!wild.walkable(nx, ny)) { a.path = []; return; }
+      a.face = nx > a.x ? 'east' : nx < a.x ? 'west' : ny < a.y ? 'north' : 'south';
+      a.x = nx; a.y = ny;
+    });
+  }
+  // Ground critters on an open island, drawn with the row they stand on.
+  const wildOn = y => Object.values(wild.actors).filter(a => !a.hidden && Math.round(a.py) === y && (!isleAt(a.x, a.y) || I.islandOpen(isleAt(a.x, a.y))));
+  // Gulls in the air: each wheels in a wide loop over the water, its wings beating and then gliding. They head off
+  // when it rains (and come back after), and go to roost at night.
+  const GULLS = [[16, 14, 3.5], [15, 27, 3], [30, 10, 4], [42, 20, 4.5], [38, 30, 3.5], [52, 18, 3], [33, 37, 3.5], [8, 46, 3]].map(([x, y, r], i) => ({ x, y, r, ph: i * 1.7, dir: i % 2 ? 1 : -1, sp: 0.16 + (i % 3) * 0.04, vis: 1 }));
+  function gulls(t, dt) {
+    const art = SD.critterArt && SD.critterArt.gullfly, im = art && critterPic('gullfly');
+    if (!art || !ok(im)) return;
+    const w = SD.weather ? SD.weather.now() : 'clear', night = SD.clock && SD.clock.block() === 'night';
+    const out = !night && !['rain', 'drizzle', 'storm'].includes(w);
+    const s = ts / 32 * 0.42, fw = art.w, fh = art.h;
+    GULLS.forEach((g, i) => {
+      g.vis = Math.max(0, Math.min(1, g.vis + (out ? dt : -dt) * 0.5));
+      if (g.vis <= 0) return;
+      const a = g.ph + t * g.sp * g.dir, X = (g.x + Math.cos(a) * g.r) * ts, Y = (g.y + Math.sin(a) * g.r * 0.7) * ts;
+      // Leaving: they climb away to the north-east as they fade.
+      const off = (1 - g.vis) * ts * 6;
+      // The art is a side view facing west: turned round when the gull is heading east. A few flaps, then a long
+      // glide on the frame with the wings out.
+      const east = -Math.sin(a) * g.dir > 0;
+      const flap = (t * 0.6 + i * 0.37) % 1 < 0.35, f = flap ? Math.floor(t * 12 + i) % art.f : 0;
+      ctx.save(); ctx.globalAlpha = g.vis;
+      ctx.translate(X + off, Y - off); if (east) ctx.scale(-1, 1);
+      ctx.drawImage(im, f * fw, 0, fw, fh, -fw * s / 2, -fh * s / 2, fw * s, fh * s);
+      ctx.restore();
+    });
+  }
+  const CPICS = {};
+  const critterPic = k => CPICS[k] || (CPICS[k] = Object.assign(new Image(), { src: 'assets/img/critters/' + k + '.webp' }));
 
   // ---------- Screen ----------
   let cv, ctx, raf, dpr = 1, ts = 32, t0 = 0, active = false, built = false, busyTalk = false;
@@ -308,16 +390,20 @@
     active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
     AU.music('isles');
     hud();
-    // First arrival, then one short scene for each wave that has opened since the last visit.
-    busyTalk = true;
-    try {
-      if (!st.intro) { st.intro = true; S.persist(); await I.say('arrive', [['leilani', 'Welcome to the Eventual Isles. Everyone agrees here. Eventually.']]); }
-      st.waveSeen = st.waveSeen || 1;
-      for (let w = st.waveSeen + 1; w <= 4; w++) if (I.waveOpen(w)) { st.waveSeen = w; S.persist(); await I.say('wave' + w); }
-      I.checkBridges();
-    } finally { busyTalk = false; }
+    // The first arrival waits until you walk up to Leilani or Kwame (talk below); after it, one short scene for each
+    // wave that has opened since the last visit.
+    if (st.intro) {
+      busyTalk = true;
+      try { await waveScenes(); } finally { busyTalk = false; }
+    }
     hud();
   };
+  async function waveScenes() {
+    const st = I.st();
+    st.waveSeen = st.waveSeen || 1;
+    for (let w = st.waveSeen + 1; w <= 4; w++) if (I.waveOpen(w)) { st.waveSeen = w; S.persist(); await I.say('wave' + w); }
+    I.checkBridges();
+  }
   // Back to Pingsby along the landing's road (walking off its end, or the HUD button).
   I.close = function () {
     AU.sfx && AU.sfx('steps');
@@ -451,9 +537,16 @@
     kwame: 'Where to? I will get you there. Not on time. But there.',
     ploy: 'Welcome to the Tide Pool Game Club! Today\'s game is... interviews! Alone or with friends?'
   };
-  async function talk(w) {
+  async function talk(w, one) {
     const v = PEOPLE.find(p => p.id === w && p.speak); if (v) return v.speak();
     if (w === 'gary') { const l = I.pick('gary', [['gary', '...'], ['gary', 'The fish here are eventually consistent.']]); await U.dialog([l]); return; }
+    // Your first visit: the welcome plays when you first talk to the Harbourmaster or the captain.
+    if ((w === 'leilani' || w === 'kwame') && !I.st().intro) {
+      I.st().intro = true; S.persist();
+      await I.say(w === 'kwame' ? 'arriveKwame' : 'arrive', [['leilani', 'Welcome to the Eventual Isles. Everyone agrees here. Eventually.']]);
+      await waveScenes(); hud();
+      return;
+    }
     if (w === 'ploy' && !I.st().ployMet) {
       I.st().ployMet = true; S.persist();
       await I.say('ployMeet', [
@@ -471,6 +564,13 @@
     // Then a relationship scene that's due with them (js/folk-scenes.js); it waits out their commissions.
     if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('isles', w)) { hud(); return; }
     const services = SERVICES[w] ? SERVICES[w]() : [];
+    // The school, one at a time: whichever of them is on your side answers (the smallest when you're in front or
+    // behind), unless the class has a quest for you, which they ask all together.
+    if (w === 'kids' && !services.length && !I.pending('kids').length) {
+      const p = PEOPLE.find(q => q.id === 'kids');
+      await I.idleTalk(one || (P.x < p.x ? 'kid1' : P.x > p.x ? 'kid2' : 'kid3'));
+      return;
+    }
     if (!services.length) { await I.talk(w); return; }
     const pend = I.pending(w);
     const choice = await new Promise(res => {
@@ -573,7 +673,7 @@
   function loop(ms) {
     if (!active) return;
     const dt = Math.min(0.05, (ms - (t0 || ms)) / 1000); t0 = ms;
-    update(dt); moveFolk(dt);
+    update(dt); moveFolk(dt); moveWild(dt);
     draw(ms / 1000, dt);
     if (SD.weather) SD.weather.sync();
     if (AU.place) AU.place('sea');
@@ -835,13 +935,23 @@
   // villagers; the school is three students side by side.
   const TALL = { kid1: 0.5, kid2: 0.5, kid3: 0.5, bloom: 0.62 };
   const FACE = { south: 0, west: 1, east: 2, north: 3 };
-  function sprite(id, X, Y, t, k, face, going, turn) {
+  // act names something they're doing at their spot (a set of frames after the walk, c.ac), at frame fi (counting on
+  // past the last frame plays it back and forth). c.k scales the bigger v3 sheets down to the height the first sprites stood (tools/isles_art.py).
+  function sprite(id, X, Y, t, k, face, going, turn, act, fi) {
     const c = I.ART && I.ART.chars[id], im = ipic('c-' + id);
     if (!c || !ok(im)) return false;
-    const row = FACE[face] || 0, n = c.walk ? 0 : c.n[row] || 0, s = ts / 32 * (k || TALL[id] || 0.66);
+    const row = FACE[face] || 0, n = c.walk ? 0 : c.n[row] || 0, s = ts / 32 * (k || TALL[id] || 0.66) * (c.k || 1);
+    const ac = !going && act && c.ac && c.ac[act] && c.ac[act][row];
+    let col;
+    if (ac) {
+      const before = Object.keys(c.ac).sort().filter(a => a < act).reduce((m, a) => m + (c.ac[a][row] || 0), 0);
+      // Looped actions go back and forth (they start and end on the standing pose), from fi frames in.
+      const i = Math.floor(fi || 0) % Math.max(1, 2 * ac - 2);
+      col = 1 + (c.n[row] || 0) + (c.wk ? c.wk[row] || 0 : 0) + before + (i < ac ? i : 2 * ac - 2 - i);
+    } else
     // Standing islanders breathe out of step with each other (X shifts the phase). One who turns on the spot to a
     // way with no idle frames takes a step round with the walk frames (turn: SD.art.turned).
-    const col = going && c.wk && c.wk[row] ? SD.art.sheetCol(c, row, true, t) : n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n
+    col = going && c.wk && c.wk[row] ? SD.art.sheetCol(c, row, true, t) : n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n
       : SD.art.sheetCol(c, row, false, t, 1, false, going ? null : turn);
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, Math.round(X - c.w * s / 2), Math.round(Y - c.h * s), Math.round(c.w * s), Math.round(c.h * s));
     return true;
@@ -858,6 +968,7 @@
     }
     if (p.id === 'kids') {
       if (!['kid1', 'kid2', 'kid3'].every(k => ok(ipic('c-' + k)))) return false;
+      if (doing(p) === 'play') return football(X, Y, t);
       ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.42, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
       const turn = SD.art.turned(p, p.face, p.moving, t);
       sprite('kid1', X - 10 * s, Y, t, 0, p.face, p.moving, turn); sprite('kid2', X + 10 * s, Y, t, 0, p.face, p.moving, turn); sprite('kid3', X, Y + 2 * s, t, 0, p.face, p.moving, turn);
@@ -865,7 +976,64 @@
     }
     if (!I.ART || !I.ART.chars[p.id] || !ok(ipic('c-' + p.id))) return false;
     ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-    return sprite(p.id, X, Y, t, 0, p.face, p.moving, SD.art.turned(p, p.face, p.moving, t));
+    const act = doing(p, t), drawn = sprite(p.id, X, Y, t, 0, p.face, p.moving, SD.art.turned(p, p.face, p.moving, t), act, busyFor(p, t) * 8);
+    // Arjun asleep on his feet: a slow "z" drifting up.
+    if (drawn && act === 'doze') {
+      const k = (t * 0.5) % 1;
+      ctx.save(); ctx.globalAlpha = 1 - k; ctx.fillStyle = INK; ctx.font = `700 ${Math.round(ts * (0.22 + k * 0.12))}px Fredoka, sans-serif`;
+      ctx.fillText('z', X + ts * (0.25 + k * 0.2), Y - ts * (1.6 + k * 0.5)); ctx.restore();
+    }
+    return drawn;
+  }
+  // What an islander is busy with at their spot, while nobody's talking to them and they haven't turned to look at you
+  // (js/folk-far.js puts them there; docs/cast-bible-road-isles.md says why). Each is a set of frames on their sheet
+  // facing the way they stand there, so it only plays at that spot: [action, the times of day it happens (all if
+  // none), and how much of the time (now and then, between their breathing, unless it's all of it)].
+  const BUSY = {
+    leilani: ['chalk', ['morning'], 0.5],      // chalking the crossings up on her board
+    kwame: ['wave', null, 0.35],               // waving up the path in case anyone's still running for the boat
+    saule: ['sweep', ['evening'], 1],          // sweeping the school step before she locks up
+    farida: ['count', null, 0.5],              // counting the Admiral's boats against his receipts
+    mutex: ['wave', null, 0.45],               // waving the ships in, one at a time
+    tomas: ['stack', null, 0.5],               // stacking new planks at the mill door
+    lucia: ['read', null, 0.55],               // reading the day's letters aloud to the gulls
+    minh: ['sketch', null, 0.6],               // sketching the coast for the next edition
+    hajin: ['argue', null, 0.5], haeun: ['argue', null, 0.5],   // arguing across the water
+    ploy: ['dance', null, 0.3],                // a victory dance, whoever won
+    nok: ['train', null, 0.35],                // jumping jacks when his youth burns too hot
+    arjun: ['doze', null, 1],                  // asleep on his feet under the umbrella
+    meron: ['forage', null, 0.4],              // stooping to pick herbs
+    kids: ['play', ['afternoon', 'evening'], 1]   // football at break and on the harbour square
+  };
+  function doing(p, t) {
+    const b = BUSY[p.id];
+    if (!b || p.moving || p.goal || p.path.length || p.hide || p.face !== p.rest || busyTalk) return null;
+    if (b[1] && !b[1].includes(isleBlock())) return null;
+    // Now and then: a few seconds in every ten, out of step with everyone else.
+    if (b[2] < 1 && busyFor(p, t) >= b[2] * 10) return null;
+    return b[0];
+  }
+  // Seconds into this ten-second turn (from when they start their action, for the ones who do it now and then).
+  const busyFor = (p, t) => (t + p.stand[0] * 1.7 + p.stand[1]) % 10;
+  // The school's football: the two older ones pass the ball back and forth across the tile either side, and the
+  // smallest jumps up and down and cheers behind them. Each pass is a kick, a bouncing ball, and a stop.
+  function football(X, Y, t) {
+    const s = ts / 32, T = 2.6, ph = (t % T) / T, half = ph < 0.5, k = (ph % 0.5) * 2;
+    const L = X - ts * 0.95, R = X + ts * 0.95;
+    ctx.fillStyle = 'rgba(43,35,64,0.18)';
+    [L, X, R].forEach(x => { ctx.beginPath(); ctx.ellipse(x, Y - s, ts * 0.26, ts * 0.08, 0, 0, Math.PI * 2); ctx.fill(); });
+    const kickF = kicking => kicking && k < 0.45 ? Math.floor(k / 0.45 * 6) : null;
+    sprite('kid3', X, Y - ts * 0.25, t, 0, 'south', false, null, 'cheer', t * 8);
+    sprite('kid1', L, Y, t, 0, 'east', false, null, kickF(half) != null ? 'kick' : null, kickF(half));
+    sprite('kid2', R, Y, t, 0, 'west', false, null, kickF(!half) != null ? 'kick' : null, kickF(!half));
+    // The ball leaves the kicker's foot partway through the kick and rolls in with a bounce or two.
+    const go = Math.max(0, Math.min(1, (k - 0.25) / 0.75)), from = half ? L + ts * 0.3 : R - ts * 0.3, to = half ? R - ts * 0.3 : L + ts * 0.3;
+    const bx = from + (to - from) * go, by = Y - s * 3 - Math.abs(Math.sin(go * Math.PI * 2)) * ts * 0.28 * (1 - go * 0.6), r = Math.max(2.5, ts * 0.09);
+    ctx.fillStyle = 'rgba(43,35,64,0.25)'; ctx.beginPath(); ctx.ellipse(bx, Y - s * 2, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = INK; ctx.lineWidth = Math.max(1, s);
+    ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(bx + Math.cos(go * 9) * r * 0.35, by + Math.sin(go * 9) * r * 0.35, r * 0.35, 0, Math.PI * 2); ctx.fill();
+    return true;
   }
   // The code-drawn chibis from I.looks, for Gary's rod and anyone whose sheet hasn't loaded.
   function chibi(p, t) {
@@ -958,6 +1126,7 @@
     drawBridges(t); drawDocks(t);
     const marks = I.marks(), ppl = people();
     if (!I.st().ployMet && !marks.ploy) marks.ploy = '!';
+    if (!I.st().intro) ['leilani', 'kwame'].forEach(w => { if (!marks[w]) marks[w] = '!'; });
     const qm = SD.quests ? SD.quests.marks() : {};
     ppl.forEach(p => { if (qm[p.id] && !marks[p.id]) marks[p.id] = qm[p.id]; });
     for (let y = y0; y < y1 + 3; y++) {
@@ -968,9 +1137,11 @@
       }
       LAND.forEach(l => { if (l.y + l.h - 1 === y && I.islandOpen(l.isle) && !(PIXEL[l.id] && PIXEL[l.id](l, t))) DRAW[l.id](l, t); });
       Object.keys(TIDE).forEach(id => { if (TIDE[id][1] === y) drawTide(id, t); });
+      wildOn(y).forEach(a => a.draw(ctx, (a.px + 0.5) * ts, (a.py + 0.95) * ts, ts, t));
       ppl.forEach(p => { if (Math.round(p.py) === y) chibi(p, t); });
       if (Math.round(P.py) === y) { obj('pip', pip.x * ts + ts / 2, pip.y * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, P.dir < 0); person(t); }
     }
+    gulls(t, dt || 0);
     // Cloud shadows over the sea and the islands, then the time of day (js/clock.js) under the signs and names.
     ctx.restore();
     const wk = SD.weather ? SD.weather.now() : 'clear';

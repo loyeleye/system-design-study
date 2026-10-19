@@ -87,9 +87,9 @@
 
   F.isles = {
     // Ferry Landing
-    leilani: { afternoon: [10, 23, 'east'], night: 'room:office' },   // watches for the ferry from the harbour square
+    leilani: { afternoon: [10, 23, 'east'], evening: 'room:office', night: 'room:office' },   // watches for the ferry from the harbour square, then tea with Kwame over the ferry log
     kwame: { evening: 'room:office', night: 'home' },   // files the ferry log, then sleeps aboard
-    saule: { morning: 'room:school', afternoon: [9, 27, 'east'], night: 'home' },   // milk tea, an eye on the class at break
+    saule: { morning: 'room:school', afternoon: [9, 27, 'east'], evening: [4, 29, 'east'], night: 'home' },   // milk tea, an eye on the class at break, then sweeping the step
     kids: { morning: 'room:school', evening: [10, 24, 'east'], night: 'home' },   // watch the ferry come in
     // The Ledger
     farida: { afternoon: 'room:bank', night: 'room:bank' },   // counts the vault, and counts it again by lamplight

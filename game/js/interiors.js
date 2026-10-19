@@ -28,7 +28,8 @@
   const block = () => SD.clock ? SD.clock.block() : 'morning';
 
   // Map legend: # solid, . floor, D the way out, U up the stairs, S down the stairs (the café's and the flat's unless a
-  // room says where its own go: up, down).
+  // room says where its own go: up, down). ways: [[x, y, face]], stairs you can only step onto going that way, so you
+  // climb from the bottom step or go down from the top, not in over the banister.
   // spots: where people stand ([x, y, face]; y can be fractional, to stand behind a counter). counter and over: where
   // whoever minds the counter stands, and the tiles you talk to them across (Wen or Uptima in the café; clerk names
   // anyone else's). looks: what to draw someone with ({ sprite }). props: things you can look at, on solid tiles next
@@ -39,6 +40,7 @@
   // music (a song in js/audio.js, or a function that picks one or null), ambience (its PLACE sound, or null for quiet),
   // bell: a shop bell over the door. calm: nobody in it looks worried in the storm. front: [[x, y, w, h, row]], pieces
   // of the picture (in its pixels) drawn again over whoever stands behind them, as standing on that row: counters, tables.
+  // across: [[x, y, id]], tiles you talk to id from when they sit out of reach (on a sofa behind a table).
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -741,6 +743,7 @@
       map: r.map, ground: false, bg: '#1a1530', solid: '#', indoors: true, room: key,
       ambience: r.ambience !== undefined ? r.ambience : outside.place,
       doors: { D: 'out', U: 'up', S: 'down' },
+      way: r.ways ? (x, y, nx, ny) => r.ways.every(([wx, wy, f]) => wx !== nx || wy !== ny || f === (nx > x ? 'east' : nx < x ? 'west' : ny > y ? 'south' : 'north')) : null,
       lights: r.lights,
       under(ctx, ts, t) {
         const im = pic(key);
@@ -772,9 +775,11 @@
       // like a storm guest, on the open floor); the school's class is three kids.
       if (r.isle) {
         const nm = SD.isles.who(id).split(' ').slice(-1)[0].toUpperCase(), qm = Object.assign({}, SD.isles.marks(), marks);
-        if (id === 'kids') { ['kid1', 'kid2', 'kid3'].forEach((k, i) => { const at = spotOf(r, k) || free.shift(); if (at) actor(k, at, { name: i === 1 ? 'KIDS' : null, scale: 0.5, talkAs: 'kids', marker: !!qm.kids }); }); return; }
+        // fit: the v3 sheets are drawn bigger, and scaled back to the height the first ones stood (tools/isles_art.py).
+        const fit = k => ((SD.isles.ART && SD.isles.ART.chars[k]) || {}).k || 1;
+        if (id === 'kids') { ['kid1', 'kid2', 'kid3'].forEach((k, i) => { const at = spotOf(r, k) || free.shift(); if (at) actor(k, at, { name: i === 1 ? 'KIDS' : null, scale: 0.5 * fit(k), talkAs: 'kids', marker: !!qm.kids }); }); return; }
         const at = spotOf(r, id) || free.shift();
-        if (at) actor(id, at, { name: nm, scale: id === 'bloom' ? 0.62 : 0.66, marker: !!qm[id] });
+        if (at) actor(id, at, { name: nm, scale: (id === 'bloom' ? 0.62 : 0.66) * fit(id), marker: !!qm[id] });
         return;
       }
       if (r.sleep && id === r.owner && !storm() && block() === 'night') {
@@ -789,6 +794,8 @@
     });
     // Across the counter: talk to whoever has the shift.
     if (r.over) r.over.forEach(([x, y], i) => sc.addActor('over' + i, { x, y, draw() {}, over: counter || '' }));
+    // Across furniture: talk to someone out of reach (sitting on a sofa behind a table) from these tiles.
+    (r.across || []).forEach(([x, y, id], i) => { if (sc.actors[id]) sc.addActor('across' + i, { x, y, draw() {}, over: id }); });
     if (key === 'cafe' && !storm() && block() !== 'night') {
       actor('v2', [7, 4, 'north'], { name: null, customer: true });
       if (free.length) actor('v3', free.pop(), { name: null, customer: true });
@@ -958,7 +965,8 @@
       return SD.northRoad.shop.open();
     }
     // An islander inside: the same as talking to them out on the Isles (quests, services, chat).
-    if (r.isle) return SD.isles.talkTo((sc.actors[id] && sc.actors[id].talkAs) || id);
+    // One of the school's three answers for themself, unless the class has a quest (isles-map.js talk).
+    if (r.isle) { const as = sc.actors[id] && sc.actors[id].talkAs; return SD.isles.talkTo(as || id, as ? id : null); }
     if (storm()) {
       const w = F().worry(id);
       if (w) await U.dialog([w]);

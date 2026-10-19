@@ -74,6 +74,9 @@
     sc.tile = tile;
     function actorAt(x, y) { return Object.values(sc.actors).find(a => !a.hidden && !a.player && Math.round(a.x) === x && Math.round(a.y) === y && a.solid !== false); }
     sc.walkable = (x, y) => !(def.solid || 'T#').includes(tile(x, y)) && tile(x, y) !== 'T' && !actorAt(x, y);
+    // def.way(x, y, nx, ny): false where a step from (x, y) onto (nx, ny) isn't allowed, like walking into a stair
+    // from its side (js/interiors.js ways).
+    const way = (x, y, nx, ny) => !def.way || def.way(x, y, nx, ny);
 
     sc.addActor = function (id, a) {
       sc.actors[id] = Object.assign({ id, sprite: id, x: 0, y: 0, face: 'south', path: [], speed: 3.2, emo: null, emoT: 0, hidden: false }, a, { px: a.x, py: a.y });
@@ -120,7 +123,7 @@
         for (const [dx, dy] of DIRS) {
           const nx = x + dx, ny = y + dy;
           if (isDoor(nx, ny) && !(to && nx === to[0] && ny === to[1])) continue;
-          if (!prev.has(k(nx, ny)) && sc.walkable(nx, ny)) { prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]); }
+          if (!prev.has(k(nx, ny)) && sc.walkable(nx, ny) && way(x, y, nx, ny)) { prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]); }
         }
       }
       return null;
@@ -245,7 +248,7 @@
       } else if (kd) { nx += { west: -1, east: 1 }[kd[2]] || 0; ny += { north: -1, south: 1 }[kd[2]] || 0; }
       else if (P.path.length) [nx, ny] = P.path.shift();
       else if (P.want) { const w = P.want; P.want = null; if (talkTarget() === w && sc.onTalk) sc.onTalk(w); return; }
-      if ((nx !== P.x || ny !== P.y) && sc.walkable(nx, ny)) {
+      if ((nx !== P.x || ny !== P.y) && sc.walkable(nx, ny) && way(P.x, P.y, nx, ny)) {
         P.face = face || (nx > P.x ? 'east' : nx < P.x ? 'west' : ny < P.y ? 'north' : 'south');
         // A sideways diagonal crosses twice the screen distance, so it takes twice as long.
         P.slow = ISO && nx - P.x && ny - P.y && nx - P.x !== ny - P.y ? 0.55 : 1;
@@ -299,8 +302,14 @@
     const feet = (px, py) => ISO ? [ix(px + 0.5, py + 0.5), iy(px + 0.5, py + 0.5) - (ISO.lift ? ISO.lift(px, py) : 0) * ts / 32] : [px * ts + ts / 2, py * ts + ts * 0.95];
     const CS = ISO ? (ISO.cs || 1.6) : 1;
     let drawn = [];                     // isometric maps: the people drawn this frame and where, front last, for taps
+    // clip(ctx, ts): an optional clipping path (world pixels) a person is drawn inside, like the hero going up the
+    // studio's outside stairs, hidden below them (js/club-loft.js).
     function person(a, t) {
       if (a.hidden) return;
+      if (!a.clip) return drawPerson(a, t);
+      ctx.save(); a.clip(ctx, ts); drawPerson(a, t); ctx.restore();
+    }
+    function drawPerson(a, t) {
       const [fx, fy] = feet(a.px, a.py), gy = fy - (ISO ? 0 : ts * 0.05);
       if (a.pip) { obj('pip', fx, fy - ts * (ISO ? 0.15 : 0.4) + Math.sin(t * 3) * 3, 0.8 * CS, (sc.P && sc.P.face === 'west')); return; }
       if (a.draw) return a.draw(ctx, fx, fy, ts, t);
@@ -336,7 +345,10 @@
     }
     // For pictures of people drawn elsewhere, like the reflection in the studio's mirror (js/club-mirror.js).
     sc.drawActor = person;
+    // tall: how tall someone drawn their own way (draw()) is, in pixels at ts 32, so their bubbles sit on their heads
+    // (Leon and Thea sitting down, js/club-loft.js).
     function emoteAt(a) {
+      if (!ISO && a.tall) return [a.px * ts + ts / 2, (a.py + 0.95 - a.tall / 32) * ts - 6];
       if (!ISO) return [a.px * ts + ts / 2, (a.py - 0.55 - (a.scale || 1) * 0.5 + 0.5) * ts];
       const [fx, fy] = feet(a.px, a.py), c = charArt(a.sprite);
       return [fx, fy - (c ? c.h : 52) * ts / 32 * CS * (a.scale || 1) - ts * 0.1];
@@ -457,13 +469,17 @@
         const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
         if (def.ground !== false) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) corner(x, y);
         if (def.under) def.under(ctx, ts, t);
-        // Trees ring the map; objects and people are drawn row by row so you walk behind them.
+        // Trees ring the map; objects and people are drawn row by row so you walk behind them. Anything marked front
+        // is drawn over every row, people first: someone climbing the outside of a building, and the railing they
+        // climb behind (js/club-loft.js).
         objs = (def.objects || []).filter(o => !o.hidden);
         for (let y = y0; y < y1 + 3; y++) {
           if (y < HT) for (let x = x0; x < x1; x++) if (MAP[y][x] === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
-          objs.forEach(o => { if (Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
-          Object.values(sc.actors).forEach(a => { if (Math.round(a.py) === y) person(a, t); });
+          objs.forEach(o => { if (!o.front && Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
+          Object.values(sc.actors).forEach(a => { if (!a.front && Math.round(a.py) === y) person(a, t); });
         }
+        Object.values(sc.actors).forEach(a => { if (a.front) person(a, t); });
+        objs.forEach(o => { if (o.front) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
       }
       Object.values(sc.actors).forEach(a => { if (!a.hidden && a.emoT > 0 && a.emo) { const [ex, ey] = emoteAt(a); emote(a.emo, ex, ey); } });
       const sk = typeof def.sky === 'function' ? def.sky() : def.sky;

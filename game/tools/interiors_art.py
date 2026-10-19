@@ -10,8 +10,8 @@ from PIL import Image
 
 SRC, OUT, JS = sys.argv[1], sys.argv[2], sys.argv[3]
 os.makedirs(OUT, exist_ok=True)
-# A few rooms use an edited copy of their download (doug2, i-bank2, i-light2, i-club2, i-temple3) so the way out reads
-# as a real opening; the raw folder's README says what changed.
+# A few rooms use an edited copy of their download (doug2, i-bank2, i-light2, i-club2, i-temple3, i-xdiner2) so the way
+# out reads as a real opening; the raw folder's README says what changed.
 ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat': 'flat1', 'lexi': 'lexi1',
          'kaito': 'kaito1', 'doug': 'doug2', 'coo': 'coo1', 'bru': 'bru1', 'ayo': 'ayo1',
          # The Eventual Isles' buildings (js/isles/isles-map.js) and Aigerim's card shop on the North Road.
@@ -27,7 +27,7 @@ ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat'
          'theatre': 'i-theatre',
          # The Exchange's shops and back rooms (js/exchange-rooms.js): Toro's cards, the pawn shop, the warehouse's back
          # room, the diner and the bakery.
-         'xtoro': 'i-xtoro', 'xpawn': 'i-xpawn', 'xback': 'i-xback', 'xdiner': 'i-xdiner', 'xbakery': 'i-xbakery',
+         'xtoro': 'i-xtoro', 'xpawn': 'i-xpawn', 'xback': 'i-xback', 'xdiner': 'i-xdiner2', 'xbakery': 'i-xbakery',
          # The Coffee Diner's two floors upstairs: the dining room up its spiral stair, and the lounge at the top.
          'xupper': 'i-xupper', 'xlounge': 'i-xlounge'}
 # Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo. Each house faces the middle of the
