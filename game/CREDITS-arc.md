@@ -41,3 +41,5 @@ All from Pixabay under the [Pixabay Content License](https://pixabay.com/service
 Sound effects (`s-flush`, `s-pager`, `s-static`, `s-crash`, `s-slowmo`, `s-thunder`, `s-levelup`): "Behind Doors Toilet Flush" by Alex_Jauk, "PagerBeeps" and "Light Metal Crash" by freesound_community, "Radio Static" by DRAGON-STUDIO, "Slow cinematic air rush #5" by Sdanezis, "Thunder For Anime" by LordSonny, "Level Up 06" by Universfield, all via Pixabay.
 
 Pixabay credit line: the tracks above by their listed artists, via Pixabay (Pixabay Content License).
+
+`m-ch10calm`, the music everywhere but the Exchange while the Cloud is down in chapter 10: "Left Behind (Jess' Theme)" by Joseph Collard (jocolloman), https://opengameart.org/content/left-behind-jess-theme, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Re-encoded from the loopable WAV to 64 kbps MP3; nothing else was changed.
