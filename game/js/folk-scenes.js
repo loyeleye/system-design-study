@@ -12,6 +12,7 @@
 // scene Aigerim has read back to you, and S.save.folk.far, the Road and Isles people you've talked to. A scene you've seen stays seen; one you miss comes round again.
 //
 //   SD.folkScenes.talk(id)     in town: the scene due where that villager is standing, if they're in it, or null
+//   SD.folkScenes.talkTo(id)   with Toro, the trader or Kagemaru: play their 'talk:<id>' scene if one is due
 //   SD.folkScenes.talkIn(k, id) in room k: play the scene due there if that villager is in it; true if one played
 //   SD.folkScenes.talkFar(at, id) on 'road:<map>' or 'isles': play the scene due with that person; true if one played
 //   SD.folkScenes.find(at)     the scene due at a place ('room:cafe', 'talk:aigerim', a spot), or null
@@ -92,6 +93,16 @@
     if (!S.save) return false;
     if (!farMet(id)) { st().far = Object.assign({}, st().far, { [id]: 1 }); S.persist(); return false; }
     const s = ready().find(x => x.arc.far && x.at === at && x.who.includes(id) && !x.who.some(farBusy));
+    if (!s) return false;
+    await FS.play(s);
+    return true;
+  };
+  // People whose scenes play 'talk:<id>', wherever they stand (Toro, the Exchange's trader, Kagemaru: js/npc-arcs.js
+  // calls this before their shops open). From your second chat with them, as on the road.
+  FS.talkTo = async function (id) {
+    if (!S.save) return false;
+    if (!farMet(id)) { st().far = Object.assign({}, st().far, { [id]: 1 }); S.persist(); return false; }
+    const s = FS.find('talk:' + id);
     if (!s) return false;
     await FS.play(s);
     return true;

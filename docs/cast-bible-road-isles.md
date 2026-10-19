@@ -2,7 +2,7 @@
 
 Backstories and relationships for the named people beyond Pingsby, the companion to `docs/cast-bible.md` (Pingsby's fourteen). Every line written for these people should agree with what is here. Their daily schedules are in `game/js/folk-far.js`, and the relationship scenes are data in `game/js/folk-far-arcs.js`.
 
-How the scenes play: each arc has three scenes. A scene plays when you talk to someone in it on their own map, from your second conversation with them, once nobody in it has a quest step or an Isles commission waiting. Seen scenes stay seen across loops, the arc's last scene lands its system-design analogy and offers one review question, and Bru's Brújula Board lists them with Pingsby's. Crowd extras (the arena's fans and bookie, the Exchange queue, the road's merchant, traveller, courier, pilgrim and guest, the Exchange trader) and Kyu are left out. Heroes #1023 and #500 have backstories but no arc, since the story decides where they are.
+How the scenes play: each arc has three scenes. A scene plays when you talk to someone in it on their own map, from your second conversation with them, once nobody in it has a quest step or an Isles commission waiting. Seen scenes stay seen across loops, the arc's last scene lands its system-design analogy and offers one review question, and Bru's Brújula Board lists them with Pingsby's. Crowd extras (the arena's fans and bookie, the Exchange queue, the road's merchant, traveller, courier, pilgrim and guest) and Kyu are left out. Heroes #1023 and #500 have backstories but no arc, since the story decides where they are.
 
 ## The North Road
 
@@ -134,9 +134,21 @@ Bitna was the lamplighter on the lane before the Cloud went down, and she still 
 
 The house's back wall holds four hundred paper lanterns, one for every move the troupe has ever learned, and three hundred and eighty of them are dark and for moves nobody remembers. She will not take any down, in case. She can tell Neel and Hari apart at a glance and will not say how; it is because Neel folds his sleeves twice, and because she looks. Her soft spot is the first lantern on the wall, the one for Nari's very first step, which she has never let go dark.
 
+### Toro
+
+Toro is the Exchange's card broker, the last bull in a city where every board says DOWN. He sells the heaviest cards in the game and is bullish about all of them, about you, and about the Exchange, which has not been up for some time. He shouts across the street at the relic trader, buys every dip on sight, and has never sold anything in his life, because nobody ever showed him the button.
+
+For twenty years he polished the bronze bull in the square every morning: horns, nose, and the lucky bit everyone rubbed. The morning the Cloud went down the market fell over and the bull fell over with it. Everyone ran, and Toro stayed and polished the side that was facing up. Then they put up the bear on the billboard, which doesn't need polishing; it just looms. Bitna mended his stall and told him a bull needs somewhere to stand, and it is the nicest thing anyone in the city has said to him. What he wants is to see the board go UP once, all of it, at the same time.
+
+### Barnaby
+
+Barnaby is the Exchange's trader: he buys low, panics high, and sells relics from his stall now that the market is open. Every flicker of the big board is the end of the world to him, so he sells everything, watches Toro buy it, sees the price go back up and buys it all back at a higher price. He has done this since breakfast most days. He was first in line for the Exchange's reopening because he thought that was how queues work, and he dozes by the market stalls at night so he can be first again.
+
+Under the panic he is kind, and he is the only person at the Exchange who listens to Toro all the way through. His secret is that he has never once made money, and he is fine with it, as long as he gets to sit down eventually. In chapter 10 he bet on rain, it rained, and he was rich on wet paper.
+
 ### Relationships on the road
 
-Seven arcs cover everyone above except Hero #1023 and Hero #500, who stay plot characters, and Nari, whose story is the Rollouts' side quest. Every scene stands on one map and plays when you talk to someone in it there. An arc's last scene lands its analogy and offers a review question.
+Eight arcs cover everyone above except Hero #1023 and Hero #500, who stay plot characters, and Nari, whose story is the Rollouts' side quest. Every scene stands on one map and plays when you talk to someone in it there. An arc's last scene lands its analogy and offers a review question.
 
 | # | Arc | People | Map | Closing analogy | Concept |
 | --- | --- | --- | --- | --- | --- |
@@ -147,6 +159,7 @@ Seven arcs cover everyone above except Hero #1023 and Hero #500, who stay plot c
 | 5 | Who Confesses First | Hypewagon, Akane | camp | The Two Generals problem: over a lossy link no number of replies makes both sides sure | `netfaults` |
 | 6 | Not Found (Checked) | Heroes #77, #256, #3, #12, #404 | camp | Negative caching: remember "not found" with an expiry so nobody keeps searching | `cache` |
 | 7 | Separated at the Fair | Neel, Hari, Bitna, Eun-ho | the Rollouts' house, both floors, and the crossroads, in the Exchange | A hot-warm standby: it reads the same numbered orders as the main engine and does every step, so it is already where the main one was when it falls | `exchange` |
+| 8 | Fifteen Minutes | Toro, Barnaby | wherever they stand at the Exchange | A circuit breaker: stop sending into a failing service, wait, let a few test calls through, then open fully | `resilience` |
 
 1. **Never Lost a Crate (Twice).** Fen brings Marta a thank-you for crate 7 before she has delivered it (road open). Marta tells Fen about the crate 7 she lost thirty years ago, signed for at two depots (after chapter 7). Ren works out that both depots counted from one, so the Exchange called the second crate 7 a duplicate and put it in the cellar; Fen runs to find it, still full of honey, and Marta stamps every crate with its depot's letter from now on (after chapter 8).
 2. **Verses in the Smoke.** Explodia's on-schedule blast sets fire to Lyra's sheet music (road open). Lyra reads Explodia's postmortem notebook and calls it the longest poem on the road (after chapter 7). Lyra sings the whole notebook from blast one while Explodia keeps adding blasts at the end, and nobody waits for anybody (after chapter 8).
@@ -155,6 +168,7 @@ Seven arcs cover everyone above except Hero #1023 and Hero #500, who stay plot c
 5. **Who Confesses First.** Hypewagon narrates Akane looking towards the arena, and she makes him narrate the weather instead (camp open). Akane sends Gong a note about tea and realises every reply needs a reply (after chapter 9). After eleven trips Akane stops counting and just goes to tea; Gong is an hour early (after chapter 10).
 6. **Not Found (Checked).** Hero #3 is allowed into the sparring and wins by being too short to hit (camp open). Roll call: everyone searches the camp for Hero #404 every five minutes and nobody gets any sparring done (after chapter 9). Hero #12 puts up a sign saying "NOT FOUND. Checked at noon. Next check: one o'clock", the sparring gets done, and Hero #404's lunch box comes back empty, with a thank-you sign (after chapter 10).
 7. **Separated at the Fair.** At bedtime upstairs the twins mirror each other with their backs turned, and tell Pip they were separated at birth at the market fair; Bitna was lighting the bridge lamps the day they found each other (after Lost and Found). Before the evening show the twins swap sashes behind the fountain to test Bitna, who names Neel in one look because he folds his sleeves twice; Neel goes red, and Hari, who can feel it, says nothing for once (after chapter 10). At morning rehearsal downstairs Hari stubs his toe on the barre and Neel yelps from upstairs, and Eun-ho whispers that the Exchange's standby engine is the same: it reads every numbered order the main one reads, in the same order, and does every step, so when the main one falls the standby is already standing where it stood (after chapter 10).
+8. **Fifteen Minutes.** The big board dips one shard, Barnaby sells everything and Toro buys it all from across the street, until the board goes back up and Barnaby buys it back (after chapter 9, outside the storm). Toro tells you about the bronze bull he polished for twenty years, and that Bitna mended his stall (after chapter 9). The board drops ten shards, the two of them sell and buy faster and faster, and the Exchange bell halts all trading for fifteen minutes; they sit on the kerb, the bell lets a few orders through to test, and the boards come back (after chapter 10, a later loop). Their scenes play when you talk to either of them, wherever their shops stand (`talk:toro`, `talk:trader`, through `game/js/npc-arcs.js`).
 
 Nari and Eun-ho's story is told in the Rollouts' side quest, The Show Isn't Over (below).
 
@@ -307,6 +321,12 @@ Meron is the club's referee, herbalist and taster of everything. She grew up in 
 
 She brews Nok bitter tea, offers Arjun coffee "not today", and lets Kai stand by her. Ploy has offered her vice president, and she is considering it, a mango at a time. Her soft spot is Ploy, which she would deny with evidence. She gathers herbs on the mainland path in the morning, plays in the clubhouse in the evening and goes home at night.
 
+### Kagemaru
+
+Kagemaru is the card fixer in the cave above the Ledger bridge: completely hooded, a shadow and a grin, white gloves. He is soft-spoken, endlessly helpful and quietly sinister, and he laughs at people's misery, "Ah ha ha", which is the only time he sounds sincere. He pins cards into your starting deck off the books, for a tenth of the shop price, and they stay for as long as you keep winning. In chapter 10 he leaves the cave to watch the end of the world from the Exchange, and he is the only person in the realm enjoying it.
+
+He was once the Guild's card registrar, the man who signed off every change to every hero's deck. One night a hero was dying in a fight that a single card would have won, and he slipped the card into her deck with no paperwork. She lived. The Guild threw him out anyway and struck his name from every roll and ledger it kept, and a man nobody has a record of slowly stops having a face; he says he used to look like someone else and has forgotten who. He sneers at people with names in books, and he envies every one of them. That is why Aigerim unsettles him: her diary is the one place he is written down, and she won't stop writing.
+
 ### Relationships on the Isles
 
 | Arc | People | Concept | Where |
@@ -319,6 +339,7 @@ She brews Nok bitter tea, offers Arjun coffee "not today", and lets Kai stand by
 | `birthday` Four Minutes | Ha-jin, Ha-eun | Multi-leader conflicts (`multileader`) | The Twins |
 | `reply` Count by the Tag | Ruth, the Keeper | Event-time windows (`windows`) | Fish Market and the lighthouse door |
 | `twelfth` The Twelfth Shell | Ploy, Nok, Kai, Arjun, Meron | Event sourcing (`eventsrc`) | The club |
+| `padlock` A Padlock That Forgets | Kagemaru, Mutex | Leases (`locks`) | The cave and the Ledger's harbour |
 
 - **Eventually Punctual.** Leilani chalks the ferry time and adds "ish" before Kwame can. Then she tells you about the night the ferry left on time without seven-year-old Kwame, and the tea she shared on the dock. Last scene: her log shows he is late by exactly forty minutes every day and never out of order, and bounded, ordered lag turns out to be the kind you can plan round.
 - **The Why Book.** At roll call a child answers "present" for an absent friend. Saule shows you the Why Book and admits she was the girl who was always told "Because". On report day the children ask who asked the most "why", and Saule answers by opening one book and reading one column.
@@ -328,3 +349,4 @@ She brews Nok bitter tea, offers Arjun coffee "not today", and lets Kai stand by
 - **Four Minutes.** Ha-eun plans a secret birthday party for her brother, and Ha-jin plans one for her, both on the same day and both with cakes from Mang Tomas. Last scene: both parties land on the little bridge at the same moment. Neither happened first, so they keep both.
 - **Count by the Tag.** Ruth shows you the front of the market ledger and the slip she never sent. On the lighthouse door, low down and very old, is a note: "R. counts well. Tell her, eventually." Last scene, after the lighthouse opens: Ruth dates her slip with the day she was six and leaves it on the door, and in the morning there is a tick. It was eighty years late and it still counts on its own day.
 - **The Twelfth Shell.** Arjun counts twelve shells and screams, and Nok vows to find the culprit. Meron tests the shell and Kai knows who did it but won't say. Last scene, after Game Night: the club log shows Ploy paid one shell of dues for honorary member number six, you, and asleep, Arjun says "don't recount, replay the log".
+- **A Padlock That Forgets.** Kagemaru tells you the Admiral came to the cave at midnight: Kwame locked berth one and went for breakfast three days ago, and Kagemaru sold the Admiral a padlock that unlocks itself at sunset unless its holder comes back and turns the key. At the harbour Kwame sails off to fetch a passenger without turning it, the padlock clicks open at sunset and a fishing boat docks, and nobody waited. Last scene: the Admiral comes back to pay for another month, Kagemaru explains that whoever holds a berth keeps it by turning the key each day, the way his pins stay while you keep winning, and Pip names it a lease. The Admiral leaves a ma'amoul addressed to "Mr Kagemaro", which Kagemaru neither eats nor throws away. His scenes play in the cave (`talk:kagemaru`, through `game/js/npc-arcs.js`), never while he is away at the Exchange.
