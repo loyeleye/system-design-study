@@ -73,7 +73,7 @@
   }
 
   // Talking to her: her lines, the gift, then she calls it and goes. leave() takes her off the map. Her Exchange gift
-  // also sends her home for good: flags.nariHome is what her house (js/northroad-exchange.js) waits for.
+  // also sends her home for good: flags.nariHome is what her house (js/nari-home.js) waits for.
   async function speak(area, leave) {
     if (!N.due(area)) return;
     await U.dialog(lines(area));
@@ -82,7 +82,7 @@
     if (area === 'exchange') S.save.flags.nariHome = true;
     S.save.shards += amt; S.persist();
     U.system('NARI\'S GIFT', `+${amt} shards. She gives a little more at every new place she finds first.`, 'gold');
-    await U.dialog([{ s: 'nari', e: 'happy', t: area === 'exchange' ? 'Rollout complete! The troupe is rehearsing inside, and they always need an audience. Knock sometime!' : 'Rollout complete!' }]);
+    await U.dialog([{ s: 'nari', e: 'happy', t: area === 'exchange' ? 'Rollout complete! Come in and meet the troupe. They should be home by now. They should be.' : 'Rollout complete!' }]);
     leave();
   }
   // Fade someone out over half a second, then done().
@@ -135,12 +135,12 @@
     a.name = st().met ? 'NARI' : '???';
   });
   // Talking to someone on the road's maps: true if it was her sighting.
-  N.talk = async function (key, id) {
+  if (NR && NR.onTalk) NR.onTalk.push(async (key, id) => {
     const a = NR && NR.scene() && NR.scene().actors[id];
     if (id === 'nari_sighting' && a && a.speak) { await a.speak(); return true; }
     if (key === 'exchange' && id === 'nari' && N.due('exchange')) { await speak('exchange', () => {}); return true; }
     return false;
-  };
+  });
 
   // ---------- The Eventual Isles ----------
   // One spot per early wave, on that wave's newest island; the Isles only show her once the island is open.

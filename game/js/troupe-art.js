@@ -1,0 +1,2 @@
+// Made by tools/troupe_art.py: the sizes of the dance troupe's sprites (one standing frame a row) and their busts.
+SD.troupeArt = {"chars": {"neel": {"w": 20, "h": 55, "n": [0, 0, 0, 0]}, "hari": {"w": 20, "h": 55, "n": [0, 0, 0, 0]}, "eunho": {"w": 22, "h": 60, "n": [0, 0, 0, 0]}, "bitna": {"w": 28, "h": 58, "n": [0, 0, 0, 0]}}, "moods": {"neel": ["neutral"], "hari": ["neutral"], "eunho": ["neutral"], "bitna": ["neutral"]}};
