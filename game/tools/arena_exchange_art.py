@@ -18,7 +18,8 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'assets/img/arc')
 OBJECTS = ['ar-tower', 'ar-pillar', 'ar-gong', 'ar-brazier', 'ar-banner', 'ar-weapons', 'ar-crates', 'ar-foodcart',
            'ex-gothic1', 'ex-gothic2', 'ex-gothic3', 'ex-fence', 'ex-deadtree', 'ex-gaslamp', 'ex-bear', 'ex-graves',
-           'ex-stocks', 'ex-fountain', 'ex-wreck', 'ex-notices', 'ex-crows', 'ex-coffin']
+           'ex-stocks', 'ex-fountain', 'ex-wreck', 'ex-notices', 'ex-crows', 'ex-coffin',
+           'ex-office', 'ex-inn', 'ex-mirrors', 'ex-bullfallen', 'ex-tickerdown']
 
 def save(im, name):
     im.save(os.path.join(OUT, name + '.webp'), lossless=True, quality=100, method=6)
@@ -32,16 +33,41 @@ for name in OBJECTS:
     im = im.crop(im.getbbox())
     save(im, name); sizes[name] = list(im.size)
 
-# The ring came on a grey backdrop: key out the grey that touches the edge, keeping its cast shadow as a soft shade.
-ring = load('ar-ring2'); px = ring.load(); RW, RH = ring.size
-seen, q = set(), deque([(x, y) for x in range(RW) for y in (0, RH - 1)] + [(x, y) for y in range(RH) for x in (0, RW - 1)])
+# The ring and the gatehouse came on flat grey backdrops: key out the grey that touches the edge, keeping a cast
+# shadow as a soft shade.
+def unbackdrop(im):
+    px = im.load(); w, h = im.size
+    seen, q = set(), deque([(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)])
+    while q:
+        x, y = q.popleft()
+        if (x, y) in seen or not (0 <= x < w and 0 <= y < h): continue
+        seen.add((x, y)); c = px[x, y]
+        if c[3] == 0 or colorsys.rgb_to_hsv(*(v / 255 for v in c[:3]))[1] >= 0.12: continue
+        px[x, y] = (0, 0, 0, 0) if sum(c[:3]) / 3 > 110 else (20, 14, 10, 90)
+        q.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+    return im
+ring = unbackdrop(load('ar-ring2')); RW, RH = ring.size
+gate = unbackdrop(load('ar-gatehouse')); gate = gate.crop(gate.getbbox())
+save(gate, 'ar-gatehouse'); sizes['ar-gatehouse'] = list(gate.size)
+
+# ---------- The Exchange's headquarters, and its lower wing carried across the whole north side ----------
+# ex-hq came as a scene: night sky above, grey pavement below. Key both out where they touch the edge.
+hq = load('ex-hq'); px = hq.load(); HW, HH = hq.size
+seen, q = set(), deque([(x, y) for x in range(HW) for y in (0, HH - 1)] + [(x, y) for y in range(HH) for x in (0, HW - 1)])
 while q:
     x, y = q.popleft()
-    if (x, y) in seen or not (0 <= x < RW and 0 <= y < RH): continue
-    seen.add((x, y)); c = px[x, y]
-    if c[3] == 0 or colorsys.rgb_to_hsv(*(v / 255 for v in c[:3]))[1] >= 0.12: continue
-    px[x, y] = (0, 0, 0, 0) if sum(c[:3]) / 3 > 110 else (20, 14, 10, 90)
+    if (x, y) in seen or not (0 <= x < HW and 0 <= y < HH): continue
+    seen.add((x, y))
+    if px[x, y][:3] not in ((13, 9, 13), (85, 87, 100)): continue
+    px[x, y] = (0, 0, 0, 0)
     q.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+hq = hq.crop(hq.getbbox()); save(hq, 'ex-hq'); sizes['ex-hq'] = list(hq.size)
+# One bay of the lower wing (a pair of windows and a pilaster), repeated out to the map's edges either side.
+bay_hq = load('ex-hq').crop((0, 133, 58, 268))
+EX_WING = 11 * 32                                          # the Exchange map is 34 tiles wide; the tower takes 12.5
+wing = Image.new('RGBA', (EX_WING, bay_hq.height))
+for x in range(EX_WING - bay_hq.width, -bay_hq.width, -bay_hq.width): wing.alpha_composite(bay_hq, (max(0, x), 0), (max(0, -x), 0))
+save(wing, 'ex-wing'); sizes['ex-wing'] = list(wing.size)
 
 # ---------- The arena floor: crowd all round, one wall with no gaps, the ring in the middle ----------
 # The map is 44x36 tiles of 32px (js/northroad-places.js). The wall runs round tiles 3-40 across and 4-32 down,
@@ -79,6 +105,13 @@ bot = 32 * TS
 stamp(7, X0, bot); stamp(6, X1, bot)
 for cx in range(X0, X1 + 1):
     if not GAP[0] <= cx <= GAP[1]: stamp(3, cx, bot)
+# The road gap is a tunnel through the south stand: sand underfoot, a wall cap either side, darkening as it leaves.
+floor.paste((0, 0, 0, 0), (GAP[0] * TS, bot, (GAP[1] + 1) * TS, H * TS))
+tile(sand, (GAP[0] * TS, bot, (GAP[1] + 1) * TS, H * TS))
+for y in range(bot + 24, H * TS + 24, 24): stamp(2, GAP[0] - 1, y); stamp(4, GAP[1] + 1, y)
+shade = Image.new('RGBA', ((GAP[1] - GAP[0] + 1) * TS, 1))
+for i in range(H * TS - bot - 40):
+    floor.alpha_composite(Image.new('RGBA', shade.size, (25, 18, 12, min(150, i * 4))), (GAP[0] * TS, bot + 40 + i))
 
 # The ring, centred on tile 22: ropes on rows 16 and 20, steps down to row 21.
 RING_AT = (22 * TS - RW // 2, 21 * TS - 16 - 231)
