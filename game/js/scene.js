@@ -74,6 +74,9 @@
     sc.tile = tile;
     function actorAt(x, y) { return Object.values(sc.actors).find(a => !a.hidden && !a.player && Math.round(a.x) === x && Math.round(a.y) === y && a.solid !== false); }
     sc.walkable = (x, y) => !(def.solid || 'T#').includes(tile(x, y)) && tile(x, y) !== 'T' && !actorAt(x, y);
+    // def.way(x, y, nx, ny): false where a step from (x, y) onto (nx, ny) isn't allowed, like walking into a stair
+    // from its side (js/interiors.js ways).
+    const way = (x, y, nx, ny) => !def.way || def.way(x, y, nx, ny);
 
     sc.addActor = function (id, a) {
       sc.actors[id] = Object.assign({ id, sprite: id, x: 0, y: 0, face: 'south', path: [], speed: 3.2, emo: null, emoT: 0, hidden: false }, a, { px: a.x, py: a.y });
@@ -120,7 +123,7 @@
         for (const [dx, dy] of DIRS) {
           const nx = x + dx, ny = y + dy;
           if (isDoor(nx, ny) && !(to && nx === to[0] && ny === to[1])) continue;
-          if (!prev.has(k(nx, ny)) && sc.walkable(nx, ny)) { prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]); }
+          if (!prev.has(k(nx, ny)) && sc.walkable(nx, ny) && way(x, y, nx, ny)) { prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]); }
         }
       }
       return null;
@@ -245,7 +248,7 @@
       } else if (kd) { nx += { west: -1, east: 1 }[kd[2]] || 0; ny += { north: -1, south: 1 }[kd[2]] || 0; }
       else if (P.path.length) [nx, ny] = P.path.shift();
       else if (P.want) { const w = P.want; P.want = null; if (talkTarget() === w && sc.onTalk) sc.onTalk(w); return; }
-      if ((nx !== P.x || ny !== P.y) && sc.walkable(nx, ny)) {
+      if ((nx !== P.x || ny !== P.y) && sc.walkable(nx, ny) && way(P.x, P.y, nx, ny)) {
         P.face = face || (nx > P.x ? 'east' : nx < P.x ? 'west' : ny < P.y ? 'north' : 'south');
         // A sideways diagonal crosses twice the screen distance, so it takes twice as long.
         P.slow = ISO && nx - P.x && ny - P.y && nx - P.x !== ny - P.y ? 0.55 : 1;
