@@ -27,9 +27,10 @@
     return null;
   }
   // Objects that move: a strip of frames, each w x h (the still's art padded, standing on the same bottom edge), n of
-  // them at fps, and optionally a wind strip of the same shape played instead in windy weather (the wind blows east,
-  // js/weather.js). The heroes' camp campfire flickers, and streams east in the wind (tools/campfire_anim.py).
-  const ANIM = { 'cp-fire': { src: 'assets/img/arc/cp-fire-anim.webp', wind: 'assets/img/arc/cp-fire-wind.webp', w: 64, h: 72, n: 8, fps: 9 } };
+  // them at fps, and optionally a wind strip (the same frames and height, its own frame width) played instead in windy
+  // weather (the wind blows east, js/weather.js). The heroes' camp campfire flickers, and streams east in the wind
+  // (tools/campfire_anim.py).
+  const ANIM = { 'cp-fire': { src: 'assets/img/arc/cp-fire-anim.webp', wind: { src: 'assets/img/arc/cp-fire-wind.webp', w: 80 }, w: 64, h: 72, n: 8, fps: 9 } };
   function charArt(id) {
     const a = SD.arcArt && SD.arcArt.chars[id];
     if (a) return Object.assign({ src: 'assets/img/arc/c-' + id + '.webp' }, a);
@@ -267,11 +268,11 @@
       const n = ANIM[name];
       if (n) {
         // An animated object: its frames side by side in one strip, played in a loop (falls back to the still).
-        const im = pic(n.wind && windy ? n.wind : n.src);
+        const v = n.wind && windy ? n.wind : n, fw = v.w, im = pic(v.src);
         if (ok(im)) {
-          const w = n.w * ts / 32 * (k || 1), h = n.h * ts / 32 * (k || 1), f = Math.floor(clockT * n.fps) % n.n;
-          if (flip) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(im, f * n.w, 0, n.w, n.h, -w / 2, y - h, w, h); ctx.restore(); }
-          else ctx.drawImage(im, f * n.w, 0, n.w, n.h, x - w / 2, y - h, w, h);
+          const w = fw * ts / 32 * (k || 1), h = n.h * ts / 32 * (k || 1), f = Math.floor(clockT * n.fps) % n.n;
+          if (flip) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(im, f * fw, 0, fw, n.h, -w / 2, y - h, w, h); ctx.restore(); }
+          else ctx.drawImage(im, f * fw, 0, fw, n.h, x - w / 2, y - h, w, h);
           return;
         }
       }
