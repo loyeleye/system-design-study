@@ -381,7 +381,7 @@
   }
   function rewards(opts, done) {
     const run = S.save.run;
-    const bits = mod('bits', Math.round((opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9)) * (rel('luckybit') ? 1.25 : 1)));
+    const bits = mod('bits', Math.round((opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9)) * (rel('luckybit') ? 1.25 : 1) * (rel('orderbook') ? 1.5 : 1)));
     const xp = opts.boss ? 120 : opts.elite ? 40 : 20;
     const shards = opts.boss ? 40 : opts.elite ? 15 : 5;
     run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
@@ -658,13 +658,16 @@
     C.played = 0;
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
-      + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry;
+      + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry
+      + (rel('sequencer') && C.turn === 2 ? 1 : 0) + (rel('openingbell') ? 1 : 0);   // the Exchange's relics (js/relic-exchange.js)
     C.energy = Math.max(0, mod('energy', C.energy, C));
     C.carry = 0;
     if (grouped()) { stash(); C.foes.forEach(f => { if (f.vuln) f.vuln--; }); load(C.fi); } else if (C.vuln) C.vuln--;
     // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
     if (!C.infra.some(c => SD.cards[c.id].keepSh)) C.sh = zero();
     if (C.turn === 1 && rel('standby')) C.sh.any += 8;
+    if (C.turn === 1 && rel('escrow')) C.sh.any += 12;
+    if (C.turn > 1 && rel('heartbeat') && sv.run) sv.run.sla = Math.min(S.maxSla(), sv.run.sla + 3);
     C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
@@ -673,7 +676,7 @@
       if (d.eachMit) mitigate(d.eachMit + (c.up ? 2 : 0), '', 'hit');
     });
     if (settle()) return;
-    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + metro);
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0) + metro);
     if (metro) C.log = (C.log ? C.log + ' ' : '') + 'The Metronome ticks: a quiet turn, so 3 extra cards.';
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();
@@ -704,6 +707,7 @@
     let plus = 0, times = 1, used = false;
     if (d.mit || d.pow || d.xcost || d.slam || d.rca) {
       if (rel('badge')) plus += 3;
+      if (rel('bluechip')) plus += 5;
       if (rel('whistle') && !C.whistled) { plus += 8; C.whistled = true; }
       if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
     }
@@ -1102,6 +1106,7 @@
       dmg = mod('dmg', dmg, C);
       // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
       if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
+      if (dmg > 0 && rel('tradinghalt') && (C.halts || 0) < 2) { C.halts = (C.halts || 0) + 1; dmg = 0; note += 'Trading halted: nothing got through. '; }
       if (dmg > 0 && rel('breaker') && !C.breakerUsed) { C.breakerUsed = true; dmg = 0; note += 'The circuit breaker tripped: nothing got through. '; }
       if (dmg > 1 && dmg <= 5 && rel('torii')) { dmg = 1; note += 'The torii charm made it a scratch. '; }
       total += dmg;
