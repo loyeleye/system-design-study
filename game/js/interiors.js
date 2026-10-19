@@ -6,11 +6,15 @@
 // opens the menu straight away (js/main.js). Walking into a row house when its owner is out shows the note on the
 // door first; nobody in Pingsby locks up. Bru is never home at night, and nothing in her room says where she goes.
 // In chapter 10's storm everyone is indoors and worried, so each room has its people in it with a worried word.
+// The Eventual Isles' buildings have rooms too (js/isles/isles-map.js), and so does Aigerim's card shop on the North
+// Road (js/northroad.js), where she minds the counter.
 //
 //   SD.interiors.has(door)     true if a room is behind that door
 //   SD.interiors.enter(door)   go inside; resolves when you walk back out
 //   SD.interiors.row(door)     true for a residential row door
 //   SD.interiors.knock(door)   knock on a row door (goes in, now that every row house has a room)
+//   SD.interiors.open(key, on) go into a room by name from another map (on: that map's canvas id); resolves on the way out
+//   SD.interiors.room(key)     true if that room and its picture exist
 //   SD.interiors.ROOMS         the rooms, for later threads (relationship scenes) to place people in
 //
 // Art: one PixelLab backdrop per room (assets/img/interiors/r-*.webp, 384x288, 32px a tile) made by
@@ -188,8 +192,206 @@
         { x: 9, y: 7, t: () => ['A little anvil by the bed, for ideas that come in the night.'] },
         { x: 1, y: 6, t: () => ['Fire irons, a poker and a pair of tongs. The tongs have a name card too: GRANDMA.'] }
       ]
+    },
+
+    // ---------- The Eventual Isles (js/isles/isles-map.js) ----------
+    // Walking into an island building's door opens its room. The islanders stay outside by their buildings, so these
+    // rooms have no one in them: just their things to look at.
+    office: {
+      name: "HARBOURMASTER'S OFFICE", isle: 'office', mat: true,
+      map: ['############', '############', '############', '############', '####...#####',
+        '#####.....##', '#####.....##', '####......##', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      windows: [{ r: [163, 29, 74, 64] }],
+      lights: [{ x: 6.2, y: 2, r: 3 }],
+      props: [
+        { x: 3, y: 4, t: () => ['Ferry timetables, stacked three deep. Every time on them starts with ABOUT.', 'The ferry arrives about nine. The ferry leaves about ten. Everyone agrees, eventually.'] },
+        { x: 4, y: 3, t: () => ['A ship\'s wheel on the wall. The brass plate says FIRST FERRY OF THE ISLES. ARRIVED EVENTUALLY.'] },
+        { x: 5, y: 3, t: () => ['The harbour through the window. A gull sits on the ferry\'s mast, waiting for everyone to agree it can land.'] },
+        { x: 8, y: 4, t: () => ['A potted palm with three tags on it. Each says WATERED, with a different date. Nobody is sure which one is true.'] },
+        { x: 7, y: 4, t: () => ['A coil of mooring rope, tied in the knot Captain Kwame calls "the retry".'] },
+        { x: 10, y: 5, t: () => ['A chart of the Isles. Each island has a pin, and each pin has a note: "agrees with the Landing, as of Tuesday".'] },
+        { x: 10, y: 7, t: () => ['A sea chest full of lost property. Every item is tagged with the day it was found and the day it will eventually be claimed.'] }
+      ]
+    },
+    school: {
+      name: 'ISLES SCHOOL', isle: 'school', mat: true,
+      map: ['############', '############', '############', '############', '####...###.#',
+        '####.#####.#', '##...###...#', '####....##.#', '#####DD....#'],
+      enter: [5, 7, 'north'],
+      windows: [{ r: [162, 26, 76, 60] }],
+      lights: [{ x: 6, y: 1.8, r: 3 }],
+      props: [
+        { x: 6, y: 6, t: () => ['A huge book lies open on the big table. Every page has one question on it, each in a different child\'s handwriting.', 'Page one says "But why?" So does page two.'] },
+        { x: 3, y: 5, t: () => ['A desk with words carved in it: WHY IS THE SEA SALTY. WHY IS THE FERRY LATE. WHY IS WHY.'] },
+        { x: 9, y: 5, t: () => ['A spelling test. Every answer is spelled three ways, one for each island\'s dictionary. All three got a gold star.'] },
+        { x: 1, y: 6, t: () => ['The chalkboard says TODAY: EVENTUAL CONSISTENCY.', 'Underneath, smaller: "but why?" Underneath that, smaller still: "because."'] },
+        { x: 4, y: 3, t: () => ['Jars of shells, sorted by size, then by colour, then by whoever got to the jar first.'] },
+        { x: 11, y: 4, t: () => ['A crayon drawing of the teacher saying "Good question!" It has been coloured in so many times the paper has gone soft.'] }
+      ]
+    },
+    bank: {
+      name: 'BANK OF THE ISLES', isle: 'bank', mat: true,
+      map: ['############', '############', '############', '############', '###.#.....##',
+        '##........##', '#.........##', '##.....#####', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      windows: [{ r: [214, 0, 44, 52] }],
+      lights: [{ x: 5, y: 2.6, r: 3 }],
+      props: [
+        { x: 5, y: 3, t: () => ['The bank\'s ledger. Every line has two entries, one on each side. Madame Farida checks they balance before she lets herself blink.'] },
+        { x: 7, y: 3, t: () => ['Brass scales, perfectly level. A sign says IF THESE TIP, NOBODY LEAVES. Each pan holds exactly one shell.'] },
+        { x: 10, y: 4, t: () => ['The vault door, with a wheel as big as a ferry\'s. A note taped to it: "One customer at a time. — Mutex (retired)".'] },
+        { x: 0, y: 6, t: () => ['A writing desk and a pile of deposit slips. Every slip has a copy, and every copy has a copy.'] },
+        { x: 3, y: 8, t: () => ['Old ledgers, bound for the Log Mill\'s archive. Mang Tomas never edits a plank, and Madame Farida never edits a page.'] },
+        { x: 10, y: 6, t: () => ['A long bench for the queue, with room for twelve. A sign says ONE AT A TIME ANYWAY.'] },
+        { x: 8, y: 7, t: () => ['A velvet rope marking where the queue starts. There is no queue. The rope stays, just in case.'] }
+      ]
+    },
+    mill: {
+      name: 'LOG MILL', isle: 'mill', mat: true,
+      map: ['############', '############', '############', '############', '####......##',
+        '#####.....##', '#####.#.####', '##.....#####', '######D#####'],
+      enter: [6, 7, 'north'],
+      windows: [{ r: [136, 18, 36, 34] }],
+      lights: [{ x: 6, y: 1.2, r: 3 }],
+      props: [
+        { x: 6, y: 3, t: () => ['The mill wheel, turning slowly. Every turn cuts one new plank. Nobody ever cuts an old one again.'] },
+        { x: 4, y: 3, t: () => ['Log ends, each stamped with a number: 1, 2, 3, and on up to 4,112. Not one number is missing.'] },
+        { x: 8, y: 3, t: () => ['A slice of a very old tree. Mang Tomas has written a date on every ring. The newest ring says TODAY.'] },
+        { x: 9, y: 3, t: () => ['Crates of planks waiting for the ferry. The labels say APPEND ONLY. DO NOT SAND.'] },
+        { x: 4, y: 5, t: () => ['The big saw. A sign hangs from it: "WE DO NOT FIX PLANKS. WE CUT NEW ONES."'] },
+        { x: 6, y: 6, t: () => ['A sawhorse with one new plank on it. The note says "Plank 4,113. Replaces plank 4,112. Plank 4,112 stays where it is."'] },
+        { x: 8, y: 6, t: () => ['Planks leaning on the wall. The one at the very back is the first plank the mill ever cut. It will always be there.'] },
+        { x: 10, y: 4, t: () => ['A stool with a folded dog blanket on it and a well-chewed pencil. Bloom\'s office.'] },
+        { x: 1, y: 7, t: () => ['A box of sawdust, labelled SAWDUST (KEEP). Mang Tomas throws nothing away.'] },
+        { x: 3, y: 8, t: () => ['Logs waiting their turn, each tagged with where it came from and when, in case anyone ever asks.'] }
+      ]
+    },
+    tower: {
+      name: 'TOWER OF TONGUES', isle: 'tower', mat: true,
+      map: ['############', '############', '############', '############', '############',
+        '####.#######', '####.....###', '####.....###', '####..DD.###'],
+      enter: [6, 7, 'north'],
+      windows: [{ r: [182, 28, 36, 48] }],
+      lights: [{ x: 5.2, y: 3.6, r: 2.6 }, { x: 7.2, y: 3.6, r: 2.2 }],
+      props: [
+        { x: 6, y: 5, t: () => ['Three dictionaries open side by side: Landing, Ledger and Twins. The same word means "yes", "maybe" and "later".', 'Professora Lúcia has underlined all three.'] },
+        { x: 3, y: 5, t: () => ['Shelves of dictionaries. Every island has three, and all of them disagree about the word "eventually".'] },
+        { x: 3, y: 7, t: () => ['A letter being translated. The first draft says "Hello." The third says "Hello, eventually." The third is the one she\'s happy with.'] },
+        { x: 8, y: 5, t: () => ['A shelf of phrasebooks. One is called HOW TO SAY SORRY TO BOTH TWINS AT ONCE. It is very thin.'] },
+        { x: 9, y: 7, t: () => ['The stairs spiral up to where the island signals are read. A sign says ONE TRANSLATOR AT A TIME.'] }
+      ]
+    },
+    carto: {
+      name: 'MAP & TOOL SHOP', isle: 'shop', mat: true,
+      map: ['############', '############', '############', '############', '####......##',
+        '#####.....##', '#####.....##', '#####...####', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      windows: [{ r: [174, 36, 50, 40] }],
+      lights: [{ x: 5.2, y: 2.6, r: 2.4 }, { x: 7.2, y: 1.4, r: 2.4 }, { x: 0.6, y: 4.3, r: 2.4 }, { x: 11.4, y: 3.8, r: 2.4 }, { x: 1.8, y: 8.2, r: 2.4 }],
+      props: [
+        { x: 3, y: 4, t: () => ['A map of the Isles, half drawn. Every bridge you have built is already on it. So are a few you haven\'t built yet.'] },
+        { x: 7, y: 3, t: () => ['A brass telescope pointed at the lighthouse. Through it: a lit window, and a hand writing a note. Then nothing.'] },
+        { x: 4, y: 3, t: () => ['Rolled maps by the hundred. Each has a tag saying where it goes, and where it goes after that.'] },
+        { x: 9, y: 3, t: () => ['Tools on hooks, each one outlined in chalk. Every outline has its tool. Cartographer Minh checks twice a day.'] },
+        { x: 10, y: 5, t: () => ['A compass, a ruler and a cup of tea, all lined up pointing exactly north.'] },
+        { x: 8, y: 7, t: () => ['A green ledger called WHERE EVERYTHING GOES. The first entry says "This book: here."'] },
+        { x: 4, y: 7, t: () => ['A pot of pens and callipers. The label on the pot says PENS AND CALLIPERS. The label on the label says LABEL.'] },
+        { x: 5, y: 3, t: () => ['A lantern, lit even by day. A tag on it says "So the maps can see."'] }
+      ]
+    },
+    hallW: {
+      name: 'WEST TWIN TOWN HALL', isle: 'hallW', mat: true,
+      map: ['############', '############', '############', '############', '###..#######',
+        '####.###..##', '####......##', '####......##', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      windows: [{ r: [168, 30, 66, 62] }],
+      lights: [{ x: 7.3, y: 4.3, r: 2.6 }],
+      props: [
+        { x: 6, y: 5, t: () => ['Mayor Ha-jin\'s desk. A blue stamp, a stack of decrees, and a letter to East Twin that begins "As I said".'] },
+        { x: 8, y: 4, t: () => ['A filing cabinet. Drawer one: DECISIONS. Drawer two: DECISIONS EAST TWIN DISAGREES WITH. Drawer two is much fuller.'] },
+        { x: 4, y: 3, t: () => ['The blue banner of West Twin. It is exactly as big as the red one across the water. Someone has measured.'] },
+        { x: 9, y: 4, t: () => ['A portrait of the twins\' father, the last mayor of both islands. He has the smile of a man who stopped arguing a long time ago.'] },
+        { x: 3, y: 6, t: () => ['The old stone hearth. A plaque says BUILT FIRST, BEFORE EAST TWIN\'S. There is no date on it.'] },
+        { x: 2, y: 4, t: () => ['A little blue bird, carved in wood. Its twin, painted red, sits on a shelf across the water.'] }
+      ]
+    },
+    hallE: {
+      name: 'EAST TWIN TOWN HALL', isle: 'hallE', mat: true,
+      map: ['############', '############', '############', '############', '###..###.###',
+        '###.......##', '###.......##', '###....#####', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      windows: [{ r: [242, 20, 48, 64] }],
+      lights: [{ x: 9.6, y: 1.4, r: 2.6 }, { x: 1.2, y: 5.4, r: 2.6 }],
+      props: [
+        { x: 6, y: 4, t: () => ['Mayor Ha-eun\'s desk. A red stamp, a stack of decrees, and a letter to West Twin that begins "As I said".'] },
+        { x: 9, y: 4, t: () => ['A tin-can telephone. Its string runs out of the window and across the water to West Twin. The can is still warm.'] },
+        { x: 3, y: 3, t: () => ['A printed notice: THE OFFICIAL TIME IS EAST TWIN TIME. Pinned underneath, a note in blue ink: "says who".'] },
+        { x: 2, y: 6, t: () => ['Minutes of the last joint meeting. Both mayors talked at once for three hours. Both sets of minutes say they won.'] },
+        { x: 8, y: 7, t: () => ['Two thick red books: THE TWINS CHARTER, VOLUME 1 (THE CORRECT ONE) and VOLUME 2 (THE OTHER ONE).'] }
+      ]
+    },
+    light: {
+      name: 'THE LIGHTHOUSE', isle: 'light', mat: true,
+      map: ['############', '############', '############', '###.#..#####', '###.....####',
+        '#####...####', '####....####', '#####....###', '######DD####'],
+      enter: [6, 7, 'north'],
+      windows: [{ c: [104, 86, 20] }],
+      lights: [{ x: 4.3, y: 2, r: 2.6 }, { x: 9.3, y: 3.2, r: 2.6 }, { x: 2.8, y: 5.8, r: 2.4 }],
+      props: [
+        { x: 5, y: 2, t: () => ['A coat on the stand, still damp with sea spray. The Keeper was here a moment ago. The Keeper is always here a moment ago.'] },
+        { x: 4, y: 3, t: () => ['A lamp, trimmed and lit. A note is tied to it: "Wick changed. — K."'] },
+        { x: 2, y: 4, t: () => ['A telescope pointed at Pingsby. A note beside it: "Saw your lights tonight. All is well. — K."'] },
+        { x: 3, y: 5, t: () => ['A cup of tea, still warm, and a book left open at a page about lighthouses. Nobody is reading it.'] },
+        { x: 8, y: 5, t: () => ['A narrow cot, neatly made. A note on the pillow says "Don\'t worry about me. — K."'] },
+        { x: 7, y: 3, t: () => ['The spiral stairs climb to the lamp room. You hear footsteps up there. When you look up, they stop.'] },
+        { x: 3, y: 2, t: () => ['A round window over the sea. Someone has written a letter in the mist on the glass: K.'] },
+        { x: 4, y: 7, t: () => ['A bowl of crumbs for the gulls, freshly filled.'] }
+      ]
+    },
+    club: {
+      name: 'TIDE POOL GAME CLUB', isle: 'club', mat: true,
+      map: ['############', '############', '############', '############', '###.#....###',
+        '###.##..####', '###......###', '#####...####', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      windows: [{ r: [178, 34, 34, 30] }],
+      lights: [{ x: 6, y: 0.8, r: 4 }, { x: 9.3, y: 7.2, r: 2.6 }],
+      props: [
+        { x: 4, y: 5, t: () => ['A board game, halfway through. Ploy is winning. A note in her writing says "DO NOT TOUCH. Rules are rules."', 'Under it, in much bigger letters: "THE SPRINGTIME OF YOUTH RESUMES TOMORROW! — NOK"'] },
+        { x: 3, y: 3, t: () => ['Shelves of board games, each box with the club\'s house rules taped to the lid. The house rules are longer than the real ones.'] },
+        { x: 6, y: 3, t: () => ['Two beanbags by the wall. One has an orange lightning bolt sewn on it: Arjun\'s, for genius naps.'] },
+        { x: 8, y: 3, t: () => ['A chalkboard that says HEY TEAM, next to a stopwatch and a teapot. NEXT MEETING: WHEN KAI SAYS SO.'] },
+        { x: 2, y: 4, t: () => ['An old arcade cabinet. The high score belongs to ARJUN. He set it in his sleep.'] },
+        { x: 9, y: 6, t: () => ['Meron\'s herb jars, each labelled with what it tastes like. She has tasted every one of them. Twice.'] },
+        { x: 8, y: 7, t: () => ['The club championship trophy. Every year\'s winner is engraved on it. Every year says PLOY.'] },
+        { x: 4, y: 7, t: () => ['A big purple beanbag, sagging in the middle. Whoever loses the game has to sit in it. It is very comfortable. Nobody admits that.'] }
+      ]
+    },
+
+    // ---------- Aigerim's Cards, on the North Road (js/northroad.js) ----------
+    // Aigerim minds the shop; talking to her opens it (NR.shop.open), so her diary scene in js/folk-scenes.js still plays.
+    cards: {
+      name: "AIGERIM'S CARDS", road: true,
+      map: ['############', '############', '############', '############', '###.......##',
+        '###.......##', '####......##', '#####...####', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      spots: { aigerim: [9, 5, 'south'] },
+      windows: [{ r: [172, 36, 58, 44] }],
+      lights: [{ x: 3.8, y: 6.6, r: 3 }, { x: 6.2, y: 2.2, r: 2.6 }],
+      props: [
+        { x: 3, y: 3, t: () => ['Card boxes in neat rows, every one dated. Aigerim knows the day each card came in, and what you were doing that day.'] },
+        { x: 5, y: 3, t: () => ['A basket of rolled-up posters. Each says WANTED: ONE HERO. The hero is you. The reward is "a chat".'] },
+        { x: 7, y: 3, t: () => ['A heavy chest with a padlock, labelled DIARY, VOLUMES 1 TO 112. Volume 113 is on the desk, open.'] },
+        { x: 9, y: 3, t: () => ['Rare cards on the shelf. A note says "Fetched by Grandmother\'s eagle. Do not touch. The eagle will know."'] },
+        { x: 2, y: 4, t: () => ['A glass case of cards about heroes. Every card has a small note on the back about you. Some of the notes are not small.'] },
+        { x: 3, y: 6, t: () => ['A lantern, left lit all night in case you drop by. You never drop by at night. She has a page about that.'] },
+        { x: 4, y: 7, t: () => ['Volume 113, open on the desk. Today\'s entry: "The hero came into the shop. I was very normal about it." It is underlined twice.', 'Nothing on any page has ever been rubbed out.'] },
+        { x: 9, y: 7, t: () => ['Cards for sale, laid out on felt. One space is empty, with a label: RESERVED FOR THE HERO (FOREVER).'] }
+      ]
     }
   };
+  // The Isles rooms have nobody standing in them.
+  Object.values(ROOMS).forEach(r => { r.spots = r.spots || {}; });
   const home = id => !!SD.folk && SD.folk.residents(ROOMS[id].door).includes(id);
   const doug = () => home('doug'), coo = () => home('coo'), ayo = () => home('ayo');
   const BY_DOOR = { H: 'treehouse', W: 'bunker', C: 'cafe', X: 'lexi', Y: 'kaito', D: 'doug', Q: 'coo', M: 'bru', O: 'ayo' };
@@ -237,6 +439,8 @@
   const roomOf = (door, id) => door === 'C' ? (id === 'wen' && block() === 'night' && !storm() ? 'flat' : 'cafe') : BY_DOOR[door];
   function people(key) {
     const r = ROOMS[key];
+    // Isles rooms are empty; the card shop has Aigerim minding it.
+    if (!r.door) return Object.keys(r.spots);
     return F().residents(r.door).filter(id => roomOf(r.door, id) === key);
   }
   // Customers fill the café by day, when the plaza's wanderers pop in for a coffee.
@@ -247,13 +451,16 @@
 
   // ---------- The room screen ----------
   let cv = null;
-  function canvas() {
-    if (cv) return cv;
-    cv = document.createElement('canvas');
-    cv.id = 'room-canvas'; cv.hidden = true;
-    cv.setAttribute('aria-label', 'Inside. Walk to people to talk, or out through the bottom to leave.');
-    const hub = document.getElementById('hub-canvas');
-    hub.parentNode.insertBefore(cv, hub.nextSibling);
+  // The room canvas takes the place of whichever map you walked in from: the village, the Isles or the North Road.
+  let host = null;
+  function canvas(id) {
+    if (!cv) {
+      cv = document.createElement('canvas');
+      cv.id = 'room-canvas'; cv.hidden = true;
+      cv.setAttribute('aria-label', 'Inside. Walk to people to talk, or out through the bottom to leave.');
+    }
+    if (id || !host) host = document.getElementById(id || 'hub-canvas');
+    if (cv.previousSibling !== host) host.parentNode.insertBefore(cv, host.nextSibling);
     return cv;
   }
   const load = src => { const im = new Image(); im.src = src; return im; };
@@ -383,21 +590,26 @@
     // A row house with its owner out: the note on the door, then in you go.
     const id = ROW[door];
     if (id && AWAY[id] && !F().residents(door).length) await U.dialog([{ s: 'narr', t: storm() ? 'Nobody\'s home. The windows are dark; whoever lives here is riding out the storm somewhere else.' : AWAY[id] }]);
+    return I.open(key);
+  };
+  // Go into a room by name from any map: on is the id of that map's canvas, which the room covers until you leave.
+  I.open = function (key, on) {
+    if (!ROOMS[key]) return Promise.resolve();
     guard();
-    const hub = document.getElementById('hub-canvas');
-    canvas();
-    hub.hidden = true; cv.hidden = false;
+    canvas(on || 'hub-canvas');
+    host.hidden = true; cv.hidden = false;
     go(key);
-    F().meet(ROOMS[key].owner);
+    if (ROOMS[key].owner) F().meet(ROOMS[key].owner);
     greeted = false;
     if (SD.weather) SD.weather.sync();
     return new Promise(res => { done = res; });
   };
+  I.room = key => !!ROOMS[key] && !!SD.interiorsArt && !!SD.interiorsArt.rooms[key];
   function leave() {
     if (!cv) return;
     if (sc) sc.stop();
     sc = null; cur = null;
-    cv.hidden = true; document.getElementById('hub-canvas').hidden = false;
+    cv.hidden = true; if (host) host.hidden = false;
     const r = done; done = null; if (r) r();
   }
 
@@ -432,6 +644,11 @@
     const r = ROOMS[cur];
     // A relationship scene due in this room starts when you talk to someone in it (js/folk-scenes.js).
     if (SD.folkScenes && await SD.folkScenes.talkIn(cur, id)) return;
+    // Aigerim in her shop: a quest step for her first, as on the road; otherwise the shop opens.
+    if (r.road) {
+      if (SD.quests && SD.quests.pending(id).length) return SD.quests.talk(id);
+      return SD.northRoad.shop.open();
+    }
     if (storm()) {
       const w = F().worry(id);
       if (w) await U.dialog([w]);
