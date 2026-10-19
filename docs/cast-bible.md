@@ -175,7 +175,7 @@ The schedule uses these spots. Tile positions are today's, from `game/js/hub.js`
   **(new, 2026-10-19)** Saint-Louis is a river town, built on an island where the river meets the sea, and the old Faidherbe bridge used to swing open to let the boats through. Her grandmother walked her across it every evening after the third glass, "so the tea has somewhere to go." Dieynaba still walks like that: slowly, because a place is only yours once you've walked it at the speed of conversation. On the evenings she isn't talking with Doug, she takes her third glass to the east footbridge and watches the river until the sun is down.
 
   Attaya needs fresh mint, so every morning after the post she walks to Cron's farm for a handful picked that day. Cron grows a row of it for her and won't take money; she pays him in the thank-you letters he pretends not to keep. In the afternoons she sets her brass tray on the café terrace, which Wen lends her on the understanding that Wen gets the third glass, and pours for whoever sits down. That is *teranga*: a guest is never in a hurry, and never thirsty.
-- **Look.** Drawn from photos Ladi chose: very dark skin, gold hoops, the hood of a cropped charcoal hoodie always up over long black twists that fade to honey-blonde, curly at the ends, black shorts and white high-top sneakers. Athletic. Streetwear, worn like a tailored suit. She walks at half everyone else's pace and never looks late.
+- **Look.** Drawn from photos Ladi chose: very dark skin, gold hoops, the hood of a cropped charcoal hoodie always up over long black twists that fade to honey-blonde, curly at the ends, black shorts and white high-top sneakers. Athletic. Streetwear, worn like a tailored suit. She strolls a little slower than everyone else and never looks late.
 - **Voice.** Impeccable, unhurried, faintly amused. Never raises her voice. Offers you tea before anything else.
 - **At home.** **(new)** The room above the Pigeon Post: one chair, a small teapot and three glasses on a brass tray, a writing desk, and a ledger of who has had a letter.
 - **Relationships.** Coo (arc 9). Outside the arcs: Doug, who talks shop at her table most evenings and is the only one who asks her questions back; Cron, who grows her mint; Wen, who lends her the terrace for the third glass.
@@ -410,7 +410,7 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 | A slow round: `post` at seven, mint from the `farm`, then the `terrace` | The `terrace`, pouring attaya for whoever sits down | Alternate loops: the `east-bridge` at sunset with the third glass, or her terrace spot (31, 5) talking with Doug | The room over the Post, writing tomorrow's letter, light on until late |
 
 - **Variant:** before chapter 5 she isn't in Pingsby.
-- **Pace:** she walks at half speed and stays twice as long at each stop on her round (`pace: 0.5` in `game/js/folk-data.js`).
+- **Pace:** she strolls at three-quarter speed and stays a little longer at each stop on her round (`pace: 0.75` in `game/js/folk-data.js`).
 - **Board:** "DIEYNABA: {spot}. Arrived exactly on time."
 
 ### Chapter 10: the stormy night

@@ -176,9 +176,9 @@
     },
     // Dieynaba (id 'valentin', js/ploy-quest.js), outside the café from chapter 5. Her day is her grandmother's
     // attaya, done properly: a thank-you letter at seven, fresh mint, three slow rounds for whoever sits down.
-    // pace: she walks at half speed, and lingers twice as long at each stop.
+    // pace: she strolls at three-quarter speed, and lingers a little longer at each stop.
     valentin: {
-      act: 'sip', pace: 0.5,
+      act: 'sip', pace: 0.75,
       morning: [['post', 'farm', 'terrace'], 'Posting her seven o\'clock thank-you letter, then fresh mint from Cron\'s farm', 'One letter at seven, then mint from Cron, picked this morning. Attaya with yesterday\'s mint is only tea.', 'sip'],
       afternoon: ['terrace', 'Pouring attaya on the café terrace for whoever sits down. Three rounds, never hurried', 'Sit. In my grandmother\'s house a guest is never in a hurry, and never thirsty. We call it teranga.', 'serve'],
       evening: c => c.loop % 2 ? ['east-bridge', 'Watching the sunset from the east footbridge, the third glass in hand', 'At home in Saint-Louis the old bridge swings open for the boats. This one never does. I forgive it.', 'sip'] : ['stand', 'On the café terrace, talking with Doug', null, 'talk:doug'],
