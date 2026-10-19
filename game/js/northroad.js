@@ -491,6 +491,8 @@
     const who = sc.actors[id];
     if (who && sc.P && !STILL[id]) { if (who.path.length) { who.path = []; if (who.route && who.leg) who.leg--; } sc.face(id, toward(who, sc.P)); }
     try {
+      // A relationship scene that's due with them on this map comes first (js/folk-scenes.js); it waits out quest steps.
+      if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('road:' + cur, id)) { AU.music(MAPS[cur].music); return; }
       // Explodia runs her own Blast Academy (js/explodia.js), quest steps included; the road's ordinary
       // people are in js/roadfolk.js.
       if (id === 'explodia' && SD.explodia) { await SD.explodia.talk(); AU.music(MAPS[cur].music); return; }

@@ -5,11 +5,15 @@
 // stop to SD.folk.plan), and it starts when you talk to one of them there: js/hub.js asks talk(id) in town,
 // js/interiors.js asks talkIn(room, id) in a room, and talking to Aigerim asks find('talk:aigerim'), in town and
 // at her North Road shop. Nobody is moved anywhere they didn't walk to.
-// Saved: S.save.folk.seen = { sceneId: { loop, b, t } } (b is the block's index), and S.save.folk.read, the last
-// scene Aigerim has read back to you. A scene you've seen stays seen; one you miss comes round again.
+// The North Road's and the Isles' arcs (js/folk-far-arcs.js, `far` set) play where those people already are: talking
+// to anyone in one on its map (js/northroad.js and js/isles/isles-map.js ask talkFar) starts the scene that's due,
+// from your second chat with them, once nobody in it has a quest or commission waiting.
+// Saved: S.save.folk.seen = { sceneId: { loop, b, t } } (b is the block's index), S.save.folk.read, the last
+// scene Aigerim has read back to you, and S.save.folk.far, the Road and Isles people you've talked to. A scene you've seen stays seen; one you miss comes round again.
 //
 //   SD.folkScenes.talk(id)     in town: the scene due where that villager is standing, if they're in it, or null
 //   SD.folkScenes.talkIn(k, id) in room k: play the scene due there if that villager is in it; true if one played
+//   SD.folkScenes.talkFar(at, id) on 'road:<map>' or 'isles': play the scene due with that person; true if one played
 //   SD.folkScenes.find(at)     the scene due at a place ('room:cafe', 'talk:aigerim', a spot), or null
 //   SD.folkScenes.play(s)      play a scene (or a scene id), then offer the arc's review question if it's the last
 //   SD.folkScenes.seen(id)     whether you've seen a scene ('drawer-2' is arc "drawer", scene 2)
@@ -61,7 +65,7 @@
   // Why a due scene can't play right now, or '' if it can.
   function blocked(s, c, marks) {
     if (s.storm && !storm()) return 'storm';
-    if (storm() && !s.storm && !s.stormOk) return 'after the storm';
+    if (storm() && !s.storm && !s.stormOk && !s.arc.far) return 'after the storm';
     if (s.who.includes('gary') && garyAway(c)) return 'when Gary is back';
     if (s.who.some(id => marks[id])) return 'once their quest business is done';
     return '';
@@ -80,6 +84,17 @@
     const at = SD.hub && SD.hub.actorAt(id);
     if (!at) return null;
     return ready().find(s => s.who.includes(id) && D.SPOTS[s.at] && D.SPOTS[s.at].tiles && near(D.SPOTS[s.at], at)) || null;
+  };
+  // Road and Isles people: quest steps (js/quests.js) and Isles commissions (js/isles/isles-engine.js) come first.
+  const farBusy = id => (SD.quests && SD.quests.pending(id).length) || (SD.isles && SD.isles.pending && SD.isles.pending(id).length);
+  const farMet = id => !!(S.save && st().far && st().far[id]);
+  FS.talkFar = async function (at, id) {
+    if (!S.save) return false;
+    if (!farMet(id)) { st().far = Object.assign({}, st().far, { [id]: 1 }); S.persist(); return false; }
+    const s = ready().find(x => x.arc.far && x.at === at && x.who.includes(id) && !x.who.some(farBusy));
+    if (!s) return false;
+    await FS.play(s);
+    return true;
   };
   FS.talkIn = async function (key, id) {
     const s = ready().find(x => x.at === 'room:' + key && x.who.includes(id));
@@ -196,19 +211,22 @@
   }
 
   // ---------- The board's scenes page ----------
+  const FAR = { road: 'on the North Road', waystation: 'at the waystation', arena: 'at the Arena', camp: "at the heroes' camp", exchange: 'at the Exchange' };
   const ROOMS = { cafe: 'inside the Cache Café', flat: "up in Wen's flat", bunker: "inside Seymour's Bunker", treehouse: "up in Mio's Treehouse", lexi: "in Lexi's house" };
   function place(at) {
     if (at.startsWith('room:')) return ROOMS[at.slice(5)] || 'indoors';
     if (at.startsWith('talk:')) return `wherever ${who([at.slice(5)])} is`;
+    if (at.startsWith('road:')) return FAR[at.slice(5)] || 'on the North Road';
+    if (at === 'isles') return 'on the Eventual Isles';
     return (D.SPOTS[at] && D.SPOTS[at].label) || at;
   }
   const when = s => s.block === 'any' ? 'any time' : Array.isArray(s.block) ? (s.block.includes('night') ? 'any time' : 'by day') : 'in the ' + s.block;
-  const name = id => { const n = SD.hub && SD.hub.npcName(id); return n ? n.charAt(0) + n.slice(1).toLowerCase() : id; };
+  const name = id => { const n = SD.hub && SD.hub.npcName(id); return n ? n.charAt(0) + n.slice(1).toLowerCase() : (SD.cast[id] && SD.cast[id].name) || id; };
   const who = ids => ids.map(name).join(' and ').replace(/ and (?=.* and )/g, ', ');
   // A hint for an arc's next scene, once it's unlocked and you've met everyone in it.
   function hint(arc, c, m) {
     const nx = next(arc, c);
-    if (!nx || !nx.s.when(c) || !nx.s.who.every(id => SD.folk.met(id))) return '';
+    if (!nx || !nx.s.when(c) || !nx.s.who.every(id => arc.far ? farMet(id) : SD.folk.met(id))) return '';
     const s = nx.s, why = blocked(s, c, m);
     if (why === 'storm') return '';
     let h = `Next: ${who(s.who)}, ${place(s.at)}, ${when(s)}`;

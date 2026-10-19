@@ -28,7 +28,9 @@
       marta: { night: ['in'] },
       fen: { night: ['in', 7, 29] },
       lyra: { morning: [18, 19, 'south', 'music'], afternoon: [18, 19, 'south', 'music'], evening: [20, 18, 'south', 'music'], night: ['in'] },   // warms up, plays, headlines the evening show
-      ren: { night: ['in'] }
+      ren: { night: ['in'] },
+      // Explodia chants at her crater in the morning, blasts it at noon, watches Lyra's evening show, and sleeps in the crater.
+      explodia: { morning: [23, 19, 'west', 'alert'], evening: [19, 20, 'north', 'star'], night: [23, 19, 'west', 'sleep'] }
     },
     waystation: {
       latency: { evening: [14, 14, 'west', 'dots'], night: ['in', 6, 8] },
