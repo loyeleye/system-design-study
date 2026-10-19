@@ -43,3 +43,10 @@ Sound effects (`s-flush`, `s-pager`, `s-static`, `s-crash`, `s-slowmo`, `s-thund
 Pixabay credit line: the tracks above by their listed artists, via Pixabay (Pixabay Content License).
 
 `m-ch10calm`, the music everywhere but the Exchange while the Cloud is down in chapter 10: "Left Behind (Jess' Theme)" by Joseph Collard (jocolloman), https://opengameart.org/content/left-behind-jess-theme, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Re-encoded from the loopable WAV to 64 kbps MP3; nothing else was changed.
+
+More from OpenGameArt, each re-encoded to 64 kbps MP3 and loudness-normalised:
+
+- `m-ch10dawn`, Pingsby's grey dawn (c10dawn): "Desolate" (Part II) by Matthew Pablo, https://opengameart.org/content/desolate, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+- `m-ch10log`, the event log replaying Kyu's story (c10toKyu): "Broken Dreams" by Spencer Y.K. (spenceryk99), https://opengameart.org/content/broken-dreams, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Encoded from the WAV.
+- `m-ch10shelter`, Pingsby's rooms while everyone shelters from the storm: "Delusion" by Alexandr Zhelanov, https://soundcloud.com/alexandr-zhelanov, via https://opengameart.org/content/delusion, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+- `m-quietstop`, the Quiet Stops on the North Road (chapter 7): "melancholy piano bgm" (version 2) by syncopika, https://opengameart.org/content/melancholy-piano-bgm, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
