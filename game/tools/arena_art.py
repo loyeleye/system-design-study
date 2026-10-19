@@ -4,12 +4,13 @@ usage: arena_art.py SRC_DIR   (SRC_DIR: /mnt/project-files/arena-exchange-raw)
 SRC_DIR holds the raw PixelLab files: ar-*.png map objects, ar-door.png (the great door in its stretch of wall),
 ar-royalbox2.png (the emperor's box),
 ar-ring2.png (the ring, on a grey backdrop), kit/ (a sandstone building kit; its sand floor is used) and
-chars/spec1-7/ and chars/folk1-6/ (characters, each unzipped from its download).
+chars/spec1-7/ and chars/folk1-6/ (characters, each unzipped from its download, with their breathing idles
+in idle/<dir>-<i>.png).
 Writes assets/img/arc/<name>.webp, ar-floor.webp (walls, door and ring, painted under the arena by
 js/northroad-arena.js), the crowd's people c-spec1-7.webp and their recoloured variants (c-spec1b...)
 (and c-folk1-6.webp, townsfolk the Exchange uses), and js/arena-art.js (their sizes).
 """
-import colorsys, json, os, sys
+import colorsys, glob, json, os, sys
 from collections import deque
 from PIL import Image
 
@@ -189,8 +190,12 @@ for name in ['spec%d' % n for n in range(1, 8)] + ['folk%d' % n for n in range(1
     d = os.path.join(SRC, 'chars', name)
     frames = json.load(open(os.path.join(d, 'metadata.json')))['states'][0]['frames']
     walk = frames['animations']['walk']
+    # Their breathing idles (PixelLab's breathing-idle template, made later) are in idle/<dir>-<i>.png.
+    idle = lambda dr: sorted(glob.glob(os.path.join(d, 'idle', dr + '-*.png')), key=lambda f: int(f[:-4].rsplit('-', 1)[1]))
     rows = [[Image.open(os.path.join(d, frames['rotations'][dr])).convert('RGBA')] +
+            [Image.open(f).convert('RGBA') for f in idle(dr)] +
             [Image.open(os.path.join(d, f)).convert('RGBA') for f in walk[dr]] for dr in ('south', 'west', 'east', 'north')]
+    n = [len(idle(dr)) for dr in ('south', 'west', 'east', 'north')]
     box = None
     for r in rows:
         for im in r:
@@ -199,10 +204,13 @@ for name in ['spec%d' % n for n in range(1, 8)] + ['folk%d' % n for n in range(1
     cw = rows[0][0].width; half = max(cw / 2 - box[0], box[2] - cw / 2)   # keep the sprite centred as it turns
     x0, x1 = int(cw / 2 - half), int(cw / 2 + half + 0.5)
     fw, fh = x1 - x0, box[3] - box[1]
-    out = Image.new('RGBA', (fw * 5, fh * 4))
+    out = Image.new('RGBA', (fw * max(len(r) for r in rows), fh * 4))
     for ri, r in enumerate(rows):
         for ci, im in enumerate(r): out.alpha_composite(im.crop((x0, box[1], x1, box[3])), (ci * fw, ri * fh))
-    save(out, 'c-' + name); chars[name] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows], 'walk': 1}
+    save(out, 'c-' + name)
+    # Standing, then the idle frames (n), then the walk (wk), as js/art.js's SD.art.sheetCol reads them.
+    chars[name] = {'w': fw, 'h': fh, 'n': n, 'wk': [len(r) - 1 - k for r, k in zip(rows, n)]} if any(n) else \
+        {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows], 'walk': 1}
     for v, recipe in enumerate(VARIANTS.get(name, [])):           # the same person in other colours: spec1b, spec1c...
         save(recolor(out, fh, recipe), 'c-%s%s' % (name, 'bcd'[v])); chars[name + 'bcd'[v]] = chars[name]
 

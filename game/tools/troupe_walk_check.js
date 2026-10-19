@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// Checks that Nari's dance troupe walk with steps instead of hopping (PixelLab sheets from tools/troupe_art.py), and
-// that someone who turns on the spot to a way with walk frames but no idle frames takes a step round first
-// (SD.art.sheetCol's turn, js/art.js).
+// Checks that Nari's dance troupe walk with steps instead of hopping and breathe standing still (PixelLab sheets from
+// tools/troupe_art.py), and that someone who turns on the spot to a way with walk frames but no idle frames takes a
+// step round first (SD.art.sheetCol's turn, js/art.js).
 //
 //   node tools/troupe_walk_check.js [--shots DIR]
 //
 // Serves the game, opens the Exchange in a debug save (chapter 10, afternoon), and checks:
-//   - Neel's, Hari's, Eun-ho's and Bitna's sheets have walk frames in all four rows, and their images hold them
-//   - SD.art.sheetCol: a turn plays the walk frames once (a walk-only sheet like Kyu's, or the troupe's), then stands;
-//     a row with idle frames keeps breathing; a turn while walking changes nothing
-//   - on the map, each of them walks a few tiles on their walk frames, then turned to face the other way steps round
-//     on that row's walk frames and stands still on its standing frame
+//   - Neel's, Hari's, Eun-ho's and Bitna's sheets have idle and walk frames in all four rows, and their images hold them
+//   - SD.art.sheetCol: a turn plays the walk frames once (on walk-only sheets made up for the check, as Kyu's and the
+//     troupe's were), then stands; a row with idle frames keeps breathing; a turn while walking changes nothing
+//   - on the map, each of them walks a few tiles on their walk frames, then turned to face the other way breathes on
+//     that row's idle frames
 // With --shots it saves a screenshot of the four of them walking. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -65,6 +65,7 @@ const server = http.createServer((req, res) => {
   });
   for (const [id, { c, w, h }] of Object.entries(sheets)) {
     if (!c.wk || c.wk.length !== 4 || c.wk.some(k => !k)) bad(`${id}: walk frames missing in some row (wk ${JSON.stringify(c.wk)})`);
+    if (c.n.some(n => !n)) bad(`${id}: idle frames missing in some row (n ${JSON.stringify(c.n)})`);
     const cols = Math.max(...c.n.map((n, r) => 1 + n + (c.wk ? c.wk[r] : 0)));
     if (w < cols * c.w || h < 4 * c.h) bad(`${id}: sheet ${w}x${h} is smaller than ${cols} columns x 4 rows of ${c.w}x${c.h}`);
   }
@@ -72,11 +73,12 @@ const server = http.createServer((req, res) => {
 
   // The rule, on its own.
   const rule = await page.evaluate(() => {
-    const A = SD.art, kyu = SD.arcArt.chars.kyu, neel = SD.arcArt.chars.neel, paz = SD.clubArt && SD.clubArt.chars.paz;
+    const A = SD.art, paz = SD.clubArt && SD.clubArt.chars.paz;
+    // Walk-only sheets as Kyu's (c.walk, its frames in c.n) and the troupe's (c.wk after no idle frames) used to be.
+    const kyu = { w: 30, h: 53, n: [4, 4, 4, 4], walk: 1 }, neel = { w: 28, h: 56, n: [0, 0, 0, 0], wk: [4, 5, 5, 5] };
     const out = [];
     const want = (what, got, ok) => { if (!ok) out.push(`${what}: got ${got}`); };
-    // A walk-only sheet (Kyu's: c.walk, its frames in c.n) and the troupe's (c.wk after no idle frames).
-    for (const [name, c] of [['kyu', kyu], ['neel', neel]]) {
+    for (const [name, c] of [['walk-only', kyu], ['no-idle', neel]]) {
       const k = c.walk ? c.n[1] : c.wk[1], at = c.walk ? 1 : 1 + c.n[1];
       const steps = [0, 0.13, 0.26, 0.39].map(s => A.sheetCol(c, 1, false, 9, 1, false, s));
       want(`${name} turning steps through its walk frames`, steps, steps.every((col, i) => col === at + i % k) && k >= 4);
@@ -132,16 +134,15 @@ const server = http.createServer((req, res) => {
     const steps = new Set(walk.filter(d => d.row === 2 && d.col > 0).map(d => d.col));
     if (steps.size < Math.min(3, k)) bad(`${id} walked east on ${steps.size} different frames (${[...steps]})`);
     if (walk.some(d => d.col > n + k)) bad(`${id} drew a column past their walk frames`);
-    // Turn round to face west, standing: a step on the west row's walk frames, then the standing frame.
+    // Turn round to face west, standing: breathing on the west row's idle frames.
     await page.waitForTimeout(400);
-    const t0 = await page.evaluate(key => { DRAWN.length = 0; NR.scene().face(key, 'west'); return performance.now(); }, key);
-    await page.waitForTimeout(1100);
+    await page.evaluate(key => { DRAWN.length = 0; NR.scene().face(key, 'west'); }, key);
+    await page.waitForTimeout(1600);
     const turn = await page.evaluate(id => DRAWN.filter(d => d.id === id), id);
-    const k1 = sheets[id].c.wk[1], early = turn.filter(d => d.t - t0 < k1 / 8 * 1000 - 60), late = turn.filter(d => d.t - t0 > k1 / 8 * 1000 + 100);
+    const n1 = sheets[id].c.n[1], cols = new Set(turn.map(d => d.col));
     if (!turn.length || turn.some(d => d.row !== 1)) bad(`${id} wasn't drawn facing west after the turn`);
-    if (!early.some(d => d.col > 0)) bad(`${id} didn't step round when turning (columns ${[...new Set(early.map(d => d.col))]})`);
-    if (!late.length || late.some(d => d.col !== 0)) bad(`${id} kept stepping after the turn (columns ${[...new Set(late.map(d => d.col))]})`);
-    console.log(`${id}: walked on frames ${[...steps].sort()}, turned through ${[...new Set(early.map(d => d.col))]} then ${[...new Set(late.map(d => d.col))]}`);
+    if (turn.some(d => d.col > n1) || ![...cols].some(c => c > 0)) bad(`${id} didn't breathe after the turn (columns ${[...cols]})`);
+    console.log(`${id}: walked on frames ${[...steps].sort()}, then stood breathing on ${[...cols].sort()}`);
   }
 
   if (shots && spots) {

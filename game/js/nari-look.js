@@ -2,8 +2,8 @@
 // entries (docs/cast-bible-road-isles.md).
 // Nari is a veiled dancer who is always first onto new ground; the troupe shares her house in the Exchange's old
 // quarter (js/nari-home.js). Art: js/nari-art.js (tools/nari_art.py) and js/troupe-art.js (tools/troupe_art.py).
-// Her sprites are ordinary ones the scenes draw by key: 'nari' walks (walk: 1), and 'nari-dance' dances while she
-// stands (its idle cycle is the dance). Loads after js/arc.js.
+// Her sprites are ordinary ones the scenes draw by key: 'nari' breathes standing still and walks (n, then wk), and
+// 'nari-dance' dances while she stands (its idle cycle is the dance). Loads after js/arc.js.
 (function () {
   if (!SD.nariArt || !SD.arcArt) return;
   const T = SD.troupeArt || { chars: {}, moods: {} };
