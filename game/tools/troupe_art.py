@@ -7,6 +7,8 @@ SRC_DIR (/mnt/project-files/dancer-raw, next to Nari's own downloads) holds, for
   chars/<id>/{south,west,east,north}.png   136x136 PixelLab rotations, halved to the game's 68px scale
   chars/<id>/dance-<dir>-<00..10>.png      their dance (PixelLab v3, like Nari's), on a larger canvas; frame 00 is the
                                            rotation it started from
+  chars/<id>/idle-<dir>-<i>.png            their breathing idle (PixelLab's breathing-idle template, on the
+                                           rotation's 136px canvas and lined up with it)
   chars/<id>/walk-<dir>-<i>.png            their walk (PixelLab, on the rotation's 136px canvas and lined up with it):
                                            the walking-4-frames template where it kept everything they carry, else a
                                            v3 walk made as a loop from the rotation, without its last frame (the
@@ -19,7 +21,7 @@ from cherry red to the auburn of her bust; and the swoosh arcs and sparkles Pixe
 dances are taken out.
 The sprites are halved exactly as Nari's are (tools/nari_art.py), so they stand at her size. Writes:
   assets/img/arc/c-<id>.webp         a row per direction (south, west, east, north): the standing frame, then the
-                                     walk (wk in the manifest; there are no idle frames), cut tight like the PR Club's
+                                     idle (n in the manifest), then the walk (wk), cut tight like the PR Club's
                                      sheets (tools/club_art.py)
   assets/img/arc/c-<id>-dance.webp   laid out like c-nari-dance.webp: a row per direction, standing then the dance.
                                      Same scale and feet line as c-<id>.webp; the cell is wider, and a few pixels
@@ -257,9 +259,16 @@ def walks(cid, d):
     if lift > 0: frames = [im.transform(im.size, Image.AFFINE, (1, 0, 0, 0, 1, -lift)) for im in frames]
     return frames
 
+def idles(cid, d):
+    # The breathing idle for one direction (PixelLab's breathing-idle template, on the rotation's canvas), with the
+    # twins' cuffs drawn in as on their rotations, since an idle barely moves their arms.
+    n = len(glob.glob(os.path.join(SRC, 'chars', TWIN.get(cid, cid), 'idle-%s-*.png' % d)))
+    return [half(load(cid, os.path.join('chars', '%s', 'idle-%s-%d.png' % (d, i)), d)) for i in range(n)]
+
 art = {'chars': {}, 'moods': {}}
 for cid in CHARS:
-    rows = [[half(load(cid, os.path.join('chars', '%s', d + '.png'), d))] + walks(cid, d) for d in DIRS]
+    idle = [idles(cid, d) for d in DIRS]
+    rows = [[half(load(cid, os.path.join('chars', '%s', d + '.png'), d))] + i + walks(cid, d) for d, i in zip(DIRS, idle)]
     box = None
     for im in sum(rows, []):
         b = im.getbbox()
@@ -272,7 +281,7 @@ for cid in CHARS:
     for ri, r in enumerate(rows):
         for ci, im in enumerate(r): sheet.alpha_composite(im.crop((x0, box[1], x1, box[3])), (ci * fw, ri * fh))
     save(sheet, os.path.join(IMG, 'arc', 'c-' + cid + '.webp'))
-    art['chars'][cid] = {'w': fw, 'h': fh, 'n': [0, 0, 0, 0], 'wk': [len(r) - 1 for r in rows]}
+    art['chars'][cid] = {'w': fw, 'h': fh, 'n': [len(i) for i in idle], 'wk': [len(r) - 1 - len(i) for r, i in zip(rows, idle)]}
 
     # The dance sheet. Halved, the rotation sits at (PAD / 2, PAD / 2): its feet line and centre are the standing
     # sheet's, and the cell grows sideways and upward (never down) to fit every frame of every direction.

@@ -21,7 +21,7 @@
   SD.art.portrait = (who, size, mood) => who !== 'trader' ? art.portrait(who, size, mood)
     : `<span class="bust b-trader" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/barnaby-${BARNABY.includes(mood) ? mood : 'neutral'}.webp" alt="" draggable="false"></span>`;
   // His own map sprite too (assets/img/arc/c-barnaby.webp, tools/barnaby_art.py), in place of the villagers' v3.
-  if (SD.arcArt) SD.arcArt.chars.barnaby = { w: 28, h: 53, n: [4, 4, 4, 4], walk: 1 };
+  if (SD.arcArt) SD.arcArt.chars.barnaby = { w: 28, h: 54, n: [4, 4, 4, 4], wk: [4, 4, 4, 4] };
   // The Exchange: Toro, the trader (actor v3) and, in chapter 10, Kagemaru.
   const AS = { toro: 'toro', v3: 'trader', kagemaru: 'kagemaru' };
   const NR = SD.northRoad;
