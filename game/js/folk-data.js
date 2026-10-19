@@ -47,7 +47,7 @@
     'row:kaito': { label: 'at home, on the residential row', door: 'Y' },
     'row:doug': { label: 'at home, on the residential row', door: 'D' },
     'row:coo': { label: 'at home, on the residential row', door: 'Q' },
-    // Bru's house stays dark until arc 8 says where she goes at night.
+    // Bru's house stays dark: nobody knows where she goes at night, even once arc 8 puts her off shift.
     'row:bru': { label: 'at home, on the residential row', door: 'M' },
     'row:ayo': { label: 'at home, on the residential row', door: 'O' }
   };
@@ -109,9 +109,9 @@
       morning: ['stand', 'At the Guild desk, stamping forms', null, 'stamp'],
       afternoon: c => [ROUNDS.slice(c.loop % ROUNDS.length).concat(ROUNDS.slice(0, c.loop % ROUNDS.length)), 'Walking her rounds', 'Oh! Rounds. Every door, every afternoon. Somebody has to check the checkers.', 'browse'],
       evening: ['stand', 'At the Guild desk, still', null, 'stamp'],
-      // Nobody knows where Bru goes at night, until arc 8 ends and the night rota sends her home.
-      night: c => c.seen('compass-4') ? ['row:bru', 'At home. Off shift.'] : ['unknown', '???'],
-      board: c => c.block === 'night' ? (c.seen('compass-4') ? 'BRU: home. Off shift.' : 'BRU: ???') : c.block === 'afternoon' ? 'BRU: on her rounds. Every door, every heartbeat, checked by hand.' : 'BRU: {spot}. Where else would I be?'
+      // Nobody knows where Bru goes at night. Not even after arc 8: the rota just means she's off shift.
+      night: ['unknown', '???'],
+      board: c => c.block === 'night' ? (c.seen('compass-4') ? 'BRU: ???. Off shift.' : 'BRU: ???') : c.block === 'afternoon' ? 'BRU: on her rounds. Every door, every heartbeat, checked by hand.' : 'BRU: {spot}. Where else would I be?'
     },
     ayo: {
       act: 'smith',
@@ -512,10 +512,10 @@
             ['coo', 'Coo. Two of us must agree before anyone is marked missing. One tired bird is not a quorum.'],
             ['bru', 'But I... it\'s my board...'],
             ['seymour', 'And now it is THREE boards. You are outvoted. Thrice.'],
-            ['narr', 'Bru argues for a while, and loses. Her row on the board finally reads: BRU: home. Off shift.'],
+            ['narr', 'Bru argues for a while, and loses. Her row on the board finally changes. It reads: BRU: ???. Off shift.'],
             ['bru', 'The board was me. Just me. If I fell asleep, nobody knew where anybody was.'],
             ['pip', "The service registry is a critical service too! Replicate it, and use a quorum, so one tired node isn't a single point of failure."]],
-          diary: 'Bru went home. You smiled so wide. I know where Bru lives now. I know where everyone lives.' }
+          diary: 'Bru went off shift. You smiled so wide. Where she goes at night, nobody knows. Not even me. I have tried.' }
       ]
     },
     {

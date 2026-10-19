@@ -154,7 +154,7 @@
       else if (storm && at) { spot = at.label; where = cap1(spot); }
       else if (!at) where = id === 'aigerim' && SD.peddler && SD.peddler.moved() ? 'The North Road' : id === 'gary' ? 'Asleep' : 'Out of town';
       else { spot = at.label || 'by ' + standLabel(id); where = cap1(spot); doing = at.doing; }
-      if (id === 'bru' && block === 'night' && !storm && !c.seen('compass-4')) { where = '???'; doing = ''; }
+      if (id === 'bru' && block === 'night' && !storm) { where = '???'; doing = ''; }
       let beat = storm && id !== 'gary' ? `${name}: ${D.STORM_BOARD}` : typeof p.board === 'function' ? p.board(c) : p.board;
       beat = beat.replace(/\{spot\}/g, spot || where.toLowerCase()).replace(/\{name\}/g, name);
       return `<li><b>${U.esc(name)}</b> · ${U.esc(where)}${doing ? `<br><span class="small">${U.esc(doing)}</span>` : ''}<br><span class="small muted"><i>${U.esc(beat)}</i></span></li>`;
