@@ -990,7 +990,8 @@
       { s: 'explodia', t: 'Stand back.', e: 'happy', cue: () => stepBack(1) },
       { s: 'explodia', t: 'Further.', e: 'smug', cue: () => stepBack(1) },
       { s: 'explodia', t: 'FURTHER!', e: 'happy', cue: () => stepBack(2, true) },
-      { s: 'explodia', t: '...Okay, that\'s too far. Come back a bit.', e: 'neutral', cue: () => stepBack(-1) },
+      // The blast goes off while she's still talking, so you see it before the narrator dims the road.
+      { s: 'explodia', t: '...Okay, that\'s too far. Come back a bit.', e: 'neutral', cue: () => { stepBack(-1); setTimeout(kaboom, 900); } },
       { s: 'narr', t: 'Something behind her goes KA-BOOM. Her hat is smoking. She doesn\'t seem to notice.' },
       { s: 'explodia', t: 'Explodia! Demolitions mage. Every crater on this road is mine, and some of them were even on the schedule.', e: 'happy' },
       { s: 'explodia', t: 'I also run the Blast Academy. Our textbook is the SRE Book, written by the people who keep the biggest castle in the realm from exploding. Except on purpose.', e: 'smug' },
@@ -1088,6 +1089,49 @@
     });
     ctx.restore();
   }
+  // The intro's KA-BOOM: a fireball goes up right behind her and leaves the ground charred for a few seconds.
+  // The fireball is a PixelLab effect: 12 frames of 112 x 136 at 12 fps, four to a row, the ground at (56, 120).
+  const KB = { w: 112, h: 136, ax: 56, ay: 120, n: 12, fps: 12, cols: 4 };
+  const kbImg = new Image(); kbImg.src = 'assets/img/arc/fx-kaboom.webp';
+  let blastAt = null;
+  function kaboom() {
+    blastAt = performance.now() / 1000;
+    sfx('boom');
+    U.shake('#north-canvas');
+  }
+  // Seconds after the blast: the char lands as the fireball hits, holds, then fades back to her usual scorch.
+  const CHAR_IN = 0.2, CHAR_HOLD = 6, CHAR_OUT = 2;
+  function blast(ctx, x, y, ts, t) {
+    if (blastAt == null) return;
+    const s = t - blastAt;
+    if (s > CHAR_HOLD + CHAR_OUT) { blastAt = null; return; }
+    const bx = x, by = y - ts * 0.8;
+    const fade = s < CHAR_IN ? 0 : s < CHAR_IN + 0.15 ? (s - CHAR_IN) / 0.15 : s < CHAR_HOLD ? 1 : 1 - (s - CHAR_HOLD) / CHAR_OUT;
+    if (fade > 0) {
+      // The same ragged mark as hers, in bigger pixels, with embers that start white-hot and cool.
+      const px = Math.max(1, ts / 13), heat = Math.max(0, 1 - s / CHAR_HOLD);
+      ctx.save();
+      SCORCH.forEach(c => {
+        // Cells that meet edge to edge: overlapping see-through cells would show a grid at this size.
+        const X = Math.round(bx + c.i * px), Y = Math.round(by + c.j * px);
+        const w = Math.round(bx + (c.i + 1) * px) - X, hh = Math.round(by + (c.j + 1) * px) - Y;
+        ctx.fillStyle = `rgba(22,15,12,${(Math.min(0.92, c.a + 0.1) * fade).toFixed(2)})`;
+        ctx.fillRect(X, Y, w, hh);
+        if (c.ember || (heat > 0.5 && c.a > 0.75 && hash(c.j, c.i) > 0.8)) {
+          const glow = (calm ? 0.7 : 0.45 + 0.55 * Math.max(0, Math.sin(t * 4 + c.i * 1.3 + c.j))) * fade * (0.35 + 0.65 * heat);
+          ctx.fillStyle = `rgba(255,${120 + Math.round(110 * heat)},${40 + Math.round(120 * heat * heat)},${glow.toFixed(2)})`;
+          ctx.fillRect(X, Y, w, hh);
+        }
+      });
+      ctx.restore();
+    }
+    const f = Math.floor(s * KB.fps);
+    if (calm || f >= KB.n || !kbImg.complete || !kbImg.naturalWidth) return;
+    const k = ts / 32, w = KB.w * k, h = KB.h * k;
+    ctx.drawImage(kbImg, (f % KB.cols) * KB.w, Math.floor(f / KB.cols) * KB.h, KB.w, KB.h,
+      Math.round(bx - KB.ax * k), Math.round(by - KB.ay * k), Math.round(w), Math.round(h));
+  }
+
   // Puffs of smoke curl off her hat brim and her singed hem, rise, swell and fade, on a loop.
   const PUFFS = Array.from({ length: 8 }, (_, k) => ({ off: k / 8, side: k % 2 ? 1 : -1, hat: k % 4 < 2, sway: 0.6 + hash(k, 3), jit: hash(k, 9) }));
   function smoke(ctx, x, feet, ts, t, h) {
@@ -1114,7 +1158,8 @@
   }
 
   SD.explodia = {
-    under: scorch,
+    // Drawn under her sprite, so the blast goes off behind her.
+    under: (ctx, x, y, ts, t) => { scorch(ctx, x, y, ts, t); blast(ctx, x, y, ts, t); },
     over: smoke,
     async talk() {
       if (!st().met) { st().met = { at: Date.now() }; S.persist(); await intro(); }
