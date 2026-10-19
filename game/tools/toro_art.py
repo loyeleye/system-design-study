@@ -6,9 +6,11 @@ He used to borrow the townsfolk's folk3 (a girl in a blue hood), which looked no
 horns, a navy pinstripe suit and a red tie. This repaints the townsman folk6 (stout, bald, white sleeves, purple
 waistcoat) to match, frame by frame, so he keeps folk6's walk and idle: skin to brown, the waistcoat and sleeves to a
 navy suit with faint pinstripes, a curly mop of hair, a white collar and red tie when he faces you, and two horns on
-top (the sheet is 3px taller than folk6's to fit them). Prints his size for SD.arcArt.chars.toro.
+top (the sheet is 3px taller than folk6's to fit them). folk6's sheet is laid out as tools/npc_anim.py lays it out (a
+row per direction: the standing frame, n[row] breathing idle frames, then wk[row] walk frames), so Toro breathes behind
+his counter and walks like everyone else. Prints his entry for SD.arcArt.chars.toro.
 """
-import json, os, re
+import colorsys, json, os, re
 from PIL import Image
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,12 +29,32 @@ REMAP = {
     '#eae8e6': '#34437c', '#ada7a5': '#2a376a', '#b9b1ae': '#28356a', '#9d9491': '#222d5c',
 }
 REMAP = {hexc(k): hexc(v) for k, v in REMAP.items()}
+# The idle frames bring in-between shades of the same colours; they go by brightness to the nearest step of his ramps.
+SKIN_RAMP = [(235, '#b47148'), (210, '#a0603c'), (190, '#8a4f30'), (170, '#7f4630'), (145, '#6e3c24'), (0, '#5e321e')]
+SUIT_RAMP = [(220, '#34437c'), (180, '#2e3c72'), (150, '#4a5a92'), (125, '#2c3a6e'), (110, '#26315f'), (90, '#1f2a52'), (75, '#18203f'), (0, '#141a33')]
+step = lambda ramp, v: hexc(next(c for t, c in ramp if v >= t))
+
+def remap(c, in_head):
+    """Folk6's colour c as Toro's, or None to leave it (outline, trousers, shoes)."""
+    if c in REMAP: return REMAP[c]
+    h, s, v = colorsys.rgb_to_hsv(*(x / 255 for x in c[:3])); h, v = h * 360, v * 255
+    if in_head and 190 <= h <= 240 and s > 0.5: return hexc('#2b2340')                     # a blue eye: his are dark
+    if in_head and 240 <= h <= 300 and v > 200: return EYE                                   # a lavender eye glint
+    if (h <= 30 or h >= 345) and 0.2 <= s < 0.45 and v >= (100 if in_head else 150): return step(SKIN_RAMP, v)
+    if 240 <= h <= 300 and (s >= 0.2 or v >= 200) and v >= 60: return step(SUIT_RAMP, v)     # waistcoat
+    if s < 0.13 and v >= 130: return step(SUIT_RAMP, v + 40)                                 # shirt sleeves
+    return None
+
 PALE = {hexc(h) for h in ('#f3c2ad', '#dda790', '#c9907b', '#b58579', '#9d7364')}
 EYE = hexc('#eae8e6')
-SKIN = {hexc(h) for h in ('#b47148', '#a0603c', '#8a4f30', '#7f4630', '#6e3c24')}
-SUIT = {hexc('#2c3a6e'), hexc('#34437c'), hexc('#26315f')}
+SKIN = {hexc(c) for _, c in SKIN_RAMP} | {hexc(h) for h in ('#b47148', '#a0603c', '#8a4f30', '#7f4630', '#6e3c24')}
+SUIT = {hexc('#2c3a6e'), hexc('#34437c'), hexc('#26315f'), hexc('#2e3c72')}
 INK, HAIR, CURL = hexc('#050302'), hexc('#2b1b14'), hexc('#4a3024')
 HORN, TIP, WHITE, TIE, KNOT = hexc('#d08a4a'), hexc('#f0d098'), hexc('#f1efef'), hexc('#c4262f'), hexc('#8e1a22')
+
+# folk6's last south walk frame is drawn from behind; his is the second step mirrored, which steps off the other foot.
+fix = src.crop((6 * W, 0, 7 * W, H)).transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+src.paste((0, 0, 0, 0), (8 * W, 0, 9 * W, H)); src.alpha_composite(fix, (8 * W, 0))
 
 out = Image.new('RGBA', (src.width, (H + PAD) * ROWS))
 for r in range(ROWS):
@@ -46,16 +68,18 @@ for r in range(ROWS):
         head = [(x, y) for x, y in skin if y <= top + 14]
         eyes = [(x, y) for y in range(top, top + 15) for x in range(W) if px[x, y] == EYE]
         chin = max((y for _, y in head), default=0)
+        hl, hr = min((x for x, _ in head), default=0), max((x for x, _ in head), default=W)
         for y in range(f.height):
             for x in range(W):
                 c = px[x, y]
-                if c in REMAP and not (c == EYE and y <= chin): px[x, y] = REMAP[c]
+                if not c[3] or (c == EYE and y <= chin): continue
+                n = remap(c, y <= chin and (not head or hl - 1 <= x <= hr + 1))
+                if n: px[x, y] = n
         # Faint pinstripes on the suit.
         for y in range(f.height):
             for x in range(W):
                 if px[x, y] in SUIT and x % 3 == 0: px[x, y] = hexc('#43548f')
         if not head: out.alpha_composite(f, (col * W, r * (H + PAD))); continue
-        hl, hr = min(x for x, _ in head), max(x for x, _ in head)
         cx = (hl + hr) // 2
         # Which way he faces: the whites of his eyes say front or side; none means his back.
         back = r == 3 or not eyes
@@ -84,4 +108,4 @@ for r in range(ROWS):
                 if 0 <= nx < W and 0 <= ny < f.height and not px[nx, ny][3]: px[nx, ny] = INK
         out.alpha_composite(f, (col * W, r * (H + PAD)))
 out.save(os.path.join(HERE, 'assets/img/arc/c-toro.webp'), lossless=True, quality=100, method=6)
-print(json.dumps({'w': W, 'h': H + PAD, 'n': chars['folk6']['n'], 'walk': 1}))
+print(json.dumps({'w': W, 'h': H + PAD, 'n': chars['folk6']['n'], 'wk': chars['folk6']['wk']}))
