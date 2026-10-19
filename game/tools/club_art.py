@@ -105,6 +105,10 @@ for name in OBJECTS:
 
 for room in ['gym', 'studio']:
     im = Image.open(os.path.join(SRC, 'rooms', room + '.png')).convert('RGB')
+    if room == 'gym':
+        # The arched door at the bottom drew under you as you walked in, so it is floored over with the planks two
+        # tiles to its left, and the room uses a doormat instead (mat: true in js/club.js).
+        im.paste(im.crop((100, 224, 168, 288)), (168, 224))
     save(im, os.path.join(IMG, 'interiors', 'r-pr' + room + '.webp'))
     manifest['rooms']['pr' + room] = list(im.size)
 

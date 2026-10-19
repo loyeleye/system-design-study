@@ -63,8 +63,8 @@
     const g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x === 0 || y === 0 || x === W - 1 || y === H - 1) ? 'T' : '.'));
     const rect = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) g[y][x] = c; };
     rect(11, 3, 20, 9, '#'); g[9][15] = 'G'; g[9][16] = 'G';                // the gym
-    rect(3, 4, 8, 8, '#'); g[8][5] = 'U';                                     // the studio, stairs on the front
-    rect(1, 12, 16, 13, 'p'); rect(15, 10, 16, 11, 'p'); rect(5, 9, 5, 11, 'p'); rect(17, 12, 22, 12, 'p');
+    rect(3, 4, 8, 8, '#'); g[8][4] = 'U';                                     // the studio, stairs up the front
+    rect(1, 12, 16, 13, 'p'); rect(15, 10, 16, 11, 'p'); rect(4, 9, 4, 11, 'p'); rect(17, 12, 22, 12, 'p');
     rect(16, 14, 16, 14, 'p');                                                // to the track (SD.clubArt.track, painted by under())
     rect(23, 10, 24, 11, '#'); rect(26, 11, 27, 11, '#');                     // auction block, weights
     rect(15, 19, 16, 19, '#');                                                // the segment board, in the infield
@@ -76,7 +76,7 @@
       objects: [
         { name: 'pr-gym', x: 15.5, y: 9 }, { name: 'pr-studio', x: 5.5, y: 8.4 },
         { name: 'pr-block', x: 23.5, y: 11 }, { name: 'pr-weights', x: 26.5, y: 11 }, { name: 'pr-board', x: 15.5, y: 19.2 },
-        { name: 'nr-signpost', x: 2, y: 10.6 }, { name: 'nr-fence', x: 20, y: 9.6 }, { name: 'nr-fence', x: 10.6, y: 14.6 },
+        { name: 'nr-signpost', x: 2, y: 10.6 }, { name: 'nr-fence', x: 20, y: 9.6 },
         { name: 'nr-rock', x: 30, y: 19 }
       ],
       labels: [
@@ -88,7 +88,7 @@
         imani: { x: 22, y: 11, face: 'south', name: 'IMANI' }, magnus: { x: 25, y: 12, face: 'west', name: 'MAGNUS' },
         bidder: { x: 23, y: 14, face: 'north', name: 'BIDDER', sprite: 'v1' }
       },
-      back: { E: [1, 12, 'east'], G: [15, 10, 'south'], U: [5, 9, 'south'] }, enter: [1, 12, 'east'],
+      back: { E: [1, 12, 'east'], G: [15, 10, 'south'], U: [4, 9, 'south'] }, enter: [1, 12, 'east'],
       music: 'ch8', weather: 'sun',
       // The running track: one picture laid on the grass under everything else (made by tools/club_art.py).
       under(ctx, ts) {
@@ -120,7 +120,7 @@
   // ---------- The gym hall and the studio (rooms in js/interiors.js) ----------
   if (I && I.ROOMS) {
     I.ROOMS.prgym = {
-      name: 'THE PR CLUB', map: ['############', '############', '############', '#.###...####', '#.###...####',
+      name: 'THE PR CLUB', mat: true, map: ['############', '############', '############', '#.###...####', '#.###...####',
         '#.###...####', '#.......####', '###.....####', '#####DD#####'],
       enter: [5, 7, 'north'],
       spots: { sunny: [6, 3, 'south'], leon: [1, 5, 'east'], thea: [7, 6, 'east'], rico: [9, 4, 'south'] },
