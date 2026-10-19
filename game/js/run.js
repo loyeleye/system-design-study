@@ -1540,8 +1540,9 @@
     const sv = S.save, run = sv.run;
     if (!run) return;
     if (hook('end', won, incident, quit)) return;
-    // Kagemaru's pins last one run: however it ends, the ones that were in it go.
-    const pinsUsed = SD.dealer ? SD.dealer.spend() : 0;
+    // Kagemaru's pins stay while you win: losing or abandoning a run with them in it sends them back to him.
+    const pinsUsed = SD.dealer ? SD.dealer.spend(won) : 0;
+    const pinsKept = won && SD.dealer ? SD.dealer.pins().length : 0;
     const mins = Math.round((Date.now() - run.startedAt) / 60000);
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
@@ -1563,7 +1564,8 @@
     const b = U.panel(`<div class="verdict ${won ? 'ok' : 'bad'}">${won ? 'DUNGEON CLEARED!' : 'YOU DIED (AGAIN)'}</div>
       <div class="loot"><span>${run.log.fights} incidents resolved</span><span>${run.log.right} right · ${run.log.misses} missed</span><span>+${run.log.xp} XP</span></div>
       ${rows ? `<p class="muted small">Concepts you worked with</p><ul class="links">${rows}</ul>` : ''}
-      ${pinsUsed ? `<p class="muted small">Kagemaru's ${pinsUsed === 1 ? 'pinned card goes' : pinsUsed + ' pinned cards go'} back to him. ${won ? '"Ah ha ha. Worth every shard."' : '"Ah ha ha. Better luck next loop."'}</p>` : ''}
+      ${pinsUsed ? `<p class="muted small">Kagemaru's ${pinsUsed === 1 ? 'pinned card goes' : pinsUsed + ' pinned cards go'} back to him. "Ah ha ha. Better luck next loop."</p>` : ''}
+      ${pinsKept ? `<p class="muted small">Kagemaru's ${pinsKept === 1 ? 'pinned card stays' : pinsKept + ' pinned cards stay'} in your deck. "Ah ha ha. Keep winning, then."</p>` : ''}
       <p class="muted small">You spent about ${mins} minute${mins === 1 ? '' : 's'} in focused mode. Take five away from the screen before the next run; your brain keeps working on it in diffuse mode.</p>
       <button class="primary" id="pm-ok">Continue</button>`, { title: 'POSTMORTEM', noClose: true });
     b.querySelector('#pm-ok').onclick = async () => {

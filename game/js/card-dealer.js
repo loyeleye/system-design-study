@@ -3,8 +3,8 @@
 // that can turn up as a card reward (S.unlockedCards: the cards you bought from Toro or Aigerim, S.cardPool, and the
 // ones your level and chapters unlocked). A pin costs a tenth of what the card costs to unlock at a shop (SD.cardPrice
 // in js/card-exchange.js), or of a price by rarity for cards no shop sells. Pinned cards join the starting deck on top
-// of the usual one, for the next run only: when that run ends (cleared, lost or abandoned), every pin that was in it is
-// gone. A pin bought during a run waits for the next one. One copy of each card. No refunds.
+// of the usual one, and stay for as long as you keep winning: when a run with them in it is lost or abandoned, those
+// pins are gone. A pin bought during a run waits for the next one. One copy of each card. No refunds.
 //
 // His manner is Ladi's mix of Kabuto (Naruto), soft-spoken, endlessly helpful and quietly sinister, and Envy
 // (Fullmetal Alchemist), who sneers at humans and laughs at their misery. He is completely hooded: under the hood is a
@@ -12,10 +12,11 @@
 // During chapter 10 he leaves the cave for the Exchange (js/northroad-exchange.js's map), laughs at the end of the
 // world while everyone else worries (js/ch10-folk.js), and takes 25% off his pins for the occasion.
 //
-//   S.save.pins            [{ id, live }]: live once a run has started with it; only live pins are spent
+//   S.save.pins            [{ id, live }]: live once a run has started with it; only live pins can be lost
 //   SD.dealer.pins()       the pinned card ids, for building a deck (js/run.js, js/raid.js)
 //   SD.dealer.arm()        marks every pin live and returns their ids (SD.run.start calls it)
-//   SD.dealer.spend()      a run ended: drops the live pins, returns how many (js/run.js endRun)
+//   SD.dealer.spend(won)   a run ended: after a loss drops the live pins and returns how many; a win keeps them all
+//                          and returns 0 (js/run.js endRun)
 //   SD.dealer.price(id)    a pin's price in Memory Shards today
 (function () {
   const S = SD.state, U = SD.ui, AU = SD.audio;
@@ -27,7 +28,7 @@
   const list = () => S.save.pins || (S.save.pins = []);
   D.pins = () => list().map(p => p.id).filter(id => SD.cards[id]);
   D.arm = () => { list().forEach(p => { p.live = true; }); return D.pins(); };
-  D.spend = () => { const all = list(), keep = all.filter(p => !p.live); S.save.pins = keep; return all.length - keep.length; };
+  D.spend = won => { if (won) return 0; const all = list(), keep = all.filter(p => !p.live); S.save.pins = keep; return all.length - keep.length; };
   // Unlock prices for cards no shop sells: Aigerim's shop range for common and uncommon, her Rare Shelf's for the rest.
   const RARITY = { common: 100, uncommon: 200, rare: 500, ancient: 750 };
   D.base = id => (SD.cardPrice && SD.cardPrice(id)) || RARITY[SD.cards[id].rarity] || 200;
@@ -72,7 +73,7 @@
     { s: 'you', t: 'Who... are you?' },
     { s: 'kagemaru', t: 'Just a humble helper. Call me Kagemaru. I help people get what they want. It\'s what I\'m for.' },
     { s: 'kagemaru', t: 'Any card that can turn up after your fights, I can slip into your starting deck for your next run. A tenth of what the shops charge to unlock it. I\'m practically giving it away.' },
-    { s: 'kagemaru', t: 'One run only. Win it, die in it or run home crying, and the card comes back to me when it\'s over. No refunds. Ah ha ha! Sorry. That was the fine print laughing.' },
+    { s: 'kagemaru', t: 'Keep winning and the card stays with you, run after run. Die, or run home crying, and it comes back to me. No refunds. Ah ha ha! Sorry. That was the fine print laughing.' },
     { s: 'kagemaru', t: 'Don\'t look so suspicious. I\'m on your side. I\'m on everyone\'s side. That\'s what makes it so funny.' }
   ];
   const STORM = [
@@ -93,7 +94,7 @@
   const PIN = [
     'Pinned. Do take good care of it. For one whole run. Ah ha ha.',
     'A wise choice. I would never steer you wrong. Not where you\'d notice.',
-    'Done. It\'s in your deck for the next run, and then it\'s mine again. Like everything, eventually.'
+    'Done. It\'s in your deck from your next run, until you lose. Then it\'s mine again. Like everything, eventually.'
   ];
   D.lines = () => D.sale() ? ['The world is ending and the rent is still due. Ah ha ha! Which one do you think I care about?']
     : ['I used to look like someone else. I forget who. It doesn\'t matter. A face is only a costume.', 'I\'m only a humble helper. See? I\'m smiling. I\'m always smiling.'];
@@ -119,8 +120,8 @@
         const run = !!(sv.run && !sv.run.tutorial);
         const body = `<div class="shopkeep">${SD.art.portrait('kagemaru', 72)}<p>"${U.esc(hello)}"</p></div>
           <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span>${D.sale() ? '<span>25% off · the end of the world</span>' : ''}</div>
-          <p class="muted small">A pinned card joins your starting deck for your next run only, on top of your usual cards. When that run ends, however it ends, the pin is gone. A pin costs a tenth of the card's unlock price${D.sale() ? ', and 25% less today' : ''}. No refunds.</p>
-          ${pinned.length ? `<p class="q-ctx">Pinned (${pinned.length})</p><div class="cardgrid pick">${pinned.map(p => grid([p.id], p.live && run ? 'In this run' : p.live ? 'In your deck' : 'From your next run')).join('')}</div>` : ''}
+          <p class="muted small">A pinned card joins your starting deck from your next run, on top of your usual cards, and stays while you keep winning. Lose or abandon a run with it and the pin is gone. A pin costs a tenth of the card's unlock price${D.sale() ? ', and 25% less today' : ''}. No refunds.</p>
+          ${pinned.length ? `<p class="q-ctx">Pinned (${pinned.length})</p><div class="cardgrid pick">${pinned.map(p => grid([p.id], p.live && run ? 'In this run' : p.live ? 'Kept: you won' : 'From your next run')).join('')}</div>` : ''}
           ${mine.length ? `<p class="q-ctx">Cards you unlocked at the shops</p><div class="cardgrid pick">${grid(mine)}</div>` : ''}
           ${rest.length ? `<p class="q-ctx">Everyday card rewards</p><div class="cardgrid pick">${grid(rest)}</div>` : ''}
           ${stock.length ? '' : '<p class="muted small">"You\'ve pinned everything I can get my hands on. Heh. I\'m almost impressed."</p>'}
