@@ -508,10 +508,13 @@
     ctx.restore();
   };
 
-  // While the Cloud is down, the sad theme Kyu's flashbacks use (kyusad) plays wherever a place or a talk would play
-  // its everyday tune: Pingsby, the road and its places, the PR Club and its rooms, the Isles, shops, quests and
-  // lessons. The Exchange keeps its own music (ch10), quest talks there included. Runs (the dungeon map and its
-  // fights) and the story's own tracks (cutscenes, Kyu, the storm, the credits) are left alone.
+  // While the Cloud is down, "Left Behind" (ch10calm: slow, melancholy, never quite settling) plays wherever a place
+  // or a talk would play its everyday tune: Pingsby, the road and its places, the PR Club and its rooms, the Isles,
+  // shops, quests and lessons. The Exchange keeps its own music (ch10), quest talks there included. Runs (the dungeon
+  // map and its fights) and the story's own tracks (cutscenes, Kyu, the storm, the credits) are left alone.
+  // Three more from the same search (OpenGameArt, CREDITS-arc.md): Pingsby's grey dawn (c10dawn, below), the event
+  // log replaying Kyu's story (c10toKyu), and Pingsby's rooms while everyone shelters there (js/ch10-folk.js).
+  AU.add({ songs: { ch10calm: 'm-ch10calm', ch10dawn: 'm-ch10dawn', ch10log: 'm-ch10log', ch10shelter: 'm-ch10shelter' } });
   const EVERYDAY = ['town', 'gym', 'studio', 'shop', 'cave', 'isles', 'quest', 'guild', 'explore', 'ch7', 'ch8', 'ch9'];
   const atExchange = () => {
     const NR = SD.northRoad, el = document.getElementById('screen-north');
@@ -520,7 +523,7 @@
   const music = AU.music;
   AU.music = function (name) {
     const f = S.save && S.save.flags;
-    if (f && f.garyGone && !f.ch10 && !(S.save.run) && EVERYDAY.includes(name)) name = atExchange() ? 'ch10' : 'kyusad';
+    if (f && f.garyGone && !f.ch10 && !(S.save.run) && EVERYDAY.includes(name)) name = atExchange() ? 'ch10' : 'ch10calm';
     return music.call(this, name);
   };
 
@@ -809,7 +812,7 @@
   Object.assign(SD.cutscenes, {
     // Dawn: Pingsby goes grey, and Gary is gone.
     c10dawn: {
-      map: 'plaza', music: 'kyusad', grey: true, weather: 'rain',
+      map: 'plaza', music: 'ch10dawn', grey: true, weather: 'rain',
       cast: { seymour: { x: 8, y: 4, face: 'south' }, uptima: { x: 10, y: 4, face: 'south' }, bru: { x: 6, y: 5, face: 'east' }, wen: { x: 12, y: 5, face: 'west' } },
       script: [
         ['caption', 'THE PROMISED DAY', 'Dawn, Pingsby. The Cloud is shutting down one building at a time.'],
@@ -866,7 +869,7 @@
       ]
     },
     c10toKyu: {
-      map: 'exchange10', music: 'kyusad',
+      map: 'exchange10', music: 'ch10log',
       cast: { you: { x: 8, y: 6, face: 'north' }, uptima: { x: 6, y: 6, face: 'north' }, pip: { x: 9, y: 6, pip: true }, kyu: { x: 8, y: 3, face: 'south', glow: 'rgba(170,120,255,.9)' } },
       script: [
         ['say', 'narr', 'Pride\'s line breaks, and the log behind it starts to replay, from the very first event. The whole realm can see it.'],

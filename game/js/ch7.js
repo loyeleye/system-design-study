@@ -355,7 +355,10 @@
     [{ s: 'narr', t: 'A sticky note on a milestone, in neat handwriting: "The bridge ahead floods after rain. Take the left fork. — K."' }, { s: 'uptima', e: 'angry', t: 'A prank. Obviously. Nobody leaves helpful notes. I\'ve never left a helpful note.' }, { s: 'narr', t: 'You take the left fork. The bridge is flooded.' }],
     [{ s: 'pip', t: 'Lord Latency, why do you work at the café now?' }, { s: 'latency', e: 'sad', t: 'I... broke... seventeen... windows... being defeated.' }, { s: 'latency', e: 'smug', t: 'Wen... says... I owe her... until the heat death... of the universe. I find... that... reasonable.' }]
   ];
+  // A calm piano plays while you sit (OpenGameArt, CREDITS-arc.md); the map's own music comes back with the map.
+  SD.audio.add({ songs: { quietstop: 'm-quietstop' } });
   async function quietNode(n, done) {
+    SD.audio.music('quietstop');
     const seen = SD.state.save.flags.quietSeen = (SD.state.save.flags.quietSeen || 0) + 1;
     await SD.ui.dialog(QUIET[(seen - 1) % QUIET.length]);
     api().campfire(done);

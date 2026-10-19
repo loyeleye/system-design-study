@@ -922,9 +922,11 @@
     const a = sc.actors[id];
     if (!a) return;
     busy = true; sc.pause();
-    // On the Isles, an islander you talk to turns to face you for the conversation, then goes back to what they were
-    // doing (as they do out on the Isles, js/isles/isles-map.js).
-    const turn = ROOMS[cur].isle && sc.P && !a.prop && !a.customer && !a.asleep && !('over' in a), was = a.face;
+    // On the Isles (an island building, or any room you walked into off the Isles map, like Kagemaru's cave), whoever
+    // you talk to turns to face you for the conversation, then goes back to what they were doing (as they do out on
+    // the Isles, js/isles/isles-map.js).
+    const isles = ROOMS[cur].isle || (host && host.id === 'isles-canvas');
+    const turn = isles && sc.P && !a.prop && !a.customer && !a.asleep && !('over' in a), was = a.face;
     if (turn) {
       const dx = sc.P.x - a.x, dy = sc.P.y - a.y;
       if (dx || dy) sc.face(id, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north'));

@@ -6,9 +6,10 @@
 //   The Pawn Shop      across the canal from the market. The relic trader minds the counter (js/relic-exchange.js).
 //   The warehouse      by the tower. In chapter 10, until it is won, Kagemaru waits in its back room with his pins at
 //                      25% off (js/card-dealer.js); otherwise it is padlocked.
-//   The Coffee Diner   across the avenue from the bank, three storeys: the diner, a dining room upstairs and a lounge at
-//                      the top. Always open: it runs on gas, not the Cloud. A cook and a few regulars; in chapter
-//                      10's storm, the townsfolk who went home from the streets shelter here, a few on each floor.
+//   The Coffee Diner   across the avenue from the bank, three glass storeys: the diner, a dining room upstairs and a
+//                      lounge at the top. Always open: it runs on gas, not the Cloud. A cook and a few regulars; in
+//                      chapter 10's storm, the townsfolk who went home from the streets shelter here, a few on each
+//                      floor.
 //                      Neel waits in a booth until Lost and Found (js/folk-far.js), across the street from his hotel.
 //   The bakery         on the avenue's south side, where the baker takes a smile when nobody can pay.
 //
@@ -227,8 +228,8 @@
       if (!(await D.open('exchange'))) await U.dialog([{ s: 'kagemaru', t: pick(D.lines()) }]);
     }
   };
-  // The diner is the ground floor of a three-storey corner building on the avenue: glass on every side, Hash behind
-  // the counter in the middle, and a spiral stair in the back corner up to the dining room.
+  // The diner is the ground floor of a three-storey glass corner building on the avenue: glass on every side, Hash
+  // behind the counter in the middle, and a spiral stair in the back corner up to the dining room.
   R.xdiner = {
     name: 'THE COFFEE DINER', up: ['xupper', 8, 4, 'west'],
     map: ['############', '############', '############', '########UU##', '########..##',
@@ -251,8 +252,8 @@
     ],
     talk: id => SAY[id] ? folk(id) : FOLK.includes(id) ? sheltered(id, 'xdiner') : outside(id)
   };
-  // Upstairs: a dining room for when the booths are full, the spiral stair coming up in its back corner and a wooden
-  // stair on up to the lounge. Empty but for the jukebox, except in the storm.
+  // Upstairs: a dining room behind the same glass walls, for when the booths are full, the spiral stair coming up in
+  // its back corner and a wooden stair on up the left wall to the lounge. Empty but for the jukebox, except in the storm.
   R.xupper = {
     name: 'THE DINER, UPSTAIRS', up: ['xlounge'], down: ['xdiner', 8, 4, 'south'],
     map: ['############', '############', '############', '############', '##U..##..S##',
@@ -262,7 +263,7 @@
     people: () => shelter('xupper'),
     spots: { _: [[3, 5, 'west'], [3, 7, 'west'], [7, 4, 'west'], [8, 6, 'east'], [8, 7, 'east'], [4, 7, 'north'], [5, 6, 'south']] },
     names: FOLK_NAMES, looks: FOLK_LOOKS,
-    lights: [{ x: 6.2, y: 2.3, r: 2.6 }, { x: 1.5, y: 4.2, r: 2 }, { x: 0.8, y: 5.7, r: 2 }, { x: 11.2, y: 5.7, r: 2 }, { x: 8.3, y: 3.9, r: 1.8, rgb: '255,170,80' }],
+    lights: [{ x: 6.2, y: 2.3, r: 2.6 }, { x: 1.5, y: 4.2, r: 2 }, { x: 0.8, y: 5.7, r: 2 }, { x: 10.6, y: 4.2, r: 2 }, { x: 11.2, y: 5.7, r: 2 }, { x: 8.3, y: 3.9, r: 1.8, rgb: '255,170,80' }],
     props: [
       { x: 8, y: 3, t: () => storm() ? ['The jukebox, turned down low so people can sleep. It is playing the same song as always, very quietly.'] : ['A jukebox. Every song on it is about coffee, or about leaving town. Nobody ever picks the leaving ones.'] },
       { x: 6, y: 4, t: () => ['A low table in front of the sofa, with a chessboard on it. The game has been going since loop one. It is white to move. It has always been white to move.'] },
@@ -271,23 +272,26 @@
     ],
     talk: id => sheltered(id, 'xupper')
   };
-  // The lounge at the top, up from the dining room: sofas, a coffee urn, a record player, and Hash's armchair under
-  // the window that looks out at the tower. The stairs down are through the opening in the back corner.
+  // The lounge at the top: the wooden stair from the dining room comes up through the floor by the left wall, behind a
+  // railing. A sofa, armchairs, a coffee urn, and Hash's armchair by the window that looks out at the tower.
   R.xlounge = {
     name: 'THE DINER LOUNGE', down: ['xupper', 3, 4, 'east'],
-    map: ['############', '############', '############', '###S########', '###.....####',
-      '###....#####', '###....#####', '##.....#####', '############'],
-    enter: [3, 4, 'south'],
+    // The stairs climb toward the back, like the ones below: you step off at the top, by the cabinet, and go down toward the front.
+    // The strip in front of the stairwell's front railing is too narrow to stand on without standing in the railing.
+    map: ['############', '############', '############', '############', '##...#..####',
+      '##SS...#.###', '####.....###', '####...#####', '############'],
+    enter: [2, 4, 'east'],
+    // Clear of the ways from the stairs to the urn and round the table to the sofa.
     people: () => shelter('xlounge'),
-    spots: { _: [[4, 5, 'east'], [6, 6, 'east'], [2, 7, 'east'], [4, 7, 'north']] },
+    spots: { _: [[5, 5, 'north'], [4, 7, 'east'], [5, 7, 'east'], [6, 7, 'west']] },
     names: FOLK_NAMES, looks: FOLK_LOOKS,
-    lights: [{ x: 1.8, y: 2.3, r: 2.2 }, { x: 6.8, y: 1.5, r: 2.4 }, { x: 10.2, y: 2.4, r: 2.2 }, { x: 8.9, y: 2.8, r: 2.4 }, { x: 1.3, y: 6.1, r: 2 }],
+    lights: [{ x: 5, y: 2.1, r: 2.4 }, { x: 7.3, y: 2.1, r: 2.4 }, { x: 1.8, y: 3.4, r: 2 }, { x: 10.4, y: 3.4, r: 2 }],
     props: [
-      { x: 5, y: 3, t: () => storm() ? ['A record player, turned down low. The record has a crack in it, so the same chorus comes round every few seconds. Nobody minds. It sounds like a loop.'] : ['A record player and a stack of records, all diner songs. One sleeve says LIVE AT THE COFFEE DINER. Hash says he was there.'] },
-      { x: 6, y: 3, t: () => ['A coffee urn the size of a fire hydrant. A note is taped to it: HELP YOURSELF. ALSO HELP SOMEONE ELSE. HASH.'] },
-      { x: 7, y: 3, t: () => storm() ? ['Hash\'s armchair, under the window that looks out at the tower. The tower is dark. Hash hasn\'t sat down since the storm.'] : ['Hash\'s armchair, under the window that looks out at the tower. He takes his break here, five minutes a night, and watches Kyu\'s light blink.'] },
-      { x: 7, y: 5, t: () => ['A low table with two mugs on it, and a jigsaw of the Exchange skyline, nearly done. The piece with the tower on it is missing.'] },
-      { x: 2, y: 5, t: () => storm() ? ['A sofa piled with damp coats and spare blankets. Hash brought the blankets up from somewhere. Nobody asked where.'] : ['A worn red sofa. The dent in the middle cushion is the exact shape of someone who comes in every night at four.'] }
+      { x: 5, y: 4, t: () => storm() ? ['Hash\'s armchair, by the window that looks out at the tower. The tower is dark. Hash hasn\'t sat down since the storm.'] : ['Hash\'s armchair, by the window that looks out at the tower. He takes his break here, five minutes a night, and watches Kyu\'s light blink.'] },
+      { x: 7, y: 3, t: () => ['A coffee urn the size of a fire hydrant. A note is taped to it: HELP YOURSELF. ALSO HELP SOMEONE ELSE. HASH.'] },
+      { x: 7, y: 5, t: () => ['A low table with mugs on it, and a jigsaw of the Exchange skyline, nearly done. The piece with the tower on it is missing.'] },
+      { x: 9, y: 6, t: () => storm() ? ['A sofa piled with damp coats and spare blankets. Hash brought the blankets up from somewhere. Nobody asked where.'] : ['A worn red sofa. The dent in the middle cushion is the exact shape of someone who comes in every night at four.'] },
+      { x: 7, y: 7, t: () => ['Two armchairs pulled up for a card game that never finishes. The score is kept on a napkin. The napkin is losing.'] }
     ],
     talk: id => sheltered(id, 'xlounge')
   };

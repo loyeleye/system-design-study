@@ -671,6 +671,8 @@
   // 'L' is a bit of street clutter picked by position; 'l' is always a street lamp (round the cul-de-sac).
   const DECO = ['bush', 'lamp', 'bush', 'barrel', 'sign'];
   const YARD_ART = { a: 'anvil-fire', m: 'anvil', s: 'sword-stump' };
+  // Where the portal sits in b-G.webp, and its frame count (printed by tools/portal_anim.py).
+  const PORTAL = { x: 47, y: 56, w: 28, h: 42, n: 8 };
   function drawObject(x, y, c, t) {
     if (c === 'T') { obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2); return; }
     if (c === 'L') { obj(DECO[hash(x, y) % DECO.length], (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
@@ -687,7 +689,13 @@
     const fw = (b.x1 - b.x0 + 1) * 32, fh = (b.y1 - b.y0 + 2.5) * 32, k = Math.min(1.35, (fw + 16) / sz[0], fh / sz[1]);
     obj(name, (b.x0 + b.x1 + 1) / 2 * ts, (b.y1 + 1.1) * ts, k);
     if (o === 'G') {
-      // The portal down into Prod breathes
+      // The portal's swirl turns: frames from tools/portal_anim.py laid over the gate's own portal
+      const im = pic('b-G-portal'), u = ts / 32 * k;
+      if (ok(im)) {
+        const f = Math.floor(t * 8) % PORTAL.n, gx = (b.x0 + b.x1 + 1) / 2 * ts - sz[0] * u / 2, gy = (b.y1 + 1.1) * ts - sz[1] * u;
+        ctx.drawImage(im, f * PORTAL.w, 0, PORTAL.w, PORTAL.h, gx + PORTAL.x * u, gy + PORTAL.y * u, PORTAL.w * u, PORTAL.h * u);
+      }
+      // and the portal down into Prod breathes
       const g = ctx.createRadialGradient((b.door[0] + 0.5) * ts, (b.y1 + 0.3) * ts, 2, (b.door[0] + 0.5) * ts, (b.y1 + 0.3) * ts, ts * 1.2);
       g.addColorStop(0, `rgba(190,120,255,${0.25 + 0.15 * Math.sin(t * 3)})`); g.addColorStop(1, 'rgba(190,120,255,0)');
       ctx.fillStyle = g; ctx.fillRect((b.door[0] - 1) * ts, (b.y1 - 1) * ts, ts * 3, ts * 2.5);

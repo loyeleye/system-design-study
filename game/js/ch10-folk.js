@@ -372,4 +372,18 @@
       ruth: ['Kyu stood at my stall when I was six and counted fish with me without a word. I counted for her tonight. All there.']
     }, () => storm() && lit());
   }
+
+  // ---------- Pingsby's rooms: a quieter, worried song ----------
+  // While everyone shelters indoors, Pingsby's rooms play their own song (ch10shelter, js/ch10.js) instead of the
+  // music from outside, and the outside music comes back on the way out. Rooms off the other maps (opened with that
+  // map's canvas) keep theirs.
+  if (SD.interiors && SD.interiors.open) {
+    const AU = SD.audio, open = SD.interiors.open;
+    SD.interiors.open = function (key, on) {
+      const song = AU.loopName, calm = storm() && !on;
+      const p = open.apply(this, arguments);
+      if (calm && AU.loopName === song) AU.music('ch10shelter');
+      return p.then(r => { if (calm && AU.loopName === 'ch10shelter' && song) AU.music(song); return r; });
+    };
+  }
 })();

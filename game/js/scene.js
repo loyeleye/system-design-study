@@ -106,7 +106,8 @@
       if (!sc.actors.pip) sc.addActor('pip', { x: x - 1, y, pip: true, solid: false });
       return sc.P;
     };
-    function bfs(sx, sy, goal) {
+    // A door or stair on the way would take you through it, so a walk only steps on one when it is where you tapped (to).
+    function bfs(sx, sy, goal, to) {
       const prev = new Map(), q = [[sx, sy]], k = (x, y) => x + ',' + y;
       prev.set(k(sx, sy), null);
       while (q.length) {
@@ -118,6 +119,7 @@
         }
         for (const [dx, dy] of DIRS) {
           const nx = x + dx, ny = y + dy;
+          if (isDoor(nx, ny) && !(to && nx === to[0] && ny === to[1])) continue;
           if (!prev.has(k(nx, ny)) && sc.walkable(nx, ny)) { prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]); }
         }
       }
@@ -159,7 +161,7 @@
       let goal = [tx, ty];
       if (!sc.walkable(tx, ty) && def.doorFor) { const d = def.doorFor(tx, ty); if (d) goal = d; }
       if (!sc.walkable(goal[0], goal[1])) return;
-      const p = bfs(P.x, P.y, (x, y) => x === goal[0] && y === goal[1]);
+      const p = bfs(P.x, P.y, (x, y) => x === goal[0] && y === goal[1], goal);
       if (p) { P.path = p; P.want = null; }
     }
 
