@@ -40,10 +40,11 @@
     gate: { label: 'the dungeon gate', tiles: [[14, 18], [18, 18]] },
     'north-gate': { label: 'the road north, watching it', tiles: [[21, 2], [19, 2]] },
     sky: { label: 'somewhere over the rooftops', at: null },
+    unknown: { label: '???', at: null },
     road: { label: 'the North Road', road: 'N' }
   };
 
-  // Bru walks rounds at night, past a different door each loop.
+  // Bru walks rounds in the afternoon, past a different door first each loop.
   const ROUNDS = ['cafe', 'post', 'library', 'temple', 'treehouse', 'forge', 'bunker'];
   const ROOFS = ['the café', 'the library', 'the temple', 'the Forge', 'the treehouse', 'the bunker'];
 
@@ -98,10 +99,11 @@
     bru: {
       act: 'stamp',
       morning: ['stand', 'At the Guild desk, stamping forms', null, 'stamp'],
-      afternoon: ['stand', 'At the Guild desk, stamping forms', null, 'stamp'],
+      afternoon: c => [ROUNDS.slice(c.loop % ROUNDS.length).concat(ROUNDS.slice(0, c.loop % ROUNDS.length)), 'Walking her rounds', 'Oh! Rounds. Every door, every afternoon. Somebody has to check the checkers.', 'browse'],
       evening: ['stand', 'At the Guild desk, still', null, 'stamp'],
-      night: c => [ROUNDS.slice(c.loop % ROUNDS.length).concat(ROUNDS.slice(0, c.loop % ROUNDS.length)), 'Walking her rounds', 'Oh! Rounds. Every door, every night. Somebody has to check the checkers.', 'browse'],
-      board: c => c.block === 'night' ? 'BRU: ???' : 'BRU: {spot}. Where else would I be?'
+      // Nobody knows where Bru goes at night (arc 8). She just isn't anywhere.
+      night: ['unknown', '???'],
+      board: c => c.block === 'night' ? 'BRU: ???' : c.block === 'afternoon' ? 'BRU: on her rounds. Every door, every heartbeat, checked by hand.' : 'BRU: {spot}. Where else would I be?'
     },
     ayo: {
       act: 'smith',
