@@ -67,7 +67,7 @@
     road: {
       post: { door: [7, 29], knock: [7, 28], name: 'the courier post' },
       caravan: { door: [18, 41], knock: [18, 40], name: 'Marta\'s caravan' },
-      stage: { door: [20, 18], knock: [20, 17], name: 'the back room of the bard\'s stage' }
+      stage: { door: [21, 16], knock: [21, 15], name: 'the back room of the bard\'s stage' }
     },
     arena: {
       gate: { door: [20, 7], knock: [20, 6], name: 'the gatehouse by the fighters\' gate' },

@@ -36,7 +36,7 @@
     m.rect(1, 0, 28, 5, 'w'); m.rect(10, 1, 19, 6, '#'); m.put(14, 7, 'X'); m.put(15, 7, 'X');   // the city wall and gate
     m.rect(5, 19, 9, 21, 'b'); m.put(7, 22, 'C');
     m.rect(5, 27, 8, 28, 'b');                               // courier post
-    m.rect(19, 16, 23, 17, 'b');                             // bard's stage
+    m.rect(19, 15, 23, 15, 'b');                             // bard's stage: its back wall (you walk on the floor, rows 16-18)
     m.rect(18, 39, 22, 40, 'b');                             // Marta's caravan
     m.rect(15, 32, 16, 32, 'b');                             // the pilgrim's shrine
     m.rect(22, 30, 26, 32, '~'); m.rect(3, 40, 6, 42, '~');
@@ -54,7 +54,7 @@
         { name: 'nr-citygate', x: 14.5, y: 7 },
         { name: 'nr-shop', x: 7, y: 21 },
         { name: 'nr-courierpost', x: 6.5, y: 28 },
-        { name: 'nr-stage', x: 21, y: 17 },
+        { name: 'nr-stagefloor', x: 21, y: 18.25, flat: true }, { name: 'nr-stagewall', x: 21, y: 15 },
         { name: 'nr-caravan', x: 20, y: 40 },
         { name: 'nr-arch', x: 2, y: 34 }, { name: 'nr-arch', x: 27, y: 24 }, { name: 'nr-arch', x: 2, y: 12 },
         { name: 'nr-signpost', x: 11, y: 34 }, { name: 'nr-signpost', x: 17, y: 24 }, { name: 'nr-signpost', x: 13, y: 12 },
@@ -72,7 +72,7 @@
         seymour: { x: 17, y: 43, face: 'west', name: 'SEYMOUR' },
         marta: { x: 17, y: 41, face: 'south', name: 'MARTA' },
         fen: { x: 9, y: 31, face: 'east', name: 'FEN' },
-        lyra: { x: 18, y: 19, face: 'south', name: 'LYRA' },
+        lyra: { x: 21, y: 17, face: 'south', name: 'LYRA' },
         aigerim: { x: 9, y: 23, face: 'south', name: 'AIGERIM' },
         v2: { x: 13, y: 26, face: 'east', name: 'TRAVELLER' },
         v4: { x: 17, y: 32, face: 'west', name: 'PILGRIM' },

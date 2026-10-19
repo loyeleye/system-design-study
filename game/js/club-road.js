@@ -1,5 +1,5 @@
 // The North Road's side path east to the PR Club (js/club.js), across from the heroes' camp path: dirt from the main
-// road on rows 13 and 14, stepping down past the bard's stage to door P on rows 15 and 16 at the road's east edge,
+// road on rows 13 and 14, stepping down behind the bard's stage to door P on rows 15 and 16 at the road's east edge,
 // which NR.addPlace('club', ...) points at the yard. Changes the road map at load, so js/northroad.js stays as it is.
 // Loads after js/club.js.
 (function () {
@@ -7,7 +7,7 @@
   if (!NR || !NR.maps.club || !NR.maps.road) return;
   const road = NR.maps.road, rows = road.map.map(r => r.split(''));
   const rect = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) rows[y][x] = c; };
-  rect(16, 13, 23, 14, 'p'); rect(23, 14, 25, 15, 'p'); rect(24, 15, 28, 16, 'p');
+  rect(16, 13, 23, 14, 'p'); rect(24, 14, 25, 15, 'p'); rect(24, 15, 28, 16, 'p');
   rows[15][29] = 'P'; rows[16][29] = 'P';
   road.map = rows.map(r => r.join(''));
   road.terrain.P = 'dirt'; road.doors.P = 'P'; road.back.P = [28, 15, 'west'];
