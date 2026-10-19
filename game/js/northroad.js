@@ -186,7 +186,7 @@
     const W = 30, H = 24, m = grid(W, H, true);
     m.rect(4, 1, 12, 6, '#'); m.put(8, 7, 'D'); m.put(9, 7, 'D');   // the chasm
     m.rect(17, 4, 21, 5, '#'); m.rect(23, 6, 25, 7, '#'); m.rect(15, 16, 17, 17, '#');
-    m.rect(14, 12, 16, 12, '#'); m.rect(21, 12, 23, 12, '#'); m.rect(25, 17, 27, 18, '#'); m.rect(4, 15, 6, 16, '#'); m.rect(23, 19, 25, 20, '#');
+    m.rect(14, 12, 16, 12, '#'); m.rect(21, 12, 23, 12, '#'); m.rect(25, 17, 27, 18, '#'); m.rect(4, 15, 6, 16, '#'); m.rect(3, 18, 5, 19, '#');
     m.rect(8, 8, 9, 10, 'p'); m.rect(8, 10, 28, 11, 'p'); m.put(29, 10, 'E'); m.put(29, 11, 'E'); m.rect(15, 11, 15, 11, 'p');
     m.rect(21, 19, 21, 19, '#'); m.rect(10, 15, 10, 15, '#');     // training dummy, the vending machine
     m.trees([[2, 9], [2, 20], [12, 21], [20, 22], [27, 3], [14, 3], [26, 13]]);
@@ -199,8 +199,9 @@
         { name: 'cp-fire', x: 15, y: 12 }, { name: 'cp-board', x: 22, y: 12 }, { name: 'cp-tower', x: 26, y: 18 }, { name: 'cp-tent2', x: 5, y: 16 },
         { name: 'nr-rock', x: 13, y: 7 }, { name: 'd9a', x: 3, y: 7 }, { name: 'd9a', x: 12, y: 8 },
         { name: 'cp-dummy', x: 21, y: 19 }, { name: 'cp-vending', x: 10, y: 15 },
-        // The sword racks stand by the training dummy, fenced in on solid ground so nobody walks into the middle.
-        { name: 'cp-rack', x: 24, y: 20 }
+        // The sword racks stand under the tent by the sparring ground, open side facing the sparring, on solid ground
+        // so nobody walks into the middle.
+        { name: 'cp-rack', x: 4, y: 19, flip: true }
       ],
       labels: [{ x: 8.5, y: 8.6, text: 'THE ABYSS' }, { x: 22, y: 13.1, text: 'NOTICE BOARD' }, { x: 28.5, y: 12.6, text: 'ROAD →' }, { x: 8, y: 20.1, text: 'SPARRING' }],
       actors: {
@@ -213,7 +214,7 @@
       // The camp is damp and gloomy, so it has the animals that like the wet: frogs, snails and ducks in the puddles.
       critters: [
         { kind: 'frog', x: 5, y: 13 }, { kind: 'frog', x: 24, y: 21 }, { kind: 'frog', x: 18, y: 8 }, { kind: 'frog', x: 11, y: 20 },
-        { kind: 'snail', x: 3, y: 18, range: 2 }, { kind: 'snail', x: 13, y: 19, range: 2 }, { kind: 'snail', x: 27, y: 9, range: 2 }, { kind: 'snail', x: 1, y: 13, range: 2 },
+        { kind: 'snail', x: 3, y: 22, range: 2 }, { kind: 'snail', x: 13, y: 19, range: 2 }, { kind: 'snail', x: 27, y: 9, range: 2 }, { kind: 'snail', x: 1, y: 13, range: 2 },
         { kind: 'duck', x: 19, y: 21 }, { kind: 'duck', x: 6, y: 21 }
       ],
       back: { D: [8, 8, 'south'], E: [28, 10, 'west'] }, enter: [28, 10, 'west'], ch: 9, music: 'ch9', weather: 'wind',
