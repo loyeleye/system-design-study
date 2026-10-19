@@ -15,7 +15,7 @@
     // S-Rank
     { id: 'heartbeat', name: 'Heartbeat Ticker', cost: 1100, rank: 'S', text: 'Heal 3 SLA at the start of each of your turns after the first.' },
     { id: 'marketdepth', name: 'Market Depth', cost: 1200, rank: 'S', text: 'Draw 1 more card every turn. There is always another order behind the first.' },
-    { id: 'margin', name: 'Margin Account', cost: 1300, rank: 'S', text: 'The first card costing 2 or more that you play each turn mitigates double. Borrowed power, settled by Friday.' },   // Necronomicon
+    { id: 'interest', name: 'Compound Interest', cost: 1300, rank: 'S', text: 'Every 3rd card that mitigates in a fight makes every one after it mitigate 2 more. Small now, enormous later.' },   // Shuriken, for the whole fight
     // Ancient
     { id: 'openingbell', name: 'The Opening Bell', cost: 1500, rank: 'Ancient', text: '+1 Capacity every turn. It rang before the Cloud, and it will ring after.' },
     { id: 'tradinghalt', name: 'Trading Halt', cost: 1650, rank: 'Ancient', text: 'The first time in a run you would drop to 0 SLA, come back at half instead. Then the bell rings again.' },   // Lizard Tail
