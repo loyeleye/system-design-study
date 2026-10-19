@@ -51,17 +51,25 @@
   SD.art.mood = (who, text, e) => who === 'kagemaru' ? 'neutral' : art.mood(who, text, e);
   SD.art.portrait = (who, size, mood) => who !== 'kagemaru' ? art.portrait(who, size, mood)
     : `<span class="bust b-kagemaru" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/kagemaru-neutral.webp" alt="" draggable="false"></span>`;
-  // His map sprite, the cave on the Isles and the room inside it. Standing about, he switches every few seconds between
-  // three idle sheets: shifting his weight (70% of the time), rubbing his gloved hands (15%) and giggling (15%).
-  const MOODS = { idle: [9, 9, 9, 0], rub: [9, 9, 9, 0], giggle: [16, 16, 16, 0] };
-  const mood = () => {
-    const seg = Math.floor(performance.now() / 3600), r = ((seg * 2654435761) >>> 0) % 100;
-    return r < 70 ? 'idle' : r < 85 ? 'rub' : 'giggle';
+  // His map sprite, the cave on the Isles and the room inside it. Standing about, he loops his idle (shifting his weight);
+  // after each loop there's a 5% chance he rubs his gloved hands and a 5% chance he giggles. Either plays once, then it's
+  // back to the idle for at least one loop. js/scene.js shows the frame we give it (`frame`), at its usual 5 a second.
+  const MOODS = { idle: [9, 9, 9, 0], rub: [9, 9, 9, 0], giggle: [16, 16, 16, 0] }, FPS = 5;
+  const anim = { mode: 'idle', at: 0 };
+  D.mood = () => {
+    const now = performance.now();
+    for (let i = 0; i < 50 && now - anim.at >= MOODS[anim.mode][0] * 1000 / FPS; i++) {
+      anim.at += MOODS[anim.mode][0] * 1000 / FPS;
+      const r = Math.random();
+      anim.mode = anim.mode !== 'idle' ? 'idle' : r < 0.05 ? 'rub' : r < 0.1 ? 'giggle' : 'idle';
+    }
+    if (now - anim.at >= MOODS[anim.mode][0] * 1000 / FPS) { anim.mode = 'idle'; anim.at = now; }   // back from a long pause
+    return { mode: anim.mode, frame: Math.floor((now - anim.at) * FPS / 1000) };
   };
   ['-rub', '-giggle'].forEach(m => { new Image().src = 'assets/img/arc/c-kagemaru' + m + '.webp'; });   // no blink on a switch
   if (SD.arcArt) Object.defineProperty(SD.arcArt.chars, 'kagemaru', { configurable: true, enumerable: true, get() {
-    const m = mood();
-    return { src: 'assets/img/arc/c-kagemaru' + (m === 'idle' ? '' : '-' + m) + '.webp', w: 33, h: 59, n: MOODS[m] };
+    const { mode, frame } = D.mood();
+    return { src: 'assets/img/arc/c-kagemaru' + (mode === 'idle' ? '' : '-' + mode) + '.webp', w: 33, h: 59, n: MOODS[mode], frame };
   } });
   if (SD.isles && SD.isles.ART) SD.isles.ART.objects.cave = [124, 88];
   if (SD.interiorsArt) SD.interiorsArt.rooms.cave = [384, 288];

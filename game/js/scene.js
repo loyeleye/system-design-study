@@ -61,6 +61,7 @@
     let clockT = 0;                      // seconds, for animated objects
 
     const keys = {};
+    let fresh = false;     // an arrow key was just pressed, not held (see the step below)
     const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
     const terr = (x, y) => (def.terrain || {})[tile(x, y)] || 'ground';
     const top = def.top || ['water', 'plaza', 'farm', 'dirt'];
@@ -130,7 +131,7 @@
       if (!sc.active || !sc.P || e.defaultPrevented) return;
       if (!document.getElementById('dialog').hidden || !document.getElementById('panel').hidden) return;
       const k = e.key.toLowerCase();
-      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; sc.P.path = []; e.preventDefault(); }
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { if (!e.repeat && !keys[k]) fresh = true; keys[k] = true; sc.P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = talkTarget(); if (t && sc.onTalk) { e.preventDefault(); sc.onTalk(t); } }
     }
     function onKeyUp(e) { keys[e.key.toLowerCase()] = false; }
@@ -219,6 +220,12 @@
       if (kd && ISO) {
         // Someone straight ahead is someone to talk to, not to slide round.
         const [dx, dy] = kd, open = (a, b) => sc.walkable(P.x + a, P.y + b), who = actorAt(P.x + dx, P.y + dy);
+        // Someone right beside you, half a step that way, is too: a key goes diagonally across the grid, so without this
+        // you would slide past anyone standing in the open (Kagemaru and Nari at the Exchange). Only on a fresh press,
+        // so walking along a queue doesn't start conversations.
+        const near = fresh && !who && [[dx, 0], [0, dy]].map(([a, b]) => actorAt(P.x + a, P.y + b)).find(a => a && a.talk !== false);
+        fresh = false;
+        if (near && sc.onTalk) { Object.keys(keys).forEach(k => keys[k] = false); P.face = kd[2]; sc.onTalk(near.id); return; }
         const s = who && who.talk !== false ? null : [[dx, dy], [dx, 0], [0, dy]].find(([a, b]) => open(a, b) && (!(a && b) || open(a, 0) || open(0, b)));
         [nx, ny] = s ? [P.x + s[0], P.y + s[1]] : [P.x + dx, P.y + dy]; face = kd[2];
       } else if (kd) { nx += { west: -1, east: 1 }[kd[2]] || 0; ny += { north: -1, south: 1 }[kd[2]] || 0; }
@@ -293,7 +300,8 @@
       const row = ROW[a.face] || 0, n = c.n[row];
       // Walk cycles play only while walking; idle cycles (breathing) play standing still.
       const going = a.moving || (a.path && a.path.length);
-      const col = n && (going || !c.walk) ? 1 + Math.floor(t * (going ? 8 : 5)) % n : 0;
+      // A sprite can pick its own idle frame (`frame`: Kagemaru's moods in js/card-dealer.js).
+      const col = n && (going || !c.walk) ? 1 + (c.frame != null && !going ? c.frame : Math.floor(t * (going ? 8 : 5))) % n : 0;
       const bob = a.moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
       const k = (a.scale || 1) * CS, w = c.w * ts / 32 * k, h = c.h * ts / 32 * k, y = fy + (ISO ? ts / 16 : 0);
       ctx.save();
