@@ -57,7 +57,7 @@
     thea: [
       { id: 'tshield', cost: 450, shelf: 0 }, { id: 'tropes', cost: 500, shelf: 0 }, { id: 'ttarpit', cost: 600, shelf: 0 }, { id: 'tpit', cost: 650, shelf: 0 }, { id: 'twarm', cost: 700, shelf: 0 },
       { id: 'treturn', cost: 750, shelf: 0 },
-      { id: 'tgauntlet', cost: 1300, shelf: 1 }, { id: 'tmirror', cost: 1400, shelf: 1 }, { id: 'tbracket', cost: 1500, shelf: 1 }, { id: 'tstatic', cost: 1600, shelf: 1 }
+      { id: 'tstatic', cost: 1000, shelf: 1 }, { id: 'tgauntlet', cost: 1300, shelf: 1 }, { id: 'tmirror', cost: 1400, shelf: 1 }, { id: 'tbracket', cost: 1500, shelf: 1 }
     ]
   };
   // SD.cardPrice (js/card-exchange.js) covers these too.
