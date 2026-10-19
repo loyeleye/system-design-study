@@ -77,7 +77,7 @@
       nari: { morning: 'home', afternoon: ['exchange', 42, 46, 'south', 'music'], evening: ['exchange', 44, 37, 'south', 'music'], night: 'home' },
       neel: { morning: 'home', afternoon: ['in', 'exchange', 29, 17], evening: ['exchange', 41, 36, 'east', 'dots'], night: 'home' },   // the bank, then the wings
       hari: { morning: 'home', afternoon: ['road', 17, 20, 'north', 'music'], evening: ['exchange', 45, 36, 'south', 'music'], night: 'home' },
-      bitna: { morning: 'home', afternoon: ['exchange', 31, 34, 'west', 'idea'], evening: ['exchange', 47, 38, 'west', 'star'], night: 'home' },   // the lamps, then the cues
+      bitna: { morning: 'home', afternoon: ['exchange', 31, 34, 'west', 'idea'], evening: ['exchange', 48, 37, 'west', 'star'], night: 'home' },   // the lamps, then the cues
       eunho: { morning: 'home', afternoon: 'home', evening: ['exchange', 48, 34, 'west', 'dots'], night: 'home' }
     }
   };
