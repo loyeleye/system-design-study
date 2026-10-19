@@ -1,2 +1,2 @@
 // Made by tools/interiors_art.py: sizes of the room backdrops and the residential row houses.
-SD.interiorsArt = {"rooms": {"treehouse": [384, 288], "bunker": [384, 288], "cafe": [384, 288], "flat": [384, 288], "lexi": [384, 288]}, "objects": {"b-X": [106, 110], "b-Y": [102, 114], "b-D": [100, 107], "b-Q": [98, 106], "b-M": [107, 113], "b-O": [115, 120]}};
+SD.interiorsArt = {"rooms": {"treehouse": [384, 288], "bunker": [384, 288], "cafe": [384, 288], "flat": [384, 288], "lexi": [384, 288], "kaito": [384, 288], "doug": [384, 288], "coo": [384, 288], "bru": [384, 288], "ayo": [384, 288]}, "objects": {"b-X": [106, 110], "b-Y": [102, 114], "b-D": [100, 107], "b-Q": [98, 106], "b-M": [107, 113], "b-O": [115, 120]}};

@@ -10,7 +10,8 @@ from PIL import Image
 
 SRC, OUT, JS = sys.argv[1], sys.argv[2], sys.argv[3]
 os.makedirs(OUT, exist_ok=True)
-ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat': 'flat1', 'lexi': 'lexi1'}
+ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat': 'flat1', 'lexi': 'lexi1',
+         'kaito': 'kaito1', 'doug': 'doug1', 'coo': 'coo1', 'bru': 'bru1', 'ayo': 'ayo1'}
 # Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo. Each house faces the middle of the
 # cul-de-sac, so it uses the direction pointing there from where it stands ('south' faces the camera). The two on the
 # sides turn three-quarters, like their neighbours, since a house seen straight side-on hides its door.
