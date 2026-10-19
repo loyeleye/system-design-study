@@ -708,6 +708,8 @@
       if (rel('badge')) plus += 3;
       if (rel('whistle') && !C.whistled) { plus += 8; C.whistled = true; }
       if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
+      // Compound Interest (js/relic-exchange.js): every 3rd such card in a fight adds 2 to every one after it.
+      if (rel('interest')) { plus += C.interest || 0; C.mits = (C.mits || 0) + 1; if (C.mits % 3 === 0) C.interest = (C.interest || 0) + 2; }
     }
     const boost = v => { const r = (v + (used ? 0 : plus)) * times; used = true; return r; };
     if (d.abs) for (const k in d.abs) {
@@ -775,9 +777,9 @@
     } else if (d.exhaust) C.exh.push(c); else C.disc.push(c);
     if (d.draw) drawN(d.draw);
     // The Exchange's relics that count cards: the Sequencer every 3rd card in a turn, the Order Book every 10th in a fight.
-    C.turnPlayed = (C.turnPlayed || 0) + 1; C.played = (C.played || 0) + 1;
+    C.turnPlayed = (C.turnPlayed || 0) + 1; C.fightPlayed = (C.fightPlayed || 0) + 1;
     if (rel('sequencer') && C.turnPlayed % 3 === 0) C.sh.any += 4;
-    if (rel('orderbook') && C.played % 10 === 0) drawN(1);
+    if (rel('orderbook') && C.fightPlayed % 10 === 0) drawN(1);
     if (msg) C.log = msg;
     if (settle()) return;
     if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {

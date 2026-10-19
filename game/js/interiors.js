@@ -7,8 +7,8 @@
 // door first; nobody in Pingsby locks up. The temple, the Guild, the Forge, the Pigeon Post and the Grand Library
 // have rooms too, with their keepers inside when their day puts them there. Bru is never home at night, and nothing in her room says where she goes.
 // In chapter 10's storm everyone is indoors and worried, so each room has its people in it with a worried word.
-// The Eventual Isles' buildings have rooms too (js/isles/isles-map.js), and so does Aigerim's card shop on the North
-// Road (js/northroad.js), where she minds the counter.
+// The Eventual Isles' buildings have rooms too (js/isles/isles-map.js), and so do Aigerim's card shop on the North
+// Road (js/northroad.js), where she minds the counter, and Lord Latency's inn at the waystation.
 //
 //   SD.interiors.has(door)     true if a room is behind that door
 //   SD.interiors.enter(door)   go inside; resolves when you walk back out
@@ -490,8 +490,44 @@
         { x: 4, y: 7, t: () => ['Volume 113, open on the desk. Today\'s entry: "The hero came into the shop. I was very normal about it." It is underlined twice.', 'Nothing on any page has ever been rubbed out.'] },
         { x: 9, y: 7, t: () => ['Cards for sale, laid out on felt. One space is empty, with a label: RESERVED FOR THE HERO (FOREVER).'] }
       ]
+    },
+
+    // ---------- The waystation inn, off the North Road (js/northroad.js) ----------
+    // Lord Latency's inn. Nobody stays in by day; at night Lord Latency and his guest are in here, whenever the
+    // road's schedules (js/folk-far.js) have sent them indoors.
+    inn: {
+      name: 'THE WAYSTATION INN', ambience: 'fire',
+      map: ['############', '############', '############', '############', '####.##..###',
+        '####....####', '####....####', '###......###', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      spots: { latency: [6, 5, 'south'], v1: [4, 6, 'west'] },
+      names: { latency: 'LORD LATENCY', v1: 'GUEST' },
+      people: () => SD.northRoad && SD.northRoad.indoors ? SD.northRoad.indoors().filter(id => id === 'latency' || id === 'v1') : [],
+      windows: [{ r: [110, 53, 50, 42] }],
+      lights: [{ x: 6, y: 4.2, r: 3.2, rgb: '255,140,60' }, { x: 3, y: 2.3, r: 2.2 }, { x: 6.3, y: 2.2, r: 2.2 }, { x: 10.2, y: 4.5, r: 2 }],
+      props: [
+        { x: 5, y: 4, t: () => ['The hearth, and on it a copper kettle the size of a drum. It is always nearly boiling. It has been nearly boiling since last week.'] },
+        { x: 6, y: 4, t: () => ['A note pinned over the fire in very slow handwriting: "TEA. IS. BREWING. Do not lift the lid. Lifting the lid... resets the timer."'] },
+        { x: 4, y: 3, t: () => ['A side table with a teapot and a stopwatch on it. The stopwatch is counting how long the tea has taken. It is counting in days.'] },
+        { x: 7, y: 3, t: () => ['A grandfather clock, running exactly three seconds slow. A brass plate on it says CALIBRATED BY LORD LATENCY.'] },
+        { x: 8, y: 3, t: () => ['The stairs up to the guest rooms. A sign at the bottom says ROOMS: 1. GUESTS: 1. QUEUE: EMPTY. PLEASE WAIT ANYWAY.'] },
+        { x: 3, y: 5, t: () => ['The long tea counter, lined with cups, each with a name on it. One says HERO. It already has tea in it. The tea is cold.'] },
+        { x: 8, y: 5, t: () => ['A round table with a map of the road north under the glass. Someone has marked every stop with how long it takes to get there.', 'Every number has been crossed out and made a little bigger.'] }
+      ],
+      talk: id => innTalk(id)
     }
   };
+  // Lord Latency and his guest, indoors for the night: a quest step first, as on the road; otherwise a sleepy word.
+  const INN = {
+    latency: ['...You are up... late. The tea... is nearly ready. Nearly is... a long word.', '...Every round trip... is a little journey. I like to... savour them.'],
+    v1: ['I asked for tea at noon. Lord Latency says it\'s "in flight". I\'ve decided to stay the night.', 'The bed is lovely. The pillow arrived about an hour after I lay down.']
+  };
+  let innI = 0;
+  async function innTalk(id) {
+    if (SD.quests && SD.quests.pending(id).length) return SD.quests.talk(id);
+    const ls = INN[id];
+    if (ls) await U.dialog([{ s: id === 'v1' ? 'guest' : id, t: ls[innI++ % ls.length] }]);
+  }
   // The Isles rooms have nobody standing in them.
   Object.values(ROOMS).forEach(r => { r.spots = r.spots || {}; });
   const hallOpen = () => !!SD.quests && SD.quests.status('library') === 'done';
@@ -552,6 +588,7 @@
     const r = ROOMS[key];
     // Isles rooms have whoever the Isles schedules sent inside (js/folk-far.js); the card shop has Aigerim minding it.
     if (r.isle) return SD.isles && SD.isles.inside ? SD.isles.inside(key) : [];
+    if (r.people) return r.people();
     if (!r.door) return Object.keys(r.spots);
     return F().residents(r.door).filter(id => roomOf(r.door, id) === key);
   }
@@ -649,7 +686,7 @@
   function cast(key) {
     const r = ROOMS[key], here = people(key), marks = SD.quests && SD.quests.marks ? SD.quests.marks() : {};
     const free = (r.spots._ || (r.isle ? floor(r) : [])).slice();
-    const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), extra));
+    const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: (r.names && r.names[id]) || SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), extra));
     let counter = null;
     here.forEach(id => {
       // Islanders: their Isles sprite faces you, at the size they stand on the Isles; the school's class is three kids.

@@ -108,11 +108,14 @@
     m.rect(3, 14, 6, 15, '#');                               // garden
     m.rect(9, 10, 11, 10, '#');                              // tables
     m.rect(6, 8, 6, 11, 'p'); m.rect(6, 11, 24, 12, 'p'); m.rect(19, 6, 20, 11, 'p'); m.put(25, 11, 'E'); m.put(25, 12, 'E');
+    m.rect(3, 8, 9, 8, '#'); m.put(6, 8, 'I');               // the inn's front wall, and its door at the end of the path
     m.trees([[1, 9], [2, 17], [9, 17], [14, 17], [24, 17], [16, 8], [24, 7], [13, 7]]);
     return {
-      map: m.rows(), terrain: { p: 'dirt', D: 'dirt', E: 'dirt' }, top: ['dirt'], solid: 'T#', bg: '#5fbf5f',
-      doors: { D: 'D', E: 'E' },
-      doorFor: (x, y) => (x >= 17 && x <= 22 && y <= 5) ? [19, 6] : (x >= 2 && x <= 10 && y <= 8) ? [6, 8] : null,
+      map: m.rows(), terrain: { p: 'dirt', D: 'dirt', E: 'dirt', I: 'dirt' }, top: ['dirt'], solid: 'T#', bg: '#5fbf5f',
+      doors: { D: 'D', E: 'E', I: 'I' },
+      doorFor: (x, y) => (x >= 17 && x <= 22 && y <= 5) ? [19, 6] : (x >= 2 && x <= 10 && y <= 8) ? [6, 9] : null,
+      // The inn has a room (js/interiors.js), with whoever the schedules sent indoors for the night.
+      onDoor: d => d === 'I' ? inn() : null,
       objects: [
         { name: 'ws-cliff', x: 3, y: 4.4 }, { name: 'ws-cliff', x: 10, y: 4.4 }, { name: 'ws-cliff', x: 15.5, y: 4.4 }, { name: 'ws-cliff', x: 23, y: 4.4 },
         { name: 'ws-tunnel2', x: 19.5, y: 4.9 },
@@ -129,7 +132,7 @@
         { kind: 'sparrow', x: 12, y: 14 }, { kind: 'sparrow', x: 22, y: 9 },
         { kind: 'bfly1', x: 5, y: 16 }, { kind: 'bfly3', x: 2, y: 13 }, { kind: 'bee', x: 7, y: 15 }, { kind: 'bee', x: 4, y: 13 }, { kind: 'ladybug', x: 8, y: 16, range: 2 }
       ],
-      back: { D: [19, 6, 'south'], E: [24, 11, 'west'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun', clouds: true, ambience: null
+      back: { D: [19, 6, 'south'], E: [24, 11, 'west'], I: [6, 9, 'south'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun', clouds: true, ambience: null
     };
   })();
 
@@ -507,6 +510,17 @@
     }
     await U.dialog([{ s: 'pip', t: 'A sign in the window: "OPENING SOON. Cards, rare and less rare. Discounts for heroes who have died at least once." That\'s everyone!' }]);
   }
+
+  // The waystation inn: the road stops while you're inside, and door() starts it again on the way out.
+  async function inn() {
+    if (!SD.interiors || !SD.interiors.room('inn')) return true;
+    sc.stop();
+    await SD.interiors.open('inn', 'north-canvas');
+    AU.music(MAPS[cur].music);
+    return true;
+  }
+  // Who on this map has gone indoors for the night, for the rooms behind its doors.
+  NR.indoors = () => sc ? Object.values(sc.actors).filter(a => a.schedIn).map(a => a.id) : [];
 
   // ---------- Talking ----------
   // Quest steps first (js/roadquests.js and js/quests.js), then each person's own lines.
