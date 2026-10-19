@@ -896,6 +896,13 @@
     const a = sc.actors[id];
     if (!a) return;
     busy = true; sc.pause();
+    // On the Isles, an islander you talk to turns to face you for the conversation, then goes back to what they were
+    // doing (as they do out on the Isles, js/isles/isles-map.js).
+    const turn = ROOMS[cur].isle && sc.P && !a.prop && !a.customer && !a.asleep && !('over' in a), was = a.face;
+    if (turn) {
+      const dx = sc.P.x - a.x, dy = sc.P.y - a.y;
+      if (dx || dy) sc.face(id, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north'));
+    }
     try {
       if (a.prop) { await U.dialog(a.prop.t().map(t => ({ s: 'narr', t }))); if (a.prop.go) await a.prop.go(); return; }
       if (a.customer) { const ls = CUSTOMER[id]; await U.dialog([{ s: 'narr', t: ls[Math.floor(Math.random() * ls.length)] }]); return; }
@@ -907,6 +914,7 @@
       await person(id);
     } finally {
       busy = false;
+      if (turn && sc && sc.actors[id]) sc.face(id, was);
       if (sc) { recast(); sc.pause(); }
     }
   }

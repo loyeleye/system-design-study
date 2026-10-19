@@ -7,6 +7,10 @@ SRC_DIR (/mnt/project-files/dancer-raw, next to Nari's own downloads) holds, for
   chars/<id>/{south,west,east,north}.png   136x136 PixelLab rotations, halved to the game's 68px scale
   chars/<id>/dance-<dir>-<00..10>.png      their dance (PixelLab v3, like Nari's), on a larger canvas; frame 00 is the
                                            rotation it started from
+  chars/<id>/walk-<dir>-<i>.png            their walk (PixelLab, on the rotation's 136px canvas and lined up with it):
+                                           the walking-4-frames template where it kept everything they carry, else a
+                                           v3 walk made as a loop from the rotation, without its last frame (the
+                                           rotation again)
   portraits/<id>-neutral.png               128px busts in the style of Nari's
 Hari has no downloads of his own: the twins were generated once, as Neel, and Hari is Neel with his blue (sash,
 forearm wraps and vest trim) turned green, in his sprite, his dance (the twins dance the same steps) and his bust.
@@ -14,16 +18,18 @@ Touch-ups: the twins' gold cuffs are drawn in where the download covered them wi
 from cherry red to the auburn of her bust; and the swoosh arcs and sparkles PixelLab drew around Eun-ho's and Bitna's
 dances are taken out.
 The sprites are halved exactly as Nari's are (tools/nari_art.py), so they stand at her size. Writes:
-  assets/img/arc/c-<id>.webp         one standing frame per row (south, west, east, north), cut tight like the PR
-                                     Club's standing NPCs (tools/club_art.py)
+  assets/img/arc/c-<id>.webp         a row per direction (south, west, east, north): the standing frame, then the
+                                     walk (wk in the manifest; there are no idle frames), cut tight like the PR Club's
+                                     sheets (tools/club_art.py)
   assets/img/arc/c-<id>-dance.webp   laid out like c-nari-dance.webp: a row per direction, standing then the dance.
                                      Same scale and feet line as c-<id>.webp; the cell is wider, and a few pixels
                                      taller where a hand or the lantern goes over the head
   assets/img/portraits/<id>-neutral.webp   3x, hard pixel edges, like Nari's busts
 and the manifest SD.troupeArt, where '<id>-dance' has no walk flag, so the scene plays its dance as the idle cycle.
+A file whose pixels haven't changed is left as it is.
 """
-import colorsys, json, os, sys
-from PIL import Image
+import colorsys, glob, json, os, sys
+from PIL import Image, ImageChops
 
 SRC, JS = sys.argv[1], sys.argv[2]
 ROOT = os.path.join(os.path.dirname(__file__), '..')
@@ -34,6 +40,9 @@ DIRS = ['south', 'west', 'east', 'north']   # sheet rows, as js/scene.js reads t
 DANCE = 10   # dance frames per direction
 
 def save(im, path):
+    if os.path.exists(path):
+        old = Image.open(path).convert('RGBA')
+        if old.size == im.size and not ImageChops.difference(old, im.convert('RGBA')).getbbox(): return
     im.save(path, lossless=True, quality=100, method=6)
 
 def is_blue(c):
@@ -95,11 +104,12 @@ def auburn(im):
                 px[x, y] = (int(r * 255), int(g * 255), int(b * 255), a)
     return im
 
-def load(cid, path, d=None):
-    # A download by id (Hari's are his brother's). The twins' sprites get the cuffs drawn in; Hari's blue turns green.
+def load(cid, path, d=None, cuff=True):
+    # A download by id (Hari's are his brother's). The twins' rotations get the cuffs drawn in (cuff: their walks
+    # don't, as the wraps move); Bitna's sprite hair turns auburn; Hari's blue turns green.
     src = TWIN.get(cid, cid)
     im = Image.open(os.path.join(SRC, path % src)).convert('RGBA')
-    if src == 'neel' and d: im = cuffs(im, d)
+    if src == 'neel' and d and cuff: im = cuffs(im, d)
     if cid == 'bitna' and d: im = auburn(im)
     return green(im) if cid in TWIN else im
 
@@ -219,21 +229,50 @@ def dance(cid, d):
 CAN = 232   # room for the widest dance canvas (180px) around the rotation
 PAD = (CAN - 136) // 2
 
+# Walks drawn as the other side's, flipped: Neel's own walk west came out with a glowing box at his hip, and he looks
+# the same either way round. The flipped frames are slid to sit where his west rotation does.
+MIRROR = {('neel', 'west'): 'east'}
+
+def slide(im, ref):
+    # The sideways shift (pixels) that best lays im's outline over ref's.
+    a, b = ref.getchannel('A').load(), im.getchannel('A').load(); W, H = im.size
+    score = lambda dx: sum((a[x, y] > 0) != (b[x - dx, y] > 0) for y in range(0, H, 2) for x in range(max(0, dx), min(W, W + dx)))
+    return min(range(-6, 7), key=score)
+
+def walks(cid, d):
+    # The walk frames for one direction, in order.
+    src = MIRROR.get((TWIN.get(cid, cid), d), d)
+    n = len(glob.glob(os.path.join(SRC, 'chars', TWIN.get(cid, cid), 'walk-%s-*.png' % src)))
+    frames = [load(cid, os.path.join('chars', '%s', 'walk-%s-%d.png' % (src, i)), d, cuff=False) for i in range(n)]
+    if src != d:
+        rot = Image.open(os.path.join(SRC, 'chars', TWIN.get(cid, cid), d + '.png')).convert('RGBA')
+        other = Image.open(os.path.join(SRC, 'chars', TWIN.get(cid, cid), src + '.png')).convert('RGBA').transpose(Image.FLIP_LEFT_RIGHT)
+        dx = slide(other, rot)
+        frames = [im.transpose(Image.FLIP_LEFT_RIGHT).transform(im.size, Image.AFFINE, (1, 0, -dx, 0, 1, 0)) for im in frames]
+    frames = [half(im) for im in frames]
+    # Some walks came out floating a pixel or two above the rotation's feet: they come down till the lowest foot of
+    # the step touches the ground the rotation stands on (a foot stepping towards you can still go lower).
+    ground = half(load(cid, os.path.join('chars', '%s', d + '.png'), d)).getbbox()[3]
+    lift = ground - max(im.getbbox()[3] for im in frames) if frames else 0
+    if lift > 0: frames = [im.transform(im.size, Image.AFFINE, (1, 0, 0, 0, 1, -lift)) for im in frames]
+    return frames
+
 art = {'chars': {}, 'moods': {}}
 for cid in CHARS:
-    frames = [half(load(cid, os.path.join('chars', '%s', d + '.png'), d)) for d in DIRS]
+    rows = [[half(load(cid, os.path.join('chars', '%s', d + '.png'), d))] + walks(cid, d) for d in DIRS]
     box = None
-    for im in frames:
+    for im in sum(rows, []):
         b = im.getbbox()
         box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3]))
     # Centred on the canvas, so turning doesn't shift the sprite.
-    cw = frames[0].width; hw = max(cw / 2 - box[0], box[2] - cw / 2)
+    cw = rows[0][0].width; hw = max(cw / 2 - box[0], box[2] - cw / 2)
     x0, x1 = int(cw / 2 - hw), int(cw / 2 + hw + 0.5)
     fw, fh = x1 - x0, box[3] - box[1]
-    sheet = Image.new('RGBA', (fw, fh * 4))
-    for i, im in enumerate(frames): sheet.alpha_composite(im.crop((x0, box[1], x1, box[3])), (0, i * fh))
+    sheet = Image.new('RGBA', (fw * max(len(r) for r in rows), fh * 4))
+    for ri, r in enumerate(rows):
+        for ci, im in enumerate(r): sheet.alpha_composite(im.crop((x0, box[1], x1, box[3])), (ci * fw, ri * fh))
     save(sheet, os.path.join(IMG, 'arc', 'c-' + cid + '.webp'))
-    art['chars'][cid] = {'w': fw, 'h': fh, 'n': [0, 0, 0, 0]}
+    art['chars'][cid] = {'w': fw, 'h': fh, 'n': [0, 0, 0, 0], 'wk': [len(r) - 1 for r in rows]}
 
     # The dance sheet. Halved, the rotation sits at (PAD / 2, PAD / 2): its feet line and centre are the standing
     # sheet's, and the cell grows sideways and upward (never down) to fit every frame of every direction.

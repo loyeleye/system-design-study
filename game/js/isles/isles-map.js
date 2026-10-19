@@ -201,10 +201,18 @@
     return null;
   }
   let planT = 0;
+  // Someone standing at their spot looks at you while you're within NEAR tiles (counting across and down), and back
+  // out to the south when you've gone.
+  const NEAR = 3;
+  const toward = p => { const dx = P.x - p.x, dy = P.y - p.y; return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north'); };
   function moveFolk(dt) {
     if ((planT -= dt) <= 0) { planT = 0.5; plan(false); }
     PEOPLE.forEach(p => {
-      if (!p.goal && !p.path.length) return;
+      if (!p.goal && !p.path.length) {
+        const d = Math.abs(P.x - p.x) + Math.abs(P.y - p.y);
+        if (!p.moving && !p.hide) p.face = d && d <= NEAR ? toward(p) : d ? 'south' : p.face;
+        return;
+      }
       const sp = dt * 2.4;
       p.moving = Math.abs(p.px - p.x) + Math.abs(p.py - p.y) > 0.01;
       p.px += Math.sign(p.x - p.px) * Math.min(Math.abs(p.x - p.px), sp);
@@ -404,7 +412,7 @@
     if (busyTalk) return;
     busyTalk = true; P.path = []; Object.keys(keys).forEach(k => keys[k] = false);
     try {
-      if (th.kind === 'person') await talk(th.id);
+      if (th.kind === 'person') { faceYou(th.id); await talk(th.id); }
       else if (th.kind === 'board') await I.board();
       else if (th.kind === 'tide') await I.tideRound(th.id);
       else if (th.kind === 'bridge') await I.buildBridge(th.id);
@@ -412,6 +420,12 @@
       else if (th.kind === 'room') await inside(th.id);
       else if (th.kind === 'exit') { busyTalk = false; I.close(); return; }
     } finally { busyTalk = false; hud(); }
+  }
+
+  // Whoever you talk to turns to face you, and stays that way while you talk (nobody moves on till it's over).
+  function faceYou(id) {
+    const p = PEOPLE.find(q => q.id === id);
+    if (p && (p.x !== P.x || p.y !== P.y)) p.face = toward(p);
   }
 
   // Going into a building: the room covers the map, which stops until you walk back out.
@@ -812,12 +826,14 @@
   // villagers; the school is three students side by side.
   const TALL = { kid1: 0.5, kid2: 0.5, kid3: 0.5, bloom: 0.62 };
   const FACE = { south: 0, west: 1, east: 2, north: 3 };
-  function sprite(id, X, Y, t, k, face, going) {
+  function sprite(id, X, Y, t, k, face, going, turn) {
     const c = I.ART && I.ART.chars[id], im = ipic('c-' + id);
     if (!c || !ok(im)) return false;
     const row = FACE[face] || 0, n = c.walk ? 0 : c.n[row] || 0, s = ts / 32 * (k || TALL[id] || 0.66);
-    // Standing islanders breathe out of step with each other (X shifts the phase).
-    const col = going && c.wk && c.wk[row] ? SD.art.sheetCol(c, row, true, t) : n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n : 0;
+    // Standing islanders breathe out of step with each other (X shifts the phase). One who turns on the spot to a
+    // way with no idle frames takes a step round with the walk frames (turn: SD.art.turned).
+    const col = going && c.wk && c.wk[row] ? SD.art.sheetCol(c, row, true, t) : n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n
+      : SD.art.sheetCol(c, row, false, t, 1, false, going ? null : turn);
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, Math.round(X - c.w * s / 2), Math.round(Y - c.h * s), Math.round(c.w * s), Math.round(c.h * s));
     return true;
   }
@@ -834,12 +850,13 @@
     if (p.id === 'kids') {
       if (!['kid1', 'kid2', 'kid3'].every(k => ok(ipic('c-' + k)))) return false;
       ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.42, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-      sprite('kid1', X - 10 * s, Y, t, 0, p.face, p.moving); sprite('kid2', X + 10 * s, Y, t, 0, p.face, p.moving); sprite('kid3', X, Y + 2 * s, t, 0, p.face, p.moving);
+      const turn = SD.art.turned(p, p.face, p.moving, t);
+      sprite('kid1', X - 10 * s, Y, t, 0, p.face, p.moving, turn); sprite('kid2', X + 10 * s, Y, t, 0, p.face, p.moving, turn); sprite('kid3', X, Y + 2 * s, t, 0, p.face, p.moving, turn);
       return true;
     }
     if (!I.ART || !I.ART.chars[p.id] || !ok(ipic('c-' + p.id))) return false;
     ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-    return sprite(p.id, X, Y, t, 0, p.face, p.moving);
+    return sprite(p.id, X, Y, t, 0, p.face, p.moving, SD.art.turned(p, p.face, p.moving, t));
   }
   // The code-drawn chibis from I.looks, for Gary's rod and anyone whose sheet hasn't loaded.
   function chibi(p, t) {

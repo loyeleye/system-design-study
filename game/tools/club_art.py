@@ -11,10 +11,10 @@ SRC_DIR (/mnt/project-files/fitness-club-raw) holds:
   objects/pr-*.png                         map objects; a flat background is flood-filled away
   rooms/gym.png, rooms/studio.png          384x288 room backdrops at 32px a tile (js/interiors.js)
 Writes assets/img/arc/c-<id>.webp and pr-*.webp, assets/img/portraits/<id>-neutral.webp and
-assets/img/interiors/r-pr<room>.webp, and the manifest SD.clubArt.
+assets/img/interiors/r-pr<room>.webp, and the manifest SD.clubArt. A file whose pixels haven't changed is left as it is.
 """
 import json, os, sys
-from PIL import Image
+from PIL import Image, ImageChops
 
 SRC, JS = sys.argv[1], sys.argv[2]
 ROOT = os.path.join(os.path.dirname(__file__), '..')
@@ -31,8 +31,14 @@ TEMPLATE = {'thea': ['swen', 'wen', 'swen'], 'leon': ['swen', 'sn', ''], 'sunny'
 # Rows drawn as the opposite side's frames, flipped: Thea's run west came out with her trousers turning blue (the
 # template) or a spear flickering in and out (v3), and she carries nothing in her side views.
 MIRROR = {('thea', 2, 'west'): 'east'}
+# The v3 runs were made as loops that end on the rotation, so their last frame is the standing pose: it's left out,
+# as a stride that stands still for a frame reads as a hitch.
+ENDS_STANDING = {'run-v3'}
 
 def save(im, path):
+    if os.path.exists(path):
+        old = Image.open(path).convert('RGBA')
+        if old.size == im.size and not ImageChops.difference(old, im.convert('RGBA')).getbbox(): return
     im.save(path, lossless=True, quality=100, method=6)
 
 def unbackground(im, tol=10):
@@ -109,6 +115,7 @@ for cid in CHARS:
             src = MIRROR.get((cid, si, d), d)
             n = 0
             while os.path.exists(os.path.join(SRC, 'anim', cid, anim, '%s-%d.png' % (src, n))): n += 1
+            if anim in ENDS_STANDING: n -= 1
             frames = [Image.open(os.path.join(SRC, 'anim', cid, anim, '%s-%d.png' % (src, i))) for i in range(n)]
             if src != d: frames = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in frames]
             row += [clean(f, cid) for f in frames] if anim.endswith('-v3') else frames

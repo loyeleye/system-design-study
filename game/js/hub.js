@@ -486,7 +486,11 @@
       if (y === 5) drawWell();
       if (y === 6) drawBoard(t);
       people().forEach(n => { if (Math.round(yy(n)) === y) drawNpc(n, t); });
-      if (outdoorsy()) WANDER.forEach(w => { if (Math.round(w.py) === y) person(w.id, w.px, w.py, t, w.face, Math.abs(w.px - w.x) + Math.abs(w.py - w.y) > 0.01); });
+      if (outdoorsy()) WANDER.forEach(w => {
+        if (Math.round(w.py) !== y) return;
+        const go = Math.abs(w.px - w.x) + Math.abs(w.py - w.y) > 0.01;
+        person(w.id, w.px, w.py, t, w.face, go, false, 1, -1, SD.art.turned(w, w.face, go, t));
+      });
       if (Math.round(P.py) === y) { drawPip(t); drawPlayer(t); }
     }
     if (outdoorsy()) WANDER.forEach(w => { if (w.emoT > 0) emote(w.emo, w.px * ts + ts / 2, headY(w.py)); });
@@ -721,14 +725,15 @@
   // People: the player, Gary, villagers who stand by their doors, and wanderers who just like walking.
   // Each has a PixelLab sheet: rows face south, west, east and north; column 0 stands, then walk or idle frames.
   const ROW = { south: 0, west: 1, east: 2, north: 3 };
-  function person(id, px, py, t, face, moving, noShadow, pace, yawn) {
+  function person(id, px, py, t, face, moving, noShadow, pace, yawn, turn) {
     const c = ART().chars[id], im = pic('c-' + id);
     ctx.fillStyle = 'rgba(43,35,64,0.22)';
     if (!noShadow) { ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
     if (!c || !ok(im)) return;
     const row = ROW[face] || 0;
-    // Sheets marked walk only animate while walking; the rest walk or breathe in place (SD.art.sheetCol).
-    const col = SD.art.sheetCol(c, row, moving, t, pace);
+    // Sheets marked walk only animate while walking; the rest walk or breathe in place (SD.art.sheetCol). turn: the
+    // seconds since they turned on the spot (SD.art.turned), for a step round where the row has no idle frames.
+    const col = SD.art.sheetCol(c, row, moving, t, pace, false, turn);
     // Villagers without walk frames hop along instead.
     const bob = moving && !SD.art.walks(c, row) ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
     const w = c.w * ts / 32, h = c.h * ts / 32, y = yawn >= 0 && pic('y-' + id);
@@ -784,7 +789,8 @@
       face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
       ctx.save(); if (a && a.dy) ctx.translate(0, a.dy * ts);
       yawn = !n.moving && face === 'south' && SD.clock ? SD.clock.yawnFrame(n.id, t) : -1;
-      person(n.id, xx(n), yy(n), t, face, !!n.moving || !!(a && a.anim), false, n.moving ? pace(n) : 1, yawn);
+      const going = !!n.moving || !!(a && a.anim);
+      person(n.id, xx(n), yy(n), t, face, going, false, n.moving ? pace(n) : 1, yawn, SD.art.turned(n, face, going, t));
       ctx.restore();
       if (a && a.fx) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
     }
