@@ -3,7 +3,7 @@
 usage: critters_art.py SRC_DIR OUT_DIR js/critters-art.js
 SRC_DIR holds the raw PixelLab files: four-way animals as <kind>/ folders unzipped from PixelLab's character download
 (metadata.json, a standing rotation and a walk-4-frames cycle each way), and single sprites as <kind>.png
-(side views facing east, top-down bugs facing north).
+(side views facing east, top-down bugs facing north), and frame strips as <kind>-<i>.png.
 Each animal becomes one sheet: rows south, west, east, north; column 0 standing, then the walk frames, every cell
 cropped to the same box so the feet stay put.
 """
@@ -39,11 +39,23 @@ for meta in sorted(glob.glob(os.path.join(SRC, '*', 'metadata.json'))):
         for x, c in enumerate(row): sheet.alpha_composite(c.crop(box), (x * w, y * h))
     save(sheet, kind)
     art[kind] = {'w': w, 'h': h, 'n': [len(r) - 1 for r in grid]}
+import re
+strips = {}
 for png in sorted(glob.glob(os.path.join(SRC, '*.png'))):
     kind = os.path.splitext(os.path.basename(png))[0]
+    m = re.match(r'(.+)-(\d+)$', kind)
+    if m: strips.setdefault(m.group(1), []).append((int(m.group(2)), png)); continue
     im = Image.open(png).convert('RGBA'); im = im.crop(im.getbbox())
     save(im, kind)
     art[kind] = {'w': im.width, 'h': im.height}
+# Frame strips, <kind>-<i>.png (the Isles' gull in flight): side by side in one row, cropped to one shared box.
+for kind, fs in sorted(strips.items()):
+    ims = [Image.open(p).convert('RGBA') for _, p in sorted(fs)]
+    box = union(ims); w, h = box[2] - box[0], box[3] - box[1]
+    sheet = Image.new('RGBA', (w * len(ims), h))
+    for i, im in enumerate(ims): sheet.alpha_composite(im.crop(box), (i * w, 0))
+    save(sheet, kind)
+    art[kind] = {'w': w, 'h': h, 'f': len(ims)}
 
 with open(JS, 'w') as f:
     f.write('// Made by tools/critters_art.py: the size of each critter\'s art (a frame of the sheet for four-way animals,\n'

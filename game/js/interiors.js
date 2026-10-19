@@ -772,9 +772,11 @@
       // like a storm guest, on the open floor); the school's class is three kids.
       if (r.isle) {
         const nm = SD.isles.who(id).split(' ').slice(-1)[0].toUpperCase(), qm = Object.assign({}, SD.isles.marks(), marks);
-        if (id === 'kids') { ['kid1', 'kid2', 'kid3'].forEach((k, i) => { const at = spotOf(r, k) || free.shift(); if (at) actor(k, at, { name: i === 1 ? 'KIDS' : null, scale: 0.5, talkAs: 'kids', marker: !!qm.kids }); }); return; }
+        // fit: the v3 sheets are drawn bigger, and scaled back to the height the first ones stood (tools/isles_art.py).
+        const fit = k => ((SD.isles.ART && SD.isles.ART.chars[k]) || {}).k || 1;
+        if (id === 'kids') { ['kid1', 'kid2', 'kid3'].forEach((k, i) => { const at = spotOf(r, k) || free.shift(); if (at) actor(k, at, { name: i === 1 ? 'KIDS' : null, scale: 0.5 * fit(k), talkAs: 'kids', marker: !!qm.kids }); }); return; }
         const at = spotOf(r, id) || free.shift();
-        if (at) actor(id, at, { name: nm, scale: id === 'bloom' ? 0.62 : 0.66, marker: !!qm[id] });
+        if (at) actor(id, at, { name: nm, scale: (id === 'bloom' ? 0.62 : 0.66) * fit(id), marker: !!qm[id] });
         return;
       }
       if (r.sleep && id === r.owner && !storm() && block() === 'night') {
@@ -958,7 +960,8 @@
       return SD.northRoad.shop.open();
     }
     // An islander inside: the same as talking to them out on the Isles (quests, services, chat).
-    if (r.isle) return SD.isles.talkTo((sc.actors[id] && sc.actors[id].talkAs) || id);
+    // One of the school's three answers for themself, unless the class has a quest (isles-map.js talk).
+    if (r.isle) { const as = sc.actors[id] && sc.actors[id].talkAs; return SD.isles.talkTo(as || id, as ? id : null); }
     if (storm()) {
       const w = F().worry(id);
       if (w) await U.dialog([w]);

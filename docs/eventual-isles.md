@@ -87,14 +87,19 @@ Since then the pier has moved: the ferry is the `E` exit at (47, 7), the end of 
 ## Art
 
 The islanders, their portraits and the landmarks are PixelLab art in `assets/img/isles`, drawn in
-the village's style (68px characters, low top-down, black outline; map objects as 3/4 front-view buildings).
-`tools/isles_art.py SRC` builds them from the raw PixelLab downloads and rewrites the `I.ART` sizes block in
-`isles-data.js`; the raw files are in the project's shared folder under `isles-art-raw/`.
+the village's style (low top-down, black outline; map objects as 3/4 front-view buildings). The islanders were
+redrawn in October 2026 with PixelLab's v3 characters (96px, more detail), with a breathing idle, a walk and one
+action each; `k` in their `I.ART` entry scales them to stand as tall as the first sprites did.
+`tools/isles_v3_prep.py V3 SRC/chars` lays the v3 downloads out (the raw files are in the project's shared folder under
+`isles-art-raw/v3/`), then `tools/isles_art.py SRC` builds the sheets, objects and portraits and rewrites the `I.ART`
+sizes block in `isles-data.js`; the rest of the raw files are under `isles-art-raw/`.
 
 | What | Files | Drawn by |
 | --- | --- | --- |
 | Islander sheets: rows face south, west, east, north; column 0 stands, then that direction's breathing idle (`n`), then its walk cycle (`wk`). Islanders face the way they walk and turn back to you at their spot. `node tools/isles_walk_check.js` checks both | `c-<id>.webp` (the school is `c-kid1` to `c-kid3`) | `sprite()` and `islander()` in `isles-map.js`, scaled to the villagers' height; `SD.art.sheetCol` picks the frame |
-| Portraits in `neutral`, `happy`, `angry`, `confused` (the Keeper is the note) | `portraits/<id>-<mood>.webp` | `I.portrait` in `isles-data.js` |
+| Islanders' actions at their spot (`ac`, after the walk frames: Saule's sweep, the school's kick and cheer...); `BUSY` in `isles-map.js` says who does what and when, and the school's football is drawn by `football()` | `c-<id>.webp` | `sprite()` and `doing()` in `isles-map.js` |
+| Portraits in `neutral`, `happy`, `angry`, `confused` (the Keeper is the note), made from each islander's v3 sprite; the school has a group bust and one each for Tunde, Maisie and Malia (`kid1` to `kid3`), who talk on their own when the class has no quest for you | `portraits/<id>-<mood>.webp` | `I.portrait` in `isles-data.js` |
+| Wildlife: gulls in the air (`gullfly`, drawn by `gulls()`) and on the docks, crabs, and the North Road's small animals (`WILD`) | `assets/img/critters/` | `js/critters.js`, `isles-map.js` |
 | Landmarks: office, school, bank, mill (with `sails` turning on it and `planks`), tower, three fish stalls, shop, the twin halls, the lighthouse (its beam is drawn in code) | `<name>.webp` | `PIXEL` in `isles-map.js` |
 | Props: Kwame's `ferry`, the harbour queue's `boat`s and `pilings`, dock `bollard`s, the `tide` post, the Keeper's `note` | `<name>.webp` | `isles-map.js` |
 | Ploy's cove: the Game Club house, the game `gtable` and Arjun's `umbrella` | `club.webp`, `gtable.webp`, `umbrella.webp` | `PIXEL` in `isles-map.js` |
