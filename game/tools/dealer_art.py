@@ -18,11 +18,12 @@ def save(im, rel):
     im.save(os.path.join(HERE, 'assets/img', rel), lossless=True, quality=100, method=6)
     print(rel, im.size)
 
-# Map sprites: about PR Club height (the 92px character comes down to about 56px), with white gloves. Three sheets, one
-# per idle mood (js/card-dealer.js rotates them 70/15/15): idle, rub (hands rubbing) and giggle. Each sheet has a row per
-# direction (south, west, east, north): column 0 is the standing rotation, then the cycle's frames. Facing north he only
-# stands: PixelLab made no north idle, and its north rub and giggle turn him round to show a face. Giggle plays there and back so its loop doesn't snap. PixelLab gave
-# him red eyes in the hood's shadow; they are painted out, so only the grin shows.
+# Map sprites: about PR Club height (the 92px character comes down to about 56px), with white gloves. Three sheets: idle,
+# rub (hands rubbing) and giggle; js/card-dealer.js loops the idle and now and then plays a rub or a giggle once. Each
+# sheet has a row per direction (south, west, east, north): column 0 is the standing rotation, then the cycle's frames.
+# Facing north he only stands: PixelLab made no north idle, and its north rub and giggle turn him round to show a face.
+# Giggle plays there and back so it ends where it began. PixelLab gave him red eyes in the hood's shadow; they are
+# painted out, so only the grin shows.
 d = os.path.join(SRC, 'kagemaru')
 meta = json.load(open(os.path.join(d, 'metadata.json')))
 meta = meta['frames'] if 'frames' in meta else meta['states'][0]['frames']
