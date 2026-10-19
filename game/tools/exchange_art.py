@@ -16,8 +16,8 @@ SRC = sys.argv[1]
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'assets/img/arc')
 OBJECTS = ['ex-gaslamp', 'ex-bear', 'ex-fountain', 'ex-wreck', 'ex-office', 'ex-inn', 'ex-bullfallen', 'ex-tickerdown',
-           'ex-apartment', 'ex-diner', 'ex-pawn', 'ex-billboard', 'ex-newsstand', 'ex-dumpster', 'ex-phonebooth',
-           'ex-bench', 'ex-steam', 'ex-tree', 'ex-stanchion', 'ex-bollards', 'ex-planter2', 'ex-counting', 'ex-mirrorshop', 'ex-bank3']
+           'ex-diner', 'ex-pawn', 'ex-billboard', 'ex-newsstand', 'ex-dumpster', 'ex-phonebooth',
+           'ex-bench', 'ex-steam', 'ex-tree', 'ex-stanchion', 'ex-bollards', 'ex-planter2', 'ex-counting', 'ex-mirrorshop', 'ex-bank3', 'ex-hotel2', 'ex-bakery', 'ex-apothecary']
 
 def save(im, name):
     im.save(os.path.join(OUT, name + '.webp'), lossless=True, quality=100, method=6)

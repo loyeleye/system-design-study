@@ -3,9 +3,9 @@
 // keys, so the road, the quests and the cutscenes find them as before.
 //
 // Kyu's Exchange is the last dungeon, so this is the city at its door on the day the Cloud goes down (Midgar's
-// plaza under the Shinra building, or Central City on the Promised Day). You come in from the road at the bottom,
-// through an archway under the old guildhall, into a square where the bull lies on its back with the bear over it,
-// then up one of two side streets to the avenue and the company's plaza. Pride's line of heroes comes in along the
+// plaza under the Shinra building, or Central City on the Promised Day). You come in from the road at the bottom
+// onto the main street, up a lane between the old guildhall and the bank to a square where the bull lies on its
+// back with the bear over it, then up one of two side streets to the avenue and the company's plaza. Pride's line of heroes comes in along the
 // avenue from the west and snakes between airport ropes to the door; the ropes and the line are gone once
 // chapter 10 is won. The sky is three layers that slide at their own speed as you walk (storm clouds, a far-off
 // skyline, the office towers), and clouds and smog drift over the streets.
@@ -31,7 +31,7 @@
     const objects = [], lights = [];
     // Everything is drawn to one scale: a storey is about as tall as a person (the art came at different sizes,
     // so each piece has its own factor). The office towers behind the company are the only skyscrapers.
-    const K = { 'ex-hq': 1.25, 'ex-wing': 1.25, 'ex-office': 1.8, 'ex-apartment': 1.65, 'ex-tenement2': 1.45, 'ex-rowhouses2': 1.5,
+    const K = { 'ex-hq': 1.25, 'ex-wing': 1.25, 'ex-office': 1.8, 'ex-hotel2': 1.1, 'ex-tenement2': 1.45, 'ex-rowhouses2': 1.5,
       'ex-pawn': 1.3, 'ex-townhouse': 1.25, 'ex-inn': 1.25, 'ex-arch2': 1.3, 'ex-diner': 1.5, 'ex-bank3': 1.4, 'ex-billboard': 1.3, 'ex-tickerdown': 1.3 };
     // A building standing on row y, centred on x; its bottom `deep` rows are solid.
     function bld(name, x, y, o) {
@@ -48,10 +48,8 @@
     m.rect(1, 14, 42, 22, 'c');                                  // the plaza in front of the company
     m.rect(0, 23, W - 1, 24, 'c');                               // the avenue; the line comes in along it from the west
     m.rect(11, 25, 13, 36, 'c'); m.rect(31, 25, 33, 36, 'c');    // the side streets down to the square
-    m.rect(12, 37, 32, 43, 'c');                                 // the square
-    m.rect(21, 44, 22, 51, 'c');                                 // under the guildhall's arch
-    m.rect(20, 52, 23, 57, 'c');                                 // the street in from the road
-    m.put(21, 58, 'S'); m.put(22, 58, 'S');
+    m.rect(1, 37, 42, 41, 'c');                                  // the square, the width of the city
+            m.put(21, 58, 'S'); m.put(22, 58, 'S');
     m.put(22, 13, 'D'); m.put(23, 13, 'D');
 
     // ---------- The company: one dark block across the top, Kyu's tower in the middle ----------
@@ -66,9 +64,11 @@
     [[12, 22.6], [33, 22.6], [26, 14.6], [33.6, 14.6]].forEach(([x, y]) => prop('ex-gaslamp', x, y));
 
     // ---------- The city between the avenue and the road ----------
-    // Blocks of buildings with their fronts on the square and the street in, none taller than its block, so the
-    // avenue behind each block stays in view. Smaller houses have a tree or two in the yard behind them.
-    bld('ex-apartment', 2.8, 36, { deep: 0, glow: [[0, -3, 1.8]] }); bld('ex-apartment', 7.9, 36, { deep: 0, flip: true, glow: [[0, -2, 1.8]] });
+    // Every building fronts onto a street. The blocks below the avenue face the square; the row below the square
+    // faces the main street you arrive on. Nothing is taller than its block, so the street behind stays in view, and
+    // smaller houses have a tree or two in the yard behind them.
+    bld('ex-rowhouses2', 5.4, 36, { deep: 0, glow: [[-2.5, -2.5, 1.8], [2.5, -2.5, 1.8]] });
+    prop('ex-tree', 2.4, 29.8, { solid: false }); prop('ex-tree', 8.2, 29.6, { solid: false });
     m.rect(0, 25, 10, 36, '#');
     prop('ex-dumpster', 10.4, 35.6, { solid: false });
     bld('ex-tenement2', 18.4, 36, { deep: 0, glow: [[0, -1.5, 2.4]] });
@@ -77,37 +77,36 @@
     m.rect(14, 25, 30, 36, '#');
     bld('ex-tenement2', 38.6, 36, { deep: 0, flip: true, glow: [[0, -1.5, 2.4]] }); m.rect(34, 25, 43, 36, '#');
     prop('ex-phonebooth', 33.6, 25.4, { solid: false });
-    // Either side of the square: rowhouses on the west, the all-night diner on the east (it runs on gas, not the
-    // Cloud), with the yard trees behind it.
-    bld('ex-rowhouses2', 5.6, 44, { deep: 0, glow: [[-2.5, -2.5, 1.8], [2.5, -2.5, 1.8]] }); m.rect(0, 37, 11, 44, '#');
-    prop('ex-tree', 35.4, 40.2, { solid: false }); prop('ex-tree', 40.2, 40.4, { solid: false });
-    bld('ex-diner', 37, 44, { deep: 0, glow: [[0, -1, 3]] }); m.rect(33, 37, 43, 44, '#');
-    prop('ex-newsstand', 41.8, 44.4, { solid: false });
-    // The square: the bear over the bull, the dry fountain, a fire barrel and a stall of whatever is left.
-    prop('ex-bear', 14.5, 40.2, { solid: false }); m.rect(13, 39, 15, 40, '#');
-    prop('ex-bullfallen', 16.6, 40.4, { solid: false }); m.rect(16, 40, 17, 40, '#');
-    prop('ex-fountain', 21.5, 41, { solid: false }); m.rect(20, 40, 23, 41, '#');
+    // The square runs the width of the city: the bear over the bull, the dry fountain, a fire barrel and a stall
+    // of whatever is left, trees at either end.
+    prop('ex-bear', 6.5, 39.2, { solid: false }); m.rect(5, 38, 7, 39, '#');
+    prop('ex-bullfallen', 8.6, 39.4, { solid: false }); m.rect(8, 39, 9, 39, '#');
+    prop('ex-fountain', 16.5, 40, { solid: false }); m.rect(15, 39, 18, 40, '#');
     prop('ex-firepit', 27.5, 39, { solid: false }); m.rect(27, 38, 28, 38, '#');
     lights.push({ x: 27.5, y: 38.3, r: 3.4, rgb: '255,140,60' });
-    prop('ex-stall', 29.6, 42.6, { flip: true, solid: false }); m.rect(29, 42, 31, 42, '#');
-    prop('ex-bench', 18, 37.4, { solid: false }); m.put(18, 37, '#');
+    prop('ex-stall', 36.6, 40.6, { flip: true, solid: false }); m.rect(36, 40, 38, 40, '#');
+    prop('ex-bench', 19, 37.4, { solid: false }); m.put(19, 37, '#');
     prop('ex-bench', 25.6, 37.4, { solid: false }); m.put(26, 37, '#');
     prop('ex-steam', 12.6, 37.6, { solid: false });
-    prop('ex-tree', 12.2, 43.4); prop('ex-tree', 31.8, 40.4);
-    // The old guildhall over the road: you come in under its arch. Beside it, a strip of trees and junk.
-    bld('ex-arch2', 22, 51, { deep: 0, glow: [[0, -1, 2.6], [-2.4, -3.5, 1.8], [2.4, -3.5, 1.8]] });
-    m.rect(0, 44, 20, 51, '#'); m.rect(23, 44, W - 1, 51, '#'); m.rect(12, 44, 32, 44, '#'); m.rect(21, 44, 22, 51, 'c');
-    [[10.6, 47.8], [34, 47.6], [38, 47.4], [42, 47.8]].forEach(([x, y]) => prop('ex-tree', x, y, { solid: false }));
-    [[14.6, 48.4, 'ar-crates'], [17.2, 47.8, 'ex-dumpster'], [27.4, 48, 'ex-wreck'], [30.6, 47.6, 'ex-planter2']].forEach(([x, y, n]) => prop(n, x, y, { solid: false }));
-    // Either side of the road in: a tenement and the bank that has shut its doors; the billboard over an empty lot,
-    // a townhouse and a pawnbroker's.
-    bld('ex-tenement2', 5.4, 57, { deep: 0, glow: [[0, -1.5, 2.4]] }); bld('ex-bank3', 15.4, 57, { deep: 0 });
-    m.rect(0, 52, 19, 57, '#');
-    prop('ex-newsstand', 18.8, 56.4, { solid: false });
-    bld('ex-townhouse', 35.4, 57, { deep: 0, glow: [[0, -2, 1.8]] }); bld('ex-pawn', 40, 57, { deep: 0, glow: [[0, -1.5, 2]] });
-    m.rect(24, 52, W - 1, 57, '#');
-    prop('ex-bollards', 24.6, 53.2, { solid: false });
-    [[19.4, 52.6], [24.6, 55.6]].forEach(([x, y]) => prop('lamp', x, y, { solid: false }));
+    [[1.4, 41.4], [41.6, 41.4]].forEach(([x, y]) => prop('ex-tree', x, y));
+    prop('ex-planter2', 41.4, 38.4);
+    // Below the square, facing the main street: a hotel, a bakery and an apothecary, the old guildhall, then the
+    // bank that has shut its doors, the all-night diner (it runs on gas, not the Cloud) and a townhouse. A lane
+    // between the guildhall and the bank goes up to the square.
+    bld('ex-hotel2', 2.4, 48, { glow: [[0, -2, 2]] }); bld('ex-bakery', 6.2, 48, { glow: [[0, -1, 2]] });
+    bld('ex-apothecary', 9.6, 48, { glow: [[0, -1, 2]] }); bld('ex-arch2', 15.8, 48, { glow: [[0, -1, 2.6], [-2.4, -3.5, 1.8], [2.4, -3.5, 1.8]] });
+    bld('ex-bank3', 25.9, 48); bld('ex-diner', 32.6, 48, { glow: [[0, -1, 3]] }); bld('ex-townhouse', 38.2, 48, { glow: [[0, -2, 1.8]] });
+    m.rect(0, 42, 20, 48, '#'); m.rect(23, 42, W - 1, 48, '#'); m.rect(21, 42, 22, 48, 'c');
+    prop('ex-phonebooth', 41.4, 48.4, { solid: false });
+    [[20.4, 48.6], [23.6, 48.6]].forEach(([x, y]) => prop('lamp', x, y, { solid: false }));
+    // The main street, and the way in from the road. Below the street: a scrap of park on one side, the
+    // billboard over an empty lot on the other.
+    m.rect(0, 49, W - 1, 50, 'c'); m.rect(21, 51, 22, 57, 'c');
+    m.rect(0, 51, 20, 57, '#'); m.rect(23, 51, W - 1, 57, '#');
+    [[3, 54.6], [8, 55], [13, 54.4], [17.4, 56.2]].forEach(([x, y]) => prop('ex-tree', x, y, { solid: false }));
+    [[5.6, 52.4, 'ex-bench'], [10.6, 52.4, 'ex-bench'], [15.6, 52.6, 'ex-planter2'], [18.2, 51.6, 'ex-newsstand'],
+     [24.4, 51.4, 'ex-bollards'], [36, 53.4, 'ar-crates'], [39.6, 55.4, 'ex-wreck'], [41.6, 52.2, 'ex-dumpster']].forEach(([x, y, n]) => prop(n, x, y, { solid: false }));
+    [[20.4, 53.6], [23.6, 55.6], [8, 51.6], [34, 51.6]].forEach(([x, y]) => prop('lamp', x, y, { solid: false }));
     m.rect(0, 58, 20, 58, '#'); m.rect(23, 58, W - 1, 58, '#');
 
     // ---------- Signs that are failing ----------
@@ -137,7 +136,7 @@
     ticker('xdown1', 33.5, 21, [2]);
     {
       const k = K['ex-billboard'], y = 57;
-      signs.xinvest = { x: 28, y, talk: false, home: [28, y], nextStroll: Infinity,
+      signs.xinvest = { x: 29, y, talk: false, home: [29, y], nextStroll: Infinity,
         draw(ctx, px, py, ts, t) {
           if (!ok(BOARD)) return;
           const s = ts / 32 * k, X = px + ts * 0.5 - 79.5 * s, Y = py + ts * 0.05 - 140 * s;
@@ -146,7 +145,7 @@
           const c = t % 4.2, off = (c > 3.3 && c < 3.42) || (c > 3.55 && c < 3.7) || flick(t, 3, 6);
           if (off) { ctx.fillStyle = 'rgba(8,8,18,.62)'; ctx.fillRect(X + 10 * s, Y + 6 * s, 142 * s, 60 * s); }
         } };
-      lights.push({ x: 28.5, y: 51.5, r: 3, rgb: '255,240,200' });
+      lights.push({ x: 29.5, y: 52.5, r: 3, rgb: '255,240,200' });
     }
 
     // ---------- Pride's line ----------
@@ -244,7 +243,7 @@
 
     // ---------- People about town ----------
     // Townsfolk pacing the streets (js/northroad.js walks anyone without a home a tile or two now and then).
-    const FOLK = [[16, 24, 'folk1'], [29, 23, 'v2'], [12, 30, 'folk4'], [32, 29, 'folk3'], [24, 39, 'folk2'], [17, 42, 'v4'], [27, 16, 'folk6'], [33, 19, 'folk1'], [26, 42, 'folk4']];
+    const FOLK = [[16, 24, 'folk1'], [29, 23, 'v2'], [12, 30, 'folk4'], [32, 29, 'folk3'], [23, 39, 'folk2'], [8, 41, 'v4'], [27, 16, 'folk6'], [33, 19, 'folk1'], [33, 40, 'folk4']];
     const FLINES = [
       ['The Cloud\'s been down since breakfast. I tried to pay for bread with a smile. The baker took it. Times are strange.', 'They say the board outside the Exchange hasn\'t moved in hours. Everything\'s frozen on DOWN.'],
       ['I work on the ninth floor. Worked. Work? The lifts need the Cloud too.', 'Kyu\'s tower is the only one with its lights on. She never goes home. I don\'t think she has one.'],
@@ -309,7 +308,7 @@
       under, overlay, objects, lights,
       labels: [{ x: 22.5, y: 14.6, text: 'THE EXCHANGE' }, { x: 21.5, y: 57.6, text: 'ROAD ↓' }],
       actors: Object.assign({
-        v3: { x: 26, y: 41, face: 'west', name: 'TRADER' },
+        v3: { x: 30, y: 40, face: 'west', name: 'TRADER' },
         exguard: { x: 25, y: 14, face: 'south', sprite: 'folk5', name: 'GUARD', home: [25, 14], nextStroll: Infinity }
       }, signs, people),
       back: { D: [23, 14, 'south'], S: [21, 57, 'north'] }, enter: [21, 57, 'north'], ch: 10, music: 'ch10',
