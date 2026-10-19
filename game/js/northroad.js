@@ -186,7 +186,7 @@
     const W = 30, H = 24, m = grid(W, H, true);
     m.rect(4, 1, 12, 6, '#'); m.put(8, 7, 'D'); m.put(9, 7, 'D');   // the chasm
     m.rect(17, 4, 21, 5, '#'); m.rect(23, 6, 25, 7, '#'); m.rect(15, 16, 17, 17, '#');
-    m.rect(14, 12, 16, 12, '#'); m.rect(21, 12, 23, 12, '#'); m.rect(25, 17, 27, 18, '#'); m.rect(4, 15, 6, 16, '#');
+    m.rect(14, 12, 16, 12, '#'); m.rect(21, 12, 23, 12, '#'); m.rect(25, 17, 27, 18, '#'); m.rect(4, 15, 6, 16, '#'); m.rect(23, 19, 25, 20, '#');
     m.rect(8, 8, 9, 10, 'p'); m.rect(8, 10, 28, 11, 'p'); m.put(29, 10, 'E'); m.put(29, 11, 'E'); m.rect(15, 11, 15, 11, 'p');
     m.rect(21, 19, 21, 19, '#'); m.rect(10, 15, 10, 15, '#');     // training dummy, the vending machine
     m.trees([[2, 9], [2, 20], [12, 21], [20, 22], [27, 3], [14, 3], [26, 13]]);
@@ -196,9 +196,11 @@
       doorFor: (x, y) => (x >= 4 && x <= 12 && y <= 7) ? [8, 8] : null,
       objects: [
         { name: 'cp-chasm', x: 8.5, y: 7 }, { name: 'cp-tent1', x: 19, y: 5 }, { name: 'cp-tent2', x: 24, y: 7 }, { name: 'cp-tent2', x: 16, y: 17, flip: true },
-        { name: 'cp-fire', x: 15, y: 12 }, { name: 'cp-board', x: 22, y: 12 }, { name: 'cp-tower', x: 26, y: 18 }, { name: 'cp-rack', x: 5, y: 16 },
+        { name: 'cp-fire', x: 15, y: 12 }, { name: 'cp-board', x: 22, y: 12 }, { name: 'cp-tower', x: 26, y: 18 }, { name: 'cp-tent2', x: 5, y: 16 },
         { name: 'nr-rock', x: 13, y: 7 }, { name: 'd9a', x: 3, y: 7 }, { name: 'd9a', x: 12, y: 8 },
-        { name: 'cp-dummy', x: 21, y: 19 }, { name: 'cp-vending', x: 10, y: 15 }
+        { name: 'cp-dummy', x: 21, y: 19 }, { name: 'cp-vending', x: 10, y: 15 },
+        // The sword racks stand by the training dummy, fenced in on solid ground so nobody walks into the middle.
+        { name: 'cp-rack', x: 24, y: 20 }
       ],
       labels: [{ x: 8.5, y: 8.6, text: 'THE ABYSS' }, { x: 22, y: 13.1, text: 'NOTICE BOARD' }, { x: 28.5, y: 12.6, text: 'ROAD →' }, { x: 8, y: 20.1, text: 'SPARRING' }],
       actors: {
