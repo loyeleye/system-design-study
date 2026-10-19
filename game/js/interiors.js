@@ -268,6 +268,34 @@
     cast(key);
     sc.fx.push(fx);
     sc.start();
+    // A relationship scene due in this room (js/folk-scenes.js) plays as you come in.
+    if (SD.folkScenes) setTimeout(() => scene(key), 400);
+  }
+  async function scene(key) {
+    if (busy || !sc || cur !== key) return;
+    const s = SD.folkScenes.find('room:' + key);
+    if (!s) return;
+    busy = true; sc.pause();
+    try { stage(key, s.who); await SD.folkScenes.play(s); } finally { busy = false; if (sc) { recast(); sc.pause(); } }
+  }
+  // Bring a scene's people into the room if they aren't here already: Wen behind the counter, everyone else at
+  // their own spot, a free table, or the nearest open floor.
+  function stage(key, ids) {
+    const r = ROOMS[key], marks = SD.quests && SD.quests.marks ? SD.quests.marks() : {};
+    const taken = (x, y) => Object.values(sc.actors).some(a => !a.hidden && Math.round(a.x) === Math.round(x) && Math.round(a.y) === Math.round(y));
+    const floor = [];
+    r.map.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '.') floor.push([x, y]); }));
+    const P = sc.P, d = ([x, y]) => Math.abs(x - P.x) + Math.abs(y - P.y);
+    floor.sort((a, b) => d(a) - d(b));
+    ids.forEach(id => {
+      if (sc.actors[id]) return;
+      let at = null;
+      if (r.counter && id === 'wen' && !taken(r.counter[0], r.counter[1])) {
+        at = r.counter;
+        if (r.over) r.over.forEach((o, i) => { if (sc.actors['over' + i]) sc.actors['over' + i].over = id; });
+      } else at = [r.spots[id]].concat(r.spots._ || []).find(s => s && !taken(s[0], s[1])) || floor.find(([x, y]) => d([x, y]) && !taken(x, y));
+      if (at) sc.addActor(id, { x: at[0], y: at[1], face: at[2] || 'south', name: SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] });
+    });
   }
   // Anything that changes screens from inside a room (a quest that sends you up the North Road, a mini-game that
   // comes back to town) closes the room first, so you come back to the village by the door.

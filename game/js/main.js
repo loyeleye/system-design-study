@@ -206,6 +206,8 @@
       if (c === 'E') { SD.hub.placeAt(45, 7); if (SD.isles) SD.isles.open(); return; }
       if (c === 'boulder' || c === 'barricade') { await blocker(c); return; }
       if (c === 'bench') { await SD.clock.bench(); return; }
+      // A relationship scene you've walked into (js/folk-scenes.js); its people are already gathered round you.
+      if (c.startsWith('scene:')) { await SD.folkScenes.play(c.slice(6)); return; }
       // A villager met away from their door, out on their schedule (js/folk.js).
       if (c.startsWith('away:')) { await SD.folk.chat(c.slice(5)); return; }
       // Walking through a door with a room behind it goes inside (js/interiors.js); talking to the villager outside
