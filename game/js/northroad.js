@@ -254,9 +254,10 @@
     const q = $('#nr-hud [data-nr="quests"]'); if (q) q.onclick = () => QS().log();
   }
   // Who is around, and who has a quest for you, depends on how far the story has got.
-  function cast() {
+  function cast(snap) {
     const marks = (QS() && QS().marks) ? QS().marks() : {};
     Object.values(sc.actors).forEach(a => { if (!a.player && !a.pip) a.marker = !!marks[a.id]; });
+    schedule(snap);
     if (cur === 'camp') { sc.hide('hero1023', !flags().ch8); sc.hide('hero500', !flags().ch8); }
     if (cur === 'arena') sc.hide('hero500', !!flags().ch8);
     if (cur === 'waystation') sc.actors.latency.marker = sc.actors.latency.marker || (A.open(7) && !flags().ch7);
@@ -265,6 +266,70 @@
     if (cur === 'road') sc.hide('aigerim', !(NR.shop && NR.shop.ready()) || inside());
     const shop = road.labels.find(l => l.id === 'shop');
     if (shop) shop.text = NR.shop && NR.shop.name ? NR.shop.name.toUpperCase() : 'CARD SHOP';
+    // Whoever their schedule put indoors stays out of sight, whatever the story says about them.
+    Object.values(sc.actors).forEach(a => { if (a.schedIn) a.hidden = true; });
+  }
+
+  // ---------- Daily schedules (js/folk-far.js) ----------
+  // Each block of the day puts people somewhere: walking the road, at a spot doing something, or gone indoors.
+  // Arriving on a map puts everyone straight in place; a block that changes while you're there (a quest step, a
+  // lesson) sends them walking. Anyone with a quest marker stays at their usual spot.
+  const block = () => SD.clock ? SD.clock.block() : 'morning';
+  function schedule(snap) {
+    const def = MAPS[cur], table = (SD.folkFar && SD.folkFar.road[cur]) || {};
+    Object.values(sc.actors).forEach(a => {
+      const d = def.actors[a.id];
+      if (!d || a.player || a.pip) return;
+      if (a.route0 === undefined) a.route0 = a.route || null;
+      let e = table[a.id] && table[a.id][block()];
+      if (a.marker || !e) e = a.route0 ? 'route' : [d.x, d.y, d.face];
+      const key = JSON.stringify(e);
+      if (a.plan === key && !snap) return;
+      a.plan = key; a.goal = null; a.home = null; a.emoK = null; a.path = [];
+      // Back out of wherever the last plan (or a walk along the route) put them.
+      if (a.schedIn || a.away) { a.schedIn = false; a.away = 0; sc.hide(a.id, false); a.alpha = null; }
+      a.route = e === 'route' ? a.route0 : null;
+      if (e === 'route') return;
+      a.goal = e[0] === 'in' ? { x: e.length > 1 ? e[1] : a.x, y: e.length > 1 ? e[2] : a.y, into: true } : { x: e[0], y: e[1], face: e[2], emo: e[3] };
+      if (snap) { sc.place(a.id, a.goal.x, a.goal.y); arrived(a, true); }
+    });
+  }
+  function arrived(a, snap) {
+    const g = a.goal; a.goal = null;
+    if (g.into) {
+      a.schedIn = true;
+      if (snap) sc.hide(a.id, true); else fade(a, 0, () => { if (a.schedIn) sc.hide(a.id, true); });
+      return;
+    }
+    if (g.face) sc.face(a.id, g.face);
+    a.home = [g.x, g.y]; a.emoK = g.emo || null; a.leg = 0;
+    a.nextStroll = performance.now() + 4000 + Math.random() * 4000;
+  }
+  // A path over open ground, round trees, walls, water and people.
+  function bfs(a, gx, gy) {
+    const k = (x, y) => x + ',' + y, prev = new Map([[k(a.x, a.y), null]]), q = [[a.x, a.y]];
+    while (q.length) {
+      const [x, y] = q.shift();
+      if (x === gx && y === gy) {
+        const out = []; let c = k(x, y);
+        while (c !== k(a.x, a.y)) { const [px, py] = c.split(',').map(Number); out.unshift([px, py]); c = prev.get(c); }
+        return out;
+      }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (prev.has(k(nx, ny)) || !(sc.walkable(nx, ny) || (nx === gx && ny === gy && !(sc.def.solid || 'T#').includes(sc.tile(nx, ny))))) continue;
+        prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]);
+      }
+    }
+    return null;
+  }
+  function toGoal(a) {
+    const g = a.goal;
+    if (a.x === g.x && a.y === g.y) return arrived(a);
+    const p = bfs(a, g.x, g.y);
+    if (!p) { sc.place(a.id, g.x, g.y); return arrived(a); }
+    a.speed = 2.2; a.path = p;
+    a.arrive = () => { if (a.goal === g && a.x === g.x && a.y === g.y) arrived(a); };
   }
   function go(key, at) {
     if (sc) sc.stop();
@@ -279,7 +344,7 @@
     }
     sc = scenes[key];
     if (at) { sc.place('you', at[0], at[1]); sc.face('you', at[2] || 'south'); }
-    cast(); hud(); sc.start();
+    cast(true); hud(); sc.start();
     AU.music(def.music);
     if (SD.weather) SD.weather.sync(SD.weather.now(def.weather));
   }
@@ -478,7 +543,7 @@
   setInterval(() => {
     if (!sc || !sc.active || cur !== 'camp') return;
     const a = sc.actors; beat++;
-    if (a.hero77 && !a.hero77.path.length) {
+    if (a.hero77 && !a.hero77.path.length && a.hero77.y === 18 && !a.hero77.goal && !a.hero77.emoK) {
       const lunge = beat % 4 === 1, back = beat % 4 === 3;
       if (lunge) { sc.walk('hero77', 8, 18, { speed: 6 }).then(() => { sc.face('hero77', 'east'); sc.emote('hero256', beat % 8 === 1 ? 'alert' : 'star', 1); }); }
       if (back) { sc.walk('hero77', 7, 18, { speed: 3 }).then(() => sc.face('hero77', 'east')); }
@@ -505,7 +570,11 @@
     if (!sc || !sc.active || busy || !document.getElementById('dialog').hidden) return;
     const now = performance.now(), P = sc.P;
     Object.values(sc.actors).forEach(a => {
-      if (a.player || a.pip || STILL[a.id]) return;
+      if (a.player || a.pip) return;
+      // On the way somewhere for this time of day: they keep going, and squeeze past you if you're in the way.
+      if (a.goal && !a.hidden) { if (!a.path.length && !a.moving) toGoal(a); return; }
+      if (a.emoK && !a.moving && !a.hidden && Math.random() < 0.015) sc.emote(a.id, a.emoK, 1.6);
+      if (STILL[a.id]) return;
       // Someone who went indoors comes back out after a while, at the door they used.
       if (a.away) {
         if (now < a.away) return;
@@ -549,6 +618,8 @@
       a.nextStroll = now + 3500 + Math.random() * 5000;
     });
   }, 250);
+  // A block that changes while you're on the road sends everyone walking to their next spot.
+  if (SD.clock) SD.clock.onChange(() => { if (sc && sc.active) cast(); });
   NR.go = go;
   NR.where = () => cur;
   NR.scene = () => sc;
