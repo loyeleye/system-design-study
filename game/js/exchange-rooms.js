@@ -6,8 +6,9 @@
 //   The Pawn Shop      across the canal from the market. The relic trader minds the counter (js/relic-exchange.js).
 //   The warehouse      by the tower. In chapter 10, until it is won, Kagemaru waits in its back room with his pins at
 //                      25% off (js/card-dealer.js); otherwise it is padlocked.
-//   The Coffee Diner   across the avenue from the bank. Always open: it runs on gas, not the Cloud. A cook and a few
-//                      regulars; in chapter 10's storm, the townsfolk who went home from the streets shelter here.
+//   The Coffee Diner   across the avenue from the bank, three storeys: the diner, a dining room upstairs and a lounge at
+//                      the top. Always open: it runs on gas, not the Cloud. A cook and a few regulars; in chapter
+//                      10's storm, the townsfolk who went home from the streets shelter here, a few on each floor.
 //                      Neel waits in a booth until Lost and Found (js/folk-far.js), across the street from his hotel.
 //   The bakery         on the avenue's south side, where the baker takes a smile when nobody can pay.
 //
@@ -130,6 +131,33 @@
     const w = SD.nariHome.where(id);
     return Array.isArray(w) && w[0] === 'in' && w[1] === 'exchange' && w[2] === DINER[0] && w[3] === DINER[1];
   }) : [];
+  // In the storm the street's townsfolk (js/ch10-folk.js sends them home) shelter in the diner, as they look on the
+  // street: two downstairs, seven in the dining room and the rest in the lounge. Anyone with a quest step waiting
+  // stays out in the rain, as there.
+  const FOLK = Object.keys(X.actors).filter(id => /^xf\d+$/.test(id));
+  const FLOORS = { xdiner: [0, 2], xupper: [2, 9], xlounge: [9] };
+  const shelter = key => storm() ? FOLK.filter(id => !(QS() && QS().pending(id).length)).slice(...FLOORS[key]) : [];
+  const FOLK_LOOKS = Object.fromEntries(FOLK.map(id => [id, { sprite: X.actors[id].sprite }]));
+  const FOLK_NAMES = Object.fromEntries(FOLK.map(id => [id, '']));
+  // One line each, by what they do (the titles in js/northroad-exchange.js), and one about the floor they're on.
+  const SHELTER = [
+    'No work, no Cloud, no lights. Hash says the coffee\'s bottomless. I\'ve found the bottom four times. He keeps filling it.',
+    'My lanyard opens every door at the office. None of them open now. This one doesn\'t even lock. I like this one.',
+    'I took the long way here. Round the canal, past the billboard, up the avenue. Soaked through. There\'s pie, so it was the short way.',
+    'The line at the tower went home too. I\'m near the line in spirit. From in here. With toast.',
+    'Told you it\'d be open. Gas, not the Cloud. I\'ve been saying it for days, and now the whole street\'s heard me.',
+    'Flash. One... two... Right on top of us. Pass the sugar.'
+  ];
+  const FLOOR_SAY = {
+    xdiner: 'Every booth\'s taken, so I\'m standing. Standing in a warm diner beats sitting in a dark flat.',
+    xupper: 'Hash sent us upstairs when the booths filled. He comes up with the coffee pot every ten minutes. He hasn\'t sat down once.',
+    xlounge: 'Hash opened the lounge up top for anyone who can\'t get home. The coffee\'s free up here. It\'s free downstairs too, tonight.'
+  };
+  async function sheltered(id, key) {
+    if (QS() && QS().pending(id).length) return QS().talk(id);
+    const ls = [FLOOR_SAY[key], SHELTER[+id.slice(2) % SHELTER.length]];
+    await U.dialog([{ s: id, t: ls[(turn[id] = (turn[id] || 0) + 1) % ls.length] }]);
+  }
   const barnaby = () => !!(SD.arcArt && SD.arcArt.chars.barnaby);
   async function folk(id) {
     if (QS() && QS().pending(id).length) return QS().talk(id);
@@ -199,38 +227,86 @@
       if (!(await D.open('exchange'))) await U.dialog([{ s: 'kagemaru', t: pick(D.lines()) }]);
     }
   };
+  // The diner is the ground floor of a three-storey corner building on the avenue: glass on every side, Hash behind
+  // the counter in the middle, and a spiral stair in the back corner up to the dining room.
   R.xdiner = {
-    name: 'THE COFFEE DINER',
-    map: ['############', '############', '############', '############', '####.....###',
-      '####......##', '#####DD#####', '############', '############'],
+    name: 'THE COFFEE DINER', up: ['xupper', 8, 4, 'west'],
+    map: ['############', '############', '############', '########UU##', '########..##',
+      '###......###', '###..DD..###', '###..##..###', '############'],
     enter: [5, 5, 'north'],
-    // The counters run along the walls, so Hash and Mabel stand out on the floor beside them.
-    front: [[0, 197, 174, 91, 6], [227, 197, 157, 91, 6], [165, 197, 68, 30, 6]],
-    people: () => ['xcook', 'xdin0', 'xdin1'].concat(storm() ? ['xdin2', 'xdin3'] : [], inDiner()),
-    spots: { xcook: [4, 4, 'south'], xdin0: [9, 5, 'west'], xdin1: [6, 4, 'north'], xdin2: [5, 4, 'north'], xdin3: [8, 5, 'north'], neel: [8, 4, 'west'] },
-    names: { xcook: 'HASH', xdin0: '', xdin1: '', xdin2: '', xdin3: '', neel: 'NEEL' },
-    looks: { xcook: { sprite: 'spec3' }, xdin0: { sprite: 'folk1' }, xdin1: { sprite: 'folk4' }, xdin2: { sprite: 'folk6' }, xdin3: { sprite: 'spec2' } },
-    lights: [{ x: 3.4, y: 2, r: 2.4 }, { x: 6.1, y: 2, r: 2.4 }, { x: 8.6, y: 2.4, r: 2.4 }, { x: 10.6, y: 2.6, r: 2, rgb: '255,90,190' }],
+    clerk: 'xcook', counter: [4.5, 3.65, 'south'], over: [[3, 4], [4, 4], [5, 4], [6, 4]],
+    // The counter in front of Hash, and the doorway's frame in front of you on the way out.
+    front: [[80, 129, 158, 38, 4], [156, 203, 84, 12, 6], [156, 203, 12, 85, 6], [228, 203, 12, 85, 6]],
+    people: () => ['xcook', 'xdin0', 'xdin1'].concat(storm() ? ['xdin2', 'xdin3'] : [], inDiner(), shelter('xdiner')),
+    // The middle of the floor stays clear: it is the only way from the door to the stairs.
+    spots: { xdin0: [2, 4, 'south'], xdin1: [3, 6, 'west'], xdin2: [8, 7, 'east'], xdin3: [4, 7, 'north'], neel: [8, 6, 'east'],
+      _: [[3, 5, 'north'], [9, 4, 'south'], [3, 7, 'north']] },
+    names: Object.assign({ xcook: 'HASH', xdin0: '', xdin1: '', xdin2: '', xdin3: '', neel: 'NEEL' }, FOLK_NAMES),
+    looks: Object.assign({ xcook: { sprite: 'spec3' }, xdin0: { sprite: 'folk1' }, xdin1: { sprite: 'folk4' }, xdin2: { sprite: 'folk6' }, xdin3: { sprite: 'spec2' } }, FOLK_LOOKS),
+    lights: [{ x: 4.4, y: 2.4, r: 2.6 }, { x: 6.2, y: 2.4, r: 2.6 }, { x: 1.1, y: 4.2, r: 2 }, { x: 10.8, y: 4.2, r: 2 }, { x: 1.5, y: 3, r: 1.6, rgb: '255,90,190' }],
     props: [
-      { x: 10, y: 5, t: () => ['A jukebox with one song on it, playing on repeat since loop one. Nobody remembers putting a coin in.'] },
-      { x: 9, y: 4, t: () => storm() ? ['A booth table with a wet coat over it. Under the table, a very small dog, also wet, also eating pie.'] : ['A booth table with a newspaper on it. Headline: EVERYTHING DOWN. Below it: PIE STILL 2 SHARDS.'] }
+      { x: 7, y: 4, t: () => ['The pie case. Two slices left: cherry, and one labelled LOOP PIE. It is the same slice as yesterday. It is always the same slice.'] },
+      { x: 2, y: 5, t: () => ['A booth table with a newspaper on it. Headline: EVERYTHING DOWN. Below it: PIE STILL 2 SHARDS.'] },
+      { x: 9, y: 5, t: () => storm() ? ['A booth table with a wet coat over it. Under the table, a very small dog, also wet, also eating pie.'] : ['A booth by the window. Someone has written "SAME TIME TOMORROW" in the steam on the glass, every night, for a long time.'] }
     ],
-    talk: id => SAY[id] ? folk(id) : outside(id)
+    talk: id => SAY[id] ? folk(id) : FOLK.includes(id) ? sheltered(id, 'xdiner') : outside(id)
   };
+  // Upstairs: a dining room for when the booths are full, the spiral stair coming up in its back corner and a wooden
+  // stair on up to the lounge. Empty but for the jukebox, except in the storm.
+  R.xupper = {
+    name: 'THE DINER, UPSTAIRS', up: ['xlounge'], down: ['xdiner', 8, 4, 'south'],
+    map: ['############', '############', '############', '############', '##U..##..S##',
+      '###......###', '###...#..###', '###..###.###', '############'],
+    enter: [8, 4, 'west'],
+    // Row 5 is the only way across between the tables, so nobody stands in it.
+    people: () => shelter('xupper'),
+    spots: { _: [[3, 5, 'west'], [3, 7, 'west'], [7, 4, 'west'], [8, 6, 'east'], [8, 7, 'east'], [4, 7, 'north'], [5, 6, 'south']] },
+    names: FOLK_NAMES, looks: FOLK_LOOKS,
+    lights: [{ x: 6.2, y: 2.3, r: 2.6 }, { x: 1.5, y: 4.2, r: 2 }, { x: 0.8, y: 5.7, r: 2 }, { x: 11.2, y: 5.7, r: 2 }, { x: 8.3, y: 3.9, r: 1.8, rgb: '255,170,80' }],
+    props: [
+      { x: 8, y: 3, t: () => storm() ? ['The jukebox, turned down low so people can sleep. It is playing the same song as always, very quietly.'] : ['A jukebox. Every song on it is about coffee, or about leaving town. Nobody ever picks the leaving ones.'] },
+      { x: 6, y: 4, t: () => ['A low table in front of the sofa, with a chessboard on it. The game has been going since loop one. It is white to move. It has always been white to move.'] },
+      { x: 4, y: 3, t: () => storm() ? ['The coat rack, three coats deep, all dripping. There is a puddle under it with its own small reflection of the jukebox.'] : ['A coat rack with one umbrella on it, left by someone in loop four. Hash keeps it in case they come back for it.'] },
+      { x: 9, y: 5, t: () => ['A table by the window, with a view down the avenue to the bank. The sugar bowl is full. The salt is labelled SUGAR. Hash says it keeps people honest.'] }
+    ],
+    talk: id => sheltered(id, 'xupper')
+  };
+  // The lounge at the top, up from the dining room: sofas, a coffee urn, a record player, and Hash's armchair under
+  // the window that looks out at the tower. The stairs down are through the opening in the back corner.
+  R.xlounge = {
+    name: 'THE DINER LOUNGE', down: ['xupper', 3, 4, 'east'],
+    map: ['############', '############', '############', '###S########', '###.....####',
+      '###....#####', '###....#####', '##.....#####', '############'],
+    enter: [3, 4, 'south'],
+    people: () => shelter('xlounge'),
+    spots: { _: [[4, 5, 'east'], [6, 6, 'east'], [2, 7, 'east'], [4, 7, 'north']] },
+    names: FOLK_NAMES, looks: FOLK_LOOKS,
+    lights: [{ x: 1.8, y: 2.3, r: 2.2 }, { x: 6.8, y: 1.5, r: 2.4 }, { x: 10.2, y: 2.4, r: 2.2 }, { x: 8.9, y: 2.8, r: 2.4 }, { x: 1.3, y: 6.1, r: 2 }],
+    props: [
+      { x: 5, y: 3, t: () => storm() ? ['A record player, turned down low. The record has a crack in it, so the same chorus comes round every few seconds. Nobody minds. It sounds like a loop.'] : ['A record player and a stack of records, all diner songs. One sleeve says LIVE AT THE COFFEE DINER. Hash says he was there.'] },
+      { x: 6, y: 3, t: () => ['A coffee urn the size of a fire hydrant. A note is taped to it: HELP YOURSELF. ALSO HELP SOMEONE ELSE. HASH.'] },
+      { x: 7, y: 3, t: () => storm() ? ['Hash\'s armchair, under the window that looks out at the tower. The tower is dark. Hash hasn\'t sat down since the storm.'] : ['Hash\'s armchair, under the window that looks out at the tower. He takes his break here, five minutes a night, and watches Kyu\'s light blink.'] },
+      { x: 7, y: 5, t: () => ['A low table with two mugs on it, and a jigsaw of the Exchange skyline, nearly done. The piece with the tower on it is missing.'] },
+      { x: 2, y: 5, t: () => storm() ? ['A sofa piled with damp coats and spare blankets. Hash brought the blankets up from somewhere. Nobody asked where.'] : ['A worn red sofa. The dent in the middle cushion is the exact shape of someone who comes in every night at four.'] }
+    ],
+    talk: id => sheltered(id, 'xlounge')
+  };
+  // Mabel's bakery: she works behind the counter, between the pastry case and her oven.
   R.xbakery = {
     name: "MABEL'S BAKERY", ambience: 'fire',
-    map: ['############', '############', '############', '############', '###.....####',
-      '####....####', '#####DD#####', '############', '############'],
-    enter: [5, 5, 'north'],
-    front: [[0, 203, 170, 85, 6], [227, 203, 157, 85, 6], [160, 203, 77, 24, 6]],
-    people: () => ['xbaker'], spots: { xbaker: [7, 4, 'south'] }, names: { xbaker: 'MABEL' }, looks: { xbaker: { sprite: 'folk2' } },
-    windows: [{ r: [105, 68, 55, 27] }],
-    lights: [{ x: 8.2, y: 3.3, r: 3, rgb: '255,140,60' }, { x: 5.3, y: 2.8, r: 2 }, { x: 9, y: 5.1, r: 1.6 }],
+    map: ['############', '############', '############', '############', '############',
+      '###.....####', '###......###', '#####DD#####', '############'],
+    enter: [5, 6, 'north'],
+    clerk: 'xbaker', counter: [5, 3.42, 'south'], over: [[4, 4], [5, 4], [6, 4]],
+    // The counter in front of Mabel, and the front wall and door frame in front of you on the way out.
+    front: [[97, 117, 68, 56, 4], [165, 130, 142, 43, 4], [0, 238, 167, 50, 7], [230, 238, 154, 50, 7], [160, 236, 77, 14, 7]],
+    people: () => ['xbaker'], spots: {}, names: { xbaker: 'MABEL' }, looks: { xbaker: { sprite: 'folk2' } },
+    lights: [{ x: 4.1, y: 1.5, r: 3 }, { x: 8.2, y: 3.1, r: 3, rgb: '255,140,60' }, { x: 9.3, y: 5.9, r: 1.6 }],
     props: [
-      { x: 2, y: 4, t: () => ['Shelves of loaves, oldest at the bottom. The bottom shelf goes to the line outside the tower, for free. First baked, first given.'] },
-      { x: 6, y: 3, t: () => ['Sacks of flour, stacked by the oven. One has a smiley face drawn in the flour on top. Payment, probably.'] },
-      { x: 3, y: 3, t: () => ['The pastry case. A card in it says TODAY: CROISSANTS. TOMORROW: ALSO CROISSANTS. WE DON\'T DO SURPRISES.'] },
-      { x: 8, y: 5, t: () => ['A little round table with a lamp on it, and a jar labelled SMILES. It is empty, which is how smiles are kept.'] }
+      { x: 3, y: 4, t: () => ['The pastry case. A card in it says TODAY: CROISSANTS. TOMORROW: ALSO CROISSANTS. WE DON\'T DO SURPRISES.'] },
+      { x: 7, y: 4, t: () => ['Loaves on the counter, oldest at the front. The oldest go to the line outside the tower, for free. First baked, first given.'] },
+      { x: 2, y: 6, t: () => ['Sacks of flour by the wall. One has a smiley face drawn in the flour on top. Payment, probably.'] },
+      { x: 9, y: 6, t: () => ['A little round table with a lamp on it, and a jar labelled SMILES. It is empty, which is how smiles are kept.'] }
     ],
     talk: id => folk(id)
   };
