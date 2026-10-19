@@ -203,7 +203,7 @@
   // and a spiral stair in the back corner up to the flat roof and its neon sign.
   R.xdiner = {
     name: 'THE COFFEE DINER', up: ['xroof'],
-    map: ['############', '############', '############', '########UU##', '#######...##',
+    map: ['############', '############', '############', '########UU##', '########..##',
       '###......###', '###..DD..###', '###..##..###', '############'],
     enter: [5, 5, 'north'],
     clerk: 'xcook', counter: [4.5, 3.65, 'south'], over: [[3, 4], [4, 4], [5, 4], [6, 4]],
@@ -215,7 +215,7 @@
     looks: { xcook: { sprite: 'spec3' }, xdin0: { sprite: 'folk1' }, xdin1: { sprite: 'folk4' }, xdin2: { sprite: 'folk6' }, xdin3: { sprite: 'spec2' } },
     lights: [{ x: 4.4, y: 2.4, r: 2.6 }, { x: 6.2, y: 2.4, r: 2.6 }, { x: 1.1, y: 4.2, r: 2 }, { x: 10.8, y: 4.2, r: 2 }, { x: 1.5, y: 3, r: 1.6, rgb: '255,90,190' }],
     props: [
-      { x: 7, y: 3, t: () => ['The pie case. Two slices left: cherry, and one labelled LOOP PIE. It is the same slice as yesterday. It is always the same slice.'] },
+      { x: 7, y: 4, t: () => ['The pie case. Two slices left: cherry, and one labelled LOOP PIE. It is the same slice as yesterday. It is always the same slice.'] },
       { x: 2, y: 5, t: () => ['A booth table with a newspaper on it. Headline: EVERYTHING DOWN. Below it: PIE STILL 2 SHARDS.'] },
       { x: 9, y: 5, t: () => storm() ? ['A booth table with a wet coat over it. Under the table, a very small dog, also wet, also eating pie.'] : ['A booth by the window. Someone has written "SAME TIME TOMORROW" in the steam on the glass, every night, for a long time.'] }
     ],
@@ -245,9 +245,9 @@
     map: ['############', '############', '############', '############', '############',
       '###.....####', '###......###', '#####DD#####', '############'],
     enter: [5, 6, 'north'],
-    clerk: 'xbaker', counter: [5, 3.3, 'south'], over: [[4, 4], [5, 4], [6, 4]],
+    clerk: 'xbaker', counter: [5, 3.42, 'south'], over: [[4, 4], [5, 4], [6, 4]],
     // The counter in front of Mabel, and the front wall and door frame in front of you on the way out.
-    front: [[97, 117, 210, 56, 4], [0, 238, 167, 50, 7], [230, 238, 154, 50, 7], [160, 236, 77, 14, 7]],
+    front: [[97, 117, 68, 56, 4], [165, 130, 142, 43, 4], [0, 238, 167, 50, 7], [230, 238, 154, 50, 7], [160, 236, 77, 14, 7]],
     people: () => ['xbaker'], spots: {}, names: { xbaker: 'MABEL' }, looks: { xbaker: { sprite: 'folk2' } },
     lights: [{ x: 4.1, y: 1.5, r: 3 }, { x: 8.2, y: 3.1, r: 3, rgb: '255,140,60' }, { x: 9.3, y: 5.9, r: 1.6 }],
     props: [
