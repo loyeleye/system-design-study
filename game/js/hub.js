@@ -125,7 +125,7 @@
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
       // The Enter that closes a conversation must not open the next one: the dialogue box already used it.
-      if (!active || drop || e.defaultPrevented) return;
+      if (!active || drop || staging || e.defaultPrevented) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = talkTarget(); if (t) { e.preventDefault(); onDoor(t); } }
@@ -360,6 +360,41 @@
       }
     });
   }
+  // ---------- Relationship scenes ----------
+  // Walking up to a scene that's due (js/folk-scenes.js) gathers its people round you, from wherever they were, and
+  // plays it; afterwards they walk back to wherever their schedule says.
+  let staging = false;
+  function sceneCheck(x, y) {
+    const s = SD.folkScenes.near(x, y);
+    if (!s) return;
+    staging = true; P.path = []; P.want = null;
+    Object.keys(keys).forEach(k => keys[k] = false);
+    gather(s.who);
+    setTimeout(() => { staging = false; if (active) onDoor('scene:' + s.id); }, 450);
+  }
+  function gather(ids) {
+    // Open ground within two steps of you, nearest first.
+    const k = (x, y) => x + ',' + y, seen = new Set([k(P.x, P.y)]), q = [[P.x, P.y, 0]], free = [];
+    while (q.length) {
+      const [x, y, d] = q.shift();
+      if (d && !npcAt(x, y)) free.push([x, y]);
+      if (d >= 2) continue;
+      for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        if (!seen.has(k(nx, ny)) && '.,=*pf'.includes(tile(nx, ny))) { seen.add(k(nx, ny)); q.push([nx, ny, d + 1]); }
+      }
+    }
+    ids.forEach(id => {
+      const n = NPCS.find(m => m.id === id);
+      if (!n || fixture(n) || n.roam && !n.roam()) return;
+      if (n.here && !n.hide && Math.abs(n.x - P.x) + Math.abs(n.y - P.y) <= 2) { n.path = []; n.route = null; return; }
+      const t = free.shift();
+      if (!t) return;
+      Object.assign(n, { x: t[0], y: t[1], px: t[0], py: t[1], here: true, hide: false, placed: true, path: [], route: null, act: null, goal: null });
+      n.face = t[0] < P.x ? 'east' : t[0] > P.x ? 'west' : t[1] < P.y ? 'south' : 'north';
+    });
+  }
+
   // Where a villager's door is (for js/folk.js), their name on the map, and where everyone is (the board).
   H.doorTile = c => { for (let y = 0; y < HT; y++) { const x = MAP[y].indexOf(c); if (x >= 0) return [x, y]; } return null; };
   H.npcName = id => { const n = NPCS.find(m => m.id === id); return n ? n.name : null; };
@@ -378,7 +413,7 @@
     pip.x += (P.px - 0.9 * P.dir - pip.x) * Math.min(1, dt * 4);
     pip.y += (P.py - 0.4 - pip.y) * Math.min(1, dt * 4);
     stepT -= dt;
-    if (P.moving || stepT > 0) return;
+    if (P.moving || stepT > 0 || staging) return;
     let nx = P.x, ny = P.y;
     if (keys.arrowup || keys.w) ny--; else if (keys.arrowdown || keys.s) ny++;
     else if (keys.arrowleft || keys.a) nx--; else if (keys.arrowright || keys.d) nx++;
@@ -396,6 +431,7 @@
       const t = tile(nx, ny);
       // A door with a room behind it takes you inside (js/interiors.js); the others open their building.
       if (DOORS.includes(t)) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => onDoor(SD.interiors && SD.interiors.has(t) ? 'in:' + t : t), 140); }
+      else if (SD.folkScenes) sceneCheck(nx, ny);
       checkPage();
     } else if (nx !== P.x || ny !== P.y) {
       // Bumping into a villager starts a conversation.

@@ -12,6 +12,7 @@
 //   F.worry(id)           chapter 10: one worried line from someone indoors, { s, t, e }, a different one each time
 //   F.board()             the Brújula Board page (in the Menu)
 //   F.storm()             true while everyone is indoors (chapter 10's stormy night)
+// The relationship scenes (js/folk-scenes.js) add their page to the bottom of the board.
 (function () {
   const F = SD.folk = {};
   const S = SD.state, U = SD.ui, D = SD.folkData;
@@ -36,7 +37,7 @@
 
   function ctx(block) {
     const qs = (S.save && S.save.quests) || {};
-    return { f: flags(), loop: (S.save && S.save.loop) || 1, block, done: id => !!(qs[id] && qs[id].done) };
+    return { f: flags(), loop: (S.save && S.save.loop) || 1, block, done: id => !!(qs[id] && qs[id].done), seen: id => !!(SD.folkScenes && SD.folkScenes.seen(id)) };
   }
   // The schedule entry for a villager in a block, as [spot, doing, say].
   function entry(id, block) {
@@ -164,7 +165,8 @@
       : 'Every adventurer, every villager, every heartbeat. If they moved, I know. Mostly. Doug\'s entry is always wrong.')}</p></div>
       <p class="muted small">${SD.clock ? SD.clock.label() : ''}, loop ${S.save.loop}. People move when the time of day changes; anyone with quest business waits for you where they always stand.</p>
       <ul class="links">${met.map(row).join('')}</ul>
-      ${left ? `<p class="muted small">${left} more ${left === 1 ? 'entry' : 'entries'}: ??? (talk to more of Pingsby)</p>` : ''}`,
+      ${left ? `<p class="muted small">${left} more ${left === 1 ? 'entry' : 'entries'}: ??? (talk to more of Pingsby)</p>` : ''}
+      ${SD.folkScenes ? SD.folkScenes.boardHtml() : ''}`,
     { title: 'THE BRÚJULA BOARD', cls: 'wide' });
   };
   const f = flags;
