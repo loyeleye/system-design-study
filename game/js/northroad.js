@@ -654,8 +654,26 @@
       if (k < 1) requestAnimationFrame(step); else { if (to === 1) a.alpha = null; if (done) done(); }
     })();
   }
+  // One leg of a route. A leg can carry its own speed ([x, y, into, speed]); a runner (4 tiles a second or more)
+  // goes straight on into the next leg, without the stroller's pause at each corner. A leg whose straight line
+  // would cross a fence or a wall takes the way round instead.
+  function leg(a, now) {
+    const [x, y, into, speed] = a.route[a.leg++ % a.route.length], route = a.route;
+    const go = sc.walk(a.id, x, y, { speed: speed || 1.8 });
+    if (a.path.some(([px, py]) => (sc.def.solid || 'T#').includes(sc.tile(px, py)))) a.path = bfs(a, x, y) || a.path;
+    go.then(() => {
+      if (into && a.x === x && a.y === y) {
+        a.away = Infinity;
+        fade(a, 0, () => { sc.hide(a.id, true); a.away = performance.now() + 10000 + Math.random() * 10000; });
+      } else if (a.speed >= 4 && a.route === route && quiet() && !byYou(a)) leg(a, performance.now());
+    });
+    a.nextStroll = now + 300;
+  }
+  // The road's people move only while nothing else is going on, and stop for you when you come close.
+  const quiet = () => sc && sc.active && !busy && document.getElementById('dialog').hidden;
+  const byYou = a => sc.P && Math.abs(sc.P.x - a.x) + Math.abs(sc.P.y - a.y) <= 2;
   setInterval(() => {
-    if (!sc || !sc.active || busy || !document.getElementById('dialog').hidden) return;
+    if (!quiet()) return;
     const now = performance.now(), P = sc.P;
     Object.values(sc.actors).forEach(a => {
       if (a.player || a.pip || a.critter) return;
@@ -671,7 +689,7 @@
         return;
       }
       if (a.hidden) return;
-      if (P && Math.abs(P.x - a.x) + Math.abs(P.y - a.y) <= 2) {
+      if (byYou(a)) {
         // Stop walking: drop the rest of the path (the current step finishes) and retake this leg later.
         if (a.path.length) { a.path = []; if (a.route && a.leg) a.leg--; }
         if (!a.moving) sc.face(a.id, toward(a, P));
@@ -681,16 +699,7 @@
       if (a.path.length || a.moving || a.arrive) return;
       if (a.home == null) { a.home = [a.x, a.y]; a.nextStroll = now + 1000 + Math.random() * 4000; a.leg = 0; }
       if (now < a.nextStroll) return;
-      if (a.route) {
-        const [x, y, into] = a.route[a.leg++ % a.route.length];
-        sc.walk(a.id, x, y, { speed: 1.8 }).then(() => {
-          if (!into || a.x !== x || a.y !== y) return;
-          a.away = Infinity;
-          fade(a, 0, () => { sc.hide(a.id, true); a.away = performance.now() + 10000 + Math.random() * 10000; });
-        });
-        a.nextStroll = now + 300;
-        return;
-      }
+      if (a.route) return leg(a, now);
       // Pace: one or two tiles along one axis, only over open ground, then back home next time.
       const away = a.x !== a.home[0] || a.y !== a.home[1];
       let tx = a.home[0], ty = a.home[1];
