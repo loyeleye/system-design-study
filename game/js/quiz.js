@@ -164,8 +164,13 @@
         if (SD.audio) SD.audio.sfx(ok ? 'right' : 'wrong');
         let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : 'NOT QUITE!'}</div>`;
         if (q.type === 'explain') h += `<p class="muted small">You covered ${score} of ${q.points.length} points.</p>`;
-        else if (!ok || conf === 0) h += `<p><b>Answer:</b> ${U.esc(right)}</p>`;
+        else if ((!ok || conf === 0) && !q.tiers) h += `<p><b>Answer:</b> ${U.esc(right)}</p>`;
         h += `<p class="why">${U.esc(q.why || '')}</p>`;
+        // A ranking can name each rung (bad, good, great) and say why it sits there: the ranking is the lesson.
+        if (q.type === 'order' && q.tiers) {
+          h += `<div class="nots tiers"><div class="q-ctx">The ranking, weakest first</div><ol>${q.items.map((t, i) =>
+            `<li><span class="tier tier-${U.esc(q.tiers[i].toLowerCase())}">${U.esc(q.tiers[i])}</span> <b>${U.esc(t)}</b>${q.notes && q.notes[i] ? `<br>${U.esc(q.notes[i])}` : ''}</li>`).join('')}</ol></div>`;
+        }
         // Why each wrong option is wrong here (and, for real techniques, when it would be right).
         if (q.type === 'mc' && Array.isArray(q.no)) {
           const nots = optOrder.filter(i => i !== q.a && q.no[i]);

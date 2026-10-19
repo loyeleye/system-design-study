@@ -550,7 +550,8 @@
   const roomOf = (door, id) => door === 'C' ? (id === 'wen' && block() === 'night' && !storm() ? 'flat' : 'cafe') : BY_DOOR[door];
   function people(key) {
     const r = ROOMS[key];
-    // Isles rooms are empty; the card shop has Aigerim minding it.
+    // Isles rooms have whoever the Isles schedules sent inside (js/folk-far.js); the card shop has Aigerim minding it.
+    if (r.isle) return SD.isles && SD.isles.inside ? SD.isles.inside(key) : [];
     if (!r.door) return Object.keys(r.spots);
     return F().residents(r.door).filter(id => roomOf(r.door, id) === key);
   }
@@ -639,10 +640,18 @@
   // Put everyone in their places: residents, the counter, customers, props, and whoever is asleep in bed.
   function cast(key) {
     const r = ROOMS[key], here = people(key), marks = SD.quests && SD.quests.marks ? SD.quests.marks() : {};
-    const free = (r.spots._ || []).slice();
+    const free = (r.spots._ || (r.isle ? floor(r) : [])).slice();
     const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), extra));
     let counter = null;
     here.forEach(id => {
+      // Islanders: their Isles sprite faces you, at the size they stand on the Isles; the school's class is three kids.
+      if (r.isle) {
+        const nm = SD.isles.who(id).split(' ').slice(-1)[0].toUpperCase(), qm = Object.assign({}, SD.isles.marks(), marks);
+        if (id === 'kids') { ['kid1', 'kid2', 'kid3'].forEach((k, i) => { const at = free.shift(); if (at) actor(k, at, { face: 'south', name: i === 1 ? 'KIDS' : null, scale: 0.5, talkAs: 'kids', marker: !!qm.kids }); }); return; }
+        const at = free.shift();
+        if (at) actor(id, at, { face: 'south', name: nm, scale: id === 'bloom' ? 0.62 : 0.66, marker: !!qm[id] });
+        return;
+      }
       if (r.sleep && id === r.owner && !storm() && block() === 'night') {
         // Asleep: a slow "Zz" over the pillow, and you talk to them from beside the bed.
         if (r.sleep.cloud) actor(id, [r.sleep.at[0], r.sleep.at[1], 'south'], { asleep: r.sleep.t, under: dream, name: null });
@@ -660,6 +669,14 @@
       if (free.length) actor('v3', free.pop(), { name: null, customer: true });
     }
     r.props.forEach((p, i) => sc.addActor('prop' + i, { x: p.x, y: p.y, draw() {}, prop: p }));
+  }
+  // Open floor to stand on in a room with no spots of its own, from the back wall forward, clear of the way in.
+  function floor(r) {
+    const out = [], H = r.map.length;
+    for (let y = 0; y < H - 2; y++) for (let x = 0; x < r.map[y].length; x++)
+      if (r.map[y][x] === '.' && !(r.enter && r.enter[0] === x && r.enter[1] === y) && !r.props.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) === 0)) out.push([x, y, 'south']);
+    // Spread people out: every other tile first.
+    return out.filter((_, i) => i % 2 === 0).concat(out.filter((_, i) => i % 2 === 1));
   }
   const zz = ([px, py]) => function (ctx, x, y, ts, t) {
     ctx.font = `700 ${Math.round(ts * 0.36)}px Fredoka, sans-serif`; ctx.textAlign = 'center';
@@ -781,6 +798,8 @@
       if (SD.quests && SD.quests.pending(id).length) return SD.quests.talk(id);
       return SD.northRoad.shop.open();
     }
+    // An islander inside: the same as talking to them out on the Isles (quests, services, chat).
+    if (r.isle) return SD.isles.talkTo((sc.actors[id] && sc.actors[id].talkAs) || id);
     if (storm()) {
       const w = F().worry(id);
       if (w) await U.dialog([w]);

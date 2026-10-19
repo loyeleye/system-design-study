@@ -31,6 +31,9 @@
     if (a) return Object.assign({ src: 'assets/img/arc/c-' + id + '.webp' }, a);
     const v = SD.villageArt && SD.villageArt.chars[id];
     if (v) return Object.assign({ src: 'assets/img/village/c-' + id + '.webp' }, v);
+    // Islanders, inside their buildings on the Isles (js/interiors.js).
+    const i = SD.isles && SD.isles.ART && SD.isles.ART.chars[id];
+    if (i) return Object.assign({ src: 'assets/img/isles/c-' + id + '.webp' }, i);
     return null;
   }
   // Terrain sheets: Pingsby's (dirt, water, plaza, farm over grass) or a dungeon floor's (path over floor).
