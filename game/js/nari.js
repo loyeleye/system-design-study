@@ -188,7 +188,7 @@
   // ---------- The Eventual Isles ----------
   // One spot per early wave, on that wave's newest island; the Isles only show her once the island is open. On Ferry
   // Landing she dances on the open grass south-west of the Tide Pool Game Club.
-  const ISLES = { isles1: [6, 47, 'east'], isles2: [33, 19, 'south'] };
+  const ISLES = { isles1: [6, 47, 'east'], isles2: [38, 14, 'north'] };
   const IS = SD.isles;
   if (IS && IS.addPerson) {
     const im = new Image();
