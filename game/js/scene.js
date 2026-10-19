@@ -422,9 +422,13 @@
       const wk = SD.weather ? SD.weather.now(def.weather) : 'clear';
       if (def.clouds && SD.sky) { ctx.restore(); SD.sky.shadows(ctx, t, vw, vh, cx, cy, wk); ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy)); }
       if (SD.clock && (def.clock === true || (sc.P && def.clock !== false))) {
-        // The time of day under the signs and names, dimmed where the map's own sky is already dark.
+        // The time of day under the signs and names, dimmed where the map's own sky is already dark. Indoors it
+        // stays on the room itself, with no sunbeams: the sunset shows through the windows instead.
         ctx.restore();
-        SD.clock.shade(ctx, vw, vh, lights(objs, cx, cy), { dimmed: ['dark', 'night', 'storm'].includes(sk) ? 0.7 : 0 });
+        ctx.save();
+        if (def.indoors) { ctx.beginPath(); ctx.rect(-Math.round(cx), -Math.round(cy), W * ts, HT * ts); ctx.clip(); }
+        SD.clock.shade(ctx, vw, vh, lights(objs, cx, cy), { dimmed: ['dark', 'night', 'storm'].includes(sk) ? 0.7 : 0, rays: !def.indoors });
+        ctx.restore();
         ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
       }
       (def.labels || []).forEach(l => { if (!l.hidden) label(l.x, l.y, l.text, l.marker); });

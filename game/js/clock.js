@@ -121,8 +121,9 @@
   // How dark it looks (0 by day, 1 at night): maps use it to dim sky layers and decide whether lamps are lit.
   C.dark = () => look().dark;
   let off = null;
-  // lights: [{ x, y, r, rgb? }] in screen pixels. opts: { block, dimmed } where dimmed (0..1) scales the tint down
-  // for maps that are already dark (the North Road's night skies), so lamps still glow but nothing goes black.
+  // lights: [{ x, y, r, rgb? }] in screen pixels. opts: { block, dimmed, rays } where dimmed (0..1) scales the tint down
+  // for maps that are already dark (the North Road's night skies), so lamps still glow but nothing goes black, and
+  // rays: false leaves out the sunset's beams (indoors).
   // The sunset, like an RPG Maker sunset parallax: a sky glow from the top-left corner, dusk gathering in the far
   // corner, and two layers of beams that sway and drift at different speeds, with motes of dust floating through
   // them. k (0..1) is how strong it is, so it fades in and out with the clock.
@@ -255,7 +256,7 @@
         ctx.drawImage(off, 0, 0, vw, vh);
       }
     }
-    if (T.rays > 0.01) sunset(ctx, vw, vh, T.rays);
+    if (T.rays > 0.01 && opts.rays !== false) sunset(ctx, vw, vh, T.rays);
     if (T.lamp < 0.01 || !lights) return;
     // Then the warm glow itself, added on top.
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
