@@ -36,7 +36,7 @@
     m.rect(1, 0, 28, 5, 'w'); m.rect(10, 1, 19, 6, '#'); m.put(14, 7, 'X'); m.put(15, 7, 'X');   // the city wall and gate
     m.rect(5, 19, 8, 21, 'b'); m.put(7, 22, 'C');
     m.rect(5, 27, 8, 28, 'b');                               // courier post
-    m.rect(19, 15, 23, 17, 'b'); m.put(21, 18, 'B');         // Lyra's theatre, with her stage inside
+    m.rect(20, 15, 22, 17, 'b'); m.put(21, 18, 'B');         // Lyra's theatre, with her stage inside
     m.rect(18, 39, 22, 40, 'b');                             // Marta's caravan
     m.rect(15, 32, 16, 32, 'b');                             // the pilgrim's shrine
     m.rect(22, 30, 26, 32, '~'); m.rect(3, 40, 6, 42, '~');
@@ -47,7 +47,7 @@
       top: ['water', 'd10', 'dirt'], solid: 'T#~wb', bg: '#5fbf5f',
       doors: { S: 'S', L: 'L', R: 'R', K: 'K', X: 'X', C: 'C', B: 'B' },
       doorFor: (x, y) => (x >= 10 && x <= 19 && y <= 7) ? [14, 8] : (x >= 5 && x <= 9 && y >= 17 && y <= 21) ? [7, 23]
-        : (x >= 19 && x <= 23 && y >= 14 && y <= 17) ? [21, 19] : null,
+        : (x >= 20 && x <= 22 && y >= 13 && y <= 17) ? [21, 19] : null,
       objects: [
         { name: 'nr-roofs', x: 3, y: 2.2 }, { name: 'nr-roofs', x: 8, y: 1.6 }, { name: 'nr-roofs', x: 21, y: 1.6 }, { name: 'nr-roofs', x: 26, y: 2.2 },
         { name: 'nr-roofs', x: 14.5, y: 0.6 },
@@ -55,7 +55,7 @@
         { name: 'nr-citygate', x: 14.5, y: 7 },
         { name: 'nr-cardshop', x: 6.34, y: 22 },
         { name: 'nr-courierpost', x: 6.5, y: 28 },
-        { name: 'nr-theatre', x: 21, y: 17.75 },
+        { name: 'nr-theatre', x: 21, y: 17.84 },
         { name: 'nr-caravan', x: 20, y: 40 },
         { name: 'nr-arch', x: 2, y: 34 }, { name: 'nr-arch', x: 27, y: 24 }, { name: 'nr-arch', x: 2, y: 12 },
         { name: 'nr-signpost', x: 11, y: 34 }, { name: 'nr-signpost', x: 17, y: 24 }, { name: 'nr-signpost', x: 13, y: 12 },

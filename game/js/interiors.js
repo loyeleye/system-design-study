@@ -522,15 +522,19 @@
     // ---------- Lyra's theatre, on the North Road (js/northroad.js door B) ----------
     // A little playhouse: Lyra on her stage at the back, three rows of benches and an aisle up the middle. She is in
     // here whenever the road's schedules (js/folk-far.js) have sent her indoors, which is all day unless a quest
-    // keeps her outside. Talking to her is the same as on the road (quest steps, scenes and her own lines).
+    // keeps her outside. Hari busks on her stage until Lost and Found finds him (js/rollouts-quests.js), and Explodia
+    // sleeps here at night and shelters here in the storm, under Lyra's one house rule. Talking to anyone is the same
+    // as on the road (quest steps, scenes and their own lines), with a word about the rule while Explodia is in.
     theatre: {
       name: "LYRA'S THEATRE",
       map: ['############', '############', '############', '###.......##', '#####..#####',
         '######.#####', '######.#####', '######.#####', '#####DD#####'],
       enter: [6, 7, 'north'],
-      spots: { lyra: [6, 3, 'south'] },
-      names: { lyra: 'LYRA' },
-      people: () => SD.northRoad && SD.northRoad.indoors ? SD.northRoad.indoors().filter(id => id === 'lyra') : [],
+      spots: { lyra: [6, 3, 'south'], hari: [4, 3, 'south'], explodia: [3, 3, 'east'] },
+      names: { lyra: 'LYRA', hari: 'HARI', explodia: 'EXPLODIA' },
+      people: () => SD.northRoad && SD.northRoad.indoors ? SD.northRoad.indoors().filter(id => ['lyra', 'hari', 'explodia'].includes(id)
+        // Hari only while he's sent in here (Lost and Found), not when the troupe is just off the road.
+        && (id !== 'hari' || (SD.nariHome && JSON.stringify(SD.nariHome.where('hari')) === '["in","road",21,18]'))) : [],
       lights: [{ x: 1.8, y: 4.3, r: 2.4 }, { x: 10.2, y: 4.3, r: 2.4 }, { x: 4.2, y: 3.8, r: 2.2, rgb: '255,170,80' }, { x: 8.2, y: 3.8, r: 2.2, rgb: '255,170,80' }],
       props: [
         { x: 2, y: 3, t: () => ['A playbill: "THE BALLAD OF EVERYONE. Tonight: verses 1 to 212. Tomorrow: verse 213. Bring a cushion."'] },
@@ -538,7 +542,7 @@
         { x: 5, y: 5, t: () => ['The front bench. Someone has carved "RESERVED FOR WHOEVER STAYS FOR THE SECOND VERSE" into it.'] },
         { x: 7, y: 5, t: () => ['A bench polished smooth by years of audiences. Under it: a button, two shards and a very old programme.'] }
       ],
-      talk: id => SD.northRoad.say(id)
+      talk: id => theatreTalk(id)
     }
   };
   // Lord Latency and his guest, indoors for the night: a quest step first, as on the road; otherwise a sleepy word.
@@ -546,6 +550,32 @@
     latency: ['...You are up... late. The tea... is nearly ready. Nearly is... a long word.', '...Every round trip... is a little journey. I like to... savour them.'],
     v1: ['I asked for tea at noon. Lord Latency says it\'s "in flight". I\'ve decided to stay the night.', 'The bed is lovely. The pillow arrived about an hour after I lay down.']
   };
+  // Explodia in Lyra's theatre for the night, or out of the storm: the one rule of the house is no explosions.
+  const THEATRE = {
+    night: {
+      lyra: [['lyra', 'She sleeps here when the crater gets cold. One house rule: no explosions indoors. She signed it. In crayon. With a little drawing of an explosion.'],
+        ['lyra', 'She counts down in her sleep. Three, two, one... and then nothing. I\'ve started setting it to music. It\'s my best ending.']],
+      explodia: [['narr', 'Explodia is curled up at the edge of the stage, hat pulled over her face. Her notebook is open: "Blasts today: 1. Blasts tonight: 0. Lyra\'s rule. Feels weird."'],
+        ['explodia', '*mumbling* ...three... two... *snore* ...no, Lyra, a SMALL one... *snore*']]
+    },
+    storm: {
+      lyra: [['lyra', 'The sky has been exploding all night, and the one person here who loves a loud noise has promised to be quiet. Strangest show I\'ve ever played.'],
+        ['lyra', 'I let her keep one candle lit. She is staring at it like it owes her money. She hasn\'t blown it up. I\'m so proud of her.']],
+      explodia: [['explodia', 'The sky is doing explosions and I\'m not allowed to. Worst night of my life.', 'sad'],
+        ['explodia', 'Every thunderclap, I write it down. Blast 1: sky. Blast 2: sky. Crater: none. Amateur.']]
+    }
+  };
+  let theatreI = 0;
+  async function theatreTalk(id) {
+    const when = storm() ? 'storm' : block() === 'night' ? 'night' : null;
+    const lines = when && people('theatre').includes('explodia') && THEATRE[when][id];
+    // Quest steps and scenes first, then a word about the house rule every other time.
+    if (lines && !(SD.quests && SD.quests.pending(id).length) && theatreI++ % 2 === 0) {
+      const [s, t, e] = lines[(theatreI >> 1) % lines.length];
+      return U.dialog([{ s, t, e }]);
+    }
+    return SD.northRoad.say(id);
+  }
   let innI = 0;
   async function innTalk(id) {
     if (SD.quests && SD.quests.pending(id).length) return SD.quests.talk(id);

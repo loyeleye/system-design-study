@@ -175,9 +175,9 @@
           no: ['Two servers mean two caches, and neither has seen the key yet. The claim must happen once, in one shared store.', 'That is check-then-act: both look, both find nothing, and both book. The lookup and the claim must be one atomic step.', null, 'Routing by key helps, but servers restart and rebalance, and one server can still run two requests at once. The unique insert is the real guard.'],
           why: 'A key only protects you if claiming it is atomic. Insert the key, marked in progress, under a unique constraint as the very first step. The request that wins books the room and saves the result; the other either waits and gets that result, or is told the first is still in progress (Stripe answers 409). Keep keys for a day or so.' } },
         { say: [['neel', 'I shall go home at once. My left foot, incidentally, is tapping in four-four time. That means Hari is busking. North, by the feel of it.'],
-          ['neel', 'When Hari is broke, he busks. He has been broke since birth. Lyra\'s stage, on the North Road. Per my... per my foot.']] }] },
-      { at: 'hari', hint: 'Find Hari, busking at Lyra\'s stage on the North Road. The board says the diner. The board is wrong.', do: [
-        { say: [['narr', 'At Lyra\'s stage on the North Road, a loud young man in a green sash dances for coins. The hat in front of him holds two shards and a button.'],
+          ['neel', 'When Hari is broke, he busks. He has been broke since birth. Lyra\'s theatre, on the North Road. Per my... per my foot.']] }] },
+      { at: 'hari', hint: 'Find Hari, busking inside Lyra\'s theatre on the North Road. The board says the diner. The board is wrong.', do: [
+        { say: [['narr', 'Inside Lyra\'s theatre on the North Road, a loud young man in a green sash dances on her stage for coins. The hat in front of him holds two shards and a button.'],
           ['hari', 'ALL IS WELL! Hello! Coins in the hat, requests at the front, complaints to my brother!', 'happy'],
           ['lyra', 'He\'s been here since noon. Wonderful energy. Like everyone in that troupe, he leaves before the second verse.'],
           ['hari', 'I sent twelve shards from my wallet to the diner for soup. They left my wallet. They never reached the diner. The Cloud went down in the middle.'],
