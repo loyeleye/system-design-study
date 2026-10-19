@@ -1525,7 +1525,7 @@
     const b = U.panel(`<div class="verdict ${won ? 'ok' : 'bad'}">${won ? 'DUNGEON CLEARED!' : 'YOU DIED (AGAIN)'}</div>
       <div class="loot"><span>${run.log.fights} incidents resolved</span><span>${run.log.right} right · ${run.log.misses} missed</span><span>+${run.log.xp} XP</span></div>
       ${rows ? `<p class="muted small">Concepts you worked with</p><ul class="links">${rows}</ul>` : ''}
-      ${pinsUsed ? `<p class="muted small">Kagemaru's ${pinsUsed === 1 ? 'pinned card goes' : pinsUsed + ' pinned cards go'} back to his coat. ${won ? '"Heh. Worth every shard."' : '"Heh. Better luck next loop."'}</p>` : ''}
+      ${pinsUsed ? `<p class="muted small">Kagemaru's ${pinsUsed === 1 ? 'pinned card goes' : pinsUsed + ' pinned cards go'} back to him. ${won ? '"Ah ha ha. Worth every shard."' : '"Ah ha ha. Better luck next loop."'}</p>` : ''}
       <p class="muted small">You spent about ${mins} minute${mins === 1 ? '' : 's'} in focused mode. Take five away from the screen before the next run; your brain keeps working on it in diffuse mode.</p>
       <button class="primary" id="pm-ok">Continue</button>`, { title: 'POSTMORTEM', noClose: true });
     b.querySelector('#pm-ok').onclick = async () => {

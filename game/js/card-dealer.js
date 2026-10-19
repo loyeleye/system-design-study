@@ -1,15 +1,15 @@
-// Kagemaru, the card fixer: a black-market dealer in a small cave in the Eventual Isles' northern hills (the cave is
-// a landmark in js/isles/isles-map.js). From chapter 3 he "pins" cards into your starting deck, off the books: any card
+// Kagemaru, the card fixer: a black-market dealer inside a small cave in the Eventual Isles' northern hills (the cave
+// is a landmark in js/isles/isles-map.js; walking into its mouth opens the room below, through js/interiors.js). From chapter 3 he "pins" cards into your starting deck, off the books: any card
 // that can turn up as a card reward (S.unlockedCards: the cards you bought from Toro or Aigerim, S.cardPool, and the
 // ones your level and chapters unlocked). A pin costs a tenth of what the card costs to unlock at a shop (SD.cardPrice
 // in js/card-exchange.js), or of a price by rarity for cards no shop sells. Pinned cards join the starting deck on top
 // of the usual one, for the next run only: when that run ends (cleared, lost or abandoned), every pin that was in it is
 // gone. A pin bought during a run waits for the next one. One copy of each card. No refunds.
 //
-// His manner is modelled on Kisuke Urahara (Bleach): the giggling, overly polite shopkeeper who sells things nobody
-// should have, is never quite serious, and enjoys a catastrophe a little too much. His look is his own (PixelLab art,
-// tools/dealer_art.py): a red ponytail, round purple glasses, a flat cap and a long black coat lined with cards.
-// During chapter 10 he leaves the cave for the Exchange (js/northroad-exchange.js's map), snickers at the end of the
+// His manner is Ladi's mix of Kabuto (Naruto), soft-spoken, endlessly helpful and quietly sinister, and Envy
+// (Fullmetal Alchemist), who sneers at humans and laughs at their misery. He is completely hooded: under the hood is a
+// shadow and a grin, nothing else (PixelLab art, tools/dealer_art.py), and he stands smaller than everyone else.
+// During chapter 10 he leaves the cave for the Exchange (js/northroad-exchange.js's map), laughs at the end of the
 // world while everyone else worries (js/ch10-folk.js), and takes 25% off his pins for the occasion.
 //
 //   S.save.pins            [{ id, live }]: live once a run has started with it; only live pins are spent
@@ -44,48 +44,49 @@
   Object.assign(SD.cast, {
     kagemaru: { name: 'Kagemaru', title: 'Card Fixer · Strictly Off the Books', hue: 280, hair: 'long', eye: '#2b2340' }
   });
-  // His PixelLab bust (assets/img/portraits/kagemaru-neutral.webp): one mood, the grin.
+  // His PixelLab bust (assets/img/portraits/kagemaru-neutral.webp): one mood, the grin under the hood.
   const art = { portrait: SD.art.portrait, painted: SD.art.painted, mood: SD.art.mood };
   SD.art.painted = who => who === 'kagemaru' || art.painted(who);
   SD.art.mood = (who, text, e) => who === 'kagemaru' ? 'neutral' : art.mood(who, text, e);
   SD.art.portrait = (who, size, mood) => who !== 'kagemaru' ? art.portrait(who, size, mood)
     : `<span class="bust b-kagemaru" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/kagemaru-neutral.webp" alt="" draggable="false"></span>`;
-  // His map sprite (one standing frame a direction) and the cave, for the road's scenes and the Isles.
-  if (SD.arcArt) SD.arcArt.chars.kagemaru = { w: 22, h: 50, n: [0, 0, 0, 0], walk: 1 };
+  // His map sprite (one standing frame a direction), the cave on the Isles and the room inside it.
+  if (SD.arcArt) SD.arcArt.chars.kagemaru = { w: 23, h: 44, n: [0, 0, 0, 0], walk: 1 };
   if (SD.isles && SD.isles.ART) SD.isles.ART.objects.cave = [124, 88];
+  if (SD.interiorsArt) SD.interiorsArt.rooms.cave = [384, 288];
 
   // Most people find him in the cave; anyone who first meets him at the Exchange gets the street-corner version.
   const MEET = where => [
-    where === 'exchange' ? { s: 'kagemaru', t: 'Oh! A customer! Step in out of the rain. Well, there is no in. Stand closer to the lamp. Heh heh.' }
-      : { s: 'kagemaru', t: 'Oh! A customer! Come in, come in. Mind the stalactite. Heh heh. Nobody ever minds the stalactite.' },
-    { s: 'you', t: where === 'exchange' ? 'Is this... a shop? On a street corner?' : 'Is this... a shop? In a cave?' },
-    { s: 'kagemaru', t: 'A shop? Goodness, no. Shops pay taxes. This is a cave where a humble man happens to know some things. Kagemaru. Card fixer. Strictly off the books.' },
-    { s: 'kagemaru', t: 'Any card that can turn up after your fights, I can slip into your starting deck. From your next run. For a tenth of what the shops charge to unlock it. A bargain! Heh.' },
-    { s: 'kagemaru', t: 'The fine print, which I wrote very small: one run only. Win, die or walk out, and every card I slipped into it comes back to me. No refunds. Heh heh.' },
-    { s: 'kagemaru', t: 'And not a word to Toro. Or Aigerim. Especially Aigerim. She writes everything down.' }
+    where === 'exchange' ? { s: 'kagemaru', t: 'Oh, a visitor. Here, under the lamp, please. You could catch something out in this rain. Like hope. Ah ha ha.' }
+      : { s: 'kagemaru', t: 'Oh, a visitor. Please, come in. Mind your head on the rock. I\'d hate for anything to happen to you. Before you\'ve paid.' },
+    { s: 'you', t: 'Who... are you?' },
+    { s: 'kagemaru', t: 'Just a humble helper. Call me Kagemaru. I help people get what they want. It\'s what I\'m for.' },
+    { s: 'kagemaru', t: 'Any card that can turn up after your fights, I can slip into your starting deck for your next run. A tenth of what the shops charge to unlock it. I\'m practically giving it away.' },
+    { s: 'kagemaru', t: 'One run only. Win it, die in it or run home crying, and the card comes back to me when it\'s over. No refunds. Ah ha ha! Sorry. That was the fine print laughing.' },
+    { s: 'kagemaru', t: 'Don\'t look so suspicious. I\'m on your side. I\'m on everyone\'s side. That\'s what makes it so funny.' }
   ];
   const STORM = [
-    { s: 'kagemaru', t: 'Heh heh heh! The Cloud is down, the sky is falling, and everyone is hiding under their beds. Isn\'t it marvellous?' },
-    { s: 'kagemaru', t: 'Everyone else is worried. I\'m worried too. Worried I won\'t get to see how it ends! Heh heh heh.' },
-    { s: 'kagemaru', t: 'The end of the world only happens once. Usually. So for this special occasion, every pin is 25% off. Don\'t say I never gave you anything. I give you lots of things. For money.' }
+    { s: 'kagemaru', t: 'Ah ha ha ha! Look at them! Boarding up their windows, praying to a Cloud that isn\'t there. Humans are so precious when they\'re scared.' },
+    { s: 'kagemaru', t: 'Worried? Me? This is the best night of my life. I wouldn\'t miss the end of the world for anything. I have a front-row seat.' },
+    { s: 'kagemaru', t: 'And since it\'s such a special occasion, I\'m feeling generous. 25% off every pin. Think of it as a gift. You can repay me later. Everyone always does.' }
   ];
   const HELLO = [
-    'Heh heh. Back so soon? The cave missed you. I didn\'t. The cave did.',
-    'Psst. You look like someone whose deck is missing one card. Just one. I have that card. Heh.',
-    'Business hours? Whenever you happen to wander in. Funny how that works.'
+    'Back again? I knew you would be. They always come back. Now, how can I help?',
+    'You look tired. Your deck looks tired too. Let me help. I\'m very helpful. Ask anyone. Well, anyone who\'s still around.',
+    'Shh. Keep your voice down. The cave has ears. Mine. Ah ha ha.'
   ];
   const HELLO_STORM = [
-    'The lights are out all over the realm! Hear that? That\'s the sound of nobody checking my licence. Heh heh heh.',
-    'Kyu\'s tower is dark and it\'s raining on the market. Perfect weather for a deal. 25% off, for the end of the world!',
-    'Everyone\'s boarding up their windows. I\'m boarding up my prices. Downwards! Heh heh heh.'
+    'Ah ha ha! Did you hear the thunder? That was the sky giving up. Isn\'t it wonderful?',
+    'Everyone in this city is so scared. And here I am, helping. 25% off. Aren\'t I kind?',
+    'Kyu\'s tower went dark. Pity. I was starting to like the view. Ah ha ha ha.'
   ];
   const PIN = [
-    'Pinned! It\'ll be waiting in your deck. Do try not to die. Heh.',
-    'A fine choice. I\'ll keep it warm. In my coat. Next to my other secrets.',
-    'Done. If anyone asks, it was in your deck all along. Heh heh.'
+    'Pinned. Do take good care of it. For one whole run. Ah ha ha.',
+    'A wise choice. I would never steer you wrong. Not where you\'d notice.',
+    'Done. It\'s in your deck for the next run, and then it\'s mine again. Like everything, eventually.'
   ];
-  D.lines = () => D.sale() ? ['Heh heh heh. The world is ending and the rent is due. Which one do you think I\'m worried about?']
-    : ['The cave? I found it. Finders keepers. That\'s the whole lease.', 'I am a perfectly ordinary man in a perfectly ordinary cave. Heh heh.'];
+  D.lines = () => D.sale() ? ['The world is ending and the rent is still due. Ah ha ha! Which one do you think I care about?']
+    : ['I used to look like someone else. I forget who. It doesn\'t matter. A face is only a costume.', 'I\'m only a humble helper. See? I\'m smiling. I\'m always smiling.'];
 
   // ---------- The deal ----------
   // Resolves false for "Just chat", else truthy. `where` is 'exchange' in chapter 10, else the cave.
@@ -131,27 +132,29 @@
     });
   };
 
-  // ---------- In the cave, on the Isles ----------
-  // He stands in the cave's mouth (5, 2), from chapter 3 until chapter 10 calls him away.
-  const IS = SD.isles;
-  if (IS && IS.addPerson) {
-    const im = new Image();
-    const p = { id: 'kagemaru', x: 5, y: 2, face: 'south' };
-    p.here = () => D.here() && !D.sale();
-    Object.defineProperty(p, 'label', { get: () => flags().kageMet ? 'KAGEMARU' : '???' });
-    // The Isles' people stand taller than the road's, so he is drawn half as big again.
-    p.draw = (ctx, x, y, ts) => {
-      const c = SD.arcArt && SD.arcArt.chars.kagemaru;
-      if (!c) return;
-      if (!im.src) im.src = 'assets/img/arc/c-kagemaru.webp';
-      if (!im.complete || !im.naturalWidth) return;
-      const k = 1.5 * ts / 32, w = c.w * k, h = c.h * k;
-      ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(x, y - ts / 32, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.drawImage(im, 0, 0, c.w, c.h, x - w / 2, y - h, w, h);
-    };
-    p.speak = async () => { if (!(await D.open())) await U.dialog([{ s: 'kagemaru', t: pick(D.lines()) }]); };
-    IS.addPerson(p);
-  }
+  // ---------- Inside the cave, on the Isles ----------
+  // His room behind the cave mouth: he waits at the end of his card table, from chapter 3 until chapter 10 calls him
+  // away, when only his note is left on it.
+  if (SD.interiors && SD.interiors.ROOMS) SD.interiors.ROOMS.cave = {
+    name: 'THE CAVE', ambience: null,
+    map: ['############', '############', '############', '############', '####...#####',
+      '###......###', '###.......##', '####.....###', '#####DD#####'],
+    enter: [5, 7, 'north'],
+    spots: { kagemaru: [6, 4, 'south'] },
+    names: { kagemaru: 'KAGEMARU' },
+    people: () => D.here() && !D.sale() ? ['kagemaru'] : [],
+    lights: [{ x: 8.1, y: 2.6, r: 3, rgb: '255,190,110' }, { x: 2.4, y: 4.8, r: 1.8, rgb: '255,150,80' }, { x: 5.4, y: 2.7, r: 1.4, rgb: '255,190,110' }],
+    props: [
+      { x: 7, y: 4, t: () => D.sale() ? ['A note on the card table, in very neat handwriting: "Gone to watch the world end. Front row. Do try to keep up."', 'Someone has drawn a little smile under it.']
+        : ['Cards fanned out on the table, face down. Turn one over and it is a card you own. Turn it back and it is not.'] },
+      { x: 8, y: 4, t: () => ['A lantern on the table, turned down low. It lights his hands and nothing above them.'] },
+      { x: 3, y: 4, t: () => ['A crate stamped DEFINITELY NOT CARDS. It rattles like a deck being shuffled.'] },
+      { x: 2, y: 5, t: () => ['Three red candles on a box, burnt down unevenly. Nobody has ever seen him light them.'] },
+      { x: 3, y: 7, t: () => ['A heavy chest with three locks. A label says RECEIPTS. Something inside it laughs when you knock.'] },
+      { x: 10, y: 6, t: () => ['A tall crate of masks, all of the same smiling face. None of them is his. Probably.'] }
+    ],
+    talk: async () => { if (!(await D.open('cave'))) await U.dialog([{ s: 'kagemaru', t: pick(D.lines()) }]); }
+  };
 
   // ---------- At the Exchange, in chapter 10 ----------
   // In the market's east corner, out of the way of the troupe's show, Nari's door, Toro and the relic trader.
