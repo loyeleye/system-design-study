@@ -131,7 +131,7 @@
             ['akane', 'I was checking the weather.'],
             ['hypewagon', 'The arena is EAST! The weather is UP!'],
             ['akane', 'Robert. Narrate the weather.', 'angry'],
-            ['hypewagon', 'IT IS RAINING! AS IT ALWAYS IS AT THE CAMP! WHAT A TERRIFYING CONSISTENCY!'],
+            ['hypewagon', 'IT IS GREY! AND WINDY! AS IT ALWAYS IS AT THE CAMP! WHAT A TERRIFYING CONSISTENCY!'],
             ['narr', 'Akane looks east again. Hypewagon opens his mouth. She looks at him. He closes it.']],
           diary: 'Hypewagon narrated President Akane. Nobody narrates me. I narrate you. It evens out.' },
         { title: 'The Note', at: 'road:camp', block: ['morning', 'afternoon', 'evening'], when: c => c.f.ch9,
