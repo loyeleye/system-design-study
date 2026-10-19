@@ -662,6 +662,8 @@
       + (rel('openingbell') ? 1 : 0);   // the Exchange's relics (js/relic-exchange.js)
     C.energy = Math.max(0, mod('energy', C.energy, C));
     C.carry = 0;
+    // Toro's cards (js/card-exchange.js) can hand Capacity on to the next turn.
+    if (C.nextCap) { C.energy += C.nextCap; C.nextCap = 0; }
     if (grouped()) { stash(); C.foes.forEach(f => { if (f.vuln) f.vuln--; }); load(C.fi); } else if (C.vuln) C.vuln--;
     // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
     if (!C.infra.some(c => SD.cards[c.id].keepSh)) C.sh = zero();
@@ -689,13 +691,14 @@
     if (why) C.log = why;
   }
 
-  async function playCard(i) {
-    if (C.over || C.busy) return;
-    const c = C.hand[i]; if (!c) return;
-    const d = SD.cards[c.id], cost = costOf(c);
+  // `again` is a card already played, going again for its Replay: free, and it stays where it went.
+  async function playCard(i, again) {
+    if (C.over || (C.busy && !again)) return;
+    const c = again || C.hand[i]; if (!c) return;
+    const d = SD.cards[c.id], cost = again ? 0 : costOf(c);
     if (cost > C.energy) { C.log = 'Not enough Capacity.'; renderCombat(); return; }
     C.energy -= cost;
-    C.hand.splice(i, 1);
+    if (!again) C.hand.splice(i, 1);
     C.played = (C.played || 0) + 1;   // for the Rollouts' Metronome
     AU.sfx(d.abs || d.each ? 'shield' : 'card');
     const sv = S.save, up = c.up ? 3 : 0;
@@ -738,6 +741,9 @@
     // Shop cards (Ayo's Card Forge)
     if (d.selfDmg) sv.run.sla = Math.max(1, sv.run.sla - d.selfDmg);
     if (d.gain) C.energy += d.gain;
+    if (d.nextCap) C.nextCap = (C.nextCap || 0) + d.nextCap;
+    // Hidden Gem: a random action waiting in your draw pile gains Replay for the rest of this fight.
+    if (d.gem) { const pool = (C.draw.length ? C.draw : C.disc).filter(x => SD.cards[x.id].kind !== 'infra'), g = pool[Math.floor(Math.random() * pool.length)]; if (g) { g.replay = (g.replay || 0) + d.gem; msg = `Hidden gem: ${SD.cards[g.id].name} gains Replay ${d.gem}.`; } }
     if (d.doubleSh) for (const k in C.sh) C.sh[k] *= 2;
     if (d.xcost) { const n = C.energy; C.energy = 0; mitigate(boost((d.xmit + (c.up ? 2 : 0)) * n), n ? '' : 'No Capacity left to spend.', 'hit'); }
     if (d.slam) mitigate(boost(Object.values(C.sh).reduce((a, b) => a + b, 0) + up), '', 'crit');
@@ -767,7 +773,8 @@
     // A fuse (the Error Budget Bomb) goes off at the end of your turn, `turns` turns from now, on every incident.
     if (d.fuse) C.fuses.push({ id: c.id, left: d.fuse.turns, mit: d.fuse.mit });
     if (d.concept) S.seeConcept(d.concept);
-    if (d.kind === 'infra') {
+    if (again) { /* a replay: the card has already gone where it goes */ }
+    else if (d.kind === 'infra') {
       if (C.infra.length >= 4) C.disc.push(C.infra.shift());
       C.infra.push(c);
       // Infra that absorbs each turn also helps on the turn it lands
@@ -778,6 +785,8 @@
     C.turnPlayed = (C.turnPlayed || 0) + 1; C.played = (C.played || 0) + 1;
     if (rel('sequencer') && C.turnPlayed % 3 === 0) C.sh.any += 4;
     if (rel('orderbook') && C.played % 10 === 0) drawN(1);
+    // Replay: the card's effects go again, one at a time, until the incident is down.
+    if (!again && d.kind !== 'infra') for (let k = (d.replay || 0) + (c.replay || 0); k > 0; k--) { if (settle()) return; await playCard(-1, c); if (C.over) return; }
     if (msg) C.log = msg;
     if (settle()) return;
     if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {
@@ -1080,7 +1089,8 @@
   function endTurn() {
     if (C.over || C.busy) return;
     // Pinned Tabs keeps your hand; the Leftover Croissant keeps unspent Capacity.
-    if (!rel('pinned')) { C.disc.push(...C.hand); C.hand = []; }
+    // Cards with Retain (js/card-exchange.js) stay in your hand either way.
+    if (!rel('pinned')) { const keep = C.hand.filter(h => SD.cards[h.id].retain); C.disc.push(...C.hand.filter(h => !keep.includes(h))); C.hand = keep; }
     if (rel('croissant')) C.carry = C.energy;
     // The Escrow Vault holds something back when nothing else is up.
     if (rel('escrow') && !Object.values(C.sh).some(v => v > 0)) C.sh.any += 6;

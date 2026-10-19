@@ -145,7 +145,7 @@
     const cost = d.xcost ? 'X' : opts.cost != null ? opts.cost : d.cost;
     return `<div class="card ${d.kind} r-${d.rarity}${opts.dim ? ' dim' : ''}" style="--h:${hue}" data-i="${opts.i != null ? opts.i : ''}" tabindex="0" role="button" aria-label="${U.esc(d.name)}, cost ${cost}. ${U.esc(text)}">
       <div class="c-cost">${cost}</div>
-      <div class="c-name">${U.esc(d.name)}${c.up ? '+' : ''}</div>
+      <div class="c-name">${U.esc(d.name)}${c.up ? '+' : ''}${c.replay ? ` <b title="Replay ${c.replay}">⟳${c.replay}</b>` : ''}</div>
       <div class="c-art">${SD.art.glyph(d.art, `hsl(${hue},70%,38%)`)}</div>
       <div class="c-kind">${d.kind === 'infra' ? 'INFRA' : 'ACTION'}${d.concept ? ' · ' + U.esc(SD.concepts[d.concept].name) : ''}</div>
       <div class="c-text">${U.esc(text)}</div></div>`;
