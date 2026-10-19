@@ -3,6 +3,7 @@
 usage: isles_art.py SRC_DIR
 SRC_DIR holds the raw PixelLab files:
   chars/<id>/{south,west,east,north}.png  the 4-direction rotations, plus south-<n>.png idle frames
+                                         or <dir>-walk-<n>.png walk frames for all four directions
   objs/<name>.png                         map objects (landmarks and props)
   port/<id>-<mood>.png                    128px busts: a character_to_portrait of the south sprite, then
                                           edit_image for the happy, angry and confused expressions
@@ -32,14 +33,17 @@ art = json.loads(old.group(1)) if old else {'chars': {}, 'objects': {}}
 has = lambda *p: os.path.exists(os.path.join(SRC, *p))
 
 # Characters: rows face south, west, east and north. Column 0 is the standing pose, then the idle frames facing
-# south, the same layout as the village sheets (tools/village_art.py).
+# south, the same layout as the village sheets (tools/village_art.py). A character with walk frames gets those in
+# every row instead, and walk: 1 so the maps play them only while she's walking.
 for name in sorted(os.listdir(os.path.join(SRC, 'chars'))):
     d = os.path.join(SRC, 'chars', name)
     load = lambda f: Image.open(os.path.join(d, f)).convert('RGBA')
     rows = [[load(dr + '.png')] for dr in ['south', 'west', 'east', 'north']]
-    n = 0
-    while os.path.exists(os.path.join(d, f'south-{n}.png')):
-        rows[0].append(load(f'south-{n}.png')); n += 1
+    walk = os.path.exists(os.path.join(d, 'south-walk-0.png'))
+    for ri, dr in enumerate(['south', 'west', 'east', 'north'] if walk else ['south']):
+        n, f = 0, (dr + '-walk-{}.png' if walk else 'south-{}.png')
+        while os.path.exists(os.path.join(d, f.format(n))):
+            rows[ri].append(load(f.format(n))); n += 1
     box = None
     for r in rows:
         for im in r:
@@ -56,7 +60,7 @@ for name in sorted(os.listdir(os.path.join(SRC, 'chars'))):
     save(out, 'c-' + name)
     # Dieynaba (id 'valentin') stands in Pingsby and Ren on the North Road (js/ploy-quest.js): their sheets go where those maps look.
     if name in TOWN: out.save(os.path.join(GAME, 'assets/img', TOWN[name], f'c-{name}.webp'), lossless=True, quality=100, method=6)
-    art['chars'][name] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows]}
+    art['chars'][name] = dict({'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows]}, **({'walk': 1} if walk else {}))
 
 for f in sorted(os.listdir(os.path.join(SRC, 'objs')) if has('objs') else []):
     im = crop(Image.open(os.path.join(SRC, 'objs', f)).convert('RGBA'))

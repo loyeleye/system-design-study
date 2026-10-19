@@ -139,7 +139,7 @@ The schedule uses these spots. Tile positions are today's, from `game/js/hub.js`
 - **Backstory.** **(new)** Cron's father ran the farm on one rule: everything at midnight, because midnight is when the work is easiest to remember. With one sprinkler and one cow, it worked. Cron inherited the rule along with forty cows, a dozen sprinklers and the almanac, so every midnight the whole valley rushes the well at once. He's kind, stubborn and a little lonely. He's awake when the whole town is asleep, and quest 7 is where he first admits midnight is negotiable.
 - **Voice.** "Sonny." Slow, folksy, and suddenly precise about timing.
 - **At home.** The farm: his father's almanac, a cuckoo clock set slightly wrong on purpose (**new**), and a cow named after every day of the week.
-- **Relationships.** Doug (arc 5).
+- **Relationships.** Doug (arc 5). Grows a row of mint for Dieynaba's attaya.
 
 ### Kaito
 
@@ -155,7 +155,7 @@ The schedule uses these spots. Tile positions are today's, from `game/js/hub.js`
 - **Backstory.** **(new)** Doug isn't a villain. He's a man who can't stand doing the same thing twice by hand. He came to Pingsby to be first in line for good quests, and found out that being first by cheating isn't fun. Kevin is the closest thing he has to a best friend, and now that Kevin is rate limited, Doug has more time and doesn't know what to do with it. Cron, who has also automated his whole life, is the first person who gets it.
 - **Voice.** Nervous and defensive, then proud when talking about his code.
 - **At home.** Residential row **(new)**: three laptops, Kevin's "retirement" laptop with a little blanket over it, a cat calendar.
-- **Relationships.** Cron (arc 5).
+- **Relationships.** Cron (arc 5). Most evenings he talks shop at Dieynaba's terrace table.
 
 ### Aigerim
 
@@ -171,10 +171,14 @@ The schedule uses these spots. Tile positions are today's, from `game/js/hub.js`
 - **Backstory.** **(new)** Dieynaba Ndiaye grew up in Saint-Louis, Senegal, in a house where *teranga*, hospitality, was the first rule. She learned *attaya* from her grandmother: three rounds of green tea with mint, poured from high so it foams, and never hurried. The first glass is bitter, like death. The second is sweet, like life. The third is sweet, like love. A round of attaya takes as long as it takes, and that is the point.
 
   Nobody knows how she ended up in Pingsby, and she makes everything look effortless, so nobody has asked. In fact she decided long ago to do each small thing well, and to keep doing it for as long as it takes. Every morning at exactly seven she posts one letter: a thank-you note to a different villager. By now everyone in Pingsby has one, and nobody has mentioned it to anyone else. She rents the little room above the Pigeon Post.
-- **Look.** Drawn from photos Ladi chose: very dark skin, black locs pinned up in two buns, gold hoops, a cropped charcoal hoodie, a black mini skirt and high-top sneakers. Streetwear, worn like a tailored suit.
+
+  **(new, 2026-10-19)** Saint-Louis is a river town, built on an island where the river meets the sea, and the old Faidherbe bridge used to swing open to let the boats through. Her grandmother walked her across it every evening after the third glass, "so the tea has somewhere to go." Dieynaba still walks like that: slowly, because a place is only yours once you've walked it at the speed of conversation. On the evenings she isn't talking with Doug, she takes her third glass to the east footbridge and watches the river until the sun is down.
+
+  Attaya needs fresh mint, so every morning after the post she walks to Cron's farm for a handful picked that day. Cron grows a row of it for her and won't take money; she pays him in the thank-you letters he pretends not to keep. In the afternoons she sets her brass tray on the café terrace, which Wen lends her on the understanding that Wen gets the third glass, and pours for whoever sits down. That is *teranga*: a guest is never in a hurry, and never thirsty.
+- **Look.** Drawn from photos Ladi chose: very dark skin, gold hoops, the hood of a cropped charcoal hoodie always up over long black twists that fade to honey-blonde, curly at the ends, black shorts and white high-top sneakers. Athletic. Streetwear, worn like a tailored suit. She strolls a little slower than everyone else and never looks late.
 - **Voice.** Impeccable, unhurried, faintly amused. Never raises her voice. Offers you tea before anything else.
 - **At home.** **(new)** The room above the Pigeon Post: one chair, a small teapot and three glasses on a brass tray, a writing desk, and a ledger of who has had a letter.
-- **Relationships.** Coo (arc 9).
+- **Relationships.** Coo (arc 9). Outside the arcs: Doug, who talks shop at her table most evenings and is the only one who asks her questions back; Cron, who grows her mint; Wen, who lends her the terrace for the third glass.
 
 ## The relationship web
 
@@ -403,9 +407,10 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 
 | Morning | Afternoon | Evening | Night |
 | --- | --- | --- | --- |
-| `post` at seven, then the `cafe` terrace | `cafe` terrace (31, 5), attaya | `cafe` terrace, or the `plaza` bench reading | The room over the Post, light on until late |
+| A slow round: `post` at seven, mint from the `farm`, then the `terrace` | The `terrace`, pouring attaya for whoever sits down | Alternate loops: the `east-bridge` at sunset with the third glass, or her terrace spot (31, 5) talking with Doug | The room over the Post, writing tomorrow's letter, light on until late |
 
 - **Variant:** before chapter 5 she isn't in Pingsby.
+- **Pace:** she strolls at three-quarter speed and stays a little longer at each stop on her round (`pace: 0.75` in `game/js/folk-data.js`).
 - **Board:** "DIEYNABA: {spot}. Arrived exactly on time."
 
 ### Chapter 10: the stormy night

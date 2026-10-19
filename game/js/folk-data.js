@@ -42,7 +42,7 @@
     sky: { label: 'somewhere over the rooftops', at: null },
     unknown: { label: '???', at: null },
     road: { label: 'the North Road', road: 'N' },
-    // The residential row south of the gate (js/hub.js), one door per home; Lexi's has a room (js/interiors.js).
+    // The residential row round the cul-de-sac in the woods (js/hub.js), one door per home; Lexi's has a room (js/interiors.js).
     'row:lexi': { label: 'at home, on the residential row', door: 'X' },
     'row:kaito': { label: 'at home, on the residential row', door: 'Y' },
     'row:doug': { label: 'at home, on the residential row', door: 'D' },
@@ -174,16 +174,17 @@
       night: ['yurt', 'In her yurt behind the farm'],
       board: 'AIGERIM: {spot}. Also knows where YOU are. Better than I do.'
     },
-    // Dieynaba (id 'valentin', js/ploy-quest.js), outside the café from chapter 5.
+    // Dieynaba (id 'valentin', js/ploy-quest.js), outside the café from chapter 5. Her day is her grandmother's
+    // attaya, done properly: a thank-you letter at seven, fresh mint, three slow rounds for whoever sits down.
+    // pace: she strolls at three-quarter speed, and lingers a little longer at each stop.
     valentin: {
-      act: 'sip',
-      morning: [['post', 'terrace', 'bench', 'cafe'], 'The seven o\'clock post, then a walk with her attaya', 'Seven o\'clock post, then the long way round. A city is only yours if you walk it.', 'sip'],
-      afternoon: [['terrace', 'plaza', 'library', 'east-bridge'], 'Taking her attaya for a stroll', 'The second glass of attaya is the sweet one. You have to earn it by finishing the first.', 'sip'],
-      evening: c => c.loop % 2 ? ['bench', 'Reading on the plaza bench', null, 'read'] : ['stand', 'On the café terrace, talking with Doug', null, 'talk:doug'],
-      night: ['post:in', 'In the room over the Post, the light on late'],
+      act: 'sip', pace: 0.75,
+      morning: [['post', 'farm', 'terrace'], 'Posting her seven o\'clock thank-you letter, then fresh mint from Cron\'s farm', 'One letter at seven, then mint from Cron, picked this morning. Attaya with yesterday\'s mint is only tea.', 'sip'],
+      afternoon: ['terrace', 'Pouring attaya on the café terrace for whoever sits down. Three rounds, never hurried', 'Sit. In my grandmother\'s house a guest is never in a hurry, and never thirsty. We call it teranga.', 'serve'],
+      evening: c => c.loop % 2 ? ['east-bridge', 'Watching the sunset from the east footbridge, the third glass in hand', 'At home in Saint-Louis the old bridge swings open for the boats. This one never does. I forgive it.', 'sip'] : ['stand', 'On the café terrace, talking with Doug', null, 'talk:doug'],
+      night: ['post:in', 'Writing tomorrow\'s thank-you letter in the room over the Post, the light on late'],
       board: '{name}: {spot}. Arrived exactly on time.'
-    }
-  };
+    }  };
 
   // Chapter 10, from Gary leaving until it's cleared: the Cloud is down, it's always a stormy night, and everyone
   // stays indoors, at home or at work. Those without a door of their own shelter in Ayo's Forge, the only place still warm.
@@ -232,7 +233,7 @@
     kaito: 'I am reading my memoir aloud to keep everyone\'s spirits up. Chapter nine: "Me, Again." It is working. It is not working.',
     doug: 'My bot keeps trying to reconnect every three seconds. I should add backoff. I should add jitter. I should have added both.',
     cron: 'My herd runs at midnight. It\'s always midnight now. They are exhausted, sonny.',
-    valentin: 'I have a plan to fix everything. Step one: log in to the Cloud. ...I have a plan to make a plan.',
+    valentin: 'I brought the tray. Sit. The first glass is bitter, like tonight. The second one is sweeter. We have time.',
     aigerim: 'Day ??? of the storm. The hero came in dripping. Noted. Underlined.'
   };
 

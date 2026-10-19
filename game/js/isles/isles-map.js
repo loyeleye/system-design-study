@@ -698,7 +698,7 @@
   function sprite(id, X, Y, t, k) {
     const c = I.ART && I.ART.chars[id], im = ipic('c-' + id);
     if (!c || !ok(im)) return false;
-    const s = ts / 32 * (k || TALL[id] || 0.66), n = c.n[0], col = n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n : 0;
+    const s = ts / 32 * (k || TALL[id] || 0.66), n = c.walk ? 0 : c.n[0], col = n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n : 0;
     ctx.drawImage(im, col * c.w, 0, c.w, c.h, Math.round(X - c.w * s / 2), Math.round(Y - c.h * s), Math.round(c.w * s), Math.round(c.h * s));
     return true;
   }
