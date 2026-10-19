@@ -130,7 +130,7 @@
       critters: [
         { kind: 'dog', x: 14, y: 9 }, { kind: 'cat', x: 11, y: 9, range: 2 }, { kind: 'goat', x: 18, y: 16 },
         { kind: 'rabbit', x: 3, y: 17 }, { kind: 'squirrel', x: 15, y: 8, range: 2 }, { kind: 'fox', x: 1, y: 8, range: 2 }, { kind: 'deer', x: 23, y: 17, range: 2 },
-        { kind: 'sparrow', x: 12, y: 14 }, { kind: 'sparrow', x: 22, y: 9 },
+        { kind: 'sparrow', x: 12, y: 14 }, { kind: 'sparrow', x: 23, y: 9 },
         { kind: 'bfly1', x: 5, y: 16 }, { kind: 'bfly3', x: 2, y: 13 }, { kind: 'bee', x: 7, y: 15 }, { kind: 'bee', x: 4, y: 13 }, { kind: 'ladybug', x: 8, y: 16, range: 2 }
       ],
       back: { D: [19, 6, 'south'], E: [24, 11, 'west'], I: [6, 9, 'south'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun', clouds: true, ambience: null
@@ -267,6 +267,37 @@
     if (o.arrive) ARRIVE[key] = o.arrive;
   };
 
+  // ---------- Solid props ----------
+  // Signs, posts, rocks and the like you can't walk through: for each prop, the cells it blocks, as offsets across
+  // from the middle of its picture, on the row it stands on. Done when a map is first shown, so props other files
+  // add or move (js/club-road.js, js/northroad-arena.js, js/club.js) count too. Doors are never blocked.
+  const PROP = {
+    'nr-signpost': [0], 'nr-milestone': [0], 'nr-rock': [0], 'nr-cart': [0], 'd9a': [0], 'ar-banner': [0],
+    'nr-fence': [-1, 0, 1],
+    'nr-arch': [-1.4, 1.2],                       // the two posts; the path runs under the beam
+    'nr-citygate': [-3, -2, 1, 2],                // the towers either side of the gate
+    'nr-cardshop': [-1.5, -0.5],                  // the stone front left of the door
+    'nr-theatre': [-1, 1],                        // the front either side of the steps
+    'cp-chasm': [-1.2, 1.5]                       // the winch frame's posts either side of the way down
+  };
+  // The map's own letters stay as they are (they pick the ground drawn under them); the scene just reads a prop's
+  // cells as '#', solid on every North Road map.
+  function solidProps(sc) {
+    const def = sc.def, doors = def.doors || {}, cells = new Set();
+    (def.objects || []).forEach(o => {
+      if (o.hidden || !PROP[o.name]) return;
+      const y = Math.floor(o.y + 0.99);
+      PROP[o.name].forEach(dx => {
+        const x = Math.floor(o.x + 0.5 + dx), c = def.map[y] && def.map[y][x];
+        if (c && !doors[c]) cells.add(x + ',' + y);
+      });
+    });
+    if (!cells.size) return;
+    const tile = sc.tile, walkable = sc.walkable;
+    sc.tile = (x, y) => cells.has(x + ',' + y) ? '#' : tile(x, y);
+    sc.walkable = (x, y) => !cells.has(x + ',' + y) && walkable(x, y);
+  }
+
   // ---------- The screen ----------
   const scenes = {};
   let cur = 'road', sc = null, busy = false;
@@ -376,6 +407,7 @@
     const def = MAPS[key];
     if (!scenes[key]) {
       scenes[key] = SD.scene.create($('#north-canvas'), def);
+      solidProps(scenes[key]);
       scenes[key].onDoor = door; scenes[key].onTalk = talk;
       if (key === 'road') scenes[key].fx.push(candle);
       if (key === 'camp') scenes[key].fx.push(campfire);
