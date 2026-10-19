@@ -382,6 +382,8 @@
     cast(true); hud(); sc.start();
     AU.music(def.music);
     if (SD.weather) SD.weather.sync(SD.weather.now(def.weather));
+    // Later files can put someone on a map as you arrive (js/nari.js): f(key, scene).
+    NR.onGo.forEach(f => f(key, sc));
   }
 
   // The candle in the pilgrim's shrine: a small flame that flickers, with a warm glow around it.
@@ -528,6 +530,8 @@
     const who = sc.actors[id];
     if (who && sc.P && !STILL[id]) { if (who.path.length) { who.path = []; if (who.route && who.leg) who.leg--; } sc.face(id, toward(who, sc.P)); }
     try {
+      // Nari's first-into-every-new-place gift comes before anything else she has to say (js/nari.js).
+      if (SD.nari && await SD.nari.talk(cur, id)) return;
       // A relationship scene that's due with them on this map comes first (js/folk-scenes.js); it waits out quest steps.
       if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('road:' + cur, id)) { AU.music(MAPS[cur].music); return; }
       // Explodia runs her own Blast Academy (js/explodia.js), quest steps included; the road's ordinary
@@ -594,7 +598,8 @@
   // People on the road don't stand still. Anyone with a `route` walks it, leg by leg, and loops; a leg marked
   // 'in' ends at a door, where they fade out as if they went inside and come back 10-20 seconds later. Everyone
   // else paces a tile or two from where they stand. Nobody moves while a conversation is open, and anyone you
-  // walk up to stops on the spot, finishes their step and turns to face you. The sparring heroes have their own beat.
+  // walk up to stops on the spot, finishes their step and turns to face you. The sparring heroes have their own beat,
+  // and anyone marked `still` (a dancer on her spot, js/nari.js) stays put.
   const STILL = { hero77: 1, hero256: 1, hero12: 1, hero404: 1, aigerim: 1, marta: 1 };
   const toward = (a, P) => Math.abs(P.x - a.x) > Math.abs(P.y - a.y) ? (P.x > a.x ? 'east' : 'west') : (P.y > a.y ? 'south' : 'north');
   function fade(a, to, done) {
@@ -613,7 +618,7 @@
       // On the way somewhere for this time of day: they keep going, and squeeze past you if you're in the way.
       if (a.goal && !a.hidden) { if (!a.path.length && !a.moving) toGoal(a); return; }
       if (a.emoK && !a.moving && !a.hidden && Math.random() < 0.015) sc.emote(a.id, a.emoK, 1.6);
-      if (STILL[a.id]) return;
+      if (STILL[a.id] || a.still) return;
       // Someone who went indoors comes back out after a while, at the door they used.
       if (a.away) {
         if (now < a.away) return;
@@ -660,6 +665,7 @@
   // A block that changes while you're on the road sends everyone walking to their next spot.
   if (SD.clock) SD.clock.onChange(() => { if (sc && sc.active) cast(); });
   NR.go = go;
+  NR.onGo = [];
   NR.where = () => cur;
   NR.scene = () => sc;
 })();
