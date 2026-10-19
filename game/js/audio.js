@@ -180,13 +180,13 @@
   const SONG = { title: 'm-opening', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild', journey: 'm-journey',
     map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5',
     // The newer places' own themes (OpenGameArt, credited in CREDITS.md): the Eventual Isles, the PR Club and its
-    // yoga studio, and Aigerim's card shop. Rooms otherwise keep the music from outside.
-    isles: 'm-isles', gym: 'm-gym', studio: 'm-studio', shop: 'm-shop' };
+    // yoga studio, Aigerim's card shop, and Kagemaru's cave (a music box). Rooms otherwise keep the music from outside.
+    isles: 'm-isles', gym: 'm-gym', studio: 'm-studio', shop: 'm-shop', cave: 'm-cave' };
   // Songs without a synth version fall back to this one if the file fails to load.
   const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore',
-    isles: 'explore', gym: 'explore', studio: 'heaven', shop: 'town' };
+    isles: 'explore', gym: 'explore', studio: 'heaven', shop: 'town', cave: 'isles' };
   // Per-song loudness: the piano is gentle on purpose, and the chapter maps are mastered hotter than explore.
-  const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65, studio: 0.8, shop: 0.85 };
+  const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65, studio: 0.8, shop: 0.85, cave: 0.8 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
   const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door',
     doorclose: 's-doorclose', shopbell: 's-shopbell' };

@@ -10,6 +10,7 @@
 //                      regulars; in chapter 10's storm, the townsfolk who went home from the streets shelter here.
 //   The bakery         on the avenue's south side, where the baker takes a smile when nobody can pay.
 //
+// The two shops play the shop tune, except in chapter 10's storm, when the city's music follows you in.
 // Toro and the trader used to stand at the market stalls, and Kagemaru on a street corner in chapter 10; they are
 // indoors now in every chapter, and talking to them inside goes through the same hooks it did outside (NR.onTalk, the
 // quests, js/roadfolk.js), so their shops, quest steps and storm lines are unchanged. The market keeps its stalls.
@@ -122,7 +123,7 @@
   // ---------- The rooms ----------
   const R = I.ROOMS;
   R.xtoro = {
-    name: "TORO'S CARDS", bell: true,
+    name: "TORO'S CARDS", bell: true, music: () => storm() ? null : 'shop',
     map: ['############', '############', '############', '############', '####.....###',
       '####.....###', '####.....###', '#####..#####', '#####DD#####'],
     enter: [5, 7, 'north'],
@@ -139,7 +140,7 @@
     talk: id => outside(id)
   };
   R.xpawn = {
-    name: 'THE PAWN SHOP', bell: true,
+    name: 'THE PAWN SHOP', bell: true, music: () => storm() ? null : 'shop',
     map: ['############', '############', '############', '############', '####.....###',
       '####.....###', '#####..#####', '#####..#####', '#####DD#####'],
     enter: [5, 7, 'north'],

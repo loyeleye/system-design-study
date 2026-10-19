@@ -145,9 +145,10 @@
 
   // ---------- Inside the cave, on the Isles ----------
   // His room behind the cave mouth: he waits at the end of his card table, from chapter 3 until chapter 10 calls him
-  // away, when only his note is left on it.
+  // away, when only his note is left on it. While he's here the cave plays his music box (js/audio.js); with him gone it
+  // keeps the Isles' music from outside, like any room without a theme of its own.
   if (SD.interiors && SD.interiors.ROOMS) SD.interiors.ROOMS.cave = {
-    name: 'THE CAVE', ambience: null,
+    name: 'THE CAVE', ambience: null, music: () => D.here() && !D.sale() ? 'cave' : null,
     map: ['############', '############', '############', '############', '####...#####',
       '###......###', '###.......##', '####.....###', '#####DD#####'],
     enter: [5, 7, 'north'],

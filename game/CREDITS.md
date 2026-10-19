@@ -49,12 +49,15 @@ Smudge's rebuild-the-diagram loop is inspired by InterviewReady's [The Joy of Sy
 | "Synth Wave Aerobics" | Alex McCulloch (Pro Sensory), https://opengameart.org/content/aerobics-synth-wave | CC0 | The PR Club yard and gym |
 | "The Oasis (or Resting Place)", from Indie Meditations | Yanni Ziangos (YannZ), https://yannz.itch.io, https://opengameart.org/content/indie-meditations-free-music-pack | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The PR Club studio |
 | "Bossa" (shop theme, HD) | SpringySpringo, https://opengameart.org/content/bossa-shop-theme-in-low-fi-and-hd | CC0 (dual-licensed CC0 / CC BY 3.0; used under CC0) | Aigerim's card shop |
+| "Witch's Dancing Doll" | Spencer Y.K. (spenceryk99), https://opengameart.org/content/witchs-dancing-doll | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Kagemaru's cave on the Eventual Isles |
 
 Kevin MacLeod credit line: "Fluffing a Duck" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
 
 Techspired Minds credit line: "Orchestral: Our Journey Awaits" by Techspired Minds (joschjava), licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/, via https://opengameart.org/content/orchestral-our-journey-awaits
 
 YannZ credit line: "The Oasis (or Resting Place)" by Yanni Ziangos (YannZ), https://yannz.itch.io, licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/, via https://opengameart.org/content/indie-meditations-free-music-pack. Re-encoded and loudness-normalised.
+
+Spencer Y.K. credit line: "Witch's Dancing Doll" by Spencer Y.K. (spenceryk99), licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/, via https://opengameart.org/content/witchs-dancing-doll. Re-encoded, loudness-normalised, with the silence at the end trimmed.
 
 Matthew Pablo credit line: "Enchanted Festival" by Matthew Pablo (http://www.matthewpablo.com), licensed under CC BY 3.0, https://creativecommons.org/licenses/by/3.0/, via https://opengameart.org/content/enchanted-festival
 

@@ -36,8 +36,8 @@
   // sleep: where the owner sleeps on a night outside the storm: the tile you talk to them from (on the bed, next to
   // the floor), where the "Zz" floats (in tiles), and what you see. mat: the picture has no door, so a doormat is
   // drawn over the way out. Rooms keep the music and sounds from outside unless they have a theme of their own:
-  // music (a song in js/audio.js), ambience (its PLACE sound, or null for quiet), bell: a shop bell over the door.
-  // calm: nobody in it looks worried in the storm.
+  // music (a song in js/audio.js, or a function that picks one or null), ambience (its PLACE sound, or null for quiet),
+  // bell: a shop bell over the door. calm: nobody in it looks worried in the storm.
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -659,7 +659,8 @@
   }
   let sc = null, cur = null, busy = false, done = null, greeted = false;
   // What was playing outside, to keep in rooms without a theme of their own and to go back to on the way out.
-  let outside = { song: null, place: null };
+  // theme: the room's own song while you are in it, if it has one.
+  let outside = { song: null, place: null }, theme = null;
   function def(key) {
     const r = ROOMS[key];
     return {
@@ -799,7 +800,8 @@
     // The other maps knock on their own doors; Pingsby's doors open here. Shops ring a bell as you come in.
     if (!on) AU.sfx('door');
     if (r.bell) AU.sfx('shopbell');
-    if (r.music) AU.music(r.music);
+    theme = (typeof r.music === 'function' ? r.music() : r.music) || null;
+    if (theme) AU.music(theme);
     go(key);
     if (ROOMS[key].owner) F().meet(ROOMS[key].owner);
     greeted = false;
@@ -813,11 +815,11 @@
     if (room) {
       AU.sfx('doorclose');
       // Back to the music from outside, unless something (a quest, a mini-game) has changed it since.
-      if (room.music && AU.loopName === room.music && outside.song) AU.music(outside.song);
+      if (theme && AU.loopName === theme && outside.song) AU.music(outside.song);
       if (AU.place) AU.place(outside.place);
     }
     if (sc) sc.stop();
-    sc = null; cur = null;
+    sc = null; cur = null; theme = null;
     cv.hidden = true; if (host) host.hidden = false;
     const r = done; done = null; if (r) r();
   }
