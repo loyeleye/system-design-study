@@ -42,7 +42,7 @@
     sky: { label: 'somewhere over the rooftops', at: null },
     unknown: { label: '???', at: null },
     road: { label: 'the North Road', road: 'N' },
-    // The residential row south of the gate (js/hub.js), one door per home; Lexi's has a room (js/interiors.js).
+    // The residential row round the cul-de-sac in the woods (js/hub.js), one door per home; Lexi's has a room (js/interiors.js).
     'row:lexi': { label: 'at home, on the residential row', door: 'X' },
     'row:kaito': { label: 'at home, on the residential row', door: 'Y' },
     'row:doug': { label: 'at home, on the residential row', door: 'D' },
