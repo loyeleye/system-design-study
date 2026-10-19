@@ -223,10 +223,10 @@
         { say: [['lexi', 'The volumes of the Seer of the Steppe. The Forbidden Index lists them as NOT TO BE READ. I have read none of them. ...I have read the last page of each.'],
           ['lexi', 'When a volume filled, she copied her front page into the back of it, as it stood that day. So the back of Volume One says what she knew at entry 40, without anyone rereading Volume One.'],
           ['pip', 'A snapshot! The state as of one point in the log. Start from it and replay only what came after.']] },
-        { ask: { id: 'sq-diary1', c: 'readmodels', type: 'mc', q: 'Each bank account is rebuilt from its events on every request. Busy accounts now have 2 million events, and loading one takes 9 seconds. What is the usual fix?',
-          opts: ['Delete events older than a year, since the balance already includes them', 'Index the events by account ID, so each account\'s are found without a scan', 'Save a snapshot every few hundred events, then replay only the newer ones', 'Replay each account\'s events across many threads at once to finish sooner'], a: 2,
-          no: ['The log is the record: deleting from it loses the history audits need, and the means to rebuild anything later. Keep the events; skip replaying them.', 'Loading already reads only that account\'s events. The 9 seconds is applying 2 million of them, which an index doesn\'t shorten.', null, 'Each event is applied to the state the one before it left, so they must be applied in order, one after another.'],
-          why: 'Rebuilding state means applying every event in order, so the cost grows with the stream. A snapshot stores the state as of one event; loading takes the latest snapshot and applies only the events after it. Snapshots are a cache, not the truth: they can be thrown away and rebuilt from the log, and must be when the code that builds state from events changes.' } },
+        { ask: { id: 'sq-diary1', c: 'readmodels', type: 'mc', q: 'Orders are event-sourced, with a snapshot of each order saved every 100 events. Support asks what order 812 looked like at 09:00 yesterday. How do you rebuild it?',
+          opts: ['Take the latest snapshot, then undo the events after 09:00 in reverse', 'Take the last snapshot saved before 09:00, then apply its events up to 09:00', 'Read the order\'s row in the read model, which keeps its whole history', 'Restore last night\'s database backup to a spare server and read it'], a: 1,
+          no: ['Many events can\'t be undone: an AddressChanged event holds the new address, not the old one. Rebuilding runs forwards from an earlier state.', null, 'A read model keeps the current state, shaped for the questions it answers. What was true back then lives in the log.', 'Last night\'s backup shows the order as it was last night, not at 09:00 yesterday, and restoring one takes hours. The log already holds every change in order.'],
+          why: 'An event-sourced system can rebuild any past state: start from the nearest snapshot taken before that moment, then apply the events up to it. Snapshots only shorten the replay; they are copies of state, and can always be rebuilt from the log.' } },
         { say: [['lexi', 'Take them. If a single page is bent, she will know which page, and when, and write it down.']] },
         { item: 'volumes' }] },
       { at: 'mio', hint: 'Mio has something to confess about Aigerim\'s diary.', do: [
@@ -260,7 +260,7 @@
   if (!QS.list.some(x => x.id === quest.id)) QS.list.push(quest);
 
   Object.assign(SD.eli5, {
-    'sq-diary1': 'Like a scorekeeper who writes the total at the bottom of each page, so the final score means adding up only the last page, not the whole book.',
+    'sq-diary1': 'Like working out the score at half-time: start from the score written down after the first quarter and add the goals since, instead of replaying the whole match.',
     'sq-diary2': 'Like two kids writing in the same notebook: each says "I\'m writing on line 7", and if line 7 is already used, they read it first and write on line 8.',
     'sq-diary3': 'Like adding a sticker to your chart and falling asleep before ticking it off your list: when you wake, you add the sticker again.'
   });
