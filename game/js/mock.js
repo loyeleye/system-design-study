@@ -292,7 +292,10 @@
         feed: 'All of them! Every emoji! ...Okay, no. Moving on.',
         tickets: 'Canvas, because it sparkles. But this is a backend round! Next!',
         chat: 'Two ticks, blue, maybe a tiny dance. What else?',
-        video: 'Red. Red red red. Okay, next topic!'
+        video: 'Red. Red red red. Okay, next topic!',
+        files: 'Spinning! Clockwise! With a little bounce! ...That\'s not backend, is it. Next!',
+        topk: 'One point two M! Shorter is cuter. Okay, backend time!',
+        stays: 'A heart, with sparkles when you tap it! ...Okay, okay. Backend. Next!'
       }
     },
     gary: {
