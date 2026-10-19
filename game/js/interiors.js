@@ -27,7 +27,8 @@
   const storm = () => !!(SD.folk && SD.folk.storm());
   const block = () => SD.clock ? SD.clock.block() : 'morning';
 
-  // Map legend: # solid, . floor, D the way out, U up the café stairs, S down the flat's stairs.
+  // Map legend: # solid, . floor, D the way out, U up the stairs, S down the stairs (the café's and the flat's unless a
+  // room says where its own go: up, down).
   // spots: where people stand ([x, y, face]; y can be fractional, to stand behind a counter). props: things you
   // can look at, on solid tiles next to the floor. windows (in picture pixels) show the weather; lights glow at night.
   // sleep: where the owner sleeps on a night outside the storm: the tile you talk to them from (on the bed, next to
@@ -821,8 +822,10 @@
   async function door(d) {
     if (busy) return;
     if (d === 'out') return leave();
-    if (d === 'up') { SD.audio.sfx('door'); return go('flat'); }
-    if (d === 'down') { SD.audio.sfx('door'); return go('cafe', [8, 4, 'west']); }
+    // Stairs: the café's go up to Wen's flat and back down beside the counter, unless a room names its own (up or
+    // down: [room, x, y, face], or just [room] to come in at that room's way in).
+    const r = ROOMS[cur], to = d === 'up' ? r.up || ['flat'] : d === 'down' ? r.down || ['cafe', 8, 4, 'west'] : null;
+    if (to) { SD.audio.sfx('door'); return go(to[0], to.length > 1 ? to.slice(1) : null); }
   }
   async function talk(id) {
     if (busy || !sc) return;

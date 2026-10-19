@@ -212,7 +212,8 @@
 
   // ---------- The board's scenes page ----------
   const FAR = { road: 'on the North Road', waystation: 'at the waystation', arena: 'at the Arena', camp: "at the heroes' camp", exchange: 'at the Exchange' };
-  const ROOMS = { cafe: 'inside the Cache Café', flat: "up in Wen's flat", bunker: "inside Seymour's Bunker", treehouse: "up in Mio's Treehouse", lexi: "in Lexi's house" };
+  const ROOMS = { cafe: 'inside the Cache Café', flat: "up in Wen's flat", bunker: "inside Seymour's Bunker", treehouse: "up in Mio's Treehouse", lexi: "in Lexi's house",
+    rollouts: "in the Rollouts' house", rolloutsUp: "upstairs at the Rollouts' house" };
   function place(at) {
     if (at.startsWith('room:')) return ROOMS[at.slice(5)] || 'indoors';
     if (at.startsWith('talk:')) return `wherever ${who([at.slice(5)])} is`;

@@ -72,13 +72,14 @@
       bitna: ['exchange', 43, 44, 'west', 'alert']       // at the lamp-oil auction, ticket 212
     },
     day: {
-      // Afternoons out at work; evenings the show in the street outside the house, across from the canal bridge:
-      // Nari and Hari out front, Neel in the wings by the door, Bitna calling cues, and Eun-ho behind the tree.
-      nari: { morning: 'home', afternoon: ['exchange', 42, 46, 'south', 'music'], evening: ['exchange', 44, 37, 'south', 'music'], night: 'home' },
-      neel: { morning: 'home', afternoon: ['in', 'exchange', 29, 17], evening: ['exchange', 41, 36, 'east', 'dots'], night: 'home' },   // the bank, then the wings
-      hari: { morning: 'home', afternoon: ['road', 17, 20, 'north', 'music'], evening: ['exchange', 45, 36, 'south', 'music'], night: 'home' },
-      bitna: { morning: 'home', afternoon: ['exchange', 31, 34, 'west', 'idea'], evening: ['exchange', 48, 37, 'west', 'star'], night: 'home' },   // the lamps, then the cues
-      eunho: { morning: 'home', afternoon: 'home', evening: ['exchange', 48, 34, 'west', 'dots'], night: 'home' }
+      // Afternoons out at work; evenings the show at the crossroads, in a row in front of the dry fountain with a crowd
+      // watching (js/nari-home.js): Nari in the middle with Hari beside her, Neel in the wings dancing every step with
+      // him, Bitna on the end calling cues, and Eun-ho dancing the whole show behind the fountain, where nobody looks.
+      nari: { morning: 'home', afternoon: ['exchange', 42, 46, 'south', 'music'], evening: ['exchange', 21, 21, 'south', 'music'], night: 'home' },
+      neel: { morning: 'home', afternoon: ['in', 'exchange', 29, 17], evening: ['exchange', 19, 22, 'south', 'music'], night: 'home' },   // the bank, then the wings
+      hari: { morning: 'home', afternoon: ['road', 17, 20, 'north', 'music'], evening: ['exchange', 22, 20, 'south', 'music'], night: 'home' },
+      bitna: { morning: 'home', afternoon: ['exchange', 31, 34, 'west', 'idea'], evening: ['exchange', 23, 19, 'south', 'star'], night: 'home' },   // the lamps, then the cues
+      eunho: { morning: 'home', afternoon: 'home', evening: ['exchange', 17, 18, 'south', 'dots'], night: 'home' }
     }
   };
 
