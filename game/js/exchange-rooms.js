@@ -174,7 +174,7 @@
       '####.....###', '#####DD#####', '############', '############'],
     enter: [5, 5, 'north'],
     clerk: 'toro', counter: [6, 2.4, 'south'], over: [[5, 3], [6, 3]], front: [[85, 90, 198, 47, 3], [0, 215, 175, 73, 6], [230, 215, 154, 73, 6], [157, 215, 83, 20, 6]],
-    people: () => ['toro'], spots: {}, names: { toro: 'TORO' }, looks: { toro: { sprite: 'folk3' } },
+    people: () => ['toro'], spots: {}, names: { toro: 'TORO' }, looks: { toro: { sprite: 'toro' } },
     lights: [{ x: 7.6, y: 1.8, r: 2.6 }, { x: 8.2, y: 2.9, r: 1.6, rgb: '140,255,170' }],
     props: [
       { x: 4, y: 3, t: () => ['A brass bull on a stand, polished to a shine on the horns. A label on the stand says THE LAST BULL. Somebody has added, in pencil, "(the other one)".'] },

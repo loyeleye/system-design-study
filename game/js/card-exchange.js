@@ -61,6 +61,9 @@
   SD.art.mood = (who, text, e) => who === 'toro' ? 'neutral' : art.mood(who, text, e);
   SD.art.portrait = (who, size, mood) => who !== 'toro' ? art.portrait(who, size, mood)
     : `<span class="bust b-toro" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/toro-neutral.webp" alt="" draggable="false"></span>`;
+  // His map sprite matches the bust (assets/img/arc/c-toro.webp, tools/toro_art.py): brown skin, curly hair, little
+  // horns, a navy pinstripe suit and a red tie. js/exchange-rooms.js draws him with it behind his counter.
+  if (SD.arcArt) SD.arcArt.chars.toro = { w: 28, h: 54, n: [4, 4, 4, 4], walk: 1 };
   const PITCH = [
     "Everything in this city is DOWN. Cards? Cards are UP. Buy the dip. I am the dip. Buy me.",
     "Heavy cards for heavy days. They cost a whole turn. They are worth a whole turn and change.",

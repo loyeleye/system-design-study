@@ -2,7 +2,7 @@
 
 usage: barnaby_art.py SRC_DIR   (SRC_DIR: /mnt/project-files/barnaby-raw/char, the character's unzipped download)
 One sheet, as tools/arena_art.py makes the townsfolk's: rows south, west, east, north; column 0 standing, then the
-four walking frames. PixelLab drew him on a 96px canvas, so he is scaled to the townsfolk's height (folk3, Toro's).
+four walking frames. PixelLab drew him on a 96px canvas, so he is scaled to the townsfolk's height (folk3's).
 Prints his size for SD.arcArt.chars.barnaby. His busts are tools/pixel_portraits.py's.
 """
 import json, os, sys
