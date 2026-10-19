@@ -724,7 +724,8 @@
     if (!noShadow) { ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
     if (!c || !ok(im)) return;
     const row = ROW[face] || 0, n = c.n[row];
-    const col = n ? 1 + Math.floor(t * (moving ? 8 : 5)) % n : 0;
+    // Sheets marked walk only animate while walking; the rest walk or breathe in place.
+    const col = n && (moving || !c.walk) ? 1 + Math.floor(t * (moving ? 8 : 5)) % n : 0;
     // Villagers without walk frames hop along instead.
     const bob = moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
     const w = c.w * ts / 32, h = c.h * ts / 32;
