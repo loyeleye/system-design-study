@@ -26,10 +26,13 @@
   // The bottom step, the top one, and the upper door on the landing.
   const PATH = L.PATH = [on(34, 178), on(63, 143), on(84, 141)];
   const wait = ms => new Promise(res => setTimeout(res, ms));
-  // Walk the player to (x, y), facing face, at speed tiles a second; taps and keys do nothing on the way.
-  function glide(sc, [x, y], face, speed) {
-    const P = sc.P;
-    P.x = x; P.y = y; P.face = face; P.speed = speed;
+  // Walk the player to (x, y), facing face, along a straight line at CLIMB tiles a second; taps and keys do nothing
+  // on the way. The scene moves people across and down at the same pace (js/scene.js), so the pace is set for the
+  // longer of the two to come out at CLIMB along the line.
+  const CLIMB = 3.2;   // about 55% of the hero's walk (5.9 tiles a second, with the pauses between steps)
+  function glide(sc, [x, y], face) {
+    const P = sc.P, dx = Math.abs(x - P.px), dy = Math.abs(y - P.py), d = Math.hypot(dx, dy);
+    P.x = x; P.y = y; P.face = face; P.speed = d ? CLIMB * Math.max(dx, dy) / d : CLIMB;
     return new Promise(res => {
       const t = setInterval(() => {
         sc.pause();
@@ -55,9 +58,9 @@
     // Over the building while on its stairs, with the railing over you.
     const outside = up => { P.front = up; if (pip) pip.front = up; if (rail) rail.hidden = !up; };
     outside(true);
-    await glide(sc, PATH[0], 'east', 3);
-    await glide(sc, PATH[1], 'east', 1.6);
-    await glide(sc, PATH[2], 'east', 3);
+    await glide(sc, PATH[0], 'east');
+    await glide(sc, PATH[1], 'east');
+    await glide(sc, PATH[2], 'east');
     P.face = 'north';
     await wait(150);
     AU.sfx('door');
@@ -69,9 +72,9 @@
     P.face = 'south';
     sc.start();
     await fade(P, 1, 250);
-    await glide(sc, PATH[1], 'west', 3);
-    await glide(sc, PATH[0], 'west', 1.8);
-    await glide(sc, yard.back.L, 'south', 3);
+    await glide(sc, PATH[1], 'west');
+    await glide(sc, PATH[0], 'west');
+    await glide(sc, yard.back.L, 'south');
     outside(false);
     P.alpha = null; P.speed = speed;
     return true;
@@ -79,19 +82,19 @@
 
   // ---------- The lounge ----------
   // The sofa along the back wall, the kettle on the sideboard on the left, the armchairs either side of the coffee
-  // table on the rug, and Imani's desk by the right wall, its chair pulled out (you can stand there).
+  // table on the rug, and Imani's desk by the right wall. All of it is solid, chairs included.
   I.ROOMS.prloft = {
     name: 'THE LOUNGE', mat: true, ambience: null,
-    map: ['############', '############', '############', '############', '##...##...##',
+    map: ['############', '############', '############', '############', '##...#######',
       '##.##..##.##', '#..........#', '#..........#', '#####DD#####'],
     enter: [5, 7, 'north'],
-    spots: { imani: [10, 6, 'south'], leon: [4, 4, 'south'], thea: [8, 4, 'south'], paz: [2, 6, 'east'] },
+    spots: { imani: [10, 6, 'south'], leon: [4, 4, 'south'], thea: [8, 6, 'west'], paz: [2, 6, 'east'] },
     looks: SD.arcArt && SD.arcArt.chars['imani-books'] ? { imani: { sprite: 'imani-books' } } : {},
     lights: [{ x: 2.6, y: 0.8, r: 2.4 }, { x: 9.4, y: 0.8, r: 2.4 }, { x: 0.4, y: 2.2, r: 2 }, { x: 11.5, y: 2.4, r: 2 },
       { x: 11.2, y: 4.4, r: 1.4, rgb: '255,170,80' }],
     windows: [{ r: [98, 14, 32, 49] }, { r: [180, 14, 32, 50] }, { r: [264, 14, 31, 49] }],
     props: [
-      { x: 7, y: 3, t: () => storm() ? ['The sofa, with four wet towels drying along its back. Nobody has sat on it all night. Everyone is too worried to sit.']
+      { x: 4, y: 3, t: () => storm() ? ['The sofa, with four wet towels drying along its back. Nobody has sat on it all night. Everyone is too worried to sit.']
         : ['A long leather sofa, cracked in the shape of everyone who has sat on it after leg day. One cushion is labelled "LEON\'S. GENEROUSLY."'] },
       { x: 3, y: 3, t: () => ['A coat rack holding two capes, a jump rope and one very small hat. Nobody admits to the hat.'] },
       { x: 1, y: 4, t: () => storm() ? ['The kettle has been on since the thunder started. Somebody keeps topping it up. It\'s the warmest thing up here.']
