@@ -624,6 +624,8 @@
         const im = pic(key);
         if (ok(im)) ctx.drawImage(im, 0, 0, im.naturalWidth * ts / 32, im.naturalHeight * ts / 32);
         windows(ctx, r, ts, t);
+        // A room's own extras over its picture (the studio's mirror, js/club-mirror.js).
+        if (r.under) r.under(ctx, ts, t, sc);
         if (r.hatch) hatch(ctx, ts);
         if (r.mat) mat(ctx, r, ts);
       },
@@ -791,6 +793,8 @@
     const r = ROOMS[cur];
     // A relationship scene due in this room starts when you talk to someone in it (js/folk-scenes.js).
     if (SD.folkScenes && await SD.folkScenes.talkIn(cur, id)) return;
+    // A room with its own talk (js/club.js) handles everyone in it.
+    if (r.talk) return r.talk(id);
     // Aigerim in her shop: a quest step for her first, as on the road; otherwise the shop opens.
     if (r.road) {
       if (SD.quests && SD.quests.pending(id).length) return SD.quests.talk(id);
