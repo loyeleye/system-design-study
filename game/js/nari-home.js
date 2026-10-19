@@ -115,6 +115,8 @@
         const a = sc.actors[id];
         if (a && a.marker && onMap(id, map)[0] === 'in') { sc.hide(id, true); a.schedIn = true; }
       });
+      // Nari is a stranger on her doorstep until you've met her somewhere (js/nari.js).
+      if (sc.actors.nari) sc.actors.nari.name = home() || (flags().nari && flags().nari.met) ? 'NARI' : '???';
     };
   }
   // Once they get where they're going they stay put: dancing, busking, calling cues, or hiding behind a tree.
@@ -165,7 +167,7 @@
   // By what's going on: lost, at home, asleep next door, the storm, or out (afternoon at work, evening at the show).
   const LINES = {
     nari: {
-      lost: ['Three housemates, and nobody at breakfast. I\'ve counted the bowls twice. If it isn\'t a happy ending, it isn\'t the end.', 'I\'m my own favourite! But I\'d like my troupe back too.'],
+      lost: ['Neel, Hari and Bitna, all missing. Eun-ho too, probably. I haven\'t seen him in days. If it isn\'t a happy ending, it isn\'t the end.', 'I\'m my own favourite! But I\'d like my troupe back too.'],
       home: ['Five, six, seven, eight! Every new floor gets me first. If it holds, the others follow. If it doesn\'t, only one of us falls through.', 'What\'s under the veil? A dancer who\'s scared every single time. Don\'t tell the floor.', 'If it isn\'t a happy ending, it isn\'t the end. That goes for floors, shows and releases.'],
       storm: ['The Exchange has been dark for days. I went out first to check the streets. Twice. My knees are fine. Mostly.'],
       afternoon: ['I dance one square of the market floor first. Then ten. Then half of it. Never all of it at once. Rollout complete!', 'If my square creaks, I stop, and nobody else ever steps on it. That\'s the whole trick.'],
