@@ -4,8 +4,10 @@
 // gives you shards, a little more at every sighting, calls the rollout complete and moves on. Her last new place is
 // the Exchange, where she lives, and that gift is the biggest.
 //
-// Areas: each wave of the Eventual Isles (js/isles/isles-map.js), the North Road, and each place off it
-// (js/northroad.js, js/club.js). Her look (sprite 'nari-dance', busts, SD.cast.nari) is in js/nari-art.js and
+// Areas: one per moment something opens, so she never turns up in two new places at once. The first two waves of the
+// Eventual Isles (js/isles/isles-map.js), then a place off the North Road for each chapter (js/northroad.js,
+// js/club.js): the waystation (which opens with the road itself), the PR Club (which opens with the arena), the
+// heroes' camp (which opens with the last Isles wave) and the Exchange. Her look (sprite 'nari-dance', busts, SD.cast.nari) is in js/nari-art.js and
 // js/nari-look.js, and her home in the Exchange (and her standing at its door) in js/nari-home.js. Until her look has
 // loaded she stays away.
 // Saved in flags.nari: { met, got: [areas whose gift you have] }.
@@ -17,16 +19,16 @@
   // Gifts start at 50 shards and grow by 25 at every sighting (a daily quest pays 100, a side quest about 300).
   // The Exchange always pays the top of the ramp: by then she is at 100 percent.
   N.FIRST = 50; N.STEP = 25;
-  // Every area, roughly in the order they open: Isles waves after chapters 3, 4 and 5, the road after 5 (or 6),
-  // then a place per chapter, the Lighthouse wave after 8, and the Exchange last.
-  N.AREAS = ['isles1', 'isles2', 'isles3', 'road', 'waystation', 'arena', 'club', 'isles4', 'camp', 'exchange'];
+  // Every area, in the order they open: the Isles' first waves after chapters 3 and 4, then the waystation after 5,
+  // the PR Club after 7, the camp after 8 and the Exchange last.
+  N.AREAS = ['isles1', 'isles2', 'waystation', 'club', 'camp', 'exchange'];
   N.gift = (n, area) => N.FIRST + N.STEP * (area === 'exchange' ? Math.max(n, N.AREAS.length - 1) : n);
   // The rollout she reports at each sighting, in percent of traffic.
-  const RAMP = [1, 2, 5, 10, 20, 30, 45, 60, 80, 90];
+  const RAMP = [1, 5, 10, 25, 50];
 
   const st = () => S.save.flags.nari || (S.save.flags.nari = { met: false, got: [] });
   N.ready = () => !!(SD.cast && SD.cast.nari && SD.arcArt && SD.arcArt.chars[SPRITE]);
-  N.due = area => N.ready() && !st().got.includes(area);
+  N.due = area => N.AREAS.includes(area) && N.ready() && !st().got.includes(area);
 
   // ---------- What she says ----------
   // A chatterbox and an optimist: she counts beats when she's nervous, calls herself her own favourite, and keeps her
@@ -35,11 +37,8 @@
   const AREA = {
     isles1: [['happy', 'The ferry docks wobble! But they wobble the same way every time, five, six, seven, eight, so I\'m counting that as holding.']],
     isles2: [['smug', 'The Tower of Tongues speaks every format at once. I danced in all of them! I only tripped in the old one. The old one is very old.']],
-    isles3: [['happy', 'The Twins argued about which island I should test first, so I tested both. At the same time. Nearly. They\'ll agree about it eventually.']],
-    isles4: [['shy', 'The lighthouse was sealed so long its floor forgot what feet feel like. I was a tiny bit scared. Only a tiny bit! I reminded it, gently.']],
-    road: [['happy', 'A whole road, opened all at once! So brave. I danced it end to end first, a few steps at a time, and it held the whole way.']],
-    waystation: [['neutral', 'The tunnel is slow, but slow isn\'t broken. I danced the whole thing at half speed. Five... six... seven... It took a while.']],
-    arena: [['shy', 'Ten thousand empty seats! The best time to dance in an arena. If I wobble, nobody sees. I didn\'t wobble. Much.']],
+    waystation: [['happy', 'A whole road, opened all at once! So brave. I danced it end to end first, a few steps at a time, and it held the whole way.'],
+      ['neutral', 'The tunnel is slow, but slow isn\'t broken. I danced the whole thing at half speed. Five... six... seven... It took a while.']],
     club: [['smug', 'The PR Club logs every rep, so I asked them to log my first step in their yard. It\'s on the board now, in chalk! A personal record!']],
     camp: [['sad', 'Everyone in this camp has fallen more times than they can count.'],
       ['happy', 'But if it isn\'t a happy ending, it isn\'t the end! And here, at least, the ground won\'t be the reason they fall.']]
@@ -143,8 +142,8 @@
   };
 
   // ---------- The Eventual Isles ----------
-  // One spot per wave, on that wave's newest island; the Isles only show her once the island is open.
-  const ISLES = { isles1: [11, 24, 'west'], isles2: [33, 19, 'south'], isles3: [51, 29, 'west'], isles4: [56, 20, 'east'] };
+  // One spot per early wave, on that wave's newest island; the Isles only show her once the island is open.
+  const ISLES = { isles1: [11, 24, 'west'], isles2: [33, 19, 'south'] };
   const IS = SD.isles;
   if (IS && IS.addPerson) {
     const im = new Image();
