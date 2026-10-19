@@ -452,13 +452,17 @@
         const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
         if (def.ground !== false) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) corner(x, y);
         if (def.under) def.under(ctx, ts, t);
-        // Trees ring the map; objects and people are drawn row by row so you walk behind them.
+        // Trees ring the map; objects and people are drawn row by row so you walk behind them. Anything marked front
+        // is drawn over every row, people first: someone climbing the outside of a building, and the railing they
+        // climb behind (js/club-loft.js).
         objs = (def.objects || []).filter(o => !o.hidden);
         for (let y = y0; y < y1 + 3; y++) {
           if (y < HT) for (let x = x0; x < x1; x++) if (MAP[y][x] === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
-          objs.forEach(o => { if (Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
-          Object.values(sc.actors).forEach(a => { if (Math.round(a.py) === y) person(a, t); });
+          objs.forEach(o => { if (!o.front && Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
+          Object.values(sc.actors).forEach(a => { if (!a.front && Math.round(a.py) === y) person(a, t); });
         }
+        Object.values(sc.actors).forEach(a => { if (a.front) person(a, t); });
+        objs.forEach(o => { if (o.front) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
       }
       Object.values(sc.actors).forEach(a => { if (!a.hidden && a.emoT > 0 && a.emo) { const [ex, ey] = emoteAt(a); emote(a.emo, ex, ey); } });
       const sk = typeof def.sky === 'function' ? def.sky() : def.sky;

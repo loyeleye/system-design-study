@@ -493,7 +493,8 @@
     // Paths are walked, doors creak. Walked: the road's turnings (to each place, and back to Pingsby), each place's way
     // back to the road (S or E), and the dungeons you walk into (the waystation's tunnel, the camp's chasm). Doors:
     // Aigerim's shop (C), Lyra's theatre (B), the arena's gate, Kyu's tower and the buildings.
-    const walked = cur === 'road' ? !['C', 'B'].includes(d) : d === 'S' || d === 'E' || (d === 'D' && WALK_IN.includes(cur));
+    // A place's def.walked names its own doors that are walked too (the PR Club's outside stairs).
+    const walked = cur === 'road' ? !['C', 'B'].includes(d) : d === 'S' || d === 'E' || (d === 'D' && WALK_IN.includes(cur)) || (MAPS[cur].walked || []).includes(d);
     AU.sfx(walked ? 'steps' : 'door');
     let moved = false;
     try {

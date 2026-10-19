@@ -183,7 +183,7 @@
     teaches: 'Flash sales: check-then-write overselling, the hot-row lock, atomic decrements, an idempotency key per booking, holds with a time limit, and a waitlist',
     payoff: 'Dawn Flow fills to exactly twenty every morning, and the waitlist moves up when a hold lapses. Kofi still taps twice. It counts once.',
     steps: [
-      { at: 'delphine', hint: 'Delphine has a booking problem, in the studio up the outside stairs.', do: [
+      { at: 'delphine', hint: 'Delphine has a booking problem, in the studio under the outside stairs.', do: [
         { say: [['delphine', 'Welcome. Breathe in for four. Hold for four. Out for four. Good. Now: I have a problem, and I am breathing through it.'],
           ['delphine', 'Dawn Flow is at six in the morning. Twenty mats. Bookings open at eight the night before, on the sign-up board.'],
           ['delphine', 'Last night five hundred heroes tapped in the same second. Thirty-one of them got a mat. I have twenty mats. I did the breathing. It did not add mats.'],
