@@ -5,7 +5,7 @@
   // Two roads leave town: N (top edge) to the North Road and E (east edge, below the Forge) to the Eventual Isles ferry.
   // Each is blocked until its story opens it (see EXITS below).
   const MAP = [
-    'TTTTTTTTTTTTTTTTTTTTNTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTpTTTTTTTTTTTTTTTTTTTTTT....T',
     'T..............................................T',
     'T.#######......L.......#######....#########.###T',
     'T.#######..............#######....#########.###T',
@@ -49,6 +49,16 @@
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
   ];
   const W = MAP[0].length, HT = MAP.length;
+  // The forge yard behind the Forge, up a lane between the Guild and the Forge: Mio's anvil (m) and Ayo's, with its
+  // fire (a), side by side so the two of them work facing each other, and a stump with a red-hot blade cooling on it (s). These rows sit above the town at negative y (-NY to -1), so
+  // nothing else on the map moved when they were added. The North Road leaves from their top edge.
+  const YARD = [
+    'TTTTTTTTTTTTTTTTTTTTNTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTpTTTTTTTTTTTTTTTTTTTTT.ma.sT',
+    'TTTTTTTTTTTTTTTTTTTTpTTTTTTTTTTTTTTTTTTTT......T',
+    'TTTTTTTTTTTTTTTTTTTTpTTTTTTTTTTTTTTTTTTTT......T'
+  ];
+  const NY = YARD.length;
   const INK = '#2b2340';
   const BUILD = {
     A: { name: 'GODDESS TEMPLE' }, C: { name: 'CACHE CAFÉ' },
@@ -118,7 +128,7 @@
   });
   const PAGE_SPOTS = [[9, 1], [20, 3], [28, 10], [2, 15], [12, 18], [22, 16], [30, 6], [10, 10], [35, 1], [44, 10], [38, 18]];
 
-  const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
+  const tile = (x, y) => (y < -NY || y >= HT || x < 0 || x >= W) ? 'T' : y < 0 ? YARD[y + NY][x] : MAP[y][x];
   const npcAt = (x, y) => people().find(n => n.x === x && n.y === y);
   const walkable = (x, y) => ('.,=*pf' + DOORS).includes(tile(x, y)) && !npcAt(x, y);
   const DIRS = [[0, 1], [0, -1], [1, 0], [-1, 0]];
@@ -227,9 +237,9 @@
   function cam() {
     const vw = cv.width / dpr, vh = cv.height / dpr;
     let cx = P.px * ts + ts / 2 - vw / 2, cy = P.py * ts + ts / 2 - vh / 2;
-    cx = Math.max(0, Math.min(W * ts - vw, cx)); cy = Math.max(0, Math.min(HT * ts - vh, cy));
+    cx = Math.max(0, Math.min(W * ts - vw, cx)); cy = Math.max(-NY * ts, Math.min(HT * ts - vh, cy));
     if (W * ts < vw) cx = (W * ts - vw) / 2;
-    if (HT * ts < vh) cy = (HT * ts - vh) / 2;
+    if ((HT + NY) * ts < vh) cy = ((HT - NY) * ts - vh) / 2;
     return { cx, cy };
   }
   function tap(e) {
@@ -258,7 +268,7 @@
   }
   function nearestDoor(tx, ty) {
     let best = null, bd = 1e9;
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       if (DOORS.includes(tile(x, y))) {
         const d = Math.abs(x - tx) + Math.abs(y - ty);
         if (d < bd && d < 6) { bd = d; best = [x, y]; }
@@ -417,7 +427,7 @@
   }
 
   // Where a villager's door is (for js/folk.js), their name on the map, and where everyone is (the board).
-  H.doorTile = c => { for (let y = 0; y < HT; y++) { const x = MAP[y].indexOf(c); if (x >= 0) return [x, y]; } return null; };
+  H.doorTile = c => { for (let y = -NY; y < HT; y++) { const x = (y < 0 ? YARD[y + NY] : MAP[y]).indexOf(c); if (x >= 0) return [x, y]; } return null; };
   H.npcName = id => { const n = NPCS.find(m => m.id === id); return n ? n.name : null; };
   H.folkNow = () => SD.folk && SD.state.save ? folkPlan().plan : {};
   // Where a villager is standing right now, or null if they're indoors or away (for playtest scripts).
@@ -494,7 +504,7 @@
     const since = drop && drop.landed ? drop.t - drop.dur : 1, shake = since < 0.25 ? (1 - since / 0.25) * 2 : 0;
     ctx.save(); ctx.translate(-Math.round(cx) + (Math.random() - 0.5) * shake, -Math.round(cy) + (Math.random() - 0.5) * shake);
     const x0 = Math.max(0, Math.floor(cx / ts) - 1), x1 = Math.min(W, Math.ceil((cx + vw) / ts) + 1);
-    const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
+    const y0 = Math.max(-NY, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) drawCorner(x, y, t);
     drawGroundDeco();
     // Chapter files can draw on the ground here (js/ch10.js: Gary's cold coffee while he is missing).
@@ -518,7 +528,7 @@
     ctx.restore();
     if (SD.clock) SD.clock.shade(ctx, vw, vh, lights(t, cx, cy));
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if (BUILD[c] && !'BNE'.includes(c)) label(x, y, BUILD[c].name, t, (H.markers && H.markers[c]) || doorMarks[c]);
       // In the storm everyone is inside, worrying: a little bubble at each door with someone behind it.
@@ -556,9 +566,10 @@
     // With the Cloud down (chapter 10) the lamps and windows are out too: only the Forge and the portal glow.
     const down = SD.clock.frozen();
     const out = [], at = (x, y, r, rgb) => out.push({ x: x * ts - cx, y: y * ts - cy, r: r * ts, rgb });
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if ((c === 'l' || c === 'L' && DECO[hash(x, y) % DECO.length] === 'lamp') && !down) at(x + 0.5, y - 0.7, 2.6);
+      if (c === 'a') at(x + 0.5, y + 0.3, 1.8 * (1 + 0.08 * Math.sin(t * 11)), '255,140,60');
       if (BUILD[c] && !'BNE'.includes(c) && (!down || 'FG'.includes(c))) {
         const b = bbox(c);
         if (!b) continue;
@@ -653,7 +664,7 @@
   const TERRAIN = { '~': 'water', '=': 'water', ',': 'plaza', B: 'plaza', p: 'dirt', f: 'farm' };
   const TOP = ['water', 'plaza', 'farm', 'dirt'];
   // The North Road exit is just the dirt path carrying on north through the trees, off the top of the map.
-  const terrain = (x, y) => (y < 0 && x === 20) ? 'dirt' : TERRAIN[tile(x, y)] || (DOORS.includes(tile(x, y)) ? 'dirt' : 'grass');
+  const terrain = (x, y) => (y < -NY && x === 20) ? 'dirt' : TERRAIN[tile(x, y)] || (DOORS.includes(tile(x, y)) ? 'dirt' : 'grass');
   function drawCorner(x, y, t) {
     const c = [terrain(x - 1, y - 1), terrain(x, y - 1), terrain(x - 1, y), terrain(x, y)];
     const T = TOP.find(k => c.includes(k)) || 'dirt';
@@ -668,7 +679,7 @@
   }
   function drawGroundDeco() {
     // Footbridges over the river, and the farm's crops
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if (c === '=' && tile(x - 1, y) !== '=' && tile(x, y - 1) !== '=' && ok(pic('bridge'))) ctx.drawImage(pic('bridge'), (x - 0.1) * ts, (y - 0.35) * ts, ts * 2.2, ts * 2.7);
     }
@@ -688,11 +699,13 @@
   // Each building is one picture standing on the bottom row of its footprint, fitted to the footprint's width.
   // 'L' is a bit of street clutter picked by position; 'l' is always a street lamp (round the cul-de-sac).
   const DECO = ['bush', 'lamp', 'bush', 'barrel', 'sign'];
+  const YARD_ART = { a: 'anvil-fire', m: 'anvil', s: 'sword-stump' };
   function drawObject(x, y, c, t) {
     if (c === 'T') { obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2); return; }
     if (c === 'L') { obj(DECO[hash(x, y) % DECO.length], (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
     if (c === 'l') { obj('lamp', (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
     if (c === 'f' && (x + y) % 2 === 0) { obj('crops', (x + 0.5) * ts, (y + 0.9) * ts, 0.8); return; }
+    if (YARD_ART[c]) { const nm = YARD_ART[c]; obj(nm, (x + 0.5) * ts, (y + 1) * ts, 42 / ART().objects[nm][0]); return; }
     if (c !== '#' && !DOORS.includes(c)) return;
     if (c === 'N') return;   // no gate: a plain path leads north (Ladi, 2026-10-18)
     const o = blockOwner(x, y), b = bbox(o);
@@ -730,7 +743,7 @@
     if (!o) return null;
     if (boxes[o]) return boxes[o];
     let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1, door = null;
-    for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
+    for (let y = -NY; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
       if ((c === '#' || c === o) && blockOwner(x, y) === o) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
       if (c === o) door = [x, y];
@@ -823,7 +836,9 @@
       case 'smith': {
         // Raise, strike, clang: a hop down onto the anvil and a spray of sparks in front.
         const s = (k * 1.25) % 1, hit = s < 0.15;
-        return { face: 'north', dy: s > 0.6 ? -0.06 : hit ? 0.03 : 0, bub: every(n, t, 11, ['bang', 'sweat', 'happy']),
+        // At the forge yard they face the anvil next to them; anywhere else, north.
+        const face = Object.keys(ahead).find(f => YARD_ART[tile(n.x + ahead[f][0], n.y + ahead[f][1])] && tile(n.x + ahead[f][0], n.y + ahead[f][1]) !== 's') || 'north';
+        return { face, dy: s > 0.6 ? -0.06 : hit ? 0.03 : 0, bub: every(n, t, 11, ['bang', 'sweat', 'happy']),
           fx: (x, y, f) => { if (s < 0.35) sparks(x + ahead[f][0] * ts * 0.45, y - ts * 0.55 + ahead[f][1] * ts * 0.2, s / 0.35, n.id); } };
       }
       case 'talk': {
