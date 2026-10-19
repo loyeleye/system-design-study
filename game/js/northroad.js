@@ -376,11 +376,13 @@
       scenes[key] = SD.scene.create($('#north-canvas'), def);
       scenes[key].onDoor = door; scenes[key].onTalk = talk;
       if (key === 'road') scenes[key].fx.push(candle);
+      if (key === 'camp') scenes[key].fx.push(campfire);
       if (def.critters && SD.critters) SD.critters.add(scenes[key], def.critters);
       const [x, y, f] = def.enter || def.back.S;
       scenes[key].player(x, y, f);
     }
     sc = scenes[key];
+    if (key === 'camp') fireName();
     if (at) { sc.place('you', at[0], at[1]); sc.face('you', at[2] || 'south'); }
     cast(true); hud(); sc.start();
     AU.music(def.music);
@@ -399,6 +401,28 @@
     const sway = Math.sin(t * 7) * 0.6 * k;
     ctx.fillStyle = '#ff9a2e'; ctx.beginPath(); ctx.ellipse(x + sway * 0.5, y, 1.6 * k, 3 * k * f, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(x + sway, y + 0.6 * k, 0.8 * k, 1.6 * k * f, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // The camp's campfire: lit (and flickering, js/scene.js ANIM) until chapter 10's storm puts it out. While the storm
+  // rains on it, it's charred logs with smoke curling up off them, and no crackle.
+  SD.arcArt.objects['cp-fire-out'] = [55, 60];
+  const FIRE = camp.objects.find(o => o.name === 'cp-fire');
+  const fireOut = () => !!(SD.folk && SD.folk.storm()) && ['drizzle', 'rain', 'storm'].includes(SD.weather ? SD.weather.now(camp.weather) : '');
+  camp.ambience = () => fireOut() ? null : 'fire';
+  function fireName() { FIRE.name = fireOut() ? 'cp-fire-out' : 'cp-fire'; }
+  function campfire(ctx, t, ts) {
+    fireName();
+    if (FIRE.name !== 'cp-fire-out') return;
+    const k = ts / 32, x0 = (FIRE.x + 0.5) * ts, y0 = (FIRE.y + 1) * ts - 20 * k;
+    // Darker at night, so the smoke doesn't shine through the dark.
+    const v = Math.round(160 - 50 * (SD.clock ? SD.clock.dark() : 0));
+    for (let i = 0; i < 12; i++) {
+      const p = (t * 0.32 + i / 12) % 1;
+      const x = x0 + Math.sin(p * 3.2 + i * 1.7) * 5 * k + p * 14 * k, y = y0 - p * 64 * k;
+      const r = (2.5 + p * 8) * k, a = Math.min(1, p * 6) * (1 - p) * 0.7;
+      ctx.fillStyle = `rgba(${v},${v},${v + 6},${a})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
   NR.enter = async function (fromRun) {

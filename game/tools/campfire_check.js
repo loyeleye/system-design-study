@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checks the heroes' camp campfire flickers (js/scene.js ANIM): serves the game, opens the camp in debug mode
 // (afternoon, then night), and screenshots the fire ten times. Fails if the frame strip doesn't load, a file 404s,
-// the page throws, or the fire looks the same in most shots.
+// the page throws, or the fire looks the same in most shots. Then checks chapter 10's storm has put it out.
 //
 //   node tools/campfire_check.js [OUT_DIR]    screenshots go in OUT_DIR (default: a temp folder)
 //
@@ -43,6 +43,21 @@ const server = http.createServer((req, res) => {
     const distinct = new Set(shots.map(s => s.toString('base64'))).size;
     const ok = strip && strip[0] === 512 && strip[1] === 72 && distinct >= 5 && !errs.length;
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${time}: strip ${JSON.stringify(strip)}, ${distinct}/10 distinct fire shots${errs.length ? ', errors ' + JSON.stringify(errs) : ''}`);
+    failed = failed || !ok;
+    await p.close();
+  }
+  // Chapter 10's storm puts it out: charred logs instead of flames, and no crackle under the rain.
+  {
+    const p = await b.newPage({ viewport: { width: 900, height: 640 } });
+    const errs = [];
+    p.on('pageerror', e => errs.push(e.message));
+    p.on('response', r => { if (r.status() >= 400) errs.push(r.status() + ' ' + r.url()); });
+    await p.goto(base + '/index.html?debug&ch=10&rank=S&at=camp');
+    await p.waitForTimeout(4000);
+    const st = await p.evaluate(() => ({ storm: SD.folk.storm(), fire: SD.northRoad.maps.camp.objects.find(o => /^cp-fire/.test(o.name)).name, sound: SD.northRoad.maps.camp.ambience() }));
+    await p.screenshot({ path: path.join(OUT, 'camp-ch10-storm.png') });
+    const ok = st.storm && st.fire === 'cp-fire-out' && st.sound === null && !errs.length;
+    console.log(`${ok ? 'ok  ' : 'FAIL'} chapter 10 storm: ${JSON.stringify(st)}${errs.length ? ', errors ' + JSON.stringify(errs) : ''}`);
     failed = failed || !ok;
     await p.close();
   }
