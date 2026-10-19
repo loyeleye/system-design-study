@@ -195,11 +195,21 @@
   };
   const hash = (a, b) => { const x = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return x - Math.floor(x); };
   // SD.clock.yawning(id, t): true while that villager is mid-yawn (about one cycle in three, every 14-24 s, 2.4 s long).
-  C.yawning = function (id, t) {
+  // SD.clock.yawnPhase(id, t): seconds into the current yawn (0 to 2.4), or -1 when not yawning.
+  C.yawnPhase = function (id, t) {
     const when = YAWNS[id];
-    if (!when || C.frozen() || !when.includes(C.block())) return false;
+    if (!when || C.frozen() || !when.includes(C.block())) return -1;
     const n = id.length * 7 + id.charCodeAt(0), every = 14 + (n % 10), k = t + n % every, cyc = Math.floor(k / every);
-    return k % every < 2.4 && hash(n, cyc) < 0.34;
+    return k % every < 2.4 && hash(n, cyc) < 0.34 ? k % every : -1;
+  };
+  C.yawning = (id, t) => C.yawnPhase(id, t) >= 0;
+  // Villagers with hand-pixelled yawn frames (assets/img/village/y-<id>.webp, made by tools/yawn_art.py).
+  const YAWN_ART = ['cron', 'mio', 'seymour', 'wen', 'lexi', 'doug', 'uptima'];
+  // SD.clock.yawnFrame(id, t): which yawn frame to show (0 half, 1 full), or -1 for none: eyes shut and the mouth
+  // opening, held wide, then closing again.
+  C.yawnFrame = function (id, t) {
+    const p = YAWN_ART.includes(id) ? C.yawnPhase(id, t) : -1;
+    return p < 0 ? -1 : p < 0.35 || p > 2.0 ? 0 : 1;
   };
   // A yawn bubble: a speech bubble with a sleepy open mouth and "yawn~", at the villager's head (px, py).
   C.drawYawn = function (ctx, px, py, ts) {

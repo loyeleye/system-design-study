@@ -721,7 +721,7 @@
   // People: the player, Gary, villagers who stand by their doors, and wanderers who just like walking.
   // Each has a PixelLab sheet: rows face south, west, east and north; column 0 stands, then walk or idle frames.
   const ROW = { south: 0, west: 1, east: 2, north: 3 };
-  function person(id, px, py, t, face, moving, noShadow, pace) {
+  function person(id, px, py, t, face, moving, noShadow, pace, yawn) {
     const c = ART().chars[id], im = pic('c-' + id);
     ctx.fillStyle = 'rgba(43,35,64,0.22)';
     if (!noShadow) { ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
@@ -731,7 +731,9 @@
     const col = n && (moving || !c.walk) ? 1 + Math.floor(t * (moving ? 8 * (pace || 1) : 5)) % n : 0;
     // Villagers without walk frames hop along instead.
     const bob = moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
-    const w = c.w * ts / 32, h = c.h * ts / 32;
+    const w = c.w * ts / 32, h = c.h * ts / 32, y = yawn >= 0 && pic('y-' + id);
+    // Mid-yawn (yawn is 0 or 1): the hand-pixelled yawn frames stand in for the usual sheet.
+    if (y && ok(y)) return ctx.drawImage(y, yawn * c.w, 0, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h, w, h);
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h + bob, w, h);
   }
   const headY = y => (y - 0.55) * ts;
@@ -774,21 +776,24 @@
     if (n.block) return obj(n.block, (n.x + 0.5) * ts, (n.y + 1) * ts, 0.8);
     if (n.bench) return drawBench(n.x, n.y);
     const a = !n.moving && n.act ? doing(n, t) : null;
+    let face = 'south', yawn = -1;
     if (n.bird) drawBird(n, t);
     else {
       // You walking up gets their attention; otherwise they face their work.
       const near = Math.abs(P.x - n.x) + Math.abs(P.y - n.y) <= 1;
-      const face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
+      face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
       ctx.save(); if (a && a.dy) ctx.translate(0, a.dy * ts);
-      person(n.id, xx(n), yy(n), t, face, !!n.moving || !!(a && a.anim), false, n.moving ? pace(n) : 1);
+      yawn = !n.moving && face === 'south' && SD.clock ? SD.clock.yawnFrame(n.id, t) : -1;
+      person(n.id, xx(n), yy(n), t, face, !!n.moving || !!(a && a.anim), false, n.moving ? pace(n) : 1, yawn);
       ctx.restore();
       if (a && a.fx) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
     }
     // A quest marker replaces any bubble, so the two never overlap.
     if (n.moving || (H.npcMarks && H.npcMarks[n.id])) return;
     const X = xx(n) * ts + ts / 2, Y = n.bird ? yy(n) * ts : headY(yy(n)) + (a && a.dy ? a.dy * ts : 0);
-    // Now and then a sleepy villager yawns (js/clock.js decides who and when).
-    if (SD.clock && SD.clock.yawning(n.id, t)) return SD.clock.drawYawn(ctx, X, Y, ts);
+    // Now and then a sleepy villager yawns (js/clock.js decides who and when). Those facing you show it on their
+    // face; anyone turned away, and Coo, get a little yawn bubble instead.
+    if (SD.clock && SD.clock.yawning(n.id, t)) return yawn < 0 ? SD.clock.drawYawn(ctx, X, Y, ts) : undefined;
     if (a) { if (a.bub) emote(a.bub, X, Y); return; }
     // Without an act: Gary sips coffee, everyone else occasionally has a feeling about something.
     if ((t + n.x) % 9 < 2.2) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', X, Y);
