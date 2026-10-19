@@ -163,6 +163,8 @@
     let stepT = 0;
     function update(dt) {
       Object.values(sc.actors).forEach(a => {
+        // Actors that run themselves (animals, js/critters.js) decide where to go before they step.
+        if (a.tick) a.tick(dt);
         if (a.pip) {
           const P = sc.P || a;
           a.px += (P.px - 0.9 * (P.face === 'west' ? -1 : 1) - a.px) * Math.min(1, dt * 4);
