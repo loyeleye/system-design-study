@@ -9,6 +9,7 @@
 //   F.meet(id)            remember that you've talked to someone
 //   F.chat(id)            talk to someone found away from their door
 //   F.indoors(door)       chapter 10: knock on a door and hear from whoever is sheltering inside
+//   F.worry(id)           chapter 10: one worried line from someone indoors, { s, t, e }, a different one each time
 //   F.board()             the Brújula Board page (in the Menu)
 //   F.storm()             true while everyone is indoors (chapter 10's stormy night)
 (function () {
@@ -59,15 +60,23 @@
     list.forEach(n => { taken[n.stand[0] + ',' + n.stand[1]] = 1; });
     list.forEach(n => {
       const e = entry(n.id, block);
-      let spot = 'stand', doing = e ? e[1] : '', say = e && e[2];
-      if (storm && D.STORM[n.id]) { spot = D.STORM[n.id]; doing = 'Indoors, out of the storm'; say = null; }
+      let spot = 'stand', doing = e ? names(e[1]) : '', say = e && e[2], act = D.PEOPLE[n.id].act || null;
+      if (storm && D.STORM[n.id]) { spot = D.STORM[n.id]; doing = 'Indoors, out of the storm'; say = null; act = null; }
       // Quest business beats the clock: a villager with a ! or ? stays where you'd look for them.
       else if (marks[n.id]) { spot = 'stand'; say = null; }
-      else if (e) spot = e[0];
+      else if (e) { spot = e[0]; act = e[3] || act; }
       if (spot === null) { out[n.id] = null; return; }
+      // Rounds: a walk between several spots, a few seconds at each, starting somewhere different each loop.
+      if (Array.isArray(spot)) {
+        const route = spot.map(k => { const ts = D.SPOTS[k].tiles; return ts[hash(n.id + k) % ts.length]; });
+        const i = ctx(block).loop % route.length;
+        out[n.id] = { spot: 'rounds', doing, say, act, label: 'making the rounds', hide: false, door: null,
+          route: route.slice(i).concat(route.slice(0, i)), x: route[i][0], y: route[i][1] };
+        return;
+      }
       let s = D.SPOTS[spot];
       if (s && s.road && !roadOpen(s.road)) { spot = home(n.id); s = D.SPOTS[spot]; doing = 'At home'; say = null; }
-      const at = { spot, doing, say, label: s ? s.label : null, hide: false, door: null };
+      const at = { spot, doing, say, act, label: s ? s.label : null, hide: false, door: null };
       if (spot === 'stand' || !s) { at.x = n.stand[0]; at.y = n.stand[1]; }
       else if (s.door || s.road) {
         const d = SD.hub.doorTile(s.door || s.road);
@@ -85,6 +94,9 @@
     last = out;
     return out;
   };
+  const hash = str => { let h = 7; for (const ch of str) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
+  // "{valentin}" in a line becomes whatever the map calls her today.
+  const names = t => t.replace(/\{(\w+)\}/g, (m, id) => { const nm = SD.hub.npcName(id); return nm ? cap(nm) : m; });
   // Who is behind a door right now (from the last plan).
   F.residents = door => Object.keys(last).filter(id => last[id] && last[id].hide && last[id].door === door);
 
@@ -106,19 +118,25 @@
   // Chapter 10: nobody is out in the storm. Knocking gets a worried word from whoever lives there, a different one
   // each visit; the Forge, where the homeless shelter, has a word from each of them, and their quests still work.
   F.indoors = async function (door) {
-    const owner = D.DOOR_OWNER[door];
-    const inside = F.residents(door).filter(id => id !== owner);
+    const home = F.residents(door), owner = home.includes(D.DOOR_OWNER[door]) ? D.DOOR_OWNER[door] : null;
+    const inside = home.filter(id => id !== owner);
     if (!owner && !inside.length) return;
-    const f = flags(), seen = f.worry = f.worry || {};
     const lines = [];
-    if (owner && D.WORRY[owner]) {
-      const i = seen[owner] || 0; seen[owner] = i + 1; S.persist();
-      const [s, t, e] = D.WORRY[owner][i % D.WORRY[owner].length];
-      lines.push({ s, t, e });
-    }
+    if (owner && D.WORRY[owner]) lines.push(F.worry(owner));
     inside.forEach(id => { const l = D.SHELTER[id]; if (l) { lines.push({ s: id, t: l }); F.meet(id); } });
     if (lines.length) await U.dialog(lines);
     for (const id of inside) if (SD.quests.pending(id).length) await SD.quests.talk(id);
+  };
+
+  // One worried line from someone sheltering in the storm (rooms in js/interiors.js use it too): their own rotation
+  // if they have one, a different line each time, else their line from the Forge.
+  F.worry = function (id) {
+    const ls = D.WORRY[id];
+    if (!ls) return D.SHELTER[id] ? { s: id, t: D.SHELTER[id] } : null;
+    const seen = flags().worry = flags().worry || {}, i = seen[id] || 0;
+    seen[id] = i + 1; S.persist();
+    const [s, t, e] = ls[i % ls.length];
+    return { s, t, e };
   };
 
   // ---------- The Brújula Board ----------

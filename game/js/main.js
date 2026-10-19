@@ -196,7 +196,8 @@
     if (atDoor) return;
     atDoor = true;
     SD.hub.stop();
-    AU.sfx(DOOR_NPC[c] || c === 'G' ? 'door' : 'blip');
+    const dc = c.replace(/^in:/, '');
+    AU.sfx(DOOR_NPC[dc] || dc === 'G' || (SD.interiors && SD.interiors.row(dc)) ? 'door' : 'blip');
     try {
       // Quest business comes first; villagers with a building offer to carry on inside instead.
       // The two roads out of town (js/hub.js): the North Road and the ferry to the Eventual Isles. Each takes over the
@@ -207,28 +208,38 @@
       if (c === 'bench') { await SD.clock.bench(); return; }
       // A villager met away from their door, out on their schedule (js/folk.js).
       if (c.startsWith('away:')) { await SD.folk.chat(c.slice(5)); return; }
-      SD.folk.meet(DOOR_NPC[c] || c);
+      // Walking through a door with a room behind it goes inside (js/interiors.js); talking to the villager outside
+      // still opens their building straight away. The residential row's other doors get a knock.
+      if (c.startsWith('in:')) { c = c.slice(3); if (SD.interiors && SD.interiors.has(c)) { await SD.interiors.enter(c); return; } }
+      if (SD.interiors && SD.interiors.row(c)) { await SD.interiors.knock(c); return; }
       // Chapter 10's storm: everyone is indoors and worried. Knocking gets a word first, then the usual business.
       if (SD.folk.storm() && DOORS_IN.includes(c)) await SD.folk.indoors(c);
-      if (c !== 'G' && c !== 'B' && await SD.quests.talk(DOOR_NPC[c] || c, VISIT[c])) return;
-      if (c === 'U') await SD.quests.guild();
-      if (c === 'F') await forge();
-      if (c === 'P' || c === 'K' || c === 'cron' || c === 'kaito' || c === 'doug') await SD.quests.idle(DOOR_NPC[c] || c);
-      if (c === 'K' && SD.quests.status('library') === 'done') await hall();
-      if (c === 'A') await temple();
-      if (c === 'C') await cafe();
-      if (c === 'H') await treehouse();
-      if (c === 'W') await bunker();
-      if (c === 'B') await board();
-      if (c === 'gary') await gary();
-      if (c === 'aigerim') await SD.peddler.visit();
-      if (c === 'valentin' && SD.cove) await SD.cove.idle(c);
-      if (c === 'G') await gate();
+      await visit(c);
     } finally {
       atDoor = false;
       if (!$('#screen-hub').hidden) { SD.hub.stepOffDoor(); SD.hub.start(); M.hud(); }
     }
   }
+  // What a building or villager offers once you're talking to them: quest business first, then the building itself.
+  // Rooms (js/interiors.js) call this when you talk to the owner inside.
+  async function visit(c) {
+    SD.folk.meet(DOOR_NPC[c] || c);
+    if (c !== 'G' && c !== 'B' && await SD.quests.talk(DOOR_NPC[c] || c, VISIT[c])) return;
+    if (c === 'U') await SD.quests.guild();
+    if (c === 'F') await forge();
+    if (c === 'P' || c === 'K' || c === 'cron' || c === 'kaito' || c === 'doug') await SD.quests.idle(DOOR_NPC[c] || c);
+    if (c === 'K' && SD.quests.status('library') === 'done') await hall();
+    if (c === 'A') await temple();
+    if (c === 'C') await cafe();
+    if (c === 'H') await treehouse();
+    if (c === 'W') await bunker();
+    if (c === 'B') await board();
+    if (c === 'gary') await gary();
+    if (c === 'aigerim') await SD.peddler.visit();
+    if (c === 'valentin' && SD.cove) await SD.cove.idle(c);
+    if (c === 'G') await gate();
+  }
+  M.visit = visit;
   // What blocks each road until the story opens it. The boulder is Lord Latency's: a loading bar stuck at 99%.
   // The Isles barricade's sign keeps flipping between OPEN and CLOSED, because its two halves haven't synced.
   const BLOCK = {

@@ -499,5 +499,16 @@ SD.explain = [
       { t: 'Limit and budget usage by tokens per user', keys: ['rate.?limit', 'quota', 'budget', 'by tokens', 'token.based', 'per.user (limit|cap)'], ex: ['cap how many tokens each user can spend a day', 'stop one customer running up the bill', 'limit usage per account'] }
     ],
     model: 'First measure where the tokens go. Cache exact repeats and use a semantic cache for near-repeats, matching closely because a wrong cached answer is wrong for everyone. Route easy requests to a smaller, cheaper model and save the large one for hard questions. Trim prompts, summarise long histories instead of resending them, cap reply length, and rate-limit by tokens per user so one heavy user cannot run up the bill.',
-    why: 'You pay per token, so cost is prompt length times traffic: every fix shrinks one of those.' }
+    why: 'You pay per token, so cost is prompt length times traffic: every fix shrinks one of those.' },
+
+  // Bru's side quest "Who Goes There?" (js/bru-quest.js) asks this one at the Guild.
+  { id: 'x-auth1', c: 'auth', type: 'explain', q: 'What is the difference between authentication and authorization, and how does your API know who is calling on every request?',
+    points: [
+      { t: 'Authentication proves who you are', keys: ['authn', 'authenticat\\w* (is|means|=|checks|proves|answers|confirms|verifies|establishes)', 'who (you|they|someone|the (user|caller|client|person)) (are|is|really is)', 'identity', 'prov(e|es|ing) (who|that (you|it))', 'credentials', 'log(s|ging)? ?in\\b', 'sign(s|ing)? ?in\\b', 'password'], ex: ['checking that you are really you', 'the user logs in so we know it is them', 'confirming the caller is who they claim to be'] },
+      { t: 'Authorization decides what you may do', keys: ['authz', 'authori[sz]\\w* (is|means|=|checks|decides|answers|controls)', 'what (you|they|the (user|caller|client)) (are|is) allowed', 'allowed to', 'permi(ssion|tted|ts)', 'roles?\\b', 'rbac', 'access control', 'privilege'], ex: ['what you are able to do once we know you', 'checking if this user can delete that post', 'admins can do more than normal users'] },
+      { t: 'After login, a session or signed token comes with every request', keys: ['session', 'tokens?\\b', 'jwt', 'cookie', 'bearer', 'api key'], ex: ['the client sends something on each call that proves it logged in', 'the server looks up the id the browser sends', 'you get a signed pass after logging in'] },
+      { t: '401 for an unknown caller, 403 for one who is not allowed', keys: ['401', '403', 'unauthori[sz]ed\\b', 'forbidden'], ex: ['reject strangers and refuse people without permission', 'not logged in is a different error from not allowed'] }
+    ],
+    model: 'Authentication proves who you are, usually by logging in with a password or through an identity provider. Authorization decides what that identity is allowed to do, from its roles or permissions. After login the server issues a session ID or a signed token such as a JWT, and the client sends it with every request, so each call is authenticated without the password and then checked against permissions. An unknown or expired credential gets a 401; a known caller without permission gets a 403.',
+    why: 'A warm-up in almost every API design round, and the opening for follow-ups on sessions vs JWTs and on OAuth.' }
 ];

@@ -160,7 +160,8 @@
     if (tab === 'concepts') {
       body += '<div class="cx-list">';
       for (const id in SD.concepts) {
-        if (SD.concepts[id].zone > (sv.chapter || 1)) continue;
+        // Side quests' concepts (zone 98) join the cheat sheet once you've met them.
+        if (SD.concepts[id].zone > (sv.chapter || 1) && !(SD.concepts[id].zone === 98 && (sv.concepts[id] || {}).seen)) continue;
         const c = SD.concepts[id], st = SD.state.concept(id), m = SD.state.mastery(id);
         const page = sv.pages.includes(id);
         const due = st.seen && st.due <= Date.now();

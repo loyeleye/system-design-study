@@ -24,6 +24,10 @@
     'T.............#####...............fffffffff....T',
     'T.......L.....##G##.......L.......fffffffff....T',
     'T..............................................T',
+    'T....T.........................................T',
+    'T.................###..###..###..###..###..###.T',
+    'T.........T.......#X#.L#Y#..#D#.L#Q#..#M#.L#O#.T',
+    'T..............................................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
   ];
   const W = MAP[0].length, HT = MAP.length;
@@ -33,14 +37,18 @@
     H: { name: "MIO'S TREEHOUSE" }, W: { name: "SEYMOUR'S BUNKER" },
     G: { name: 'DUNGEON (PROD)' }, B: { name: 'QUEST BOARD' },
     U: { name: "ADVENTURERS' GUILD" }, F: { name: 'FORGE' }, P: { name: 'PIGEON POST' }, K: { name: 'GRAND LIBRARY' },
-    N: { name: 'NORTH ROAD' }, E: { name: 'TO THE ISLES' }
+    N: { name: 'NORTH ROAD' }, E: { name: 'TO THE ISLES' },
+    // The residential row, south of the gate: homes for villagers who work in town (js/interiors.js).
+    X: { name: "LEXI'S HOUSE" }, Y: { name: "KAITO'S HOUSE" }, D: { name: "DOUG'S HOUSE" }, Q: { name: "COO'S HOUSE" },
+    M: { name: "BRU'S HOUSE" }, O: { name: "AYO'S HOUSE" }
   };
-  const DOORS = 'ACHWGUFPKNE';
+  const DOORS = 'ACHWGUFPKNEXYDQMO';
   // Dirt paths from each door to the plaza and the bridge (drawn as stepping stones, walkable).
   const PATHS = [[5, 6], [26, 6], ...[5, 6, 7, 8, 9, 10, 11, 12].map(x => [x, 7]), ...[19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 7]),
     ...[10, 11, 12, 13].map(y => [15, y]), ...[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 14]),
     ...[15, 16, 17].map(y => [12, y]), [12, 18], [13, 18], [14, 18], [15, 18], [16, 18], [15, 14],
-    ...Array.from({ length: 20 }, (_, i) => [27 + i, 7]), [38, 6], [45, 5], [45, 6], ...[1, 2, 3, 4, 5, 6].map(y => [20, y]), ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14])];
+    ...Array.from({ length: 20 }, (_, i) => [27 + i, 7]), [38, 6], [45, 5], [45, 6], ...[1, 2, 3, 4, 5, 6].map(y => [20, y]), ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14]),
+    ...[19, 20, 21, 22].map(y => [16, y]), ...Array.from({ length: 30 }, (_, i) => [16 + i, 22])];
   PATHS.forEach(([x, y]) => { if (MAP[y][x] === '.') MAP[y] = MAP[y].slice(0, x) + 'p' + MAP[y].slice(x + 1); });
   // Villagers' usual spots, by their doors; talking to one there is the same as walking in. Through the day they
   // walk to wherever their schedule says (js/folk-data.js). Sprites are in assets/img/village.
@@ -130,7 +138,7 @@
     const r = cv.getBoundingClientRect();
     cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr);
     // 32px art, drawn 1:1 on small screens and at 1.5x on large ones.
-    ts = Math.max(r.width / 15, r.height / (HT - 1)) >= 44 ? 48 : 32;
+    ts = Math.max(r.width / 15, r.height / 19) >= 44 ? 48 : 32;
     // Resizing wipes the canvas, and the village pauses while anyone talks, so a cleared canvas could sit behind
     // a whole conversation as a blank blue screen. Repaint straight away instead of waiting for the next frame.
     if (t0 && r.width && r.height) { try { draw(t0 / 1000, 0); } catch (e) { /* images still loading */ } }
@@ -285,6 +293,7 @@
       if (at.hide && at.door && marks[n.id] && doorMarks[at.door] !== '?') doorMarks[at.door] = marks[n.id];
       const gx = at.x === null ? n.x : at.x, gy = at.y === null ? n.y : at.y;
       n.goal = { x: gx, y: gy, hide: at.hide };
+      n.act = at.act; n.route = at.route || null; n.routeI = 0; n.dwell = 2 + Math.random() * 4;
       if (snap || !n.placed || at.x === null || n.x === undefined) { n.x = n.px = gx; n.y = n.py = gy; n.hide = at.hide; n.path = []; n.placed = true; return; }
       if (n.x === gx && n.y === gy) { n.path = []; n.hide = at.hide; return; }
       const p = npcPath(n.x, n.y, gx, gy);
@@ -293,8 +302,10 @@
     });
   }
   // Villagers keep to open ground, and only use a door (or a road out of town) to go in or come out.
-  function npcPath(sx, sy, gx, gy) {
-    const stuck = new Set(NPCS.filter(fixture).map(n => n.x + ',' + n.y));
+  // Around the bench, the road blockers, anyone standing still, and (if given) you.
+  function npcPath(sx, sy, gx, gy, avoid) {
+    const stuck = new Set(NPCS.filter(n => fixture(n) || (n.here && !n.hide && n.placed && !n.moving && !(n.path && n.path.length))).map(n => n.x + ',' + n.y));
+    if (avoid) stuck.add(avoid[0] + ',' + avoid[1]);
     const k = (x, y) => x + ',' + y, prev = new Map([[k(sx, sy), null]]), q = [[sx, sy]];
     const ok = (x, y) => (x === gx && y === gy) || ('.,=*pf'.includes(tile(x, y)) && !stuck.has(k(x, y)));
     while (q.length) {
@@ -322,17 +333,35 @@
       if (n.path.length) {
         const [nx, ny] = n.path[0];
         // You're in the way: wait a moment, then stop where they are rather than walk through you.
-        if (nx === P.x && ny === P.y) { n.blocked = (n.blocked || 0) + dt; if (n.blocked > 1.5) { n.path = []; n.blocked = 0; } return; }
+        if (nx === P.x && ny === P.y) {
+          n.blocked = (n.blocked || 0) + dt;
+          if (n.blocked > 0.6) {
+            // You're in the way: step round you, or stop here if there's no way round.
+            const [gx, gy] = n.path[n.path.length - 1];
+            n.path = !(gx === P.x && gy === P.y) && npcPath(n.x, n.y, gx, gy, [P.x, P.y]) || [];
+            n.blocked = 0;
+          }
+          return;
+        }
         n.blocked = 0; n.path.shift();
         n.face = nx > n.x ? 'east' : nx < n.x ? 'west' : ny < n.y ? 'north' : 'south';
         n.x = nx; n.y = ny; n.moving = true;
       } else if (n.goal && n.goal.hide && n.x === n.goal.x && n.y === n.goal.y) n.hide = true;
+      else if (n.route && (n.dwell -= dt) <= 0) {
+        // Making the rounds: a few seconds at each stop, then on to the next.
+        n.routeI = (n.routeI + 1) % n.route.length;
+        const [gx, gy] = n.route[n.routeI];
+        n.path = (gx !== n.x || gy !== n.y) && npcPath(n.x, n.y, gx, gy) || [];
+        n.dwell = 5 + Math.random() * 5;
+      }
     });
   }
   // Where a villager's door is (for js/folk.js), their name on the map, and where everyone is (the board).
   H.doorTile = c => { for (let y = 0; y < HT; y++) { const x = MAP[y].indexOf(c); if (x >= 0) return [x, y]; } return null; };
   H.npcName = id => { const n = NPCS.find(m => m.id === id); return n ? n.name : null; };
   H.folkNow = () => SD.folk && SD.state.save ? folkPlan().plan : {};
+  // Where a villager is standing right now, or null if they're indoors or away (for playtest scripts).
+  H.actorAt = id => { const n = NPCS.find(m => m.id === id); return n && n.here && !n.hide ? [n.x, n.y] : null; };
   const xx = n => n.px === undefined ? n.x : n.px, yy = n => n.py === undefined ? n.y : n.py;
   const outdoorsy = () => !(SD.folk && SD.folk.storm()) && !(SD.clock && SD.clock.block() === 'night');
 
@@ -361,7 +390,8 @@
       P.face = nx > P.x ? 'east' : nx < P.x ? 'west' : ny < P.y ? 'north' : 'south';
       P.x = nx; P.y = ny; stepT = 0.02;
       const t = tile(nx, ny);
-      if (DOORS.includes(t)) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => onDoor(t), 140); }
+      // A door with a room behind it takes you inside (js/interiors.js); the others open their building.
+      if (DOORS.includes(t)) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => onDoor(SD.interiors && SD.interiors.has(t) ? 'in:' + t : t), 140); }
       checkPage();
     } else if (nx !== P.x || ny !== P.y) {
       // Bumping into a villager starts a conversation.
@@ -532,18 +562,22 @@
   const load = src => { const im = new Image(); im.src = src; return im; };
   const EMOTE = load('assets/img/emotes.png');
   const PICS = {};
-  const pic = name => PICS[name] || (PICS[name] = load(VA + name + '.webp'));
+  // The residential row's houses live with the interiors art (assets/img/interiors, js/interiors-art.js).
+  const IA = () => SD.interiorsArt && SD.interiorsArt.objects;
+  const pic = name => PICS[name] || (PICS[name] = load((IA() && IA()[name] ? 'assets/img/interiors/' : VA) + name + '.webp'));
   const ok = im => im.complete && im.naturalWidth > 0;
   const ART = () => SD.villageArt;
   // Draw an object picture centred on x and standing on y (both in pixels), at `k` times the art scale.
   function obj(name, x, y, k, flip) {
-    const im = pic(name), sz = ART().objects[name];
+    const im = pic(name), sz = ART().objects[name] || (IA() && IA()[name]);
     if (!sz || !ok(im)) return;
     const w = sz[0] * ts / 32 * (k || 1), h = sz[1] * ts / 32 * (k || 1);
     if (flip) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(im, -w / 2, y - h, w, h); ctx.restore(); }
     else ctx.drawImage(im, x - w / 2, y - h, w, h);
   }
-  const EMO = { alert: [32, 64], heart: [16, 80], music: [16, 0], dots: [48, 32], laugh: [16, 16], idea: [16, 32], sleep: [0, 64], star: [0, 32] };
+  const EMO = { alert: [32, 64], heart: [16, 80], music: [16, 0], dots: [48, 32], laugh: [16, 16], idea: [16, 32], sleep: [0, 64], star: [0, 32],
+    swirl: [0, 0], sad: [32, 0], drop: [48, 0], sparkle: [0, 16], happy: [32, 16], talk: [48, 16], cash: [64, 16], sweat: [64, 32],
+    zz: [0, 48], hearts: [16, 48], bang: [32, 48], anger: [64, 48], question: [0, 80], drops: [32, 80] };
   function emote(name, px, py) {
     if (!ok(EMOTE)) return;
     const [sx, sy] = EMO[name]; const S = ts * 0.75;
@@ -600,7 +634,7 @@
     if (c === 'N') return;   // no gate: a plain path leads north (Ladi, 2026-10-18)
     const o = blockOwner(x, y), b = bbox(o);
     if (!b || x !== b.x0 || y !== b.y1) return;
-    const name = 'b-' + o, sz = ART().objects[name];
+    const name = 'b-' + o, sz = ART().objects[name] || (IA() && IA()[name]);
     if (!sz) return;
     // As wide as the footprint, but never taller than it plus a row and a half of roof.
     const fw = (b.x1 - b.x0 + 1) * 32, fh = (b.y1 - b.y0 + 2.5) * 32, k = Math.min(1.35, (fw + 16) / sz[0], fh / sz[1]);
@@ -695,12 +729,123 @@
   function drawNpc(n, t) {
     if (n.block) return obj(n.block, (n.x + 0.5) * ts, (n.y + 1) * ts, 0.8);
     if (n.bench) return drawBench(n.x, n.y);
+    const a = !n.moving && n.act ? doing(n, t) : null;
     if (n.bird) drawBird(n, t);
-    else person(n.id, xx(n), yy(n), t, n.moving ? n.face : facing(n), !!n.moving);
-    // Gary sips coffee. Everyone else occasionally has a feeling about something.
-    const phase = (t + n.x) % 9;
-    // A quest marker replaces the feeling, so the two never overlap.
-    if (phase < 2.2 && !n.moving && !(H.npcMarks && H.npcMarks[n.id])) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', xx(n) * ts + ts / 2, n.bird ? yy(n) * ts : headY(yy(n)));
+    else {
+      // You walking up gets their attention; otherwise they face their work.
+      const near = Math.abs(P.x - n.x) + Math.abs(P.y - n.y) <= 1;
+      const face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
+      ctx.save(); if (a && a.dy) ctx.translate(0, a.dy * ts);
+      person(n.id, xx(n), yy(n), t, face, !!n.moving || !!(a && a.anim));
+      ctx.restore();
+      if (a && a.fx) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
+    }
+    // A quest marker replaces any bubble, so the two never overlap.
+    if (n.moving || (H.npcMarks && H.npcMarks[n.id])) return;
+    const X = xx(n) * ts + ts / 2, Y = n.bird ? yy(n) * ts : headY(yy(n)) + (a && a.dy ? a.dy * ts : 0);
+    if (a) { if (a.bub) emote(a.bub, X, Y); return; }
+    // Without an act: Gary sips coffee, everyone else occasionally has a feeling about something.
+    if ((t + n.x) % 9 < 2.2) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', X, Y);
+  }
+  // ---------- What villagers do while they stand somewhere (acts from js/folk-data.js) ----------
+  // doing(n, t) gives { face, dy (a hop, in tiles), anim (walk in place), bub (an emote to show now), fx(x, y, face) }.
+  const seed = n => (hash(n.stand ? n.stand[0] : 0, n.id.length * 7) % 97) / 10;
+  // A bubble every `every` seconds, shown for 1.8 s, cycling through `list`.
+  const every = (n, t, s, list) => { const k = t + seed(n); return k % s < 1.8 ? list[Math.floor(k / s) % list.length] : null; };
+  const ahead = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+  function doing(n, t) {
+    const [kind, who] = n.act.split(':'), k = t + seed(n);
+    switch (kind) {
+      case 'smith': {
+        // Raise, strike, clang: a hop down onto the anvil and a spray of sparks in front.
+        const s = (k * 1.25) % 1, hit = s < 0.15;
+        return { face: 'north', dy: s > 0.6 ? -0.06 : hit ? 0.03 : 0, bub: every(n, t, 11, ['bang', 'sweat', 'happy']),
+          fx: (x, y, f) => { if (s < 0.35) sparks(x + ahead[f][0] * ts * 0.45, y - ts * 0.55 + ahead[f][1] * ts * 0.2, s / 0.35, n.id); } };
+      }
+      case 'talk': {
+        // Two villagers face each other and take turns: one bubble at a time, passed back and forth.
+        const m = NPCS.find(o => o.id === who);
+        if (!m || !m.here || m.hide || m.moving || Math.abs(m.x - n.x) + Math.abs(m.y - n.y) > 4) return { bub: every(n, t, 7, ['dots', 'idea']) };
+        const dx = m.x - n.x, dy = m.y - n.y, face = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north');
+        const turn = Math.floor(t / 2.6), mine = (turn + (n.id < m.id ? 0 : 1)) % 2 === 0, on = t % 2.6 < 2;
+        const said = ['talk', 'laugh', 'question', 'idea', 'happy', 'music', 'heart', 'drops'];
+        return { face, dy: mine && on ? -Math.abs(Math.sin(t * 9)) * 0.03 : 0, bub: mine && on ? said[(turn + n.id.length) % said.length] : null };
+      }
+      case 'read': case 'write': case 'stamp':
+        return { face: 'south', dy: kind === 'stamp' && k % 1.6 < 0.12 ? 0.03 : 0, bub: every(n, t, 9, kind === 'read' ? ['idea', 'question', 'laugh'] : ['dots', 'idea', 'star']),
+          fx: (x, y) => paper(x, y - ts * 0.38, kind, k) };
+      case 'laptop':
+        return { face: 'south', dy: k % 0.5 < 0.08 ? 0.02 : 0, bub: every(n, t, 8, ['dots', 'cash', 'sweat', 'idea']), fx: (x, y) => laptop(x, y - ts * 0.34, k) };
+      case 'sweep': {
+        const side = Math.floor(k / 0.7) % 2 ? 'east' : 'west';
+        return { face: side, anim: true, bub: every(n, t, 10, ['music', 'happy']), fx: (x, y, f) => broom(x, y, f, k) };
+      }
+      case 'sleep': return { face: 'south', dy: Math.sin(k * 1.5) * 0.015, bub: k % 4 < 2.6 ? 'zz' : 'sleep' };
+      case 'sell': return { face: 'south', dy: k % 6 < 0.5 ? -Math.abs(Math.sin(k * 12)) * 0.06 : 0, bub: every(n, t, 6, ['cash', 'star', 'heart', 'talk']) };
+      case 'pray': return { face: 'north', dy: Math.sin(k * 1.2) * 0.02, bub: every(n, t, 7, ['sparkle', 'star', 'heart']) };
+      case 'drill': {
+        const side = Math.floor(k / 1.1) % 2 ? 'east' : 'west';
+        return { face: side, anim: true, dy: -Math.abs(Math.sin(k * 6)) * 0.04, bub: every(n, t, 4, ['bang', 'alert', 'anger']) };
+      }
+      case 'stream': return { face: 'south', dy: -Math.abs(Math.sin(k * 5)) * 0.05, bub: every(n, t, 4, ['star', 'laugh', 'hearts', 'sparkle']) };
+      case 'train': {
+        const side = ['north', 'east', 'south', 'west'][Math.floor(k / 0.5) % 4];
+        return { face: side, dy: -Math.abs(Math.sin(k * 6)) * 0.08, bub: every(n, t, 6, ['bang', 'sweat', 'anger']) };
+      }
+      case 'eat': return { face: 'south', dy: k % 2 < 0.2 ? 0.02 : 0, bub: every(n, t, 5, ['heart', 'happy', 'hearts']) };
+      case 'sip': return { face: k % 14 < 7 ? 'south' : 'east', bub: every(n, t, 9, n.id === 'gary' ? ['dots'] : ['heart', 'happy', 'dots']) };
+      case 'serve': {
+        const side = ['south', 'west', 'south', 'east'][Math.floor(k / 2.5) % 4];
+        return { face: side, dy: k % 2.5 < 0.3 ? -0.04 : 0, bub: every(n, t, 6, ['heart', 'happy', 'cash']) };
+      }
+      case 'tend': {
+        const side = Math.floor(k / 2) % 2 ? 'east' : 'west';
+        return { face: side, anim: k % 2 < 1, bub: every(n, t, 7, ['drops', 'music', 'sweat']) };
+      }
+      case 'watch': return { face: 'north', dy: k % 5 < 0.6 ? -Math.abs(Math.sin(k * 10)) * 0.07 : 0, bub: every(n, t, 6, ['question', 'drops', 'heart']) };
+      case 'guard': return { face: k % 12 < 9 ? 'south' : k % 12 < 10.5 ? 'west' : 'east', bub: every(n, t, 10, ['alert', 'sparkle']) };
+      case 'play': return { face: ['south', 'east', 'west'][Math.floor(k / 1.5) % 3], dy: -Math.abs(Math.sin(k * 7)) * 0.08, bub: every(n, t, 5, ['music', 'star', 'laugh']) };
+      case 'walkie': return { face: 'south', bub: every(n, t, 3.2, ['talk', 'question', 'laugh', 'alert']), fx: (x, y) => walkie(x, y - ts * 0.4) };
+      case 'browse': return { face: k % 6 < 4 ? 'north' : 'south', bub: every(n, t, 5, ['question', 'idea', 'dots']) };
+      case 'pose': return { face: k % 8 < 4 ? 'south' : 'east', dy: k % 4 < 0.3 ? -0.05 : 0, bub: every(n, t, 5, ['star', 'sparkle', 'idea']) };
+      default: return null;
+    }
+  }
+  // Props, drawn in code in the village's ink outline.
+  function sparks(x, y, s, id) {
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i - 2.5) * 0.45 + (hash(i, id.length) % 10) / 40, r = ts * (0.12 + 0.4 * s);
+      const z = ts / 32 * 4 * (1 - s * 0.5);
+      ctx.fillStyle = i % 2 ? '#ffe14d' : '#ff8a3d';
+      ctx.fillRect(x + Math.cos(a) * r - z / 2, y + Math.sin(a) * r - z / 2, z, z);
+    }
+  }
+  function paper(x, y, kind, k) {
+    const s = ts / 32;
+    ctx.fillStyle = kind === 'read' ? '#c0504d' : '#fffaf0'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+    ctx.fillRect(x - 6 * s, y, 12 * s, 8 * s); ctx.strokeRect(x - 6 * s, y, 12 * s, 8 * s);
+    if (kind !== 'read') { ctx.beginPath(); ctx.moveTo(x - 3 * s, y + 3 * s); ctx.lineTo(x + (k % 1.2 < 0.6 ? 1 : 4) * s, y + 3 * s); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 8 * s); ctx.stroke(); }
+  }
+  function laptop(x, y, k) {
+    const s = ts / 32;
+    ctx.fillStyle = '#9aa3b5'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+    ctx.fillRect(x - 7 * s, y, 14 * s, 6 * s); ctx.strokeRect(x - 7 * s, y, 14 * s, 6 * s);
+    ctx.fillStyle = k % 0.9 < 0.45 ? '#7fd1ff' : '#55d68a'; ctx.fillRect(x - 5 * s, y + 1.5 * s, 10 * s, 3 * s);
+  }
+  function walkie(x, y) {
+    const s = ts / 32;
+    ctx.fillStyle = '#ffe14d'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+    ctx.fillRect(x + 4 * s, y, 5 * s, 8 * s); ctx.strokeRect(x + 4 * s, y, 5 * s, 8 * s);
+    ctx.beginPath(); ctx.moveTo(x + 8 * s, y); ctx.lineTo(x + 8 * s, y - 5 * s); ctx.stroke();
+  }
+  function broom(x, y, f, k) {
+    const s = ts / 32, dir = f === 'east' ? 1 : -1, sw = Math.sin(k * 9) * 3 * s;
+    ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x + dir * 2 * s, y - 16 * s); ctx.lineTo(x + dir * 11 * s + sw, y - 1 * s); ctx.stroke();
+    ctx.fillStyle = '#e8c36a'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+    ctx.fillRect(x + dir * 11 * s + sw - 3 * s, y - 3 * s, 6 * s, 4 * s); ctx.strokeRect(x + dir * 11 * s + sw - 3 * s, y - 3 * s, 6 * s, 4 * s);
+    if (k % 0.7 < 0.25) { ctx.fillStyle = 'rgba(240,230,210,.7)'; ctx.beginPath(); ctx.arc(x + dir * 15 * s + sw, y - s, 2.5 * s, 0, Math.PI * 2); ctx.fill(); }
   }
   // The plaza bench, drawn in code: two planks on stubby legs, in the village's ink outline.
   function drawBench(x, y) {
