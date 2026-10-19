@@ -80,6 +80,8 @@
     get hidden() { return !home(); },
     get marker() { return TROUPE.some(id => marked(id) && where(id) === 'home'); }
   });
+  // Someone on their way in through the door, there already.
+  const inside = (sc, a) => { a.goal = null; a.path = []; a.schedIn = true; sc.hide(a.id, true); };
   const onDoor = X.onDoor;
   X.onDoor = async function (d) {
     if (d !== 'H') return onDoor ? onDoor.call(this, d) : undefined;
@@ -88,8 +90,16 @@
       return true;
     }
     if (!I || !I.room(KEY)) return true;
-    NR.scene().stop();
-    await I.open(KEY, 'north-canvas');
+    // Anyone still walking home gets in ahead of you, so you don't find them inside and then see them walk in again
+    // when you come back out.
+    const sc = NR.scene();
+    TROUPE.forEach(id => {
+      const a = sc.actors[id];
+      if (a && a.goal && a.goal.into && where(id) === 'home') inside(sc, a);
+    });
+    sc.stop();
+    visit = {};
+    try { await I.open(KEY, 'north-canvas'); } finally { left = visit; visit = null; }
     AU.music(X.music);
     return true;
   };
@@ -149,6 +159,15 @@
         const a = sc.actors[id];
         if (a && a.marker && onMap(id, map)[0] === 'in') { sc.hide(id, true); a.schedIn = true; }
       });
+      // Coming back out of the house: whoever you just saw inside is already in, so they don't walk in from the
+      // doorstep again (talking to someone indoors can clear the quest marker that kept them waiting there).
+      if (map === 'exchange' && left) {
+        TROUPE.forEach(id => {
+          const a = sc.actors[id];
+          if (left[id] && a && a.goal && a.goal.into) inside(sc, a);
+        });
+        left = null;
+      }
       // Nari is a stranger on her doorstep until you've met her somewhere (js/nari.js).
       if (sc.actors.nari) sc.actors.nari.name = home() || (flags().nari && flags().nari.met) ? 'NARI' : '???';
     };
@@ -172,7 +191,16 @@
   // the practice room to wait for you.
   const UP = 'rolloutsUp';
   const UPSTAIRS = { morning: ['neel', 'bitna'], night: ['nari', 'neel', 'hari', 'bitna'] };
-  const floor = id => !marked(id) && (UPSTAIRS[block()] || []).includes(id) ? UP : KEY;
+  const floorNow = id => where(id) !== 'home' ? null : !marked(id) && (UPSTAIRS[block()] || []).includes(id) ? UP : KEY;
+  // Who is home, and on which floor, is settled the first time you see the house on a visit and holds until you
+  // leave, so nobody turns up on the other floor (or goes out) without you seeing them go: say talking to someone
+  // clears their quest marker, which would otherwise send them straight back upstairs.
+  let visit = null, left = null;
+  function floor(id) {
+    if (!visit) return floorNow(id);
+    if (!(id in visit)) visit[id] = floorNow(id);
+    return visit[id];
+  }
   // Where each of them stands on each floor, clear of the things you can look at. At bedtime the twins stand back to
   // back in front of the bunk bed.
   const SPOTS = {
@@ -182,7 +210,7 @@
   const BEDTIME = { neel: [6, 5, 'east'], hari: [5, 5, 'west'] };
   function spots(key) {
     const out = {}, bed = key === UP && block() === 'night' && !storm();
-    TROUPE.forEach(id => { if (where(id) === 'home' && floor(id) === key) out[id] = (bed && BEDTIME[id]) || SPOTS[key][id]; });
+    TROUPE.forEach(id => { if (floor(id) === key) out[id] = (bed && BEDTIME[id]) || SPOTS[key][id]; });
     return out;
   }
   // Eun-ho's name keeps its hyphen.
