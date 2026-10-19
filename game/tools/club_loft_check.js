@@ -8,7 +8,8 @@
 //     and goes into the lounge
 //   - Imani is in the lounge at night, with her books sheet
 //   - walking out of the lounge brings the hero back down the stairs to the foot of them, railing hidden again
-//   - in chapter 10's storm, Paz, Imani, Leon and Thea are in the lounge, and the board says so
+//   - in chapter 10's storm, Paz, Imani, Leon and Thea are in the lounge, and the board says so, Leon and Thea
+//     sitting on the sofa and turning their heads to look at the hero off to one side
 // With --shots it saves screenshots of the climb, the lounge and the way down. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -112,6 +113,15 @@ const server = http.createServer((req, res) => {
   const sheltering = await page.evaluate(() => Object.keys(SD.interiors.ROOMS.prloft.spots));
   console.log('in the lounge in the storm: ' + sheltering.join(', '));
   ['paz', 'imani', 'leon', 'thea'].forEach(id => { if (!sheltering.includes(id)) bad(`${id} is not in the lounge in the storm`); });
+  // On the sofa: ahead of them they look ahead; off to one side, they turn to look.
+  for (const [x, y, want] of [[5, 7, { leon: 0, thea: 0 }], [2, 4, { leon: 1, thea: 1 }], [9, 5, { leon: 0, thea: 2 }], [6, 5, { leon: 2, thea: 0 }]]) {
+    await page.evaluate(([x, y]) => { const sc = SD.clubLoft.lounge(); sc.place('you', x, y); sc.face('you', 'north'); }, [x, y]);
+    await page.waitForTimeout(700);
+    const look = await page.evaluate(() => { const a = SD.clubLoft.lounge().actors; return { leon: a.leon.look, thea: a.thea.look }; });
+    console.log(`from ${x},${y}: Leon looks ${look.leon}, Thea ${look.thea}`);
+    ['leon', 'thea'].forEach(id => { if (look[id] !== want[id]) bad(`from ${x},${y} ${id} looks ${look[id]}, not ${want[id]} (0 ahead, 1 left, 2 right)`); });
+    if (x === 2) await shot('sofa-looking');
+  }
 
   if (errors.length) bad('page errors: ' + errors.join(' | '));
   await browser.close(); server.close();

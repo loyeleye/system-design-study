@@ -6,7 +6,7 @@ Where it lives in the game:
 
 - `game/js/club.js` holds the club itself: the yard, the gym and the studio, and each member's idle lines.
 - `game/js/club-quests.js` holds the five quests, one for each pair.
-- `game/js/club-loft.js` holds the members' lounge up the studio's outside stairs, and the climb up to it. Imani does the books there at night, and in chapter 10's storm Paz, Imani, Leon and Thea shelter there.
+- `game/js/club-loft.js` holds the members' lounge up the studio's outside stairs, and the climb up to it. Imani does the books there at night, and in chapter 10's storm Paz, Imani, Leon and Thea shelter there, Leon and Thea sitting on the sofa and turning their heads to look at you.
 - `game/js/club-life.js` holds the schedules, the eight relationship arcs and the club's section of Bru's board.
 - `game/js/club-shops.js` holds Rico's and Thea's card shops.
 

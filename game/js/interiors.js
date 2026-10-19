@@ -39,6 +39,7 @@
   // music (a song in js/audio.js, or a function that picks one or null), ambience (its PLACE sound, or null for quiet),
   // bell: a shop bell over the door. calm: nobody in it looks worried in the storm. front: [[x, y, w, h, row]], pieces
   // of the picture (in its pixels) drawn again over whoever stands behind them, as standing on that row: counters, tables.
+  // across: [[x, y, id]], tiles you talk to id from when they sit out of reach (on a sofa behind a table).
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -791,6 +792,8 @@
     });
     // Across the counter: talk to whoever has the shift.
     if (r.over) r.over.forEach(([x, y], i) => sc.addActor('over' + i, { x, y, draw() {}, over: counter || '' }));
+    // Across furniture: talk to someone out of reach (sitting on a sofa behind a table) from these tiles.
+    (r.across || []).forEach(([x, y, id], i) => { if (sc.actors[id]) sc.addActor('across' + i, { x, y, draw() {}, over: id }); });
     if (key === 'cafe' && !storm() && block() !== 'night') {
       actor('v2', [7, 4, 'north'], { name: null, customer: true });
       if (free.length) actor('v3', free.pop(), { name: null, customer: true });
