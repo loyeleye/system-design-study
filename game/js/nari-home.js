@@ -7,7 +7,7 @@
 // SD.nari, sets flags.nariHome; without it the first talk does), then goes in, and the house is open to you. Until
 // Lost and Found (js/rollouts-quests.js) is done her housemates are lost round the Exchange and the road, off their
 // schedules; after it each block of the day puts them where js/folk-far.js's F.rollouts says: home in the morning
-// and at night, out at work in the afternoon, and the evening show beside the canal bridge. Anyone with a quest
+// and at night, out at work in the afternoon, and the evening show in the street outside the house. Anyone with a quest
 // marker waits at home, and the house's sign on the Exchange shows the marker for them.
 //
 //   SD.nariHome.where(id)   where one of the troupe is now: 'home', 'gone', [map, x, y, face, emote] or ['in', map, x, y]
@@ -129,7 +129,7 @@
   // ---------- The practice room ----------
   // A honey-wood floor under a wall of paper lanterns (most of them dark), a mirror and barre, Eun-ho's curtain in
   // the corner, the ramyeon stove, and Nari's bed with the yellow quilt.
-  const SPOTS = { nari: [6, 4, 'south'], neel: [3, 3, 'west'], hari: [4, 3, 'west'], bitna: [9, 5, 'south'], eunho: [9, 4, 'west'] };
+  const SPOTS = { nari: [6, 4, 'south'], neel: [3, 3, 'west'], hari: [4, 3, 'west'], bitna: [8, 5, 'south'], eunho: [9, 4, 'west'] };
   if (I && I.ROOMS) I.ROOMS[KEY] = {
     name: "THE ROLLOUTS' HOUSE", owner: 'nari',
     map: ['############', '############', '############', '###......###', '##.......###',

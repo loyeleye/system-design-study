@@ -72,12 +72,13 @@
       bitna: ['exchange', 43, 44, 'west', 'alert']       // at the lamp-oil auction, ticket 212
     },
     day: {
-      // Afternoons out at work; evenings the show beside the canal bridge, with Eun-ho behind a tree.
-      nari: { morning: 'home', afternoon: ['exchange', 42, 46, 'south', 'music'], evening: ['exchange', 39, 38, 'west', 'music'], night: 'home' },
-      neel: { morning: 'home', afternoon: ['in', 'exchange', 29, 17], evening: ['exchange', 41, 37, 'west', 'dots'], night: 'home' },   // the bank, then the wings
-      hari: { morning: 'home', afternoon: ['road', 17, 20, 'north', 'music'], evening: ['exchange', 40, 39, 'west', 'music'], night: 'home' },
-      bitna: { morning: 'home', afternoon: ['exchange', 31, 34, 'west', 'idea'], evening: ['exchange', 38, 40, 'north', 'star'], night: 'home' },   // the lamps, then the cues
-      eunho: { morning: 'home', afternoon: 'home', evening: ['exchange', 34, 42, 'east', 'dots'], night: 'home' }
+      // Afternoons out at work; evenings the show in the street outside the house, across from the canal bridge:
+      // Nari and Hari out front, Neel in the wings by the door, Bitna calling cues, and Eun-ho behind the tree.
+      nari: { morning: 'home', afternoon: ['exchange', 42, 46, 'south', 'music'], evening: ['exchange', 44, 37, 'south', 'music'], night: 'home' },
+      neel: { morning: 'home', afternoon: ['in', 'exchange', 29, 17], evening: ['exchange', 41, 36, 'east', 'dots'], night: 'home' },   // the bank, then the wings
+      hari: { morning: 'home', afternoon: ['road', 17, 20, 'north', 'music'], evening: ['exchange', 45, 36, 'south', 'music'], night: 'home' },
+      bitna: { morning: 'home', afternoon: ['exchange', 31, 34, 'west', 'idea'], evening: ['exchange', 47, 38, 'west', 'star'], night: 'home' },   // the lamps, then the cues
+      eunho: { morning: 'home', afternoon: 'home', evening: ['exchange', 48, 34, 'west', 'dots'], night: 'home' }
     }
   };
 
