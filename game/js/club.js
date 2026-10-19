@@ -233,7 +233,7 @@
 
   // ---------- Membership: all five quests done ----------
   Object.assign(SD.cards, {
-    prSpotter: { name: 'PR Club Spotter', cost: 1, kind: 'action', mit: 7, draw: 1, tags: ['club'], text: 'Mitigate {mit}. Draw 1. Somebody always has your back. They are also counting your reps out loud.', art: 'podium-winner', rarity: 'rare', concept: 'numbers' }
+    prSpotter: { name: 'PR Club Spotter', cost: 1, kind: 'action', mit: 7, draw: 1, tags: ['club'], text: 'Mitigate {mit}. Draw 1. Somebody always has your back. They are also counting your reps out loud.', art: 'podium-winner', rarity: 'rare', concept: 'estimation' }
   });
   async function member() {
     await U.dialog([
