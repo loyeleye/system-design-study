@@ -6,7 +6,7 @@ How the scenes play: each arc has three scenes. A scene plays when you talk to s
 
 ## The North Road
 
-Backstories and relationship arcs for the named people of the North Road and its side maps: the road itself, Lord Latency's waystation, the tournament arena and the heroes' camp. The ground rules are Pingsby's: the game wins, show it and don't tell it, scenes are short, and only an arc's last scene lands a system design analogy. Where people stand each time of day comes from `game/js/folk-far.js`. Anything not already in the game is new, and Ladi can veto it without breaking anything.
+Backstories and relationship arcs for the named people of the North Road and its side maps: the road itself, Lord Latency's waystation, the tournament arena, the heroes' camp and the Exchange. The ground rules are Pingsby's: the game wins, show it and don't tell it, scenes are short, and only an arc's last scene lands a system design analogy. Where people stand each time of day comes from `game/js/folk-far.js`. Anything not already in the game is new, and Ladi can veto it without breaking anything.
 
 ### Marta
 
@@ -110,9 +110,33 @@ Hero #500 was summoned with only a shield, and decided it was a strategy. He ent
 
 He kept the shield. A fan at the arena bet her pension on him, and he knows it, and it is the reason he still trains. What he wants is one more match, a fair one, and his soft spot is the ticket stub from that tournament, which he carries everywhere.
 
+### Nari
+
+Nari is the first one onto any new ground. Wherever the road opens a place, she is already there, dancing on it to show that it holds, and she gives the first person through after her a few shards for being brave, a few more each time. The veil shows about one percent of her face. She dances through every conversation, counts in beats instead of seconds, and when a place has held she says "Rollout complete!" and is gone. The Exchange is the last place the road opens and her last rollout; after it she lives at home in the old quarter with her troupe, the Rollouts: rehearsal at home in the morning, dancing by the market in the afternoon, the troupe's show on the canal bridge in the evening, and home at night. On the road she dances to Lyra's songs and always leaves before the second verse, which Lyra takes personally, and she and Explodia argue happily about how you find out whether a floor holds: by dancing on one corner of it, or by blowing it up at noon.
+
+She was born in the old quarter, where a dancer has gone first onto every new stage, bridge and trading floor since the Exchange was a mining town. They are called canaries, and Nari is the latest. When the road began to open she left home to go first everywhere, so nobody she loves would have to. Her secret is that she is scared every single time, and the veil is so nobody sees it; a scared dancer is still a light one. What she wants is to come home at a hundred percent. Her soft spot is Biscuit, Mio's canary, who holds the title Rollback the Canary: Nari considers her a colleague and once sent her a very small veil.
+
+### Ao and Midori
+
+Ao and Midori are identical twins, Blue and Green, the only two people in the Exchange who can't tell themselves apart in a mirror. Only one of them is ever on stage. The other waits in the wings, warmed up, in the same costume with the other colour of sash, and when the routine changes, the one in the wings learns the new one; they swap with a single spin, and if the new routine stumbles, one more spin and the old one is back. They finish each other's sentences and insist they are nothing alike.
+
+They grew up in the house next door and joined the Rollouts the week Nari did, as a pair, because neither would go without the other. Their trouble is the floor: there is only one, they both dance on it, and whoever waxes it for a new routine makes it slippery for the old one. What they want is a routine they can both dance on the same night. Their soft spot is being told apart: Lumi can, and they have never worked out how.
+
+### Kage
+
+Kage dances every show behind the curtain, in time with the real music, where nobody sees, and writes down every step where his dance and the stage's are different. He learned it from the Exchange itself: replay the same sequence of orders into a new matching engine and compare the fills, and you find out what it would have done before anyone trades on it. He speaks in whispers, the troupe forgets he is in the room, and his notebook is the most accurate record of every Rollouts show there is.
+
+He is the best dancer of the five, and he likes it behind the curtain, which nobody believes. He grew up in the Counting House, where his parents balanced the ledgers, and he is still happiest when two columns agree. What he wants is a notebook page with no differences on it. His soft spot is Nari, who is the only one who always says goodnight to the curtain.
+
+### Lumi
+
+Lumi is the Rollouts' stage manager. The troupe learns new moves weeks early, but nobody dances one until she lights its lantern, and if a move goes wrong she blows the lantern out in the middle of the song and everyone dances the old step without missing a beat. The house has a wall of paper lanterns, one for every move the troupe knows, and most of them are dark. She is small, polite and absolutely in charge.
+
+She was a lamplighter on the lane before the Cloud went down, and knows which lamp on every street flickers and why. She can tell Ao and Midori apart, and will not say how. What she wants is one show where no lantern goes out, and her soft spot is the first lantern on the wall, the one for Nari's very first step, which she has never let go dark.
+
 ### Relationships on the road
 
-Six arcs cover all sixteen people above except Hero #1023 and Hero #500, who stay plot characters. Every scene stands on one map and plays when you talk to someone in it there. An arc's last scene lands its analogy and offers a review question.
+Seven arcs cover all twenty-one people above except Hero #1023 and Hero #500, who stay plot characters. Every scene stands on one map and plays when you talk to someone in it there. An arc's last scene lands its analogy and offers a review question.
 
 | # | Arc | People | Map | Closing analogy | Concept |
 | --- | --- | --- | --- | --- | --- |
@@ -122,6 +146,7 @@ Six arcs cover all sixteen people above except Hero #1023 and Hero #500, who sta
 | 4 | And... They're... Off | Gong, Lord Latency | waystation, then arena | Long polling: ask once and hold on until there's news | `realtime` |
 | 5 | Who Confesses First | Hypewagon, Akane | camp | The Two Generals problem: over a lossy link no number of replies makes both sides sure | `netfaults` |
 | 6 | Not Found (Checked) | Heroes #77, #256, #3, #12, #404 | camp | Negative caching: remember "not found" with an expiry so nobody keeps searching | `cache` |
+| 7 | Lights Up | Nari, Ao, Midori, Kage, Lumi | the Rollouts' house, in the Exchange | A safe release in layers: shadow traffic, a feature flag, a canary, then blue-green, with a schema both versions can use | `deploy` |
 
 1. **Never Lost a Crate (Twice).** Fen brings Marta a thank-you for crate 7 before she has delivered it (road open). Marta tells Fen about the crate 7 she lost thirty years ago, signed for at two depots (after chapter 7). Ren works out that both depots counted from one, so the Exchange called the second crate 7 a duplicate and put it in the cellar; Fen runs to find it, still full of honey, and Marta stamps every crate with its depot's letter from now on (after chapter 8).
 2. **Verses in the Smoke.** Explodia's on-schedule blast sets fire to Lyra's sheet music (road open). Lyra reads Explodia's postmortem notebook and calls it the longest poem on the road (after chapter 7). Lyra sings the whole notebook from blast one while Explodia keeps adding blasts at the end, and nobody waits for anybody (after chapter 8).
@@ -129,6 +154,7 @@ Six arcs cover all sixteen people above except Hero #1023 and Hero #500, who sta
 4. **And... They're... Off.** Gong waits an hour for tea at the waystation to hire Lord Latency as the tournament's commentator (after chapter 7). Latency commentates matches long after they end (after chapter 8). Latency asks the ring "has anything happened?" once and waits, answering the moment the punch lands, and the crowd loves it (after chapter 9).
 5. **Who Confesses First.** Hypewagon narrates Akane looking towards the arena, and she makes him narrate the weather instead (camp open). Akane sends Gong a note about tea and realises every reply needs a reply (after chapter 9). After eleven trips Akane stops counting and just goes to tea; Gong is an hour early (after chapter 10).
 6. **Not Found (Checked).** Hero #3 is allowed into the sparring and wins by being too short to hit (camp open). Roll call: everyone searches the camp for Hero #404 every five minutes and nobody gets any sparring done (after chapter 9). Hero #12 puts up a sign saying "NOT FOUND. Checked at noon. Next check: one o'clock", the sparring gets done, and Hero #404's lunch box comes back empty, with a thank-you sign (after chapter 10).
+7. **Lights Up.** Lumi won't light the lantern for the troupe's new spin until Nari has danced it on one corner of the floor, and Midori wants to dance it tonight (once Nari is home). Midori dances the new routine with Ao warmed up in the wings; the spin trips, one spin brings Ao back, and Ao slips too, because the floor was waxed for the new routine (the next loop). Kage opens his notebook: he has danced the new routine behind the curtain to every show's music for a week, and bar 37 is where it slides; they fix the step so both routines can share the floor, and dance it in order, Kage, then Nari under one lit lantern, then Midori, then everyone (after chapter 10).
 
 ## The Eventual Isles
 

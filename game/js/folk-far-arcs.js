@@ -180,6 +180,41 @@
             ['hero77', "And when it expires, we look again. Just in case he's found."]],
           diary: 'Hero #404 ate his lunch. Nobody saw him. I nearly did. I have drawn the lunch box, empty, as evidence.' }
       ]
+    },
+    {
+      // Nari's troupe, in their house in the Exchange's old quarter (js/nari-home.js), once her last rollout is done.
+      id: 'lightsup', title: 'Lights Up', who: ['nari', 'ao', 'midori', 'kage', 'lumi'], concept: 'deploy', far: 'road',
+      scenes: [
+        { title: 'One Corner of the Floor', at: 'room:rollouts', block: ['morning', 'afternoon'], who: ['nari', 'midori', 'lumi', 'ao'], when: c => c.f.nariHome,
+          lines: [['narr', 'The practice room. A wall of paper lanterns, most of them dark. Midori is spinning on the spot; Lumi is holding a match and lighting nothing.'],
+            ['midori', "It's ready. The new spin is ready. I've done it forty times in the kitchen."],
+            ['lumi', "The kitchen isn't the stage. The lantern stays dark."],
+            ['nari', 'Five, six, seven... Let me take it first. One corner of the floor. If the corner holds, the floor holds.', 'happy'],
+            ['narr', 'Nari dances the new spin in the corner by the window, once, twice. A floorboard creaks, and holds.'],
+            ['lumi', 'One corner, then. Midori, tonight you dance the old one.'],
+            ['midori', "You're cruel."], ['ao', "She's right."], ['midori', "You're both cruel."]],
+          diary: 'Nari tried the new spin in one corner of the room. You watched her feet. I tried the corner too. It holds. I knew it would. I always check.' },
+        { title: 'Swapped Back', at: 'road:exchange', block: 'evening', who: ['midori', 'ao', 'lumi'], when: c => c.f.nariHome, gap: true,
+          lines: [['narr', "The Rollouts' evening show on the canal bridge, in the rain. Midori dances the new routine on the stage mat; Ao waits at the end of the bridge in the same costume, sash blue."],
+            ['narr', 'The new spin skids. Ao is already spinning in from the wings as Midori spins out. Nobody in the crowd sees the swap.'],
+            ['ao', 'Swapped. Old routine. Everybody\'s happy. Whoa...'],
+            ['narr', "Ao's slide, the one the old routine has always had, shoots him halfway across the mat."],
+            ['lumi', 'The mat. Midori waxed it for the new spin, and swapping you back didn\'t take the wax off.'],
+            ['midori', "So going back isn't all the way back."],
+            ['pip', 'They swapped the dancer back, but not the floor...', 'confused']],
+          diary: 'Ao slid across the bridge. You laughed, then you looked worried. Both faces are in my sketchbook now. Side by side. Like twins.' },
+        { title: 'Bar Thirty-Seven', at: 'room:rollouts', block: ['morning', 'afternoon'], when: c => c.f.nariHome && c.f.ch10, review: true,
+          lines: [['narr', 'A small black notebook lies open on the practice-room floor. Nobody heard Kage come in. He has been in the room the whole time.'],
+            ['kage', 'A week of shows. I danced the new routine behind the curtain to every one of them. Same music, same beats. Then I wrote down every step where mine and the stage\'s were different.'],
+            ['kage', 'Bar thirty-seven. The new spin wants a waxed mat. The old slide wants a dry one.'],
+            ['lumi', 'Then we change the spin, not the mat. A step both routines can stand on.'],
+            ['ao', 'We can both dance on that.'], ['midori', 'We can both dance on that.'],
+            ['narr', 'They dance it in order: Kage behind the curtain first, then Nari alone under one lit lantern, then Midori with Ao warm in the wings, then all five. No lantern goes out.'],
+            ['pip', "That's how you ship something that must not fail! Shadow traffic first: copy real requests to the new version and compare its answers before anyone sees them. A feature flag, so it's shipped but switched off. A canary to a few users. Then blue-green, so rolling back is one switch."],
+            ['pip', 'And the data both versions share has to work for both of them, like the mat: expand it first and contract it later, or rolling back won\'t really roll back.'],
+            ['nari', 'Rollout complete!', 'happy']],
+          diary: 'All five danced, and every lantern stayed lit. I lit one too, at home. It is for you. It is always on.' }
+      ]
     }
 ,
     // ---------- The Eventual Isles ----------
