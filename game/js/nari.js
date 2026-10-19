@@ -123,8 +123,9 @@
   // She stands a few steps from where you come in, on open ground off the path, away from doors. The Exchange is
   // different: she lives there, and js/nari-home.js already has her dancing outside her own door until her gift is
   // claimed, so there this file only answers when you talk to her. SPOTS pins her somewhere instead: [x, y, face].
-  // In the PR Club she dances on the grass behind the studio, between its two trees.
-  const SPOTS = { club: [5, 2, 'south'] };
+  // In the PR Club she dances on the grass behind the studio, between its two trees; at the heroes' camp, above the small
+  // tent and to the right of the big one.
+  const SPOTS = { club: [5, 2, 'south'], camp: [23, 4, 'south'] };
   function spot(sc) {
     const def = sc.def, [sx, sy] = def.enter || def.back.S;
     const doors = new Set(Object.keys(def.back || {}).concat(Object.keys(def.doors || {})));
