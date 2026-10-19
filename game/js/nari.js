@@ -1,8 +1,8 @@
 // Nari, the Canary: an easter egg in every place that opens. She is always the first one into new ground, dancing
 // on it to check it holds before everyone else arrives, the way a canary release sends a sliver of traffic to a new
 // version first. So the first time you reach a newly opened area she is already there, dancing. Talk to her and she
-// gives you shards, a little more at every sighting, calls the rollout complete and moves on. Her last new place is
-// the Exchange, where she lives, and that gift is the biggest.
+// gives you shards, a little more at every sighting, calls the rollout complete and vanishes in a burst of golden
+// stardust. Her last new place is the Exchange, where she lives, and that gift is the biggest.
 //
 // Areas: one per moment something opens, so she never turns up in two new places at once. The first two waves of the
 // Eventual Isles (js/isles/isles-map.js), then a place off the North Road for each chapter (js/northroad.js,
@@ -85,14 +85,38 @@
     await U.dialog([{ s: 'nari', e: 'happy', t: area === 'exchange' ? 'Rollout complete! Come in and meet the troupe. They should be home by now. They should be.' : 'Rollout complete!' }]);
     leave();
   }
-  // Fade someone out over half a second, then done().
-  function fade(a, done) {
-    const t0 = performance.now();
-    (function step() {
-      const k = Math.min(1, (performance.now() - t0) / 500);
-      a.alpha = 1 - k;
-      if (k < 1) requestAnimationFrame(step); else done();
-    })();
+
+  // ---------- Golden stardust ----------
+  // How she goes: a glow where she stands, and sparkles that scatter from her outline, drift up and twinkle out, while
+  // she fades away in the first part of it. stardust() draws it k of the way through (0 to 1), round her feet at (x, y).
+  const DUR = 2200, FADE = 0.3;
+  const GOLD = ['#ffd23f', '#ffe27a', '#fff2b8', '#f5b43a', '#ffc94d'];
+  const DUST = Array.from({ length: 72 }, (_, i) => {
+    const r = n => { const v = Math.sin(i * 127.1 + n * 311.7) * 43758.5453; return v - Math.floor(v); };
+    return { x: r(1) - 0.5, y: 0.05 + r(2) * 0.95, a: r(3) * Math.PI * 2, s: 0.35 + r(4), z: r(5), p: r(6) * 6.3, c: Math.floor(r(7) * GOLD.length) };
+  });
+  function stardust(ctx, x, y, ts, k, t) {
+    const u = ts / 32, h = 64 * u, e = 1 - Math.pow(1 - k, 3);
+    ctx.save();
+    // A warm glow where she stood, brightest as she goes.
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y - h / 2, 0, x, y - h / 2, h * 0.8);
+    g.addColorStop(0, `rgba(255,210,100,${0.55 * Math.pow(1 - k, 2)})`); g.addColorStop(1, 'rgba(255,190,70,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - h, y - h * 1.35, h * 2, h * 1.7);
+    ctx.globalCompositeOperation = 'source-over';
+    DUST.forEach(d => {
+      const life = Math.max(0, 1 - k * (0.75 + d.z * 0.5)), a = Math.min(1, life * 1.6) * (0.65 + 0.35 * Math.sin(t * 16 + d.p));
+      if (a <= 0) return;
+      const px = x + (d.x * 28 + Math.cos(d.a) * d.s * 64 * e + Math.sin(t * 2.5 + d.p) * 4 * k) * u;
+      const py = y - d.y * h + (Math.sin(d.a) * d.s * 26 * e - 46 * k * (0.4 + d.z)) * u, r = (1.4 + d.z * 3) * u * (0.55 + life * 0.45);
+      ctx.globalAlpha = a; ctx.fillStyle = GOLD[d.c]; ctx.beginPath();
+      // The bigger ones are four-pointed twinkles with a white heart; the rest are specks.
+      if (d.z > 0.55) [[0, 1], [1, 0]].forEach(([i, j]) => { ctx.moveTo(px - r * 2.2 * i, py - r * 2.2 * j); ctx.lineTo(px + r * 0.45 * j, py + r * 0.45 * i); ctx.lineTo(px + r * 2.2 * i, py + r * 2.2 * j); ctx.lineTo(px - r * 0.45 * j, py - r * 0.45 * i); ctx.closePath(); });
+      else ctx.arc(px, py, r * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      if (d.z > 0.55) { ctx.fillStyle = '#fffdf2'; ctx.beginPath(); ctx.arc(px, py, r * 0.45, 0, Math.PI * 2); ctx.fill(); }
+    });
+    ctx.restore();
   }
 
   // ---------- The North Road and its places ----------
@@ -121,6 +145,22 @@
     }
     return best || [sx, sy - 2, 'south'];
   }
+  // Vanishing from a road scene: the stardust is one of the scene's effects (drawn over everyone, above the night),
+  // and she's hidden for good once it has settled.
+  function vanish(sc, a) {
+    const t0 = performance.now(), x = a.px + 0.5, y = a.py + 0.95;
+    const fx = (ctx, t, ts) => {
+      const k = Math.min(1, (performance.now() - t0) / DUR);
+      a.alpha = Math.max(0, 1 - k / FADE);
+      stardust(ctx, x * ts, y * ts, ts, k, t);
+    };
+    a.leaving = true; a.name = null; SD.audio.sfx('sparkle'); sc.fx.push(fx);
+    setTimeout(() => {
+      const i = sc.fx.indexOf(fx);
+      if (i >= 0) sc.fx.splice(i, 1);
+      sc.hide(a.id, true); a.leaving = false; a.alpha = null;
+    }, DUR);
+  }
   const NR = SD.northRoad;
   if (NR && NR.onGo) NR.onGo.push((key, sc) => {
     if (key === 'exchange') return;
@@ -129,7 +169,7 @@
     if (!a) {
       const [x, y, face] = spot(sc);
       a = sc.addActor('nari_sighting', { x, y, face, sprite: SPRITE, still: true });
-      a.speak = () => speak(key, () => { a.leaving = true; sc.emote(a.id, 'star', 1); fade(a, () => { sc.hide(a.id, true); a.leaving = false; a.alpha = null; }); });
+      a.speak = () => speak(key, () => vanish(sc, a));
     }
     if (!a.leaving) { sc.hide(a.id, false); a.alpha = null; }
     a.name = st().met ? 'NARI' : '???';
@@ -148,27 +188,28 @@
   const IS = SD.isles;
   if (IS && IS.addPerson) {
     const im = new Image();
-    // Drawn the way the road's scenes draw her: standing, her dance as the idle cycle.
+    // Drawn the way the road's scenes draw her: standing, her dance as the idle cycle, and her stardust as she goes.
     const draw = p => (ctx, x, y, ts, t) => {
       const c = SD.arcArt && SD.arcArt.chars[SPRITE];
       if (!c) return;
       if (!im.src) im.src = 'assets/img/arc/c-' + SPRITE + '.webp';
       if (!im.complete || !im.naturalWidth) return;
       const row = { south: 0, west: 1, east: 2, north: 3 }[p.face] || 0, n = c.n[row], col = n ? 1 + Math.floor(t * 5) % n : 0;
-      const w = c.w * ts / 32, h = c.h * ts / 32;
+      const w = c.w * ts / 32, h = c.h * ts / 32, k = p.leaving ? Math.min(1, (performance.now() - p.leaving) / DUR) : 0;
       ctx.save();
-      if (p.alpha != null) ctx.globalAlpha = p.alpha;
+      if (k) ctx.globalAlpha = Math.max(0, 1 - k / FADE);
       ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(x, y - ts / 32, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
       ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, x - w / 2, y - h, w, h);
       ctx.restore();
+      if (k) stardust(ctx, x, y, ts, k, t);
     };
     Object.keys(ISLES).forEach(area => {
       const [x, y, face] = ISLES[area];
-      const p = { id: 'nari_' + area, x, y, face, leaving: false };
-      p.here = () => p.leaving || N.due(area);
+      const p = { id: 'nari_' + area, x, y, face, leaving: 0 };
+      p.here = () => !!p.leaving || N.due(area);
       p.draw = draw(p);
       Object.defineProperty(p, 'label', { get: () => st().met ? 'NARI' : '???' });
-      p.speak = () => speak(area, () => { p.leaving = true; fade(p, () => { p.leaving = false; p.alpha = null; }); });
+      p.speak = () => speak(area, () => { p.leaving = performance.now(); SD.audio.sfx('sparkle'); setTimeout(() => { p.leaving = 0; }, DUR); });
       IS.addPerson(p);
     });
   }
