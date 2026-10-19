@@ -4,7 +4,8 @@
 // Kaito, Doug, Coo, Bru and Ayo). Whoever the schedules put behind that door (SD.folk.residents) is inside; talking
 // to the owner opens the same menu as today, and talking to a villager outside their door still skips the room and
 // opens the menu straight away (js/main.js). Walking into a row house when its owner is out shows the note on the
-// door first; nobody in Pingsby locks up. Bru is never home at night, and nothing in her room says where she goes.
+// door first; nobody in Pingsby locks up. The temple, the Guild, the Forge, the Pigeon Post and the Grand Library
+// have rooms too, with their keepers inside when their day puts them there. Bru is never home at night, and nothing in her room says where she goes.
 // In chapter 10's storm everyone is indoors and worried, so each room has its people in it with a worried word.
 // The Eventual Isles' buildings have rooms too (js/isles/isles-map.js), and so does Aigerim's card shop on the North
 // Road (js/northroad.js), where she minds the counter.
@@ -191,6 +192,107 @@
         { x: 3, y: 6, t: () => ['The hearth. On the mantel sits a clay pot, warm to the touch, with a coal glowing inside it.', ayo() ? 'Ayo told you once: her grandmother\'s fire. The Forge has the rest of it.' : 'A card propped against it says "Do not put out. Do not let Cron near it."'] },
         { x: 9, y: 7, t: () => ['A little anvil by the bed, for ideas that come in the night.'] },
         { x: 1, y: 6, t: () => ['Fire irons, a poker and a pair of tongs. The tongs have a name card too: GRANDMA.'] }
+      ]
+    },
+    // ---------- The town's buildings ----------
+    // Their keepers work inside them on their schedules (js/folk-data.js, "<place>:in"); talking to them opens the
+    // building as before. Some things open part of it without them: the Guild's board opens the quest log, the
+    // Forge's workbench your plot devices, and the library's back door the Hall of Blueprints once it's open.
+    temple: {
+      name: 'GODDESS TEMPLE', door: 'A', owner: 'uptima', mat: true,
+      map: ['############', '############', '############', '############', '############',
+        '####......##', '#####...####', '####..#...##', '####DD######'],
+      enter: [5, 7, 'north'],
+      spots: { uptima: [5, 5, 'south'], _: [[8, 5, 'west'], [5, 6, 'north'], [7, 6, 'north']] },
+      sleep: { at: [7, 5], cloud: true, t: [['narr', 'Uptima is asleep on a small cloud in front of her own statue, snoring very politely.'], ['narr', 'A sign hangs off the cloud: "DO NOT DISTURB. TICKETS RESUME AT NINE."']] },
+      windows: [{ r: [166, 8, 70, 56] }],
+      lights: [{ x: 4.9, y: 4.2, r: 2.2 }, { x: 7.4, y: 4.2, r: 2.2 }, { x: 6.2, y: 7.4, r: 2.2 }],
+      props: [
+        { x: 3, y: 5, t: () => ['Uptima\'s desk, buried in paperwork. Every one of your respawns has its own form, filed in triplicate.', 'The form on top says LOOP ' + (S.save ? S.save.loop : 1) + '. It has already been stamped.'] },
+        { x: 6, y: 4, t: () => ['A marble statue of Uptima with a clipboard. The plaque says GODDESS OF UPTIME.', 'Someone has rubbed out "99%" on the clipboard and carved "99.9%". Then "99.99%". There is not much room left.'] },
+        { x: 4, y: 4, t: () => ['An offering bowl: two shards, a button, and a note that says "please let the servers stay up".'] },
+        { x: 7, y: 4, t: () => ['An offering bowl with a single croissant in it. There is a small bite out of it, exactly Gary-sized.'] },
+        { x: 9, y: 4, t: () => ['A ticket dispenser on a post. TAKE A NUMBER. You take one. It says 1. So does the next one.'] },
+        { x: 8, y: 6, t: () => ['A round table with an eraser on it the size of a loaf. It is very well used.'] },
+        { x: 6, y: 7, t: () => ['A tall candle, kept lit day and night. The card beside it says MONITORING.'] },
+        { x: 4, y: 6, t: () => ['A stool for visitors. It is a little lower than the goddess\'s chair. That is on purpose.'] }
+      ]
+    },
+    guild: {
+      name: "ADVENTURERS' GUILD", door: 'U', owner: 'bru', mat: true,
+      map: ['############', '############', '############', '############', '###.......##',
+        '####....####', '####....####', '####....####', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      spots: { bru: [7, 4, 'south'], _: [[4, 5, 'east'], [7, 6, 'west'], [4, 7, 'north']] },
+      windows: [{ r: [180, 26, 44, 30] }],
+      lights: [{ x: 3.9, y: 1.6, r: 2.6 }, { x: 8.2, y: 1.6, r: 2.6 }, { x: 1.2, y: 4.2, r: 2.4 }, { x: 3, y: 4.5, r: 2.4 }],
+      props: [
+        { x: 6, y: 3, t: () => ['The Brújula Board: quests pinned in rows, joined up with red string. In the corner, in Bru\'s tidy hand: COUNTED, NOT GUESSED.'], go: () => SD.quests.guild() },
+        { x: 3, y: 3, t: () => ['A dented shield on a side table, tagged LOST PROPERTY. Nobody has come back for it, in a thousand loops.'] },
+        { x: 3, y: 5, t: () => ['The quest ledger. Every quest is written down when it\'s posted and ticked when it\'s done. Most of the ticks have your name next to them.'] },
+        { x: 9, y: 3, t: () => ['A jar of pins for the Board, sorted by colour. The red ones are nearly all used up.'] },
+        { x: 8, y: 5, t: () => ['The long table where adventurers wait for work. Someone has carved a tally into it, in fives. It goes on for a very long way.'] }
+      ]
+    },
+    forge: {
+      name: 'THE FORGE', door: 'F', owner: 'ayo', mat: true,
+      map: ['############', '############', '############', '############', '#####.##..##',
+        '##.......###', '##........##', '#####...####', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      // Ayo at her anvil; in the storm the Forge is where everyone without a roof shelters.
+      spots: { ayo: [6, 5, 'north'], _: [[3, 5, 'east'], [8, 6, 'west'], [3, 6, 'east'], [4, 6, 'north'], [7, 6, 'north'], [8, 5, 'west']] },
+      windows: [{ r: [180, 36, 44, 40] }],
+      lights: [{ x: 3.1, y: 3.2, r: 4.5, rgb: '255,140,60' }],
+      props: [
+        { x: 3, y: 4, t: () => ['The great forge. At its heart burns Ayo\'s grandmother\'s fire, carried here in a clay pot. It has never gone out.', 'A sign over it says ON-PREM. NO CLOUDS ALLOWED.'] },
+        { x: 6, y: 4, t: () => ['The big anvil. It is worn smooth in the middle from years of hammering, and it rings like a bell if you tap it.'] },
+        { x: 7, y: 4, t: () => ['The quench barrel. The water hisses for a long time after anything goes in. Ayo says that\'s it thinking.'] },
+        { x: 9, y: 3, t: () => ['A rack of hammers, each with a name card: MARGARET, BIG MARGARET, LITTLE MARGARET, and one card that just says NOT YET.'] },
+        { x: 1, y: 5, t: () => ['Half-built devices on a bench: a clock with no hands, a lantern that runs on a crank, a box labelled "backup".'] },
+        { x: 10, y: 6, t: () => ['Tongs, files and punches, laid out from smallest to biggest. Nothing in the Forge is ever put back in the wrong place.'] },
+        { x: 9, y: 5, t: () => ['A stool sized for someone small. Mio sits here to watch the sparks, and is told every time not to sit so close.'] },
+        { x: 2, y: 7, t: () => ['A workbench of finished things waiting to be collected, each with a tag: who it\'s for, and when it was promised.', 'Your plot devices are here too, laid out in a row.'], go: () => { SD.quests.log('devices'); return shut(); } },
+        { x: 9, y: 7, t: () => ['Repaired things on a table: a kettle, a lock, a pair of goggles. Each tag says FIXED. NOT REPLACED.'] }
+      ]
+    },
+    post: {
+      name: 'THE PIGEON POST', door: 'P', owner: 'coo', mat: true,
+      map: ['############', '############', '############', '############', '##......#.##',
+        '###.......##', '###.......##', '###.....#.##', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      spots: { coo: [6, 4, 'north'], _: [[4, 5, 'east'], [8, 6, 'west'], [4, 6, 'north']] },
+      windows: [{ c: [198, 42, 30] }],
+      lights: [{ x: 6, y: 2.6, r: 3 }],
+      props: [
+        { x: 2, y: 3, t: () => ['Pigeonholes from floor to ceiling, one for every villager. Yours is the fullest. Most of it is from Aigerim.'] },
+        { x: 6, y: 3, t: () => ['The sorting table. Every parcel is stamped with a number, so if one comes twice, Coo knows it is the same parcel.'] },
+        { x: 8, y: 4, t: () => ['A sack of post with a tag that says RETRY QUEUE. It goes out again every morning until somebody signs.'] },
+        { x: 9, y: 3, t: () => ['Sacks under the pigeon perch. Three pigeons watch you from above. They are on their break. They have been on it since Tuesday.'] },
+        { x: 1, y: 4, t: () => ['Letters waiting for a stamp. One is addressed to "Whoever Is In Charge Of Rain".'] },
+        { x: 2, y: 5, t: () => ['A stool with a cushion, flattened into the shape of a pigeon.'] },
+        { x: 10, y: 5, t: () => ['The counter, with brass scales for weighing parcels. A sign says ALL LETTERS DELIVERED AT LEAST ONCE.'] },
+        { x: 8, y: 7, t: () => ['Two parcels marked DELIVER ONCE, side by side. They have the same number on them. Coo is very proud of this.'] },
+        { x: 2, y: 7, t: () => ['Sacks of letters for the Eventual Isles, waiting for the ferry. The tag says THEY WILL ARRIVE. EVENTUALLY.'] }
+      ]
+    },
+    library: {
+      name: 'GRAND LIBRARY', door: 'K', owner: 'lexi', mat: true,
+      map: ['############', '############', '############', '############', '####.###..##',
+        '####......##', '##........##', '##.#####..##', '########DD##'],
+      enter: [8, 7, 'north'],
+      spots: { lexi: [7, 5, 'south'], _: [[5, 5, 'east'], [3, 6, 'north'], [9, 6, 'west']] },
+      windows: [{ r: [180, 32, 44, 58] }],
+      lights: [{ x: 4.9, y: 1.8, r: 2.2 }, { x: 7.5, y: 1.8, r: 2.2 }, { x: 5.3, y: 3.2, r: 2.4 }, { x: 3.1, y: 4.1, r: 2.4 }, { x: 4.3, y: 7, r: 2.4 }, { x: 7.2, y: 7.3, r: 2.4 }],
+      props: [
+        { x: 6, y: 4, t: () => ['The librarian\'s desk. A stamp that says OVERDUE, a stamp that says VERY OVERDUE, and a stamp that just says KAITO.'] },
+        { x: 8, y: 3, t: () => hallOpen() ? ['The door to the Hall of Blueprints. Something in there still nibbles the diagrams now and then, but only the bad ones.'] : ['A tall door you have never noticed before. It is locked. From the other side comes the faint sound of somebody chewing paper.'], go: () => hallOpen() && SD.main.hall ? SD.main.hall() : null },
+        { x: 4, y: 3, t: () => ['Shelves of books, alphabetised, then sorted again by how dramatic the titles are. THE GREAT OUTAGE is in the top row.'] },
+        { x: 3, y: 5, t: () => ['A reading table with a book left open. Every page has been corrected in red pen, including the index.'] },
+        { x: 10, y: 6, t: () => ['The library ladder. It rolls along the shelves on a rail, and it squeaks only on the letter K.'] },
+        { x: 10, y: 4, t: () => ['A whole shelf of Kaito\'s memoir, volumes 1 to 46. Volume 47 is on Lexi\'s desk, waiting to be cut.'] },
+        { x: 4, y: 7, t: () => ['A study table with a green lamp. Someone has left a note: "Back in 5 minutes." The note is dated last year.'] },
+        { x: 1, y: 6, t: () => ['Books waiting to be shelved, in a stack taller than Mio. The one on top is called HOW TO SAY NO.'] },
+        { x: 6, y: 7, t: () => ['A long table where the reading group meets. Its next book, in chalk: "CACHING: A ROMANCE".'] }
       ]
     },
 
@@ -392,13 +494,22 @@
   };
   // The Isles rooms have nobody standing in them.
   Object.values(ROOMS).forEach(r => { r.spots = r.spots || {}; });
+  const hallOpen = () => !!SD.quests && SD.quests.status('library') === 'done';
+  // Resolves when the open panel closes.
+  const shut = () => new Promise(res => {
+    const p = document.getElementById('panel');
+    if (p.hidden) return res();
+    const obs = new MutationObserver(() => { if (p.hidden) { obs.disconnect(); res(); } });
+    obs.observe(p, { attributes: true, attributeFilter: ['hidden'] });
+  });
   const home = id => !!SD.folk && SD.folk.residents(ROOMS[id].door).includes(id);
   const doug = () => home('doug'), coo = () => home('coo'), ayo = () => home('ayo');
-  const BY_DOOR = { H: 'treehouse', W: 'bunker', C: 'cafe', X: 'lexi', Y: 'kaito', D: 'doug', Q: 'coo', M: 'bru', O: 'ayo' };
+  const BY_DOOR = { H: 'treehouse', W: 'bunker', C: 'cafe', X: 'lexi', Y: 'kaito', D: 'doug', Q: 'coo', M: 'bru', O: 'ayo',
+    A: 'temple', U: 'guild', F: 'forge', P: 'post', K: 'library' };
   // Doors and whose building it is: what talking to the owner opens (js/main.js visit), as today. Kaito and Doug
   // have no building, so talking to them at home is the same as talking to them anywhere.
-  const VISIT = { H: 'H', W: 'W', C: 'C', X: 'K', Y: 'kaito', D: 'doug', Q: 'P', M: 'U', O: 'F' };
-  I.has = door => !!BY_DOOR[door] && !!SD.interiorsArt;
+  const VISIT = { H: 'H', W: 'W', C: 'C', X: 'K', Y: 'kaito', D: 'doug', Q: 'P', M: 'U', O: 'F', A: 'A', U: 'U', F: 'F', P: 'P', K: 'K' };
+  I.has = door => !!BY_DOOR[door] && !!SD.interiorsArt && !!SD.interiorsArt.rooms[BY_DOOR[door]];
 
   // ---------- The residential row ----------
   const ROW = { X: 'lexi', Y: 'kaito', D: 'doug', Q: 'coo', M: 'bru', O: 'ayo' };
@@ -530,7 +641,7 @@
   function cast(key) {
     const r = ROOMS[key], here = people(key), marks = SD.quests && SD.quests.marks ? SD.quests.marks() : {};
     const free = (r.spots._ || (r.isle ? floor(r) : [])).slice();
-    const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, extra));
+    const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), extra));
     let counter = null;
     here.forEach(id => {
       // Islanders: their Isles sprite faces you, at the size they stand on the Isles; the school's class is three kids.
@@ -543,7 +654,8 @@
       }
       if (r.sleep && id === r.owner && !storm() && block() === 'night') {
         // Asleep: a slow "Zz" over the pillow, and you talk to them from beside the bed.
-        sc.addActor(id, { x: r.sleep.at[0], y: r.sleep.at[1], draw: zz(r.sleep.zz), asleep: r.sleep.t });
+        if (r.sleep.cloud) actor(id, [r.sleep.at[0], r.sleep.at[1], 'south'], { asleep: r.sleep.t, under: dream, name: null });
+        else sc.addActor(id, { x: r.sleep.at[0], y: r.sleep.at[1], draw: zz(r.sleep.zz), asleep: r.sleep.t });
         return;
       }
       if (r.counter && !counter && (id === 'wen' || id === 'uptima')) { counter = id; actor(id, r.counter, storm() ? { worried: true } : {}); return; }
@@ -576,6 +688,24 @@
     });
     ctx.globalAlpha = 1;
   }
+  // Uptima sleeps standing up on a little cloud, with her Zz drifting up from it.
+  function dream(ctx, x, y, ts, t) {
+    const cy = y - ts * 0.05 + Math.sin(t * 1.5) * ts * 0.04;
+    ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.strokeStyle = '#2b2340'; ctx.lineWidth = 2;
+    ctx.beginPath(); [[-0.42, 0.06, 0.24], [-0.12, -0.04, 0.3], [0.2, -0.02, 0.3], [0.46, 0.08, 0.22]].forEach(([dx, dy, r]) => { ctx.moveTo(x + (dx + r) * ts, cy + dy * ts); ctx.arc(x + dx * ts, cy + dy * ts, r * ts, 0, Math.PI * 2); });
+    ctx.stroke(); ctx.fill();
+    zz([x / ts + 0.4, y / ts - 1.6])(ctx, x, y, ts, t);
+  }
+  // Coo is a pigeon: he has no sprite sheet, so he's drawn from his village picture, bobbing.
+  function bird(ctx, x, y, ts, t) {
+    const a = SD.villageArt && SD.villageArt.objects.coo, im = BIRD();
+    if (!a || !ok(im)) return;
+    const w = a[0] * ts / 32, h = a[1] * ts / 32;
+    ctx.drawImage(im, x - w / 2, y - h + Math.sin(t * 3) * 2, w, h);
+  }
+  let birdPic = null;
+  const BIRD = () => birdPic || (birdPic = load('assets/img/village/coo.webp'));
+  const looks = id => id === 'coo' ? { draw: bird } : {};
   // Worried villagers have a worried bubble now and then, in the storm.
   function fx(ctx, t) {
     Object.values(sc.actors).forEach(a => { if (a.worried && (t * 0.6 + a.x * 0.37) % 4 < 2.2) sc.emote(a.id, 'dots', 0.1); });
@@ -642,7 +772,7 @@
     if (!a) return;
     busy = true; sc.pause();
     try {
-      if (a.prop) { await U.dialog(a.prop.t().map(t => ({ s: 'narr', t }))); return; }
+      if (a.prop) { await U.dialog(a.prop.t().map(t => ({ s: 'narr', t }))); if (a.prop.go) await a.prop.go(); return; }
       if (a.customer) { const ls = CUSTOMER[id]; await U.dialog([{ s: 'narr', t: ls[Math.floor(Math.random() * ls.length)] }]); return; }
       if ('over' in a) {
         if (!a.over) { await U.dialog([{ s: 'narr', t: 'Nobody behind the counter. A card on the till says "Back in a minute. Wen. (Just outside, dear.)"' }]); return; }
