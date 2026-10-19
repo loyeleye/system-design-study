@@ -164,12 +164,14 @@
   };
 
   // ---------- What they say ----------
-  // By what's going on: lost, at home, asleep next door, the storm, or out (afternoon at work, evening at the show).
+  // By what's going on: lost, at home, asleep next door, or out (afternoon at work, evening at the show). In chapter
+// 10's storm everyone is worried: about the rain, about whoever is still out in it, and about Kyu's dark tower.
   const LINES = {
     nari: {
       lost: ['Neel, Hari and Bitna, all missing. Eun-ho too, probably. I haven\'t seen him in days. If it isn\'t a happy ending, it isn\'t the end.', 'I\'m my own favourite! But I\'d like my troupe back too.'],
       home: ['Five, six, seven, eight! Every new floor gets me first. If it holds, the others follow. If it doesn\'t, only one of us falls through.', 'What\'s under the veil? A dancer who\'s scared every single time. Don\'t tell the floor.', 'If it isn\'t a happy ending, it isn\'t the end. That goes for floors, shows and releases.'],
-      storm: ['The Exchange has been dark for days. I went out first to check the streets. Twice. My knees are fine. Mostly.'],
+      lostStorm: ['Neel, Hari and Bitna are out somewhere in this storm. Eun-ho too, probably. I went out first to check the streets. They aren\'t in them.'],
+      storm: ['The Exchange has been dark for days. I went out first to check the streets. Twice. My knees are fine. Mostly.', 'Kyu\'s tower hasn\'t blinked once since the storm came. Somebody should go up there first. ...Not me. Probably me.'],
       afternoon: ['I dance one square of the market floor first. Then ten. Then half of it. Never all of it at once. Rollout complete!', 'If my square creaks, I stop, and nobody else ever steps on it. That\'s the whole trick.'],
       evening: ['The new move goes in at the end of the second verse, and only I do it. If it lands, everyone does it tomorrow.', 'If it isn\'t a happy ending, it isn\'t the end!']
     },
@@ -177,14 +179,16 @@
       lost: ['Per my last message, which the hotel never received: I pressed BOOK once. They have me down nine times. Once each time.', 'The clerk says every press is a new booking. I say a press is a press. We are at an impasse.'],
       home: ['Per my last message: breakfast is at seven. It is seven-oh-four. I\'ll be filing a note.', 'Hari and I were split up at the market fair as babies. We found out because we sneezed at the same time. In different rooms.', 'I bring Bitna lamp oil. A little. Every day. It is a perfectly normal amount of lamp oil.'],
       night: ['Shh. Nari\'s asleep. I\'m practising in my head. Per my last message, so is Hari.'],
-      storm: ['Per my last message: the bank\'s lights are out, the Exchange\'s lights are out, and I am out of patience.'],
+      lostStorm: ['Per my last message: I am outside the hotel, in a thunderstorm, holding nine bookings. Not one of them comes with a room.'],
+      storm: ['Per my last message: the bank\'s lights are out, the Exchange\'s lights are out, and I am out of patience.', 'The bank\'s ledgers haven\'t balanced since the Cloud went down. Kyu always answered the tower bell. Kyu hasn\'t answered.'],
       evening: ['I don\'t dance on stage. I dance in the wings, beat for beat with Hari. If he twists an ankle, I\'m already warm. That\'s a hot standby.', 'I\'m not looking at Bitna. I\'m looking at the cues. Bitna calls the cues. That is the only reason.']
     },
     hari: {
       lost: ['All is well! I\'m busking for soup. My wallet paid the diner. The diner never got it. So the money is... somewhere. All is well?', 'Neel would have a receipt. Neel has receipts for his receipts.'],
       home: ['All is well! Neel says "all is well" isn\'t a health check. He says I have to say WHY all is well.', 'Neel and I do everything the same. Same step, same sneeze. Different handwriting. His is worse. Don\'t tell him.'],
       night: ['All is well. Quietly. Nari\'s asleep.'],
-      storm: ['All is well! ...The roof is leaking. But generally. All is well.'],
+      lostStorm: ['All is well! I\'m busking in a thunderstorm. Nobody stops for a song in this. My wallet paid the diner, the diner never got it, and now the soup is wet.'],
+      storm: ['All is well! ...The roof is leaking, the canal is up to the bridge and the tower\'s gone dark. But generally. All is well.'],
       afternoon: ['Lyra lets me play between her sets. She calls me her warm-up act. I call myself her backup act. Same song, ready to go.', 'All is well! The hat has three shards and a button in it.'],
       evening: ['Front and centre! Neel\'s in the wings doing my moves half a beat behind. If I fall, he\'s on before anyone notices.', 'All is well!']
     },
@@ -192,7 +196,8 @@
       lost: ['Ticket 212. I bid nine shards for lamp oil. Ticket 340 bid ten and got it first. Price first, then time. It\'s fair. I hate it.', 'Every bid goes through one clerk, in order. No shouting, no shoving. Very civilised. I still want to shove.'],
       home: ['Four hundred lanterns on that wall, and three hundred and eighty of them dark for years. Nobody remembers what they\'re for. Nobody dares take them down.', 'Nothing starts until I say so. Not the music, not the lights, not breakfast.', 'Neel keeps bringing me lamp oil. In very small amounts. Every day. I think it\'s a pretext.'],
       night: ['Lights down. Nari\'s asleep. Nothing starts until morning.'],
-      storm: ['The storm blew out half the lamps in the quarter. I relit them one street at a time. You never relight everything at once. Things catch.'],
+      lostStorm: ['Ticket 212. They\'re running the auction by lamplight because of the storm, and ticket 340 still beat me. Price first, then time. Even in a thunderstorm.'],
+      storm: ['The storm blew out half the lamps in the quarter. I relit them one street at a time. You never relight everything at once. Things catch.', 'Kyu\'s tower used to be the brightest light in the quarter. It\'s been dark for nights. I don\'t relight that one. I don\'t know who can.'],
       afternoon: ['Every lamp in the old quarter has its own switch. A new street goes on one lamp at a time, and off again in a breath if anything smokes.'],
       evening: ['Places! Lights on Nari only. Then the twins. Then everyone. If anything goes wrong, I drop it back to Nari alone.', 'Nothing starts until I say so. ...Now. Go.']
     },
@@ -200,14 +205,15 @@
       lost: ['...You can see me? Don\'t tell them yet. I want to see how long it takes.', 'They searched the hotel, the stage and the auction. Nobody checked the curtain.'],
       home: ['I learn every show from behind the curtain. Every step, every count. Nobody sees me dance it.', '(He closes a notebook.) It\'s notes. About the show. Mostly about the show.'],
       night: ['...She\'s asleep. I\'ll write tomorrow\'s counts by lamplight. Quietly.'],
-      storm: ['The storm doesn\'t bother me. I\'m used to standing where it\'s dark.'],
+      lostStorm: ['...You can see me? Don\'t tell them yet. Everyone is out in that storm looking for everyone else. Nobody checked the curtain.'],
+      storm: ['The storm doesn\'t bother me. I\'m used to standing where it\'s dark.', 'My parents checked Kyu\'s ledgers line by line every night for twenty years. Kyu never missed a night. Kyu has missed four.'],
       evening: ['Shh. I\'m not here. I\'m doing tonight\'s show from back here, step for step, to see if the new move works. If I trip, nobody gets hurt.', '(His notebook is open. One line is underlined: "She smiled at bar 12.") ...That\'s a note about timing.']
     }
   };
   const turn = {};
   function lines(id, at) {
     const L = LINES[id], b = block();
-    if (!done('lostfound')) return L.lost;
+    if (!done('lostfound')) return (storm() && L.lostStorm) || L.lost;
     if (storm()) return L.storm;
     if (at === 'room') return (b === 'night' && L.night) || L.home;
     return L[b] || L.home;
