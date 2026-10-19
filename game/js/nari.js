@@ -16,10 +16,10 @@
   const S = SD.state, U = SD.ui;
   const SPRITE = 'nari-dance';
 
-  // Gifts start at 50 shards and grow by 50 at every sighting, to 300 at the Exchange: as much as clearing chapter 10,
+  // Gifts start at 75 shards and grow by 75 at every sighting, to 450 at the Exchange: more than clearing chapter 10,
   // while a daily quest pays 100 and a side quest about 300. The Exchange always pays the top of the ramp: by then
   // she is at 100 percent.
-  N.FIRST = 50; N.STEP = 50;
+  N.FIRST = 75; N.STEP = 75;
   // Every area, in the order they open: the Isles' first waves after chapters 3 and 4, then the waystation after 5,
   // the PR Club after 7, the camp after 8 and the Exchange last.
   N.AREAS = ['isles1', 'isles2', 'waystation', 'club', 'camp', 'exchange'];
@@ -36,7 +36,7 @@
   // face behind the veil because going first scares her every time. A rollback is never the end to her: if it isn't
   // a happy ending, it isn't the end. Each place gets a line or two about what she found when she danced on it first.
   const AREA = {
-    isles1: [['happy', 'The ferry docks wobble! But they wobble the same way every time, five, six, seven, eight, so I\'m counting that as holding.']],
+    isles1: [['happy', 'The Game Club says a tie means everybody dances! So I danced the tie first, on the grass, five, six, seven, eight, and it held.']],
     isles2: [['smug', 'The Tower of Tongues speaks every format at once. I danced in all of them! I only tripped in the old one. The old one is very old.']],
     waystation: [['happy', 'A whole road, opened all at once! So brave. I danced it end to end first, a few steps at a time, and it held the whole way.'],
       ['neutral', 'The tunnel is slow, but slow isn\'t broken. I danced the whole thing at half speed. Five... six... seven... It took a while.']],
@@ -122,7 +122,10 @@
   // ---------- The North Road and its places ----------
   // She stands a few steps from where you come in, on open ground off the path, away from doors. The Exchange is
   // different: she lives there, and js/nari-home.js already has her dancing outside her own door until her gift is
-  // claimed, so there this file only answers when you talk to her.
+  // claimed, so there this file only answers when you talk to her. SPOTS pins her somewhere instead: [x, y, face].
+  // In the PR Club she dances on the grass behind the studio, between its two trees; at the heroes' camp, above the small
+  // tent and to the right of the big one.
+  const SPOTS = { club: [5, 2, 'south'], camp: [23, 4, 'south'] };
   function spot(sc) {
     const def = sc.def, [sx, sy] = def.enter || def.back.S;
     const doors = new Set(Object.keys(def.back || {}).concat(Object.keys(def.doors || {})));
@@ -167,7 +170,7 @@
     let a = sc.actors.nari_sighting;
     if (!N.due(key)) { if (a && !a.leaving) sc.hide('nari_sighting', true); return; }
     if (!a) {
-      const [x, y, face] = spot(sc);
+      const [x, y, face] = SPOTS[key] || spot(sc);
       a = sc.addActor('nari_sighting', { x, y, face, sprite: SPRITE, still: true });
       a.speak = () => speak(key, () => vanish(sc, a));
     }
@@ -183,8 +186,9 @@
   });
 
   // ---------- The Eventual Isles ----------
-  // One spot per early wave, on that wave's newest island; the Isles only show her once the island is open.
-  const ISLES = { isles1: [11, 24, 'west'], isles2: [33, 19, 'south'] };
+  // One spot per early wave, on that wave's newest island; the Isles only show her once the island is open. On Ferry
+  // Landing she dances on the open grass south-west of the Tide Pool Game Club.
+  const ISLES = { isles1: [6, 47, 'east'], isles2: [38, 14, 'north'] };
   const IS = SD.isles;
   if (IS && IS.addPerson) {
     const im = new Image();
