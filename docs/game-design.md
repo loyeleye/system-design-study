@@ -213,6 +213,14 @@ Posted after chapter 4 (chapter 5's material and curses):
 | 19 | Lexi's Endless Catalogue | Lexi | Lexi wants to catalogue every book in every town. One town's library is a calendar with infinite pages. | Web crawlers: frontier, politeness, dedupe by content hash, crawler traps | **Crawler Garden**: send spiders through a web of pages, respect each site's pace, skip duplicates, escape the infinite calendar | **Lexi's Spider:** write intents −15% |
 | 20 | The Goddess Never Sleeps | Gary | Gary takes a holiday. You are on call for Heaven. | Monitoring, logging, alerting on SLO burn rate, multi-region failover | **Pager Panic**: triage a wall of alerts, separate symptoms from causes, silence the noisy ones, fail over a region | **Gary's Coffee Mug:** once per fight, a RESISTED card refunds its Capacity |
 
+### Town side quests
+
+Side quests pay shards and a story instead of a Plot Device, and teach topics the dungeons don't. Their concepts use zone 98, like the North Road's: they stay out of dungeon pools, and for now the town reviews don't ask them either, so the quest's own questions are the only practice.
+
+| Quest | Giver | Posted | Story | Teaches | Mini-game (mechanic) |
+| --- | --- | --- | --- | --- | --- |
+| Who Goes There? (`js/bru-quest.js`) | Bru | After chapter 2, once Doug's Totally Legit Bot is done | A quest "from the Guild Master" offers free shards to anyone named Kevin, and the Brújula Board believes whoever says a name. Bru → Doug → Lexi → Coo → Bru → Wen | Authentication vs authorization; password hashing (salted, slow); sessions vs signed tokens (JWT); 401 vs 403; expiry, refresh tokens and deny lists; bearer tokens; OAuth 2.0 | **Guild Cards, Please**: be the Guild's front gate for two shifts. Read each card, the clock and Bru's rules, then let them in, send a 401 or send a 403 |
+
 ### Mini-games and the learning principle each one uses
 
 Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `def` and resolves to `{ ok, score }`. Most open with a **prediction** (generate an answer before seeing it, then the result screen checks it), and every one ends by naming the idea in plain words, after you have felt it.
@@ -243,6 +251,7 @@ Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `
 | Crawler Garden | Pick the spider's next page five times, each with one polite, new choice | Frontier, politeness, URL normalisation, content hashes, traps | Discrimination practice: near-identical URLs teach what "the same page" means |
 | Pager Panic | Page, ticket or silence five alerts, then fail a region over | Symptoms vs causes, SLO burn rate, failover | Interleaved judgement calls with a story consequence (Uptima's 400 pages) |
 | Rebuild the Recipe (revised) | The rules sit on screen, entries are listed by number, a live card shows the result, and Undo and Hint help when stuck | Snapshots and logs | Ladi found the first version confusing (2026-10-18); the goal and the three rules are now explicit before the first move |
+| Guild Cards, Please | Two shifts at the Guild gate, Papers, Please style: compare each card with its seal, its time, the deny list and what its rank may do | Authentication vs authorization, signatures, expiry, revocation, bearer tokens | Discrimination practice: near-identical cards that differ in one detail (a pencilled rank, a stranger's seal), each with Bru's reason |
 
 ## Shards, Wen's café and Aigerim's cards
 
