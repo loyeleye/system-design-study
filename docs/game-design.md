@@ -389,6 +389,7 @@ Topic coverage is cross-checked against the public outline of Educative's *Grokk
 
 - `game/index.html` — page, styles, screen markup and cutscene stage.
 - `game/js/content.js` — concepts, links, cards, incidents, questions, events, specs, cast and story. Most new content goes here.
+- `game/js/review-bank.js` — extra spaced-review questions, so every concept has at least 8 multiple choice questions (ids `qb-<concept><n>`). Add a concept's new review questions here or next to its other questions; either way `node tools/question_lint.js` checks them.
 - `game/js/state.js` — save data, levels, spaced review and mastery.
 - `game/js/audio.js` — recorded music and samples, with the synth as fallback.
 - `game/js/intro.js` — the cold open's eyelids and heavenly glow.
