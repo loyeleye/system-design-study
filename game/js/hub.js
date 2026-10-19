@@ -326,10 +326,12 @@
     }
     return null;
   }
+  // Some villagers stroll (pace in js/folk-data.js): slower steps, longer stops on their rounds.
+  const pace = n => { const p = SD.folkData && SD.folkData.PEOPLE[n.id]; return (p && p.pace) || 1; };
   function updateFolk(dt) {
     NPCS.forEach(n => {
       if (fixture(n) || !n.here || !n.placed || n.hide) return;
-      const sp = dt * 3;
+      const sp = dt * 3 * pace(n);
       n.moving = Math.abs(n.px - n.x) + Math.abs(n.py - n.y) > 0.01;
       n.px += Math.sign(n.x - n.px) * Math.min(Math.abs(n.x - n.px), sp);
       n.py += Math.sign(n.y - n.py) * Math.min(Math.abs(n.y - n.py), sp);
@@ -356,7 +358,7 @@
         n.routeI = (n.routeI + 1) % n.route.length;
         const [gx, gy] = n.route[n.routeI];
         n.path = (gx !== n.x || gy !== n.y) && npcPath(n.x, n.y, gx, gy) || [];
-        n.dwell = 5 + Math.random() * 5;
+        n.dwell = (5 + Math.random() * 5) / pace(n);
       }
     });
   }
@@ -718,14 +720,14 @@
   // People: the player, Gary, villagers who stand by their doors, and wanderers who just like walking.
   // Each has a PixelLab sheet: rows face south, west, east and north; column 0 stands, then walk or idle frames.
   const ROW = { south: 0, west: 1, east: 2, north: 3 };
-  function person(id, px, py, t, face, moving, noShadow) {
+  function person(id, px, py, t, face, moving, noShadow, pace) {
     const c = ART().chars[id], im = pic('c-' + id);
     ctx.fillStyle = 'rgba(43,35,64,0.22)';
     if (!noShadow) { ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
     if (!c || !ok(im)) return;
     const row = ROW[face] || 0, n = c.n[row];
     // Sheets marked walk only animate while walking; the rest walk or breathe in place.
-    const col = n && (moving || !c.walk) ? 1 + Math.floor(t * (moving ? 8 : 5)) % n : 0;
+    const col = n && (moving || !c.walk) ? 1 + Math.floor(t * (moving ? 8 * (pace || 1) : 5)) % n : 0;
     // Villagers without walk frames hop along instead.
     const bob = moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
     const w = c.w * ts / 32, h = c.h * ts / 32;
@@ -777,7 +779,7 @@
       const near = Math.abs(P.x - n.x) + Math.abs(P.y - n.y) <= 1;
       const face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
       ctx.save(); if (a && a.dy) ctx.translate(0, a.dy * ts);
-      person(n.id, xx(n), yy(n), t, face, !!n.moving || !!(a && a.anim));
+      person(n.id, xx(n), yy(n), t, face, !!n.moving || !!(a && a.anim), false, n.moving ? pace(n) : 1);
       ctx.restore();
       if (a && a.fx) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
     }
