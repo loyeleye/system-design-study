@@ -200,14 +200,14 @@
     // building as before. Some things open part of it without them: the Guild's board opens the quest log, the
     // Forge's workbench your plot devices, and the library's back door the Hall of Blueprints once it's open.
     temple: {
-      name: 'GODDESS TEMPLE', door: 'A', owner: 'uptima', mat: true, music: 'goddess', ambience: 'temple',
+      name: 'GODDESS TEMPLE', door: 'A', owner: 'uptima', music: 'goddess', ambience: 'temple',
       map: ['############', '############', '############', '############', '############',
-        '####......##', '#####...####', '####..#...##', '####DD######'],
+        '####......##', '#####...####', '####......##', '#####DD#####'],
       enter: [5, 7, 'north'],
       spots: { uptima: [5, 5, 'south'], _: [[8, 5, 'west'], [5, 6, 'north'], [7, 6, 'north']] },
       sleep: { at: [7, 5], cloud: true, t: [['narr', 'Uptima is asleep on a small cloud in front of her own statue, snoring very politely.'], ['narr', 'A sign hangs off the cloud: "DO NOT DISTURB. TICKETS RESUME AT NINE."']] },
       windows: [{ r: [166, 8, 70, 56] }],
-      lights: [{ x: 4.9, y: 4.2, r: 2.2 }, { x: 7.4, y: 4.2, r: 2.2 }, { x: 6.2, y: 7.4, r: 2.2 }],
+      lights: [{ x: 4.9, y: 4.2, r: 2.2 }, { x: 7.4, y: 4.2, r: 2.2 }],
       props: [
         { x: 3, y: 5, t: () => ['Uptima\'s desk, buried in paperwork. Every one of your respawns has its own form, filed in triplicate.', 'The form on top says LOOP ' + (S.save ? S.save.loop : 1) + '. It has already been stamped.'] },
         { x: 6, y: 4, t: () => ['A marble statue of Uptima with a clipboard. The plaque says GODDESS OF UPTIME.', 'Someone has rubbed out "99%" on the clipboard and carved "99.9%". Then "99.99%". There is not much room left.'] },
@@ -215,7 +215,6 @@
         { x: 7, y: 4, t: () => ['An offering bowl with a single croissant in it. There is a small bite out of it, exactly Gary-sized.'] },
         { x: 9, y: 4, t: () => ['A ticket dispenser on a post. TAKE A NUMBER. You take one. It says 1. So does the next one.'] },
         { x: 8, y: 6, t: () => ['A round table with an eraser on it the size of a loaf. It is very well used.'] },
-        { x: 6, y: 7, t: () => ['A tall candle, kept lit day and night. The card beside it says MONITORING.'] },
         { x: 4, y: 6, t: () => ['A stool for visitors. It is a little lower than the goddess\'s chair. That is on purpose.'] }
       ]
     },
@@ -435,7 +434,7 @@
       ]
     },
     light: {
-      name: 'THE LIGHTHOUSE', isle: 'light', mat: true,
+      name: 'THE LIGHTHOUSE', isle: 'light',
       map: ['############', '############', '############', '###.#..#####', '###.....####',
         '#####...####', '####....####', '#####....###', '######DD####'],
       enter: [6, 7, 'north'],
@@ -453,7 +452,7 @@
       ]
     },
     club: {
-      name: 'TIDE POOL GAME CLUB', isle: 'club', mat: true,
+      name: 'TIDE POOL GAME CLUB', isle: 'club',
       map: ['############', '############', '############', '############', '###.#....###',
         '###.##..####', '###......###', '#####...####', '#####DD#####'],
       enter: [5, 7, 'north'],

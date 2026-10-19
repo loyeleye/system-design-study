@@ -10,13 +10,15 @@ from PIL import Image
 
 SRC, OUT, JS = sys.argv[1], sys.argv[2], sys.argv[3]
 os.makedirs(OUT, exist_ok=True)
+# A few rooms use an edited copy of their download (doug2, i-bank2, i-light2, i-club2, i-temple3) so the way out reads
+# as a real opening; the raw folder's README says what changed.
 ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat': 'flat1', 'lexi': 'lexi1',
-         'kaito': 'kaito1', 'doug': 'doug1', 'coo': 'coo1', 'bru': 'bru1', 'ayo': 'ayo1',
+         'kaito': 'kaito1', 'doug': 'doug2', 'coo': 'coo1', 'bru': 'bru1', 'ayo': 'ayo1',
          # The Eventual Isles' buildings (js/isles/isles-map.js) and Aigerim's card shop on the North Road.
-         'office': 'i-office', 'school': 'i-school', 'bank': 'i-bank', 'mill': 'i-mill', 'tower': 'i-tower',
-         'carto': 'i-carto', 'hallW': 'i-hallW', 'hallE': 'i-hallE', 'light': 'i-light', 'club': 'i-club', 'cards': 'i-cards',
+         'office': 'i-office', 'school': 'i-school', 'bank': 'i-bank2', 'mill': 'i-mill', 'tower': 'i-tower',
+         'carto': 'i-carto', 'hallW': 'i-hallW', 'hallE': 'i-hallE', 'light': 'i-light2', 'club': 'i-club2', 'cards': 'i-cards',
          # The town's buildings (js/hub.js doors A, U, F, P and K).
-         'temple': 'i-temple2', 'guild': 'i-guild', 'forge': 'i-forge', 'post': 'i-post', 'library': 'i-library'}
+         'temple': 'i-temple3', 'guild': 'i-guild', 'forge': 'i-forge', 'post': 'i-post', 'library': 'i-library'}
 # Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo. Each house faces the middle of the
 # cul-de-sac, so it uses the direction pointing there from where it stands ('south' faces the camera). The two on the
 # sides turn three-quarters, like their neighbours, since a house seen straight side-on hides its door.
