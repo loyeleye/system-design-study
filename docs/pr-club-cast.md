@@ -7,6 +7,7 @@ Where it lives in the game:
 - `game/js/club.js` holds the club itself: the yard, the gym and the studio, and each member's idle lines.
 - `game/js/club-quests.js` holds the five quests, one for each pair.
 - `game/js/club-life.js` holds the schedules, the eight relationship arcs and the club's section of Bru's board.
+- `game/js/club-shops.js` holds Rico's and Thea's card shops.
 
 ## Ground rules
 
@@ -41,6 +42,7 @@ Sunny's barn wall is the one thing on the North Road that remembers. Heroes resp
 - **Canon.** She's an athletic coach who runs the tournament qualifier for Gong. Her motto is "Shield up, eyes on your opponent." She hosts *The Gauntlet* with Rico.
 - **Backstory.** She refereed the old pits for a hundred loops, and she was the one who disqualified Rico. She saw that he was honest about every hit he took, so she offered him the judge's chair, on the condition that he never judges a fight he's in. She spends her nights at the arena drawing up the bracket.
 - **Voice.** She's dry and terse, and fair to the point of being funny.
+- **Shop.** Once The Qualifier Gauntlet is done she runs Thea's Guard Rack, a card shop of guards that hit back, hold or send it home (`game/js/club-shops.js`).
 - **Relationships.** Rico (*Disqualified*), Paz (*Two Watches*).
 
 ### Rico
@@ -48,6 +50,7 @@ Sunny's barn wall is the one thing on the North Road that remembers. Heroes resp
 - **Canon.** He's a pit fighter and head judge, "loudly". He judges plans "personally, with my fists" and shouts "SORTED SET!" before every round.
 - **Backstory.** His temper got him thrown out of the old pits. Thea was right to do it, and he will never say so to her. Every morning he slips into the back row of Dawn Flow to practise not shouting, and he is on the sign-up board as "R." At night he does push-ups in the empty ring.
 - **Voice.** He talks in capitals, means every word, and keeps whispering at the wrong volume.
+- **Shop.** Once The Qualifier Gauntlet is done he runs Rico's Corner, a card shop of strikes (`game/js/club-shops.js`), and calls his Strength "Throughput".
 - **Relationships.** Thea (*Disqualified*), Delphine (*Six A.M.*).
 
 ### Delphine
