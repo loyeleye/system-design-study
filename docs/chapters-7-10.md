@@ -31,6 +31,7 @@ The story and the design decisions live in the "Chapters 7–10" Claude Doc. Thi
 | `game/js/debug.js` | **Testing only; remove it and its script tag before release.** `?debug&ch=9&rank=A&at=run&floor=3&quests=done` starts on any chapter, rank, place or floor, on a separate save. In the published game, where the link can't change, **Menu > Debug start** switches it on or off (a localStorage key) and reloads; then the 🐞 button picks the chapter and rank |
 | `game/js/arc-art.js`, `arc-dungeon-art.js`, `arc-battle-art.js` | Art manifests (made by `tools/village_art.py` and `tools/arc_art.py`) |
 | `game/tools/arc_art.py` | Builds the arc's monsters, backdrops and `arc-battle-art.js` from PixelLab downloads |
+| `game/js/critters.js`, `critters-art.js`, `game/tools/critters_art.py` | Animals, birds and bugs on the walkable maps (`SD.critters.add(sc, [{ kind, x, y, range }])`), their PixelLab art and the tool that builds it |
 | `game/CREDITS-arc.md` | Credits for the arc's PixelLab art and Pixabay audio |
 | `game/assets/...` | `img/arc/`, new dungeon tiles, monsters, backdrops, portraits, `village/b-N.webp`, and `audio/m-*`, `s-*`, `j-after` |
 
@@ -71,6 +72,8 @@ These are the only edits to existing files. Each one is small, so a merge only n
 15. **`game/js/audio.js`**: `boom` and `thunder` sound effects (`thunder` plays one of the storm's recorded claps when loaded).
 
 On the North Road (`northroad.js`), people pace near their spots and two travellers (a merchant and a courier) walk set routes along the road; anyone with a `route` loops it, and nobody moves while a conversation is open; walk up to someone and they stop where they are and turn to face you. A route leg marked `'in'` ends at a door: the traveller fades out as if they went inside and comes back 10-20 seconds later. Explodia and the road's ordinary people are handled before the quest system in `talk()`, by `SD.explodia.talk()` and `SD.roadFolk.talk()`. Character sheets from `tools/village_art.py` now carry PixelLab walk cycles, flagged `walk` so standing characters hold still. The Exchange is always under a thunderstorm (`storm` overlay: rain, lightning, thunder).
+
+Animals live on the road, the waystation and the heroes' camp (each map's `critters` list, drawn by `js/critters.js`). They wander a few tiles from their spot and never block anyone. Wild ones hide when it rains or storms, pets (cats, dogs, the goat) go home at night, and birds, squirrels and day insects roost at night too. Frogs, ducks and snails like rain, so they stay out in it and only hide from thunderstorms; that is why the always-rainy camp has them (Ladi's pick, Oct 19). Rabbits, foxes, deer and squirrels run off when you come close, sparrows fly away and come back later, and pets show you a heart.
 
 `arc.js` also gained, in its own code: whistle ranks in the run HUD (`chapter.whistles`), floor rules (`floor.rule`: a HUD chip, and an intro scene before the floor's first fight; chapter 10's four Homunculus' Rules apply through `SD.meta` mods), a `finale` after the last boss (chapter 9's army, chapter 10's pager), `afterEnding` (chapter 10's credits), and boss chains (`floor.chain` with `floor.links` cutscenes between them; each boss after the first gets one framework step).
 

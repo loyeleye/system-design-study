@@ -80,6 +80,18 @@
         v1: { x: 14, y: 42, face: 'north', name: 'MERCHANT', route: [[14, 38], [13, 38], [13, 29], [15, 29], [15, 17], [14, 17], [14, 9], [14, 8, 'in'], [14, 17], [15, 17], [15, 29], [13, 29], [13, 38], [14, 38], [14, 44, 'in']] },
         v3: { x: 15, y: 12, face: 'south', name: 'COURIER', route: [[15, 17], [16, 17], [16, 25], [28, 25, 'in'], [16, 25], [16, 28], [12, 28], [12, 36], [1, 36, 'in'], [12, 36], [12, 28], [16, 28], [16, 17], [15, 17], [15, 8, 'in']] }
       },
+      // Animals, birds and bugs (js/critters.js): pets by the caravan, the courier post and the shrine, wild ones in the
+      // grass, ducks and frogs by the ponds, and butterflies, bees and dragonflies over the flowers and water.
+      critters: [
+        { kind: 'dog', x: 20, y: 42 }, { kind: 'cat', x: 9, y: 29, range: 2 }, { kind: 'blackcat', x: 14, y: 33, range: 2 },
+        { kind: 'rabbit', x: 24, y: 38 }, { kind: 'rabbit', x: 4, y: 26 }, { kind: 'fox', x: 23, y: 10 }, { kind: 'deer', x: 8, y: 10, range: 2 },
+        { kind: 'squirrel', x: 10, y: 17, range: 2 }, { kind: 'squirrel', x: 19, y: 23, range: 2 },
+        { kind: 'sparrow', x: 18, y: 28 }, { kind: 'sparrow', x: 10, y: 38 }, { kind: 'sparrow', x: 22, y: 13 },
+        { kind: 'duck', x: 23, y: 33, range: 2 }, { kind: 'frog', x: 7, y: 41, range: 2 },
+        { kind: 'bfly1', x: 9, y: 33 }, { kind: 'bfly2', x: 21, y: 36 }, { kind: 'bfly3', x: 25, y: 22 }, { kind: 'bfly2', x: 4, y: 15 },
+        { kind: 'bee', x: 21, y: 38 }, { kind: 'bee', x: 8, y: 24 }, { kind: 'dragonfly', x: 24, y: 29 }, { kind: 'dragonfly', x: 5, y: 39 },
+        { kind: 'ladybug', x: 11, y: 26, range: 2 }, { kind: 'ladybug', x: 18, y: 43, range: 2 }
+      ],
       // Where you stand when you come back through each door.
       back: { L: [1, 35, 'east'], R: [28, 25, 'west'], K: [1, 13, 'east'], X: [14, 8, 'south'], S: [14, 44, 'north'], C: [7, 23, 'south'] },
       music: 'ch7', weather: 'sun'
@@ -110,6 +122,13 @@
       ],
       labels: [{ x: 19.5, y: 6.6, text: 'THE NORTHBOUND ROAD' }, { x: 6, y: 9.1, text: 'WAYSTATION' }, { x: 24.5, y: 13.6, text: 'ROAD →' }],
       actors: { latency: { x: 8, y: 10, face: 'south', name: 'LORD LATENCY' }, v1: { x: 16, y: 13, face: 'west', name: 'GUEST' } },
+      // The inn's dog and cat, a goat by the stable, rabbits and a fox at the edges, bees and butterflies in the garden.
+      critters: [
+        { kind: 'dog', x: 14, y: 9 }, { kind: 'cat', x: 11, y: 9, range: 2 }, { kind: 'goat', x: 18, y: 16 },
+        { kind: 'rabbit', x: 3, y: 17 }, { kind: 'squirrel', x: 15, y: 8, range: 2 }, { kind: 'fox', x: 1, y: 8, range: 2 }, { kind: 'deer', x: 23, y: 17, range: 2 },
+        { kind: 'sparrow', x: 12, y: 14 }, { kind: 'sparrow', x: 22, y: 9 },
+        { kind: 'bfly1', x: 5, y: 16 }, { kind: 'bfly3', x: 2, y: 13 }, { kind: 'bee', x: 7, y: 15 }, { kind: 'bee', x: 4, y: 13 }, { kind: 'ladybug', x: 8, y: 16, range: 2 }
+      ],
       back: { D: [19, 6, 'south'], E: [24, 11, 'west'] }, enter: [24, 11, 'west'], ch: 7, music: 'ch7', weather: 'sun'
     };
   })();
@@ -185,6 +204,12 @@
         hero1023: { x: 13, y: 13, face: 'east', name: 'HERO #1023', hidden: true },
         hero500: { x: 17, y: 13, face: 'west', name: 'HERO #500', hidden: true }
       },
+      // It always rains at the camp, so it has the animals that like rain: frogs, snails and ducks in the puddles.
+      critters: [
+        { kind: 'frog', x: 5, y: 13 }, { kind: 'frog', x: 24, y: 21 }, { kind: 'frog', x: 18, y: 8 }, { kind: 'frog', x: 11, y: 20 },
+        { kind: 'snail', x: 3, y: 18, range: 2 }, { kind: 'snail', x: 13, y: 19, range: 2 }, { kind: 'snail', x: 27, y: 9, range: 2 }, { kind: 'snail', x: 1, y: 13, range: 2 },
+        { kind: 'duck', x: 19, y: 21 }, { kind: 'duck', x: 6, y: 21 }
+      ],
       back: { D: [8, 8, 'south'], E: [28, 10, 'west'] }, enter: [28, 10, 'west'], ch: 9, music: 'ch9', weather: 'rain'
     };
   })();
@@ -339,6 +364,7 @@
       scenes[key] = SD.scene.create($('#north-canvas'), def);
       scenes[key].onDoor = door; scenes[key].onTalk = talk;
       if (key === 'road') scenes[key].fx.push(candle);
+      if (def.critters && SD.critters) SD.critters.add(scenes[key], def.critters);
       const [x, y, f] = def.enter || def.back.S;
       scenes[key].player(x, y, f);
     }
@@ -572,7 +598,7 @@
     if (!sc || !sc.active || busy || !document.getElementById('dialog').hidden) return;
     const now = performance.now(), P = sc.P;
     Object.values(sc.actors).forEach(a => {
-      if (a.player || a.pip) return;
+      if (a.player || a.pip || a.critter) return;
       // On the way somewhere for this time of day: they keep going, and squeeze past you if you're in the way.
       if (a.goal && !a.hidden) { if (!a.path.length && !a.moving) toGoal(a); return; }
       if (a.emoK && !a.moving && !a.hidden && Math.random() < 0.015) sc.emote(a.id, a.emoK, 1.6);
