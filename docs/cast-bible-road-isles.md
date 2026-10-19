@@ -178,7 +178,7 @@ Nari gives the first quest and Bitna the second, and they are data in `game/js/r
 
 **Lost and Found** (`lostfound`). Nari gives it once the Exchange is open (after chapter 9) and you have met her at her house, where she hands you her last sighting gift. Until it is done her housemates are off their schedules, lost around the Exchange and the road.
 
-1. Neel is at the hotel. He pressed BOOK once and got nine bookings. The lesson is an idempotent booking: every retry carries the same idempotency key, and the hotel answers a key it has already seen with the first booking instead of a new one.
+1. Neel is in the Coffee Diner across from the hotel, with the manager and his bill. He pressed BOOK once and got nine bookings. The lesson is an idempotent booking: every retry carries the same idempotency key, and the hotel answers a key it has already seen with the first booking instead of a new one.
 2. Hari is busking at Lyra's stage on the North Road, because his wallet paid the diner and the diner never got the money. The lesson is a transfer as a saga: each step has a compensating step, so when the diner's side fails the wallet is paid back instead of left short.
 3. Bitna is at the lamp-oil auction, outbid by a ticket that came in after hers at a higher price. The lesson is an order book with price-time priority: the better price wins, arrival only breaks ties at the same price, and a single sequencer stamps that arrival order so nobody can argue about who was first.
 4. Back at the house you reconcile: count the shoes on the rack against the ledger of who should be home. They come to one more than Bitna's head count, and the extra one is Eun-ho, behind the curtain. He was never lost. Nobody checked.

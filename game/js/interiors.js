@@ -8,7 +8,7 @@
 // have rooms too, with their keepers inside when their day puts them there. Bru is never home at night, and nothing in her room says where she goes.
 // In chapter 10's storm everyone is indoors and worried, so each room has its people in it with a worried word.
 // The Eventual Isles' buildings have rooms too (js/isles/isles-map.js), and so do Aigerim's card shop on the North
-// Road (js/northroad.js), where she minds the counter, and Lord Latency's inn at the waystation.
+// Road (js/northroad.js), where she minds the counter, Lyra's theatre with her stage, and Lord Latency's inn at the waystation.
 //
 //   SD.interiors.has(door)     true if a room is behind that door
 //   SD.interiors.enter(door)   go inside; resolves when you walk back out
@@ -29,13 +29,16 @@
 
   // Map legend: # solid, . floor, D the way out, U up the stairs, S down the stairs (the café's and the flat's unless a
   // room says where its own go: up, down).
-  // spots: where people stand ([x, y, face]; y can be fractional, to stand behind a counter). props: things you
-  // can look at, on solid tiles next to the floor. windows (in picture pixels) show the weather; lights glow at night.
+  // spots: where people stand ([x, y, face]; y can be fractional, to stand behind a counter). counter and over: where
+  // whoever minds the counter stands, and the tiles you talk to them across (Wen or Uptima in the café; clerk names
+  // anyone else's). looks: what to draw someone with ({ sprite }). props: things you can look at, on solid tiles next
+  // to the floor. windows (in picture pixels) show the weather; lights glow at night.
   // sleep: where the owner sleeps on a night outside the storm: the tile you talk to them from (on the bed, next to
   // the floor), where the "Zz" floats (in tiles), and what you see. mat: the picture has no door, so a doormat is
   // drawn over the way out. Rooms keep the music and sounds from outside unless they have a theme of their own:
   // music (a song in js/audio.js, or a function that picks one or null), ambience (its PLACE sound, or null for quiet),
-  // bell: a shop bell over the door.
+  // bell: a shop bell over the door. calm: nobody in it looks worried in the storm. front: [[x, y, w, h, row]], pieces
+  // of the picture (in its pixels) drawn again over whoever stands behind them, as standing on that row: counters, tables.
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -517,6 +520,32 @@
         { x: 8, y: 5, t: () => ['A round table with a map of the road north under the glass. Someone has marked every stop with how long it takes to get there.', 'Every number has been crossed out and made a little bigger.'] }
       ],
       talk: id => innTalk(id)
+    },
+
+    // ---------- Lyra's theatre, on the North Road (js/northroad.js door B) ----------
+    // A little playhouse: Lyra on her stage at the back, three rows of benches and an aisle up the middle. She is in
+    // here whenever the road's schedules (js/folk-far.js) have sent her indoors, which is all day unless a quest
+    // keeps her outside. Hari busks on her stage until Lost and Found finds him (js/rollouts-quests.js), and Explodia
+    // sleeps here at night and shelters here in the storm, under Lyra's one house rule. Talking to anyone is the same
+    // as on the road (quest steps, scenes and their own lines), with a word about the rule while Explodia is in.
+    theatre: {
+      name: "LYRA'S THEATRE",
+      map: ['############', '############', '############', '###.......##', '#####..#####',
+        '######.#####', '######.#####', '######.#####', '#####DD#####'],
+      enter: [6, 7, 'north'],
+      spots: { lyra: [6, 3, 'south'], hari: [4, 3, 'south'], explodia: [3, 3, 'east'] },
+      names: { lyra: 'LYRA', hari: 'HARI', explodia: 'EXPLODIA' },
+      people: () => SD.northRoad && SD.northRoad.indoors ? SD.northRoad.indoors().filter(id => ['lyra', 'hari', 'explodia'].includes(id)
+        // Hari only while he's sent in here (Lost and Found), not when the troupe is just off the road.
+        && (id !== 'hari' || (SD.nariHome && JSON.stringify(SD.nariHome.where('hari')) === '["in","road",21,18]'))) : [],
+      lights: [{ x: 1.8, y: 4.3, r: 2.4 }, { x: 10.2, y: 4.3, r: 2.4 }, { x: 4.2, y: 3.8, r: 2.2, rgb: '255,170,80' }, { x: 8.2, y: 3.8, r: 2.2, rgb: '255,170,80' }],
+      props: [
+        { x: 2, y: 3, t: () => ['A playbill: "THE BALLAD OF EVERYONE. Tonight: verses 1 to 212. Tomorrow: verse 213. Bring a cushion."'] },
+        { x: 10, y: 3, t: () => ['A playbill for a show called "Encore". Under it, in pencil: "Nobody has ever stayed for one. Yet."'] },
+        { x: 5, y: 5, t: () => ['The front bench. Someone has carved "RESERVED FOR WHOEVER STAYS FOR THE SECOND VERSE" into it.'] },
+        { x: 7, y: 5, t: () => ['A bench polished smooth by years of audiences. Under it: a button, two shards and a very old programme.'] }
+      ],
+      talk: id => theatreTalk(id)
     }
   };
   // Lord Latency and his guest, indoors for the night: a quest step first, as on the road; otherwise a sleepy word.
@@ -524,6 +553,32 @@
     latency: ['...You are up... late. The tea... is nearly ready. Nearly is... a long word.', '...Every round trip... is a little journey. I like to... savour them.'],
     v1: ['I asked for tea at noon. Lord Latency says it\'s "in flight". I\'ve decided to stay the night.', 'The bed is lovely. The pillow arrived about an hour after I lay down.']
   };
+  // Explodia in Lyra's theatre for the night, or out of the storm: the one rule of the house is no explosions.
+  const THEATRE = {
+    night: {
+      lyra: [['lyra', 'She sleeps here when the crater gets cold. One house rule: no explosions indoors. She signed it. In crayon. With a little drawing of an explosion.'],
+        ['lyra', 'She counts down in her sleep. Three, two, one... and then nothing. I\'ve started setting it to music. It\'s my best ending.']],
+      explodia: [['narr', 'Explodia is curled up at the edge of the stage, hat pulled over her face. Her notebook is open: "Blasts today: 1. Blasts tonight: 0. Lyra\'s rule. Feels weird."'],
+        ['explodia', '*mumbling* ...three... two... *snore* ...no, Lyra, a SMALL one... *snore*']]
+    },
+    storm: {
+      lyra: [['lyra', 'The sky has been exploding all night, and the one person here who loves a loud noise has promised to be quiet. Strangest show I\'ve ever played.'],
+        ['lyra', 'I let her keep one candle lit. She is staring at it like it owes her money. She hasn\'t blown it up. I\'m so proud of her.']],
+      explodia: [['explodia', 'The sky is doing explosions and I\'m not allowed to. Worst night of my life.', 'sad'],
+        ['explodia', 'Every thunderclap, I write it down. Blast 1: sky. Blast 2: sky. Crater: none. Amateur.']]
+    }
+  };
+  let theatreI = 0;
+  async function theatreTalk(id) {
+    const when = storm() ? 'storm' : block() === 'night' ? 'night' : null;
+    const lines = when && people('theatre').includes('explodia') && THEATRE[when][id];
+    // Quest steps and scenes first, then a word about the house rule every other time.
+    if (lines && !(SD.quests && SD.quests.pending(id).length) && theatreI++ % 2 === 0) {
+      const [s, t, e] = lines[(theatreI >> 1) % lines.length];
+      return U.dialog([{ s, t, e }]);
+    }
+    return SD.northRoad.say(id);
+  }
   let innI = 0;
   async function innTalk(id) {
     if (SD.quests && SD.quests.pending(id).length) return SD.quests.talk(id);
@@ -689,7 +744,7 @@
   function cast(key) {
     const r = ROOMS[key], here = people(key), marks = SD.quests && SD.quests.marks ? SD.quests.marks() : {};
     const free = (r.spots._ || (r.isle ? floor(r) : [])).slice();
-    const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: (r.names && r.names[id]) || SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), extra));
+    const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: r.names && id in r.names ? r.names[id] : SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), r.looks && r.looks[id], extra));
     let counter = null;
     here.forEach(id => {
       // Islanders: their Isles sprite faces you, at the size they stand on the Isles; the school's class is three kids.
@@ -706,9 +761,9 @@
         else sc.addActor(id, { x: r.sleep.at[0], y: r.sleep.at[1], draw: zz(r.sleep.zz), asleep: r.sleep.t });
         return;
       }
-      if (r.counter && !counter && (id === 'wen' || id === 'uptima')) { counter = id; actor(id, r.counter, storm() ? { worried: true } : {}); return; }
+      if (r.counter && !counter && (id === 'wen' || id === 'uptima' || id === r.clerk)) { counter = id; actor(id, r.counter, storm() && !r.calm ? { worried: true } : {}); return; }
       const at = (storm() && r.stormSpots && r.stormSpots[id]) || r.spots[id] || free.shift();
-      if (at) actor(id, at, storm() ? { worried: true } : {});
+      if (at) actor(id, at, storm() && !r.calm ? { worried: true } : {});
     });
     // Across the counter: talk to whoever has the shift.
     if (r.over) r.over.forEach(([x, y], i) => sc.addActor('over' + i, { x, y, draw() {}, over: counter || '' }));
@@ -717,6 +772,12 @@
       if (free.length) actor('v3', free.pop(), { name: null, customer: true });
     }
     r.props.forEach((p, i) => sc.addActor('prop' + i, { x: p.x, y: p.y, draw() {}, prop: p }));
+    // Furniture people stand behind: that part of the picture again, drawn with the row it stands on, so anyone
+    // further back is hidden behind it and anyone in front is drawn over it.
+    (r.front || []).forEach(([x, y, w, h, row], i) => sc.addActor('front' + i, { x: 0, y: row, solid: false, talk: false, draw(ctx, fx, fy, ts) {
+      const im = pic(key), k = ts / 32;
+      if (ok(im)) ctx.drawImage(im, x, y, w, h, x * k, y * k, w * k, h * k);
+    } }));
   }
   // Open floor to stand on in a room with no spots of its own, from the back wall forward, clear of the way in.
   function floor(r) {

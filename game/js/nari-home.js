@@ -255,7 +255,7 @@
       lost: ['Per my last message, which the hotel never received: I pressed BOOK once. They have me down nine times. Once each time.', 'The clerk says every press is a new booking. I say a press is a press. We are at an impasse.'],
       home: ['Per my last message: breakfast is at seven. It is seven-oh-four. I\'ll be filing a note.', 'Hari and I were split up at the market fair as babies. We found out because we sneezed at the same time. In different rooms.', 'I bring Bitna lamp oil. A little. Every day. It is a perfectly normal amount of lamp oil.'],
       night: ['Shh. Nari\'s asleep. I\'m practising in my head. Per my last message, so is Hari.'],
-      lostStorm: ['Per my last message: I am outside the hotel, in a thunderstorm, holding nine bookings. Not one of them comes with a room.'],
+      lostStorm: ['Per my last message: I am in a diner across from the hotel, in a thunderstorm, holding nine bookings. Not one of them comes with a room.'],
       storm: ['Per my last message: the bank\'s lights are out, the Exchange\'s lights are out, and I am out of patience.', 'The bank\'s ledgers haven\'t balanced since the Cloud went down. Kyu always answered the tower bell. Kyu hasn\'t answered.'],
       evening: ['I don\'t dance on stage. I dance in the wings, beat for beat with Hari. If he twists an ankle, I\'m already warm. That\'s a hot standby.', 'I\'m not looking at Bitna. I\'m looking at the cues. Bitna calls the cues. That is the only reason.']
     },

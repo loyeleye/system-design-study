@@ -27,10 +27,10 @@
       v4: { morning: [17, 32, 'west', 'star'], afternoon: [16, 9, 'north', 'idea'], evening: [17, 32, 'west', 'star'], night: [17, 32, 'west', 'sleep'] },   // prays, stares at the Exchange, prays, dozes by the candle
       marta: { night: ['in'] },
       fen: { night: ['in', 7, 29] },
-      lyra: { morning: [18, 19, 'south', 'music'], afternoon: [18, 19, 'south', 'music'], evening: [20, 18, 'south', 'music'], night: ['in'] },   // warms up, plays, headlines the evening show
+      lyra: { morning: ['in', 21, 18], afternoon: ['in', 21, 18], evening: ['in', 21, 18], night: ['in', 21, 18] },   // in her theatre all day: warms up, plays, headlines the evening show, sleeps backstage
       ren: { night: ['in'] },
-      // Explodia chants at her crater in the morning, blasts it at noon, watches Lyra's evening show, and sleeps in the crater.
-      explodia: { morning: [23, 19, 'west', 'alert'], evening: [19, 20, 'north', 'star'], night: [23, 19, 'west', 'sleep'] }
+      // Explodia chants at her crater in the morning, blasts it at noon, watches Lyra's evening show, and sleeps in Lyra's theatre.
+      explodia: { morning: [23, 19, 'west', 'alert'], evening: [19, 20, 'north', 'star'], night: ['in', 21, 18] }
     },
     waystation: {
       latency: { evening: [14, 14, 'west', 'dots'], night: ['in', 6, 8] },
@@ -67,8 +67,9 @@
   F.rollouts = {
     lost: {
       nari: 'home', eunho: 'home',                       // Eun-ho never left. Nobody counted him.
-      neel: ['exchange', 30, 9, 'south', 'dots'],        // outside the hotel, with nine bookings
-      hari: ['road', 17, 20, 'north', 'music'],          // busking for soup by Lyra's stage
+      neel: ['in', 'exchange', 39, 15],                  // in the Coffee Diner across from the hotel, with nine bookings
+                                                         // (js/exchange-rooms.js)
+      hari: ['in', 'road', 21, 18],                      // busking for soup on Lyra's stage, inside her theatre
       bitna: ['exchange', 43, 44, 'west', 'alert']       // at the lamp-oil auction, ticket 212
     },
     day: {

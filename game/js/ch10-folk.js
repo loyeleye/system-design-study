@@ -67,7 +67,7 @@
     road: {
       post: { door: [7, 29], knock: [7, 28], name: 'the courier post' },
       caravan: { door: [18, 41], knock: [18, 40], name: 'Marta\'s caravan' },
-      stage: { door: [20, 18], knock: [20, 17], name: 'the back room of the bard\'s stage' }
+      stage: { door: [21, 18], knock: [21, 17], name: 'Lyra\'s theatre' }
     },
     arena: {
       gate: { door: [20, 7], knock: [20, 6], name: 'the gatehouse by the fighters\' gate' },
@@ -81,7 +81,7 @@
   // Who shelters where: a shelter key, 'gone' (home, off the map), or a schedule entry of their own for the storm
   // (js/folk-far.js's format). Anyone not listed keeps their own schedule.
   const ROAD = C.ROAD = {
-    road: { fen: 'post', v3: 'post', ren: 'post', v2: 'post', v4: 'post', marta: 'caravan', v1: 'caravan', lyra: 'stage' },
+    road: { fen: 'post', v3: 'post', ren: 'post', v2: 'post', v4: 'post', marta: 'caravan', v1: 'caravan', lyra: 'stage', explodia: 'stage' },
     arena: { gong: 'gate', suzu: 'gate', zen: 'gate', v1: 'booth', v2: 'booth', v3: 'booth', v4: 'booth' },
     camp: { hero77: 'old', hero256: 'old', hero1023: 'old', hero500: 'old', hero3: 'tent', hypewagon: 'tent', akane: 'tent' },
     // The trader keeps the relic shop open at his stall (js/relic-exchange.js): shops are core. Awake, not dozing.

@@ -12,7 +12,7 @@
   const W = SD.weather = { force: null };
   const S = SD.state;
   // What each chapter looks like, matching what is happening in the story. Chapters 7-9 are on the North Road,
-  // where each place keeps its own mood (clear on the road and at the arena, cold rain at the heroes' camp).
+  // where each place keeps its own mood (clear on the road and at the arena, grey and windy at the heroes' camp).
   const BY_CHAPTER = {
     1: 'clear',      // Prod: the first day, nothing has gone wrong yet
     2: 'drizzle',    // the damp Tidewater Archives and their curse
