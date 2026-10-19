@@ -66,9 +66,8 @@ def key(im, tol=18, top_only=False):
     return im
 for name in ('ex-rowhouses2', 'ex-tenement2'):
     im = key(load(name)); im = im.crop(im.getbbox()); save(im, name); sizes[name] = list(im.size)
-# The bank and the diner came with a street lamp at their left corner (the map has its own lamps) and the diner with
-# a strip of pavement under it. Both fronts are symmetrical, so the corner behind each lamp is patched from its mirror
-# image, and the pavement is cut away.
+# The bank came with a street lamp at its left corner (the map has its own lamps): its front is symmetrical, so the
+# corner behind the lamp is patched from its mirror image. The diner came with a strip of pavement under it, cut away.
 def unlamp(im, xs, ys, axis2):
     px = im.load()
     for y in ys:
@@ -76,8 +75,8 @@ def unlamp(im, xs, ys, axis2):
     return im
 bank = unlamp(load('ex-bank4'), range(32), range(120, 192), 175)
 bank = bank.crop(bank.getbbox()); save(bank, 'ex-bank4'); sizes['ex-bank4'] = list(bank.size)
-diner = unlamp(load('ex-diner2'), range(22, 36), range(96, 150), 173).crop((0, 0, 176, 150))
-diner = diner.crop(diner.getbbox()); save(diner, 'ex-diner2'); sizes['ex-diner2'] = list(diner.size)
+diner = load('ex-diner3').crop((0, 0, 176, 158))
+diner = diner.crop(diner.getbbox()); save(diner, 'ex-diner3'); sizes['ex-diner3'] = list(diner.size)
 # The archway came as a street scene: keep the one building (the road runs under its arch) and key out its sky.
 arch = key(load('ex-arch2').crop((33, 15, 197, 179)), tol=14, top_only=True)
 save(arch, 'ex-arch2'); sizes['ex-arch2'] = list(arch.size)

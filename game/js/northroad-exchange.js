@@ -32,7 +32,7 @@
     // Everything is drawn to one scale: a storey is about as tall as a person (the art came at different sizes,
     // so each piece has its own factor). The office towers behind the company are the only skyscrapers.
     const K = { 'ex-hq': 1.25, 'ex-wing': 1.25, 'ex-office': 1.8, 'ex-hotel2': 1.1, 'ex-tenement2': 1.45, 'ex-rowhouses2': 1.5,
-      'ex-pawn': 1.3, 'ex-townhouse': 1.25, 'ex-inn': 1.25, 'ex-arch2': 1.3, 'ex-diner2': 1.3, 'ex-bank4': 1.36, 'ex-billboard': 1.3, 'ex-tickerdown': 1.3 };
+      'ex-pawn': 1.3, 'ex-townhouse': 1.25, 'ex-inn': 1.25, 'ex-arch2': 1.3, 'ex-diner3': 1.4, 'ex-bank4': 1.36, 'ex-billboard': 1.3, 'ex-tickerdown': 1.3 };
     // A building standing on row y, centred on x; its bottom `deep` rows are solid.
     function bld(name, x, y, o) {
       o = o || {};
@@ -96,8 +96,8 @@
     bld('ex-hotel2', 2.4, 48, { glow: [[0, -2, 2]] }); bld('ex-bakery', 6.2, 48, { glow: [[0, -1, 2]] });
     bld('ex-apothecary', 9.6, 48, { glow: [[0, -1, 2]] }); bld('ex-arch2', 15.8, 48, { glow: [[0, -1, 2.6], [-2.4, -3.5, 1.8], [2.4, -3.5, 1.8]] });
     bld('ex-bank4', 26.5, 48, { glow: [[-1.8, -0.8, 1.4], [1.8, -0.8, 1.4], [0, -2.8, 1.6]] });
-    bld('ex-diner2', 32.6, 48, { glow: [[-1.55, -0.5, 2.2], [1.55, -0.5, 2.2], [0, -0.7, 1.6], [-1.7, -2.3, 1.2], [1.7, -2.3, 1.2]] });
-    lights.push({ x: 32.1, y: 43.9, r: 2.6, rgb: '255,60,80' });                // the diner's neon on its roof
+    bld('ex-diner3', 32.6, 48, { glow: [[-1.45, -0.85, 2.1], [1.45, -0.85, 2.1], [0, -0.85, 1.5], [-1.5, -3.3, 1.2], [0, -3.3, 1.2], [1.5, -3.3, 1.2]] });
+    lights.push({ x: 32.6, y: 45.8, r: 1.9, rgb: '255,60,80' });                // the diner's neon over its door
     bld('ex-townhouse', 38.2, 48, { glow: [[0, -2, 1.8]] });
     m.rect(0, 42, 20, 48, '#'); m.rect(23, 42, W - 1, 48, '#'); m.rect(21, 42, 22, 48, 'c');
     prop('ex-phonebooth', 41.4, 48.4, { solid: false });
