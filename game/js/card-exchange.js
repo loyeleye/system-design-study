@@ -41,6 +41,13 @@
     { id: 'xauction', cost: 900, rank: 'S' }, { id: 'xhedge', cost: 950, rank: 'S' }, { id: 'xhalt', cost: 1000, rank: 'S' }, { id: 'xiceberg', cost: 1100, rank: 'S' },
     { id: 'xbigboard', cost: 1300, rank: 'Floor' }, { id: 'xsettle', cost: 1400, rank: 'Floor' }, { id: 'xdarkpool', cost: 1500, rank: 'Floor' }, { id: 'xgem', cost: 1800, rank: 'Floor' }
   ];
+  // What a card cost to unlock in Memory Shards, at Toro's, Aigerim's shop or her Rare Shelf (null if no shop sells it).
+  SD.cardPrice = id => {
+    const it = SD.cardExchange.concat(SD.cardShop || []).find(x => x.id === id);
+    if (it) return it.cost;
+    const P = SD.peddler;
+    return P && P.ANCIENT && (P.ANCIENT.includes(id) || Object.values(SD.chapters).some(c => c.rareCard === id)) ? P.shelfPrice(id) : null;
+  };
   const SHELF = { A: 'A', S: 'S', Floor: 'S' };   // the Guild rank each shelf opens at
   const LABEL = { A: 'A-Rank shelf · 2 Capacity', S: 'S-Rank shelf · 3 Capacity', Floor: 'The trading floor · Ancient' };
 
