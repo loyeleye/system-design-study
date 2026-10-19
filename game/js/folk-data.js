@@ -25,8 +25,9 @@
     'guild:in': { label: "inside the Adventurers' Guild", door: 'U' },
     forge: { label: 'the Forge', tiles: [[44, 5], [44, 6], [46, 6]] },
     // The forge yard behind the Forge (negative y: rows added above the town in js/hub.js). Each smith stands beside an anvil.
-    yard: { label: 'the forge yard', tiles: [[45, -3], [42, -3]] },
-    'yard-mio': { label: 'the forge yard', tiles: [[42, -3], [45, -3]] },
+    // work: a villager with quest business still goes here (js/folk.js), since away from the anvil there is nothing to hammer.
+    yard: { label: 'the forge yard', tiles: [[45, -3], [42, -3]], work: true },
+    'yard-mio': { label: 'the forge yard', tiles: [[42, -3], [45, -3]], work: true },
     'forge:in': { label: 'inside the Forge', door: 'F' },
     'west-bridge': { label: 'the west footbridge', tiles: [[15, 9], [16, 8]] },
     'east-bridge': { label: 'the east footbridge', tiles: [[40, 9], [41, 8]] },
@@ -117,7 +118,8 @@
       board: c => c.block === 'night' ? (c.seen('compass-4') ? 'BRU: ???. Off shift.' : 'BRU: ???') : c.block === 'afternoon' ? 'BRU: on her rounds. Every door, every heartbeat, checked by hand.' : 'BRU: {spot}. Where else would I be?'
     },
     ayo: {
-      act: 'smith',
+      // His act by the Forge door, where quest business keeps him: no anvil there, so he writes up orders instead.
+      act: 'write',
       morning: ['yard', "Teaching Mio's class at the anvils", null, 'smith'],
       afternoon: c => c.f.ch7 ? ['road', 'Selling at the North Road market'] : ['yard', 'Hammering out the day\'s orders in the forge yard', null, 'smith'],
       evening: ['stand', "Writing the day's post-mortem", null, 'write'],
