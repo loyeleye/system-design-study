@@ -530,8 +530,9 @@
     const who = sc.actors[id];
     if (who && sc.P && !STILL[id]) { if (who.path.length) { who.path = []; if (who.route && who.leg) who.leg--; } sc.face(id, toward(who, sc.P)); }
     try {
-      // Nari's first-into-every-new-place gift comes before anything else she has to say (js/nari.js).
-      if (SD.nari && await SD.nari.talk(cur, id)) return;
+      // Later files can take a conversation first: f(key, id) resolves true if it handled it (Nari's gift in
+      // js/nari.js, the Exchange trader's relics in js/relic-exchange.js).
+      for (const f of NR.onTalk) if (await f(cur, id)) return;
       // A relationship scene that's due with them on this map comes first (js/folk-scenes.js); it waits out quest steps.
       if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('road:' + cur, id)) { AU.music(MAPS[cur].music); return; }
       // Explodia runs her own Blast Academy (js/explodia.js), quest steps included; the road's ordinary
@@ -666,6 +667,7 @@
   if (SD.clock) SD.clock.onChange(() => { if (sc && sc.active) cast(); });
   NR.go = go;
   NR.onGo = [];
+  NR.onTalk = [];
   NR.where = () => cur;
   NR.scene = () => sc;
 })();

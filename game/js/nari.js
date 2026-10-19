@@ -135,12 +135,12 @@
     a.name = st().met ? 'NARI' : '???';
   });
   // Talking to someone on the road's maps: true if it was her sighting.
-  N.talk = async function (key, id) {
+  if (NR && NR.onTalk) NR.onTalk.push(async (key, id) => {
     const a = NR && NR.scene() && NR.scene().actors[id];
     if (id === 'nari_sighting' && a && a.speak) { await a.speak(); return true; }
     if (key === 'exchange' && id === 'nari' && N.due('exchange')) { await speak('exchange', () => {}); return true; }
     return false;
-  };
+  });
 
   // ---------- The Eventual Isles ----------
   // One spot per early wave, on that wave's newest island; the Isles only show her once the island is open.
