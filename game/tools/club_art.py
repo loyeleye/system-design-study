@@ -104,8 +104,9 @@ PALS = {}
 manifest = {'chars': {}, 'extra': {}, 'seated': {}, 'objects': {}, 'rooms': {}}
 # Extra sheets made from a member's: the same rows, with the facing-south idle swapped for another of their animations
 # (anim/<id>/<anim>/south-<i>.png, made from chars/<id>/<pose>.png, whose colours the cleaning keeps too). Imani doing
-# the books, ledger in hand, in the lounge (js/club-loft.js). In the manifest's extra, so they don't count as members.
-EXTRA = {'imani-books': ('imani', 'books-v3', 'books')}
+# the books, ledger in hand, and Paz timing the rain with her stopwatch, in the lounge (js/club-loft.js). In the
+# manifest's extra, so they don't count as members.
+EXTRA = {'imani-books': ('imani', 'books-v3', 'books'), 'paz-stopwatch': ('paz', 'stopwatch-v3', 'stopwatch')}
 
 def colours(*paths):
     return {c[:3] for p in paths for _, c in Image.open(p).convert('RGBA').getcolors(1 << 24) if c[3] >= 110}

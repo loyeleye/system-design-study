@@ -10,7 +10,7 @@
 //   - walking out of the lounge brings the hero back down the stairs to the foot of them, railing hidden again
 //   - in chapter 10's storm, Paz, Imani, Leon and Thea are in the lounge, and the board says so, and you can walk up
 //     to each of them from the door (nobody stands in the way, the furniture is solid), Leon and Thea sitting on
-//     the sofa and turning their heads to look at the hero off to one side
+//     the sofa and turning their heads to look at the hero off to one side, Paz timing the rain with her stopwatch
 // With --shots it saves screenshots of the climb, the lounge and the way down. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -126,6 +126,8 @@ const server = http.createServer((req, res) => {
     return { out: Object.keys(spots).filter(id => !next(spots[id]) && !(r.across || []).some(([x, y, who]) => who === id && next([x, y]))), solid };
   });
   reach.out.forEach(id => bad(`you can't walk up to ${id} in the lounge`));
+  const paz = await page.evaluate(() => (SD.interiors.ROOMS.prloft.looks.paz || {}).sprite);
+  if (paz !== 'paz-stopwatch') bad('Paz is not timing the rain with her stopwatch sheet');
   if (reach.solid.length) bad('the armchairs or coffee table can be walked through at ' + reach.solid.join(' '));
   // On the sofa: ahead of them they look ahead; off to one side, they turn to look.
   for (const [x, y, want] of [[5, 7, { leon: 0, thea: 0 }], [2, 4, { leon: 1, thea: 1 }], [9, 5, { leon: 0, thea: 2 }], [6, 5, { leon: 2, thea: 0 }]]) {

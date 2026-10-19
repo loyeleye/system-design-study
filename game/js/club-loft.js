@@ -17,7 +17,8 @@
   const storm = () => !!(SD.folk && SD.folk.storm());
   const yard = NR.maps.club;
   const L = SD.clubLoft = {};
-  // Imani's books sheet joins the arc's sprites, but not the club's members (js/club.js counts those from chars).
+  // Imani's books sheet and Paz's stopwatch join the arc's sprites, but not the club's members (js/club.js counts
+  // those from chars).
   if (SD.arcArt && SD.clubArt.extra) Object.assign(SD.arcArt.chars, SD.clubArt.extra);
 
   // ---------- The stairs ----------
@@ -138,13 +139,15 @@
   ];
   const looks = {};
   if (SD.arcArt && SD.arcArt.chars['imani-books']) looks.imani = { sprite: 'imani-books' };
+  // Paz times the rain with her stopwatch: no splits tonight, the track's a river (her lines in js/ch10-folk.js).
+  if (SD.arcArt && SD.arcArt.chars['paz-stopwatch']) looks.paz = { sprite: 'paz-stopwatch' };
   ['leon', 'thea'].forEach(id => { if (sat(id)) looks[id] = { draw: sitting(id), tall: SEATS[id].h }; });
   I.ROOMS.prloft = {
     name: 'THE LOUNGE', mat: true, ambience: null,
     map: ['############', '############', '############', '############', '##...#######',
       '##.##..##.##', '#..........#', '#..........#', '#####DD#####'],
     enter: [5, 7, 'north'],
-    spots: { imani: [10, 6, 'south'], leon: sat('leon') ? seat(165) : [4, 4, 'south'], thea: sat('thea') ? seat(195) : [8, 6, 'west'], paz: [1, 6, 'east'] },
+    spots: { imani: [10, 6, 'south'], leon: sat('leon') ? seat(165) : [4, 4, 'south'], thea: sat('thea') ? seat(195) : [8, 6, 'west'], paz: [1, 6, 'south'] },
     looks,
     // Leon from beside the sofa's arm, Thea across the table (Leon across it is the mugs).
     across: [sat('leon') && [4, 3, 'leon'], sat('thea') && [6, 4, 'thea']].filter(Boolean),
