@@ -215,7 +215,7 @@ Posted after chapter 4 (chapter 5's material and curses):
 
 ### Town side quests
 
-Side quests pay shards and a story instead of a Plot Device, and teach topics the dungeons don't. Their concepts use zone 98, like the North Road's: they stay out of dungeon pools, but once you've met one it joins the cheat sheet and the town reviews, which ask its quest's questions (`S.questionsFor` in `js/state.js`).
+Side quests pay shards and a story instead of a Plot Device, and teach topics the dungeons don't. Their concepts use zone 98, like the North Road's: they stay out of dungeon pools, but once you've met one it joins the cheat sheet and the town reviews, which ask its quest's questions plus three review questions of its own (`js/sidequest-reviews.js`, joined by `S.questionsFor` in `js/state.js`).
 
 | Quest | Giver | Posted | Story | Teaches | Mini-game (mechanic) |
 | --- | --- | --- | --- | --- | --- |
