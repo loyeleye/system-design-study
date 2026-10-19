@@ -21,7 +21,7 @@
   Object.assign(SD.cards, {
     // A-Rank shelf: 2 Capacity
     xmatch: { name: 'Matching Engine', cost: 2, kind: 'action', mit: 14, draw: 1, tags: ['orderbook'], text: 'Mitigate {mit}. Draw 1. Best bid meets best ask, in price-time order, a million times a second.', art: 'scales', rarity: 'rare', concept: 'exchange' },
-    xclear: { name: 'Central Clearing House', cost: 2, kind: 'action', mit: 7, abs: { any: 10 }, tags: ['ledger'], text: 'Mitigate {mit}. Absorb {any} load of any kind. Every trade has one counterparty: the house.', art: 'checked-shield', rarity: 'rare', concept: 'payment' },
+    xclear: { name: 'Central Counterparty', cost: 2, kind: 'action', mit: 7, abs: { any: 10 }, tags: ['ledger'], text: 'Mitigate {mit}. Absorb {any} load of any kind. Every trade has one counterparty, and it never defaults.', art: 'checked-shield', rarity: 'rare', concept: 'payment' },
     xgtc: { name: 'Good-\'Til-Cancelled', cost: 2, kind: 'action', mit: 15, retain: true, tags: ['orderbook'], text: 'Mitigate {mit}. Retain. The order stays on the book until it fills.', art: 'tied-scroll', rarity: 'rare', concept: 'exchange' },
     xtape: { name: 'Replay the Tape', cost: 2, kind: 'action', mit: 8, replay: 1, tags: ['raftlog'], text: 'Mitigate {mit}. Replay 1. Every order is on the log; play it back and you get the same market twice.', art: 'film-strip', rarity: 'rare', concept: 'exchange' },
     xcolo: { name: 'Colocated Rack', cost: 2, kind: 'infra', each: { any: 3 }, eachMit: 3, tags: ['ops'], text: 'Infra. Absorb 3 load and mitigate 3 each turn. Your server sits in the Exchange\'s own building. Light travels three metres.', art: 'stack', rarity: 'rare', concept: 'exchange' },
