@@ -125,8 +125,10 @@
   CROWD.forEach(([x, y, face, kind, moves], i) => {
     // Each kind cycles through its colourings, so neighbours of the same kind never match.
     const id = 'crowd' + i, k = KIND[kind], n = seen[kind] = (seen[kind] || 0) + 1;
-    SD.cast[id] = Object.assign({ name: k.name, title: k.titles[(n - 1) % k.titles.length] }, k.look);
-    crowd[id] = Object.assign({ x, y, face, sprite: k.sprite + ['', 'b', 'c', 'd'][(n - 1) % 4], draw: fan(i, kind !== 'vendor') },
+    // bust: the sprite's face in the dialog (js/camp-arena-portraits.js).
+    const sprite = k.sprite + ['', 'b', 'c', 'd'][(n - 1) % 4];
+    SD.cast[id] = Object.assign({ name: k.name, title: k.titles[(n - 1) % k.titles.length], bust: sprite }, k.look);
+    crowd[id] = Object.assign({ x, y, face, sprite, draw: fan(i, kind !== 'vendor') },
       moves === 'pace' ? {} : Array.isArray(moves) ? { route: moves } : { home: [x, y], nextStroll: Infinity });
     SD.roadTalk.lines[id] = () => {
       const pool = k.lines.concat(flags().ch8 ? AFTER : [], LINES);
@@ -137,8 +139,9 @@
   // The guards either side of the great door.
   [[19, 7], [24, 7]].forEach(([x, y], i) => {
     const id = 'doorguard' + i;
-    SD.cast[id] = { name: 'Arena guard', title: 'Has never once blinked', hue: 35, hair: 'short', eye: '#2b2340' };
-    crowd[id] = { x, y, face: 'south', sprite: i ? 'spec7b' : 'spec7', home: [x, y], nextStroll: Infinity };
+    const sprite = i ? 'spec7b' : 'spec7';
+    SD.cast[id] = { name: 'Arena guard', title: 'Has never once blinked', hue: 35, hair: 'short', eye: '#2b2340', bust: sprite };
+    crowd[id] = { x, y, face: 'south', sprite, home: [x, y], nextStroll: Infinity };
     SD.roadTalk.lines[id] = () => [i ? 'Fighters only beyond this door. And Gong. And the skewer seller. And... fighters only, mostly.'
       : 'Halt. ...Sorry, I say that to everyone. You can go in if you\'re fighting. Are you fighting? You look like you\'re fighting.'];
   });
