@@ -52,12 +52,12 @@
     { id: 'club', isle: 'landing', x: 16, y: 39, w: 4, h: 3, name: 'TIDE POOL GAME CLUB' },
     { id: 'gtable', isle: 'landing', x: 20, y: 44, w: 1, h: 1, name: '' },
     { id: 'umbrella', isle: 'landing', x: 26, y: 44, w: 1, h: 1, name: '' },
-    // A small cave in the mainland's northern hills, where Kagemaru deals cards off the books (js/card-dealer.js).
+    // A small cave in the mainland's northern hills, where Kagemaru deals cards off the books inside (js/card-dealer.js).
     { id: 'cave', isle: 'landing', x: 3, y: 1, w: 4, h: 2, name: '' }
   ];
   // Buildings with a room inside (js/interiors.js): walk into the door, the middle of the bottom row unless the
   // landmark says otherwise (the Keeper's note stands in front of the lighthouse), to go in.
-  const ROOM = { office: 'office', school: 'school', bank: 'bank', mill: 'mill', tower: 'tower', shop: 'carto', hallW: 'hallW', hallE: 'hallE', light: 'light', club: 'club' };
+  const ROOM = { office: 'office', school: 'school', bank: 'bank', mill: 'mill', tower: 'tower', shop: 'carto', hallW: 'hallW', hallE: 'hallE', light: 'light', club: 'club', cave: 'cave' };
   const roomOf = l => l && ROOM[l.id] && SD.interiors && SD.interiors.room && SD.interiors.room(ROOM[l.id]) ? ROOM[l.id] : null;
   const doorOf = l => l.door || [l.x + Math.floor(l.w / 2), l.y + l.h - 1];
   // Islanders stand by their landmarks. The keeper is a note pinned to the lighthouse door.
