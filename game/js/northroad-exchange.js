@@ -27,98 +27,127 @@
   const WARM = '255,190,110', VIOLET = '200,110,255';
 
   NR.maps.exchange = (function () {
-    const W = 40, H = 44, m = grid(W, H, '#');
+    const W = 44, H = 59, m = grid(W, H, '#');
     const objects = [], lights = [];
-    // A building standing on row y, centred on x, k times its art's size; its bottom `deep` rows are solid.
+    // Everything is drawn to one scale: a storey is about as tall as a person (the art came at different sizes,
+    // so each piece has its own factor). The office towers behind the company are the only skyscrapers.
+    const K = { 'ex-hq': 1.25, 'ex-wing': 1.25, 'ex-office': 1.8, 'ex-apartment': 1.65, 'ex-tenement2': 1.45, 'ex-rowhouses2': 1.5,
+      'ex-pawn': 1.3, 'ex-townhouse': 1.25, 'ex-inn': 1.25, 'ex-arch2': 1.3, 'ex-diner': 1.5, 'ex-bank3': 1.4, 'ex-billboard': 1.3, 'ex-tickerdown': 1.3 };
+    // A building standing on row y, centred on x; its bottom `deep` rows are solid.
     function bld(name, x, y, o) {
       o = o || {};
-      const k = o.k || 1, w = art(name)[0] * k / 32;
-      objects.push({ name, x: x - 0.5, y, k: o.k, flip: o.flip });
+      const k = K[name] || 1, w = art(name)[0] * k / 32;
+      objects.push({ name, x: x - 0.5, y, k, flip: o.flip });
       if (o.deep !== 0) m.rect(Math.round(x - w / 2 + 0.25), y - (o.deep || 2) + 1, Math.round(x + w / 2 - 0.25) - 1, y, '#');
       (o.glow || []).forEach(([dx, dy, r]) => lights.push({ x: x - 0.5 + dx, y: y + dy, r: r || 1.8, rgb: WARM }));
     }
     const prop = (name, x, y, o) => { o = o || {}; objects.push({ name, x, y, k: o.k, flip: o.flip }); if (o.solid !== false) m.put(Math.round(x), Math.floor(y), '#'); };
 
     // ---------- Where you can walk ----------
-    // Paving: the company's plaza and the square are flagstones, painted in under(); the streets are asphalt.
-    const FLAGS = [[8, 11, 31, 18], [11, 27, 29, 33]];
-    m.rect(1, 11, 38, 18, '.');                                  // the plaza, with the inn and the Counting House at its ends
-    m.rect(0, 19, W - 1, 20, 'c');                               // the avenue, which the line comes in along from the west
-    m.rect(11, 27, 29, 33, '.');                                 // the square
-    m.rect(10, 21, 12, 26, 'c'); m.rect(28, 21, 30, 26, 'c');    // the two side streets from the square to the avenue
-    m.rect(19, 34, 20, 39, 'c'); m.rect(18, 40, 21, 42, 'c'); m.rect(16, 40, 17, 42, '.'); m.rect(22, 40, 23, 42, '.');   // under the arch, the street from the road
-    m.put(19, 43, 'S'); m.put(20, 43, 'S');
-    m.put(20, 10, 'D'); m.put(21, 10, 'D');
+    // One dark road surface everywhere you can walk: the plaza, the avenue, the side streets, the square, the way in.
+    m.rect(1, 14, 42, 22, 'c');                                  // the plaza in front of the company
+    m.rect(0, 23, W - 1, 24, 'c');                               // the avenue; the line comes in along it from the west
+    m.rect(11, 25, 13, 36, 'c'); m.rect(31, 25, 33, 36, 'c');    // the side streets down to the square
+    m.rect(12, 37, 32, 43, 'c');                                 // the square
+    m.rect(21, 44, 22, 51, 'c');                                 // under the guildhall's arch
+    m.rect(20, 52, 23, 57, 'c');                                 // the street in from the road
+    m.put(21, 58, 'S'); m.put(22, 58, 'S');
+    m.put(22, 13, 'D'); m.put(23, 13, 'D');
 
     // ---------- The company: one dark block across the top, Kyu's tower in the middle ----------
-    [1, 4, 7, 10.2, 29.8, 33, 36, 39].forEach((x, i) => objects.push({ name: 'ex-office', x: x - 0.5, y: 5.5 + (i % 2) * 0.6, flip: i > 3 }));
-    objects.push({ name: 'ex-wing', x: 6.5, y: 9.28 }, { name: 'ex-wing', x: 32.5, y: 9.28, flip: true }, { name: 'ex-hq', x: 20, y: 10 });
-    lights.push(...[[20.5, 7.5, 4], [20.5, 2.5, 3.5], [14, 3, 2.5], [27, 3, 2.5], [1.5, 8, 1.6], [38.5, 8, 1.6], [8, 8, 1.6], [32, 8, 1.6]]
+    [1.5, 6.5, 11.5, 33.5, 38.5, 43].forEach((x, i) => objects.push({ name: 'ex-office', x: x - 0.5, y: 8 + (i % 2) * 0.6, k: K['ex-office'], flip: i > 2 }));
+    objects.push({ name: 'ex-wing', x: 5.45, y: 12.1, k: K['ex-wing'] }, { name: 'ex-wing', x: 38.55, y: 12.1, k: K['ex-wing'], flip: true }, { name: 'ex-hq', x: 22, y: 13, k: K['ex-hq'] });
+    lights.push(...[[22.5, 9.5, 4.4], [22.5, 3.5, 3.8], [16, 5, 2.6], [29, 5, 2.6], [2, 10.5, 1.8], [43, 10.5, 1.8], [9, 10.5, 1.8], [36, 10.5, 1.8]]
       .map(([x, y, r]) => ({ x, y, r, rgb: VIOLET })));
     // The plaza's ends: Gluttony's inn, still full, on the west; the Counting House and the mirror shop on the east.
-    bld('ex-inn', 3.5, 15, { glow: [[0, -1.5, 2.2]] }); m.rect(1, 11, 6, 13, '#');
-    bld('ex-townhouse2', 34.5, 15); bld('ex-mirrors', 37.6, 15); m.rect(33, 11, 39, 13, '#');
-    m.rect(0, 11, 0, 18, '#'); m.rect(W - 1, 11, W - 1, 18, '#');
-    m.put(0, 19, 'c'); m.put(0, 20, 'c');
-    [[7.5, 18.4], [32.5, 18.4]].forEach(([x, y]) => prop('ex-planter2', x, y));
-    prop('ex-tickerdown', 28, 14, { solid: false }); m.rect(27, 14, 29, 14, '#');
-    prop('ex-tickerdown', 24.5, 16.5, { solid: false }); m.rect(24, 16, 25, 16, '#');
-    [[13, 18.6], [26, 18.6], [23, 11.6], [31, 11.6]].forEach(([x, y]) => prop('ex-gaslamp', x, y));
-    m.put(22, 18, '.'); m.put(13, 18, '#'); m.put(26, 18, '#');
+    bld('ex-inn', 4, 20, { deep: 7, glow: [[0, -2, 2.4]] }); m.rect(0, 14, 7, 20, '#');
+    bld('ex-counting', 36.6, 20, { deep: 7, glow: [[0, -2, 2]] }); bld('ex-mirrorshop', 40.4, 20, { deep: 7, glow: [[0, -1.5, 2]] }); m.rect(35, 14, 43, 20, '#');
+    prop('ex-planter2', 37.5, 22.4);
+    [[12, 22.6], [33, 22.6], [26, 14.6], [33.6, 14.6]].forEach(([x, y]) => prop('ex-gaslamp', x, y));
 
     // ---------- The city between the avenue and the road ----------
-    // Blocks packed with buildings, their fronts on the square and the street in; nothing taller than its block,
-    // so the avenue behind each block stays in view.
-    // North block, between the two side streets.
-    bld('ex-rowhouses2', 16.3, 26, { deep: 6, glow: [[-2, -2, 1.6], [2, -2, 1.6]] });
-    bld('ex-tenement2', 22.2, 26, { k: 0.86, deep: 6, glow: [[0, -1, 2.2]] });
-    bld('ex-pawn', 26.2, 26, { deep: 6, glow: [[0, -1, 1.8]] });
-    m.rect(13, 21, 27, 26, '#');
-    // West of the west street: a tenement and an apartment block, a dumpster in the gap.
-    bld('ex-tenement2', 3, 26, { k: 0.86, deep: 6, glow: [[0, -1, 2]] });
-    bld('ex-apartment', 7.3, 26, { k: 0.86, deep: 6, glow: [[0, -2, 1.6]] }); m.rect(0, 21, 9, 26, '#');
-    prop('ex-dumpster', 9.4, 25.6, { solid: false }); prop('ex-hydrant', 9.5, 21.6, { solid: false });
-    // East of the east street: an apartment, the old townhouse, a phone box on the corner.
-    bld('ex-apartment', 32.8, 26, { k: 0.86, flip: true, deep: 6, glow: [[0, -2, 1.6]] });
-    bld('ex-townhouse', 36.9, 26, { deep: 6, glow: [[0, -1.5, 1.6]] }); m.rect(31, 21, 39, 26, '#');
-    prop('ex-phonebooth', 31.2, 21.4, { solid: false });
-    // Beside the square: an office that went dark and a tenement on the west; on the east the billboard over the
-    // roofs, an apartment block and a tenement.
-    bld('ex-office', 8.4, 33, { deep: 7 }); bld('ex-tenement2', 3.6, 33, { deep: 7, glow: [[0, -1, 2.2]] }); m.rect(0, 27, 10, 33, '#');
-    bld('ex-billboard', 35, 28.6, { deep: 0 });
-    bld('ex-apartment', 31.6, 33, { deep: 7, glow: [[0, -3, 1.6]] }); bld('ex-tenement2', 36.4, 33, { k: 0.86, deep: 7, glow: [[0, -1, 2]] }); m.rect(30, 27, 39, 33, '#');
-    prop('ex-steam', 11.6, 27.6, { solid: false });
+    // Blocks of buildings with their fronts on the square and the street in, none taller than its block, so the
+    // avenue behind each block stays in view. Smaller houses have a tree or two in the yard behind them.
+    bld('ex-apartment', 2.8, 36, { deep: 0, glow: [[0, -3, 1.8]] }); bld('ex-apartment', 7.9, 36, { deep: 0, flip: true, glow: [[0, -2, 1.8]] });
+    m.rect(0, 25, 10, 36, '#');
+    prop('ex-dumpster', 10.4, 35.6, { solid: false });
+    bld('ex-tenement2', 18.4, 36, { deep: 0, glow: [[0, -1.5, 2.4]] });
+    prop('ex-tree', 24.4, 30.2, { solid: false }); prop('ex-tree', 28.6, 29.6, { solid: false });
+    bld('ex-pawn', 24.6, 36, { deep: 0, glow: [[0, -1.5, 2]] }); bld('ex-townhouse', 28.4, 36, { deep: 0, glow: [[0, -2, 1.8]] });
+    m.rect(14, 25, 30, 36, '#');
+    bld('ex-tenement2', 38.6, 36, { deep: 0, flip: true, glow: [[0, -1.5, 2.4]] }); m.rect(34, 25, 43, 36, '#');
+    prop('ex-phonebooth', 33.6, 25.4, { solid: false });
+    // Either side of the square: rowhouses on the west, the all-night diner on the east (it runs on gas, not the
+    // Cloud), with the yard trees behind it.
+    bld('ex-rowhouses2', 5.6, 44, { deep: 0, glow: [[-2.5, -2.5, 1.8], [2.5, -2.5, 1.8]] }); m.rect(0, 37, 11, 44, '#');
+    prop('ex-tree', 35.4, 40.2, { solid: false }); prop('ex-tree', 40.2, 40.4, { solid: false });
+    bld('ex-diner', 37, 44, { deep: 0, glow: [[0, -1, 3]] }); m.rect(33, 37, 43, 44, '#');
+    prop('ex-newsstand', 41.8, 44.4, { solid: false });
     // The square: the bear over the bull, the dry fountain, a fire barrel and a stall of whatever is left.
-    prop('ex-bear', 13.5, 30.2, { solid: false }); m.rect(12, 29, 14, 30, '#');
-    prop('ex-bullfallen', 15.6, 30.4, { solid: false }); m.rect(15, 30, 16, 30, '#');
-    prop('ex-fountain', 20, 31, { solid: false }); m.rect(18, 30, 21, 31, '#');
-    prop('ex-firepit', 25.5, 29, { solid: false }); m.rect(25, 28, 26, 28, '#');
-    lights.push({ x: 25.5, y: 28.3, r: 3.4, rgb: '255,140,60' });
-    prop('ex-stall', 27.6, 32.6, { flip: true, solid: false }); m.rect(27, 32, 29, 32, '#');
-    prop('ex-bench', 17, 27.4, { solid: false }); m.put(17, 27, '#');
-    prop('ex-bench', 23.6, 27.4, { solid: false }); m.put(24, 27, '#');
-    [[11.2, 33.4], [28.8, 30.4]].forEach(([x, y]) => prop('ex-tree', x, y));
-    // The old guildhall over the road: you come in under its arch.
-    bld('ex-arch2', 20, 39, { k: 1.3, deep: 6, glow: [[0, -1, 2.4], [-2.2, -3, 1.6], [2.2, -3, 1.6]] });
-    m.rect(19, 34, 20, 39, 'c');
-    m.rect(10, 34, 18, 39, '#'); m.rect(21, 34, 29, 39, '#');
-    // Either side of the road in: rowhouses, an apartment block and a bank that has shut its doors on the west; an
-    // all-night diner (it runs on gas, not the Cloud), a tenement and a townhouse on the east. Between them and the
-    // square, only things too low to hide anyone: trees, crates, a wrecked cart.
-    bld('ex-rowhouses2', 4.4, 42, { k: 1.25, deep: 8, glow: [[-2, -2, 1.8], [2, -2, 1.8]] }); bld('ex-apartment', 9.8, 42, { deep: 8, glow: [[0, -2, 1.6]] });
-    bld('ex-bank', 13.9, 42, { k: 1.35, deep: 3 }); m.rect(0, 34, 17, 42, '#');
-    prop('ex-newsstand', 16.6, 41.4, { solid: false });
-    bld('ex-diner', 26.6, 42, { k: 1.3, deep: 3, glow: [[0, -0.8, 3]] }); bld('ex-tenement2', 32.6, 42, { k: 1.1, deep: 8, glow: [[0, -1, 2.2]] });
-    bld('ex-townhouse', 37.6, 42, { k: 1.2, deep: 8, glow: [[0, -1.5, 1.6]] });
-    m.rect(22, 34, 39, 42, '#');
-    [[1.4, 35.6], [5.4, 35.4], [9.2, 35.8], [31, 35.6], [35, 35.4], [38.6, 35.8]].forEach(([x, y]) => prop('ex-tree', x, y, { solid: false }));
-    [[12.6, 36.4, 'ar-crates'], [15.2, 35.8, 'ex-dumpster'], [12.4, 38.6, 'ex-planter2'], [24.4, 36, 'ex-wreck'], [27.6, 35.6, 'ex-planter2'], [28.6, 38.4, 'ex-hydrant']]
-      .forEach(([x, y, n]) => prop(n, x, y, { solid: false }));
-    prop('ex-bollards', 22.7, 41.2, { solid: false });
-    [[17.4, 39.6], [22.6, 39.6]].forEach(([x, y]) => prop('lamp', x, y, { solid: false }));
-    m.rect(16, 40, 17, 42, '.'); m.rect(22, 40, 23, 42, '.'); m.put(16, 41, '#'); m.put(23, 41, '#');
-    prop('barricade', 16.6, 42.4, { solid: false });
-    m.rect(0, 43, 18, 43, '#'); m.rect(21, 43, W - 1, 43, '#');
+    prop('ex-bear', 14.5, 40.2, { solid: false }); m.rect(13, 39, 15, 40, '#');
+    prop('ex-bullfallen', 16.6, 40.4, { solid: false }); m.rect(16, 40, 17, 40, '#');
+    prop('ex-fountain', 21.5, 41, { solid: false }); m.rect(20, 40, 23, 41, '#');
+    prop('ex-firepit', 27.5, 39, { solid: false }); m.rect(27, 38, 28, 38, '#');
+    lights.push({ x: 27.5, y: 38.3, r: 3.4, rgb: '255,140,60' });
+    prop('ex-stall', 29.6, 42.6, { flip: true, solid: false }); m.rect(29, 42, 31, 42, '#');
+    prop('ex-bench', 18, 37.4, { solid: false }); m.put(18, 37, '#');
+    prop('ex-bench', 25.6, 37.4, { solid: false }); m.put(26, 37, '#');
+    prop('ex-steam', 12.6, 37.6, { solid: false });
+    prop('ex-tree', 12.2, 43.4); prop('ex-tree', 31.8, 40.4);
+    // The old guildhall over the road: you come in under its arch. Beside it, a strip of trees and junk.
+    bld('ex-arch2', 22, 51, { deep: 0, glow: [[0, -1, 2.6], [-2.4, -3.5, 1.8], [2.4, -3.5, 1.8]] });
+    m.rect(0, 44, 20, 51, '#'); m.rect(23, 44, W - 1, 51, '#'); m.rect(12, 44, 32, 44, '#'); m.rect(21, 44, 22, 51, 'c');
+    [[10.6, 47.8], [34, 47.6], [38, 47.4], [42, 47.8]].forEach(([x, y]) => prop('ex-tree', x, y, { solid: false }));
+    [[14.6, 48.4, 'ar-crates'], [17.2, 47.8, 'ex-dumpster'], [27.4, 48, 'ex-wreck'], [30.6, 47.6, 'ex-planter2']].forEach(([x, y, n]) => prop(n, x, y, { solid: false }));
+    // Either side of the road in: a tenement and the bank that has shut its doors; the billboard over an empty lot,
+    // a townhouse and a pawnbroker's.
+    bld('ex-tenement2', 5.4, 57, { deep: 0, glow: [[0, -1.5, 2.4]] }); bld('ex-bank3', 15.4, 57, { deep: 0 });
+    m.rect(0, 52, 19, 57, '#');
+    prop('ex-newsstand', 18.8, 56.4, { solid: false });
+    bld('ex-townhouse', 35.4, 57, { deep: 0, glow: [[0, -2, 1.8]] }); bld('ex-pawn', 40, 57, { deep: 0, glow: [[0, -1.5, 2]] });
+    m.rect(24, 52, W - 1, 57, '#');
+    prop('ex-bollards', 24.6, 53.2, { solid: false });
+    [[19.4, 52.6], [24.6, 55.6]].forEach(([x, y]) => prop('lamp', x, y, { solid: false }));
+    m.rect(0, 58, 20, 58, '#'); m.rect(23, 58, W - 1, 58, '#');
+
+    // ---------- Signs that are failing ----------
+    // The DOWN boards and the INVEST billboard are drawn here rather than as plain objects so they can flicker:
+    // a letter or two of DOWN keeps cutting out, and the billboard's lights stutter and come back.
+    const signs = {};
+    const flick = (t, seed, rate) => (hash(Math.floor(t * 9) + seed * 131, seed) % 100) < rate || ((t * 0.37 + seed * 0.29) % 1) < 0.06;
+    const TICKER = pic('assets/img/arc/ex-tickerdown.webp'), BOARD = pic('assets/img/arc/ex-billboard.webp');
+    // Each letter of DOWN in the ticker art (x from, x to); the rows they share; which letters are failing.
+    const LETTERS = [[20, 31], [32, 44], [45, 65], [67, 80]];
+    function ticker(id, x, y, failing) {
+      const k = K['ex-tickerdown'], w = art('ex-tickerdown')[0] * k / 32;
+      m.rect(Math.round(x - w / 2 + 0.3), y, Math.round(x + w / 2 - 0.3) - 1, y, '#');
+      lights.push({ x: x - 0.5, y: y - 1.5, r: 2.2, rgb: '255,50,70' });
+      signs[id] = { x: Math.round(x - 0.5), y, talk: false, home: [Math.round(x - 0.5), y], nextStroll: Infinity,
+        draw(ctx, px, py, ts, t) {
+          if (!ok(TICKER)) return;
+          const s = ts / 32 * k, dx = (x - 0.5 - Math.round(x - 0.5)) * ts, X = px + dx - 50 * s, Y = py + ts * 0.05 - 76 * s;
+          ctx.drawImage(TICKER, X, Y, 100 * s, 76 * s);
+          LETTERS.forEach(([a, b], i) => {
+            if (!failing.includes(i) || !flick(t, i + y * 7, 22)) return;
+            ctx.fillStyle = 'rgba(31,35,46,.88)'; ctx.fillRect(X + a * s, Y + 21 * s, (b - a + 1) * s, 17 * s);
+          });
+        } };
+    }
+    ticker('xdown0', 30.5, 17, [1, 3]);
+    ticker('xdown1', 33.5, 21, [2]);
+    {
+      const k = K['ex-billboard'], y = 57;
+      signs.xinvest = { x: 28, y, talk: false, home: [28, y], nextStroll: Infinity,
+        draw(ctx, px, py, ts, t) {
+          if (!ok(BOARD)) return;
+          const s = ts / 32 * k, X = px + ts * 0.5 - 79.5 * s, Y = py + ts * 0.05 - 140 * s;
+          ctx.drawImage(BOARD, X, Y, 159 * s, 140 * s);
+          // The spotlights fail in bursts: a double blink, then a stutter now and then.
+          const c = t % 4.2, off = (c > 3.3 && c < 3.42) || (c > 3.55 && c < 3.7) || flick(t, 3, 6);
+          if (off) { ctx.fillStyle = 'rgba(8,8,18,.62)'; ctx.fillRect(X + 10 * s, Y + 6 * s, 142 * s, 60 * s); }
+        } };
+      lights.push({ x: 28.5, y: 51.5, r: 3, rgb: '255,240,200' });
+    }
 
     // ---------- Pride's line ----------
     // Airport ropes in front of the door: posts and rope spans, the line coming in along the avenue from the west
@@ -126,26 +155,26 @@
     const done = () => !!flags().ch10;
     const ropes = new Set(), lane = [];
     const rope = (x, y) => ropes.add(x + ',' + y);
-    for (let x = 7; x <= 19; x++) rope(x, 11);
-    for (let x = 9; x <= 19; x++) rope(x, 13);
-    for (let x = 7; x <= 17; x++) rope(x, 15);
-    for (let x = 8; x <= 19; x++) rope(x, 17);
-    for (let y = 11; y <= 15; y++) rope(7, y);
-    for (let y = 13; y <= 17; y++) rope(19, y);
+    for (let x = 9; x <= 21; x++) rope(x, 14);
+    for (let x = 11; x <= 21; x++) rope(x, 16);
+    for (let x = 9; x <= 19; x++) rope(x, 18);
+    for (let x = 10; x <= 21; x++) rope(x, 20);
+    for (let y = 14; y <= 18; y++) rope(9, y);
+    for (let y = 16; y <= 20; y++) rope(21, y);
     // The line, from the back (off the west edge) to the front (at the door).
-    for (let x = 0; x <= 7; x++) lane.push([x, 19, 'east']);
-    lane.push([7, 18, 'north'], [7, 17, 'north'], [7, 16, 'east']);
-    for (let x = 8; x <= 18; x++) lane.push([x, 16, 'east']);
-    lane.push([18, 15, 'north']);
-    for (let x = 18; x >= 8; x--) lane.push([x, 14, 'west']);
-    lane.push([8, 13, 'north']);
-    for (let x = 8; x <= 19; x++) lane.push([x, 12, 'east']);
-    lane.push([20, 12, 'east'], [20, 11, 'north']);
+    for (let x = 0; x <= 8; x++) lane.push([x, 23, 'east']);
+    lane.push([9, 23, 'north'], [9, 22, 'north'], [9, 21, 'north'], [9, 20, 'north'], [9, 19, 'east']);
+    for (let x = 10; x <= 20; x++) lane.push([x, 19, 'east']);
+    lane.push([20, 18, 'north']);
+    for (let x = 20; x >= 10; x--) lane.push([x, 17, 'west']);
+    lane.push([10, 16, 'north']);
+    for (let x = 10; x <= 21; x++) lane.push([x, 15, 'east']);
+    lane.push([22, 15, 'east'], [22, 14, 'north']);
     const people = {};
     const SPRITES = ['v1', 'hero77', 'v2', 'folk6', 'hero3', 'v4', 'hero256', 'v3', 'folk2', 'v1', 'folk3', 'v2'];
     // Every second place along the back stretch, every place inside the ropes: about forty people.
     lane.forEach(([x, y, face], i) => {
-      if (y === 19 && x % 2) return;
+      if (y === 23 && x % 2) return;
       if ((i * 7) % 17 === 3) return;                           // a few gaps, where somebody stepped out
       const id = 'xq' + Object.keys(people).length;
       people[id] = { x, y, face: x === 0 ? 'east' : face, sprite: SPRITES[(x * 5 + y * 3) % SPRITES.length], talk: true, home: [x, y], nextStroll: Infinity };
@@ -215,7 +244,7 @@
 
     // ---------- People about town ----------
     // Townsfolk pacing the streets (js/northroad.js walks anyone without a home a tile or two now and then).
-    const FOLK = [[14, 19, 'folk1'], [27, 20, 'v2'], [11, 24, 'folk4'], [29, 23, 'folk3'], [22, 29, 'folk2'], [15, 32, 'v4'], [22, 15, 'folk6'], [29, 17, 'folk1'], [24, 33, 'folk4']];
+    const FOLK = [[16, 24, 'folk1'], [29, 23, 'v2'], [12, 30, 'folk4'], [32, 29, 'folk3'], [24, 39, 'folk2'], [17, 42, 'v4'], [27, 16, 'folk6'], [33, 19, 'folk1'], [26, 42, 'folk4']];
     const FLINES = [
       ['The Cloud\'s been down since breakfast. I tried to pay for bread with a smile. The baker took it. Times are strange.', 'They say the board outside the Exchange hasn\'t moved in hours. Everything\'s frozen on DOWN.'],
       ['I work on the ninth floor. Worked. Work? The lifts need the Cloud too.', 'Kyu\'s tower is the only one with its lights on. She never goes home. I don\'t think she has one.'],
@@ -232,35 +261,26 @@
     });
 
     // ---------- Painting ----------
-    const FLAG = pic('assets/img/arc/ex-flags.webp'), SKY = pic('assets/img/arc/px-sky.webp'), LINE = pic('assets/img/arc/px-skyline.webp');
+    const SKY = pic('assets/img/arc/px-sky.webp'), LINE = pic('assets/img/arc/px-skyline.webp');
     const CLOUD = pic('assets/img/arc/px-cloud.webp'), WISP = pic('assets/img/arc/px-wisp.webp'), SMOG = pic('assets/img/arc/px-smog.webp');
     let cam = { x: 0, y: 0, ts: 32 };
+    // The sky behind the towers, far to near: a night gradient, storm clouds sliding slowly, the far skyline a
+    // little faster. (The office towers and the company are ordinary objects, so they move with the street.)
     function under(ctx, ts, t) {
-      // Where the camera is (scene.js has already shifted the canvas by it).
-      const T = ctx.getTransform(); cam = { x: -T.e / T.a, y: -T.f / T.d, ts };
-      const s = ts / 32;
-      // The sky, far to near: a night gradient, storm clouds sliding slowly, the far skyline a little faster.
-      const top = 7.2 * ts, g = ctx.createLinearGradient(0, 0, 0, top);
+      const T = ctx.getTransform(); cam = { x: -T.e / T.a, y: -T.f / T.d, ts };   // scene.js has shifted the canvas by the camera
+      const s = ts / 32, top = 10.5 * ts, g = ctx.createLinearGradient(0, 0, 0, top);
       g.addColorStop(0, '#07060c'); g.addColorStop(1, '#241c36');
       ctx.fillStyle = g; ctx.fillRect(0, 0, W * ts, top);
       if (ok(SKY)) {
-        const w = 400 * s * 1.8, h = 118 * s * 1.8, x0 = cam.x * 0.85 - ((t * 4 * s) % w);
+        const w = 400 * s * 2.6, h = 118 * s * 2.6, x0 = cam.x * 0.85 - ((t * 4 * s) % w);
         for (let x = x0 - w; x < cam.x + W * ts; x += w) ctx.drawImage(SKY, x, cam.y * 0.85 - 0.6 * ts, w, h);
       }
       if (ok(LINE)) {
-        const w = 400 * s * 1.5, h = 192 * s * 1.5, x0 = cam.x * 0.55;
+        const w = 400 * s * 2, h = 192 * s * 2, x0 = cam.x * 0.55;
         ctx.globalAlpha = 0.9;
-        for (let x = x0 - w; x < cam.x + W * ts; x += w) ctx.drawImage(LINE, x, cam.y * 0.5 + 6.8 * ts - h, w, h);
+        for (let x = x0 - w; x < cam.x + W * ts; x += w) ctx.drawImage(LINE, x, cam.y * 0.5 + 10 * ts - h, w, h);
         ctx.globalAlpha = 1;
       }
-      // Flagstones on the plaza and the square, a few cracked, puddled or mossy; a drain now and then.
-      if (ok(FLAG)) FLAGS.forEach(([x0, y0, x1, y1]) => {
-        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-          const h = hash(x, y) % 23, i = h < 17 ? h % 4 : [4, 6, 7][h % 3];
-          ctx.drawImage(FLAG, i * 32, 0, 32, 32, x * ts, y * ts, ts, ts);
-        }
-        ctx.strokeStyle = 'rgba(10,8,16,.55)'; ctx.lineWidth = 2 * s; ctx.strokeRect(x0 * ts, y0 * ts, (x1 - x0 + 1) * ts, (y1 - y0 + 1) * ts);
-      });
     }
     // Over everything: cloud shadows and smog drifting east, a touch faster than the streets as you walk.
     function overlay(ctx, t, vw, vh) {
@@ -284,15 +304,15 @@
     return {
       map: m.rows(), terrain: { c: 'd10', D: 'd10', S: 'd10' }, top: ['d10'], base: 'd10', solid: '#', bg: '#14121c',
       doors: { D: 'D', S: 'S' },
-      doorFor: (x, y) => (x >= 14 && x <= 26 && y <= 10) ? [21, 11] : null,
+      doorFor: (x, y) => (x >= 15 && x <= 30 && y <= 13) ? [23, 14] : null,
       sky: () => flags().ch9 ? 'dark' : 'dusk',
       under, overlay, objects, lights,
-      labels: [{ x: 20.5, y: 11.6, text: 'THE EXCHANGE' }, { x: 19.5, y: 42.6, text: 'ROAD ↓' }],
+      labels: [{ x: 22.5, y: 14.6, text: 'THE EXCHANGE' }, { x: 21.5, y: 57.6, text: 'ROAD ↓' }],
       actors: Object.assign({
-        v3: { x: 23, y: 32, face: 'west', name: 'TRADER' },
-        exguard: { x: 22, y: 11, face: 'south', sprite: 'folk5', name: 'GUARD', home: [22, 11], nextStroll: Infinity }
-      }, people),
-      back: { D: [21, 11, 'south'], S: [19, 42, 'north'] }, enter: [19, 42, 'north'], ch: 10, music: 'ch10',
+        v3: { x: 26, y: 41, face: 'west', name: 'TRADER' },
+        exguard: { x: 25, y: 14, face: 'south', sprite: 'folk5', name: 'GUARD', home: [25, 14], nextStroll: Infinity }
+      }, signs, people),
+      back: { D: [23, 14, 'south'], S: [21, 57, 'north'] }, enter: [21, 57, 'north'], ch: 10, music: 'ch10',
       // The Exchange is always under a thunderstorm: rain, and lightning with thunder a moment later (js/weather.js).
       weather: 'storm'
     };

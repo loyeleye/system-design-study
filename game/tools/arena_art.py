@@ -3,9 +3,10 @@
 usage: arena_art.py SRC_DIR   (SRC_DIR: /mnt/project-files/arena-exchange-raw)
 SRC_DIR holds the raw PixelLab files: ar-*.png map objects, ar-door.png (the great door in its stretch of wall),
 ar-ring2.png (the ring, on a grey backdrop), kit/ (a sandstone building kit; its sand floor is used) and
-chars/folk1-6/ (characters, each unzipped from its download).
+chars/spec1-7/ and chars/folk1-6/ (characters, each unzipped from its download).
 Writes assets/img/arc/<name>.webp, ar-floor.webp (walls, door and ring, painted under the arena by
-js/northroad-arena.js), the crowd's people c-folk1-6.webp, and js/arena-art.js (their sizes).
+js/northroad-arena.js), the crowd's people c-spec1-7.webp
+(and c-folk1-6.webp, townsfolk the Exchange uses), and js/arena-art.js (their sizes).
 """
 import colorsys, json, os, sys
 from collections import deque
@@ -120,12 +121,14 @@ RING_AT = (22 * TS - RW // 2, 21 * TS - 16 - 231)
 floor.alpha_composite(ring, RING_AT)
 save(floor, 'ar-floor'); sizes['ar-floor'] = [W * TS, H * TS]
 
-# ---------- The crowd's people: PixelLab characters (chars/folk1-6, each unzipped from its download) ----------
-# One sheet each, as tools/village_art.py makes them: rows south, west, east, north; column 0 standing, then the
-# four walking frames. folk5 (a guard) and folk6 (a merchant) also stand about the Exchange.
+# ---------- People: PixelLab characters (chars/<name>/, each unzipped from its download) ----------
+# The arena's crowd (spec1-7: a painted-face fan with a banner, a fan in team colours with a foam finger, a skewer
+# seller, an old gladiator, a noble, a kid with a wooden sword, and the arena guard) and townsfolk (folk1-6; the
+# Exchange uses them). One sheet each, as tools/village_art.py makes them: rows south, west, east, north; column 0
+# standing, then the four walking frames.
 chars = {}
-for n in range(1, 7):
-    d = os.path.join(SRC, 'chars', 'folk%d' % n)
+for name in ['spec%d' % n for n in range(1, 8)] + ['folk%d' % n for n in range(1, 7)]:
+    d = os.path.join(SRC, 'chars', name)
     frames = json.load(open(os.path.join(d, 'metadata.json')))['states'][0]['frames']
     walk = frames['animations']['walk']
     rows = [[Image.open(os.path.join(d, frames['rotations'][dr])).convert('RGBA')] +
@@ -141,7 +144,7 @@ for n in range(1, 7):
     out = Image.new('RGBA', (fw * 5, fh * 4))
     for ri, r in enumerate(rows):
         for ci, im in enumerate(r): out.alpha_composite(im.crop((x0, box[1], x1, box[3])), (ci * fw, ri * fh))
-    save(out, 'c-folk%d' % n); chars['folk%d' % n] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows], 'walk': 1}
+    save(out, 'c-' + name); chars[name] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows], 'walk': 1}
 
 open(os.path.join(HERE, 'js/arena-art.js'), 'w').write(
     '// Made by tools/arena_art.py: sizes of its art and its people (added to js/arc-art.js\'s tables).\n'

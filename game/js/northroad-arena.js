@@ -5,7 +5,8 @@
 // The arena is a castle courtyard: thick sandstone walls all round, the fighters' great door in the north wall,
 // the road coming in through a passage in the south wall, and a raised ring in the middle that you can climb into.
 // The walls, the door and the ring are one picture painted under everything (assets/img/arc/ar-floor.webp, made by
-// tools/arena_art.py), so they always line up. Forty-odd fans fill the sand, eight kinds of people between them.
+// tools/arena_art.py), so they always line up. Forty-odd people fill the sand: fans, skewer sellers, nobles, kids,
+// old gladiators, and two guards at the door.
 (function () {
   const NR = SD.northRoad;
   if (!NR || !NR.maps) return;
@@ -21,74 +22,90 @@
   const FIRE = '255,140,60';
 
   // ---------- The crowd ----------
-  // [x, y, facing, sprite]. Nobody stands in the lanes: the door's approach (tiles 20-23 down to the ring), the
-  // ring's two openings, or the road up from the south passage.
+  // [x, y, facing, kind]. Nobody stands in the lanes: the door's approach (tiles 20-23 down to the ring), the
+  // ring's two openings, or the road up from the south passage. The kinds are the arena's own people (spec1-7,
+  // PixelLab characters made by tools/arena_art.py): see KIND below.
   const S = 'south', N = 'north', E = 'east', Wf = 'west';
   const CROWD = [
     // along the north wall, either side of the door
-    [9, 8, S, 'v1'], [10, 8, S, 'folk1'], [12, 8, S, 'v2'], [13, 8, S, 'folk4'], [17, 8, S, 'folk2'],
-    [26, 8, S, 'folk3'], [27, 8, S, 'v4'], [29, 8, S, 'folk1'], [30, 8, S, 'v3'], [32, 8, S, 'folk2'],
+    [9, 8, S, 'vendor'], [10, 8, S, 'banner'], [12, 8, S, 'finger'], [13, 8, S, 'banner'], [17, 8, S, 'kid'],
+    [26, 8, S, 'noble'], [27, 8, S, 'noble'], [29, 8, S, 'finger'], [30, 8, S, 'banner'], [32, 8, S, 'vendor'],
     // round the ring: behind it, at its sides, in front of it
-    [17, 14, S, 'folk3'], [18, 14, S, 'v1'], [19, 14, S, 'folk4'], [24, 14, S, 'v2'], [25, 14, S, 'folk1'], [26, 14, S, 'v3'],
-    [15, 17, E, 'folk2'], [15, 18, E, 'v4'], [15, 19, E, 'folk3'],
-    [28, 17, Wf, 'v1'], [28, 18, Wf, 'folk4'], [28, 19, Wf, 'v2'],
-    [17, 23, N, 'v3'], [18, 23, N, 'folk1'], [19, 23, N, 'folk2'], [24, 23, N, 'v4'], [25, 23, N, 'folk3'], [26, 23, N, 'v1'],
+    [17, 14, S, 'finger'], [18, 14, S, 'banner'], [19, 14, S, 'kid'], [24, 14, S, 'kid'], [25, 14, S, 'banner'], [26, 14, S, 'finger'],
+    [15, 17, E, 'veteran'], [15, 18, E, 'banner'], [15, 19, E, 'finger'],
+    [28, 17, Wf, 'finger'], [28, 18, Wf, 'banner'], [28, 19, Wf, 'veteran'],
+    [17, 23, N, 'banner'], [18, 23, N, 'kid'], [19, 23, N, 'finger'], [24, 23, N, 'finger'], [25, 23, N, 'banner'], [26, 23, N, 'noble'],
     // down the side walls
-    [5, 12, E, 'folk4'], [5, 13, E, 'v2'], [5, 20, E, 'folk1'], [5, 25, E, 'v3'],
-    [38, 13, Wf, 'folk2'], [38, 14, Wf, 'v1'], [38, 18, Wf, 'folk3'], [38, 25, Wf, 'v4'],
-    // queueing at the snack carts
-    [11, 27, Wf, 'folk4'], [32, 27, E, 'folk2']
+    [5, 12, E, 'veteran'], [5, 13, E, 'banner'], [5, 20, E, 'vendor'], [5, 25, E, 'finger'],
+    [38, 13, Wf, 'noble'], [38, 14, Wf, 'noble'], [38, 18, Wf, 'banner'], [38, 25, Wf, 'veteran'],
+    // at the snack carts
+    [11, 27, Wf, 'vendor'], [32, 27, E, 'kid']
   ];
   // Some of them can't keep still: they shuffle a tile or two and come back (js/northroad.js paces anyone with no
   // home yet). The rest hold their spot.
-  const PACE = { 0: 1, 4: 1, 9: 1, 29: 1, 33: 1, 36: 1 };
-  const LOOK = {   // a portrait for each kind of fan (v1-v4 have painted ones; the others are drawn)
-    v1: { pic: 'v1', hue: 30, hair: 'short', eye: '#5a3b2e' }, v2: { pic: 'v2', hue: 0, hair: 'short', eye: '#2b2340' },
-    v3: { pic: 'v3', hue: 220, hair: 'long', eye: '#2b2340' }, v4: { pic: 'v4', hue: 0, hair: 'none', eye: '#2b2340' },
-    folk1: { hue: 0, hair: 'short', eye: '#5a3b2e' }, folk2: { hue: 120, hair: 'long', eye: '#2b2340' },
-    folk3: { hue: 215, hair: 'short', eye: '#2b2340' }, folk4: { hue: 50, hair: 'long', eye: '#5a3b2e' },
-    folk5: { hue: 30, hair: 'short', eye: '#2b2340' }
+  const PACE = { 0: 1, 4: 1, 9: 1, 30: 1, 33: 1, 36: 1 };
+  // Each kind: its sprite, the name and titles the dialog shows, a drawn portrait's colours, and lines of its own
+  // (said alongside the crowd's shared ones).
+  const KIND = {
+    banner: { sprite: 'spec1', name: 'Fan', look: { hue: 0, hair: 'short', eye: '#5a3b2e' },
+      titles: ['Painted face, one side only', 'Waving a flag for the wrong hero', 'Has been here since dawn', 'Lost a bet. Still cheering'],
+      lines: ['I painted "WIN" on my face. Backwards. I did it in a mirror.', 'My arm\'s gone numb from waving. I\'m waving with my other arm now. It\'s worse at it.',
+        'The banner says GO RED. I don\'t know who Red is. Red had better win.'] },
+    finger: { sprite: 'spec2', name: 'Fan', look: { hue: 45, hair: 'short', eye: '#2b2340' },
+      titles: ['Screams for every hero', 'Knows all the stats', 'Number one. Says the finger', 'Team colours, head to toe'],
+      lines: ['WE\'RE NUMBER ONE! Says the finger. The finger doesn\'t know the bracket.', 'GO HERO! Which one? ALL OF THEM!',
+        'I got the finger from the souvenir stall. It squeaks. Listen. ...It squeaked.'] },
+    vendor: { sprite: 'spec3', name: 'Skewer seller', look: { hue: 25, hair: 'short', eye: '#5a3b2e' },
+      titles: ['Hot skewers! Cold skewers! Skewers!', 'Takes orders in a queue', 'Cooked twice, sold once'],
+      lines: ['Skewer? Two copper. Three if you watched round one, it was that good.', 'I take orders in a queue and cook them in order. If I drop one, it stays on the list till it\'s eaten. Nothing\'s lost. Some things are eaten twice.',
+        'The champion had six skewers before the final. Six! That\'s my marketing for the year.'] },
+    veteran: { sprite: 'spec4', name: 'Old gladiator', look: { hue: 20, hair: 'none', eye: '#2b2340' },
+      titles: ['Fought here when the sand was rocks', 'Retired. Mostly', 'Has opinions on footwork'],
+      lines: ['Back in my day there was no ring. Just sand and a strong feeling.', 'Watch his feet, not his sword. Feet tell you everything. Mine tell me to sit down.',
+        'Three hundred fights in this arena. I won most of them. The rest were rigged.'] },
+    noble: { sprite: 'spec5', name: 'Noble', look: { hue: 280, hair: 'long', eye: '#2b2340' },
+      titles: ['Brought her own cushion', 'Bets in gold, cheers in whispers', 'Sponsors three heroes. Knows none of them'],
+      lines: ['One simply does not shout. One... applauds. Vigorously. With one\'s glove.', 'I sponsor the hero with the shield. His shield has my crest on it. Upside down.',
+        'Is there a box? A royal box? No? Then I\'ll stand. Regally.'] },
+    kid: { sprite: 'spec6', name: 'Kid', look: { hue: 50, hair: 'short', eye: '#5a3b2e' },
+      titles: ['Will be champion. Probably next year', 'Wooden sword, real courage', 'Fought the training dummy. It\'s a draw'],
+      lines: ['When I grow up I\'m going to fight in the ring! Or sell skewers. Skewers seem nice too.', 'I beat the training dummy! It didn\'t move. That counts.',
+        'Hiyah! That\'s my battle cry. Do you have a battle cry? You should get one.'] }
   };
-  const TITLES = ['Has been here since dawn', 'Brought snacks for everyone. Ate them', 'Screams for every hero', 'Knows all the stats',
-    'Lost a bet. Still cheering', 'Thinks the gong is the main event', 'Came for the fights, stays for the skewers', 'Painted face, one side only',
-    'Waving a flag for the wrong hero', 'Sat in the wrong seat. There are no seats'];
   const LINES = [
-    'GO HERO! Which one? ALL OF THEM!', 'I\'ve been standing here since sunrise. My feet hate me. My heart is full.',
-    'Did you see that dodge? Neither did I. It was too fast. Probably amazing.', 'The skewer guy says the queue for snacks is "eventually consistent". It\'s been an hour.',
+    'I\'ve been standing here since sunrise. My feet hate me. My heart is full.',
+    'Did you see that dodge? Neither did I. It was too fast. Probably amazing.', 'The skewer queue is "eventually consistent", apparently. It\'s been an hour.',
     'My cousin fought in round one. He lost to a training dummy. The dummy got a standing ovation.', 'Shh! I\'m trying to hear the gong. Oh. That was the gong.',
-    'I painted "WIN" on my face. Backwards. I did it in a mirror.', 'Five silver on the shield guy. Don\'t tell my mum.',
-    'They say the champion trained for a thousand loops. I trained for this by standing. I\'m very good at standing.',
+    'Five silver on the shield guy. Don\'t tell my mum.',
     'Kyu came to the first tournament, you know. Everyone forgot to breathe.', 'That big door\'s been shut all morning. The fighters come out of it like it owes them money.',
     'If you lean on the wall you can feel the crowd stamping. Or that\'s my knees.', 'I can\'t see anything. Can you see anything? Describe it to me. With feeling.',
     'Best seat in the house. There are no seats. This is the best standing.', 'The bookie says the odds are twelve to one. I don\'t know what that means but I like twelve.',
     'Someone said there\'s a hero in here who\'s looped five hundred times. Five hundred! I can\'t do anything twice.',
-    'Gong hits that thing like it insulted his grandmother.', 'I brought a sign. It just says "YES". Works for every fight.',
-    'My kid wants to be a fighter. I want my kid to be a bookie. Bookies always win.', 'Round two is about to start. Or round two just finished. It\'s hard to tell from back here.',
-    'The guards at the door don\'t blink. I\'ve been watching. Not once.', 'Hot skewer! Cold skewer! Whatever skewer! I just want a skewer!',
+    'Gong hits that thing like it insulted his grandmother.', 'The guards at the door don\'t blink. I\'ve been watching. Not once.',
     'Every time somebody lands a hit the whole board lights up at once. Somebody\'s pushing the scores to all of us. Magic.',
-    'I came for one fight. That was six fights ago.', 'If the sand in the ring is raked so neat, imagine how neat the fighters are.'
+    'I came for one fight. That was six fights ago.', 'Round two is about to start. Or round two just finished. It\'s hard to tell from back here.'
   ];
   const AFTER = [
     'The tournament\'s over and nobody wants to go home. I\'m not going home. This is home now.', 'I still hear the gong in my sleep. It\'s nice. Mostly.',
     'You were in the final, weren\'t you? I cheered for you! I cheered for everyone. But mostly you.', 'They\'re keeping the ring up for practice. Fight me! ...No, don\'t.'
   ];
-  const crowd = {}, said = {};
-  CROWD.forEach(([x, y, face, sprite], i) => {
-    const id = 'crowd' + i, look = LOOK[sprite];
-    SD.cast[id] = Object.assign({ name: sprite === 'folk2' || sprite === 'folk4' || sprite === 'v3' ? 'Fan' : 'Spectator', title: TITLES[i % TITLES.length] }, look);
-    crowd[id] = Object.assign({ x, y, face, sprite }, PACE[i] ? {} : { home: [x, y], nextStroll: Infinity });
+  const crowd = {}, said = {}, seen = {};
+  CROWD.forEach(([x, y, face, kind], i) => {
+    const id = 'crowd' + i, k = KIND[kind], n = seen[kind] = (seen[kind] || 0) + 1;
+    SD.cast[id] = Object.assign({ name: k.name, title: k.titles[(n - 1) % k.titles.length] }, k.look);
+    crowd[id] = Object.assign({ x, y, face, sprite: k.sprite }, PACE[i] ? {} : { home: [x, y], nextStroll: Infinity });
     SD.roadTalk.lines[id] = () => {
-      const pool = flags().ch8 ? AFTER.concat(LINES) : LINES;
+      const pool = k.lines.concat(flags().ch8 ? AFTER : [], LINES);
       said[i] = (said[i] || 0) + 1;
-      return [pool[(i * 7 + said[i]) % pool.length]];
+      return [pool[(i * 5 + said[i]) % pool.length]];
     };
   });
   // The guards either side of the great door.
   [[19, 7], [24, 7]].forEach(([x, y], i) => {
     const id = 'doorguard' + i;
-    SD.cast[id] = Object.assign({ name: 'Gate guard', title: 'Has never once blinked' }, LOOK.folk5);
-    crowd[id] = { x, y, face: 'south', sprite: 'folk5', home: [x, y], nextStroll: Infinity };
-    SD.roadTalk.lines[id] = () => [i ? 'Fighters only beyond this door. And Gong. And the snack man. And... fighters only, mostly.'
+    SD.cast[id] = { name: 'Arena guard', title: 'Has never once blinked', hue: 35, hair: 'short', eye: '#2b2340' };
+    crowd[id] = { x, y, face: 'south', sprite: 'spec7', home: [x, y], nextStroll: Infinity };
+    SD.roadTalk.lines[id] = () => [i ? 'Fighters only beyond this door. And Gong. And the skewer seller. And... fighters only, mostly.'
       : 'Halt. ...Sorry, I say that to everyone. You can go in if you\'re fighting. Are you fighting? You look like you\'re fighting.'];
   });
 

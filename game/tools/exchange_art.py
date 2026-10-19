@@ -4,7 +4,6 @@ usage: exchange_art.py SRC_DIR   (SRC_DIR: /mnt/project-files/arena-exchange-raw
 SRC_DIR holds the raw PixelLab files:
   ex-*.png        map objects (create_map_object, high top-down), cropped to their pixels; a few came on a flat
                   backdrop, which is keyed out here
-  flagstones/     wet flagstone and cobble tiles (create_tiles_pro), packed into one strip for the plazas
   px-*.png        the sky: a storm-cloud scene and a skyline (side view), and two clouds seen from above
 Writes assets/img/arc/<name>.webp and js/exchange-art.js (their sizes). The sky, clouds and smog are drawn by
 js/northroad-exchange.js as layers that slide at their own speed as you walk (parallax).
@@ -16,9 +15,9 @@ from PIL import Image
 SRC = sys.argv[1]
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'assets/img/arc')
-OBJECTS = ['ex-gaslamp', 'ex-bear', 'ex-fountain', 'ex-wreck', 'ex-office', 'ex-inn', 'ex-mirrors', 'ex-bullfallen', 'ex-tickerdown',
-           'ex-apartment', 'ex-diner', 'ex-pawn', 'ex-bank', 'ex-billboard', 'ex-newsstand', 'ex-dumpster', 'ex-phonebooth',
-           'ex-bench', 'ex-steam', 'ex-tree', 'ex-stanchion', 'ex-bollards', 'ex-planter2', 'ex-hydrant']
+OBJECTS = ['ex-gaslamp', 'ex-bear', 'ex-fountain', 'ex-wreck', 'ex-office', 'ex-inn', 'ex-bullfallen', 'ex-tickerdown',
+           'ex-apartment', 'ex-diner', 'ex-pawn', 'ex-billboard', 'ex-newsstand', 'ex-dumpster', 'ex-phonebooth',
+           'ex-bench', 'ex-steam', 'ex-tree', 'ex-stanchion', 'ex-bollards', 'ex-planter2', 'ex-counting', 'ex-mirrorshop', 'ex-bank3']
 
 def save(im, name):
     im.save(os.path.join(OUT, name + '.webp'), lossless=True, quality=100, method=6)
@@ -70,14 +69,6 @@ for name in ('ex-rowhouses2', 'ex-tenement2'):
 # The archway came as a street scene: keep the one building (the road runs under its arch) and key out its sky.
 arch = key(load('ex-arch2').crop((33, 15, 197, 179)), tol=14, top_only=True)
 save(arch, 'ex-arch2'); sizes['ex-arch2'] = list(arch.size)
-
-# ---------- Paving: one strip of 32px tiles, picked from by js/northroad-exchange.js ----------
-# 0-3 plain flagstones, 4 cracked, 5 a puddle, 6-7 moss in the joints, 8-9 cobbles, 10 a drain in the cobbles.
-FLAGS = [0, 1, 2, 3, 4, 6, 8, 10, 12, 13, 14]
-strip = Image.new('RGBA', (32 * len(FLAGS), 32))
-for i, n in enumerate(FLAGS):
-    strip.alpha_composite(Image.open(os.path.join(SRC, 'flagstones', 'flag%d.png' % n)).convert('RGBA').resize((32, 32)), (32 * i, 0))
-save(strip, 'ex-flags'); sizes['ex-flags'] = list(strip.size)
 
 # ---------- The sky (parallax layers) ----------
 # Far back: the storm clouds from a side-view sky, without its strip of ground.
