@@ -42,7 +42,8 @@
     ...[15, 16, 17].map(y => [12, y]), [12, 18], [13, 18], [14, 18], [15, 18], [16, 18], [15, 14],
     ...Array.from({ length: 20 }, (_, i) => [27 + i, 7]), [38, 6], [45, 5], [45, 6], ...[1, 2, 3, 4, 5, 6].map(y => [20, y]), ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14])];
   PATHS.forEach(([x, y]) => { if (MAP[y][x] === '.') MAP[y] = MAP[y].slice(0, x) + 'p' + MAP[y].slice(x + 1); });
-  // Villagers stand by their doors; talking to one is the same as walking in. Sprites are in assets/img/village.
+  // Villagers' usual spots, by their doors; talking to one there is the same as walking in. Through the day they
+  // walk to wherever their schedule says (js/folk-data.js). Sprites are in assets/img/village.
   const NPCS = [
     // Gary leaves Pingsby at the end of chapter 9 (js/ch9.js) and is back once chapter 10 is cleared.
     { id: 'gary', name: 'GARY', x: 22, y: 6, roam: () => SD.state.save.flags.garyGone && !SD.state.save.flags.ch10 ? null : [22, 6] },
@@ -77,8 +78,12 @@
     if (c === 'E') return !!(SD.isles && SD.isles.unlocked());
     return true;
   };
-  // Villagers in town right now; roaming ones take today's spot or stay away.
+  // Who is out on the street right now. Villagers follow their schedules (js/folk.js, placed by placeFolk below)
+  // and vanish behind doors when they go inside; road blockers and the bench go by their own roam().
+  const fixture = n => n.block || n.bench;
+  NPCS.forEach(n => { if (!fixture(n)) n.stand = [n.x, n.y]; });
   const people = () => NPCS.filter(n => {
+    if (!fixture(n)) return n.here && !n.hide;
     if (!n.roam) return true;
     const s = n.roam(); if (!s) return false;
     n.x = s[0]; n.y = s[1]; return true;
@@ -98,7 +103,13 @@
 
   H.init = function (canvas, doorHandler) {
     cv = canvas; ctx = cv.getContext('2d');
-    onDoor = id => { const n = NPCS.find(m => m.id === id); doorHandler(n && n.door ? n.door : id); };
+    onDoor = id => {
+      const n = NPCS.find(m => m.id === id);
+      // Found away from their usual spot, a villager just chats (js/folk.js) instead of opening their building.
+      if (n && !fixture(n) && !n.roam && SD.folk && (n.x !== n.stand[0] || n.y !== n.stand[1])) return doorHandler('away:' + id);
+      doorHandler(n && n.door ? n.door : id);
+    };
+    if (SD.clock) SD.clock.onChange(() => { if (active) placeFolk(); });
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
       // The Enter that closes a conversation must not open the next one: the dialogue box already used it.
@@ -125,7 +136,7 @@
     if (t0 && r.width && r.height) { try { draw(t0 / 1000, 0); } catch (e) { /* images still loading */ } }
   }
   H.resize = resize;
-  H.start = function () { active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); };
+  H.start = function () { active = true; placeFolk(); resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); };
   H.stop = function () { active = false; cancelAnimationFrame(raf); };
   // The cold open's landing (js/main.js): The Cloud spits you out and you drop onto the plaza with a whoosh, a soft
   // poof of dust and a little bump. H.drop() resolves once you're down; taps and keys wait until then.
@@ -242,6 +253,89 @@
     return null;
   }
 
+  // ---------- Villagers on the move ----------
+  // Each villager's schedule says where they should be (js/folk.js). When the time block changes they walk there,
+  // by the same kind of BFS as yours, and go in through doors. A new loop, or the storm setting in, puts everyone
+  // straight in place instead.
+  let folkLoop = null, folkStorm = null, doorMarks = {};
+  function folkPlan() {
+    const list = [];
+    NPCS.forEach(n => {
+      if (fixture(n)) return;
+      const s = n.roam ? n.roam() : n.stand;
+      n.here = !!s;
+      if (s) { n.stand = [s[0], s[1]]; list.push({ id: n.id, stand: n.stand }); }
+    });
+    const marks = Object.assign({}, SD.quests ? SD.quests.marks() : {}, H.npcMarks || {});
+    NPCS.forEach(n => { const m = n.mark && n.mark(); if (m) marks[n.id] = m; });
+    return { plan: SD.folk.plan(list, marks), marks };
+  }
+  function placeFolk() {
+    const sv = SD.state.save;
+    if (!SD.folk || !sv) return;
+    const storm = SD.folk.storm(), snap = folkLoop !== sv.loop || folkStorm !== storm;
+    folkLoop = sv.loop; folkStorm = storm;
+    const { plan, marks } = folkPlan();
+    doorMarks = {};
+    NPCS.forEach(n => {
+      if (fixture(n)) return;
+      const at = n.here && plan[n.id];
+      if (!at) { n.here = false; n.placed = false; return; }
+      // Someone with quest business indoors (the storm) puts their marker on the door.
+      if (at.hide && at.door && marks[n.id] && doorMarks[at.door] !== '?') doorMarks[at.door] = marks[n.id];
+      const gx = at.x === null ? n.x : at.x, gy = at.y === null ? n.y : at.y;
+      n.goal = { x: gx, y: gy, hide: at.hide };
+      if (snap || !n.placed || at.x === null || n.x === undefined) { n.x = n.px = gx; n.y = n.py = gy; n.hide = at.hide; n.path = []; n.placed = true; return; }
+      if (n.x === gx && n.y === gy) { n.path = []; n.hide = at.hide; return; }
+      const p = npcPath(n.x, n.y, gx, gy);
+      if (p) { n.path = p; n.hide = false; }
+      else { n.x = n.px = gx; n.y = n.py = gy; n.hide = at.hide; n.path = []; }
+    });
+  }
+  // Villagers keep to open ground, and only use a door (or a road out of town) to go in or come out.
+  function npcPath(sx, sy, gx, gy) {
+    const stuck = new Set(NPCS.filter(fixture).map(n => n.x + ',' + n.y));
+    const k = (x, y) => x + ',' + y, prev = new Map([[k(sx, sy), null]]), q = [[sx, sy]];
+    const ok = (x, y) => (x === gx && y === gy) || ('.,=*pf'.includes(tile(x, y)) && !stuck.has(k(x, y)));
+    while (q.length) {
+      const [x, y] = q.shift();
+      if (x === gx && y === gy) {
+        const path = []; let cur = k(x, y);
+        while (cur !== k(sx, sy)) { path.unshift(cur.split(',').map(Number)); cur = prev.get(cur); }
+        return path;
+      }
+      for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        if (!prev.has(k(nx, ny)) && ok(nx, ny)) { prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]); }
+      }
+    }
+    return null;
+  }
+  function updateFolk(dt) {
+    NPCS.forEach(n => {
+      if (fixture(n) || !n.here || !n.placed || n.hide) return;
+      const sp = dt * 3;
+      n.moving = Math.abs(n.px - n.x) + Math.abs(n.py - n.y) > 0.01;
+      n.px += Math.sign(n.x - n.px) * Math.min(Math.abs(n.x - n.px), sp);
+      n.py += Math.sign(n.y - n.py) * Math.min(Math.abs(n.y - n.py), sp);
+      if (n.moving) return;
+      if (n.path.length) {
+        const [nx, ny] = n.path[0];
+        // You're in the way: wait a moment, then stop where they are rather than walk through you.
+        if (nx === P.x && ny === P.y) { n.blocked = (n.blocked || 0) + dt; if (n.blocked > 1.5) { n.path = []; n.blocked = 0; } return; }
+        n.blocked = 0; n.path.shift();
+        n.face = nx > n.x ? 'east' : nx < n.x ? 'west' : ny < n.y ? 'north' : 'south';
+        n.x = nx; n.y = ny; n.moving = true;
+      } else if (n.goal && n.goal.hide && n.x === n.goal.x && n.y === n.goal.y) n.hide = true;
+    });
+  }
+  // Where a villager's door is (for js/folk.js), their name on the map, and where everyone is (the board).
+  H.doorTile = c => { for (let y = 0; y < HT; y++) { const x = MAP[y].indexOf(c); if (x >= 0) return [x, y]; } return null; };
+  H.npcName = id => { const n = NPCS.find(m => m.id === id); return n ? n.name : null; };
+  H.folkNow = () => SD.folk && SD.state.save ? folkPlan().plan : {};
+  const xx = n => n.px === undefined ? n.x : n.px, yy = n => n.py === undefined ? n.y : n.py;
+  const outdoorsy = () => !(SD.folk && SD.folk.storm()) && !(SD.clock && SD.clock.block() === 'night');
+
   let stepT = 0;
   function update(dt) {
     const sp = dt * 7;
@@ -255,7 +349,12 @@
     let nx = P.x, ny = P.y;
     if (keys.arrowup || keys.w) ny--; else if (keys.arrowdown || keys.s) ny++;
     else if (keys.arrowleft || keys.a) nx--; else if (keys.arrowright || keys.d) nx++;
-    else if (P.path.length) { [nx, ny] = P.path.shift(); }
+    else if (P.path.length) {
+      // A villager walking across your path: let them pass.
+      const n = npcAt(P.path[0][0], P.path[0][1]);
+      if (n && (n.moving || (n.path && n.path.length))) { stepT = 0.15; return; }
+      [nx, ny] = P.path.shift();
+    }
     else if (P.want) { const w = P.want; P.want = null; if (talkTarget() === w || (w === 'B' && talkTarget())) onDoor(w); return; }
     if ((nx !== P.x || ny !== P.y) && walkable(nx, ny)) {
       if (nx !== P.x) P.dir = nx > P.x ? 1 : -1;
@@ -287,7 +386,7 @@
   function loop(ts2) {
     if (!active) return;
     const dt = Math.min(0.05, (ts2 - (t0 || ts2)) / 1000); t0 = ts2;
-    update(dt); updateWanderers(dt); updateDrop(dt); updateSlimes(dt);
+    update(dt); updateFolk(dt); updateWanderers(dt); updateDrop(dt); updateSlimes(dt);
     draw(ts2 / 1000, dt);
     if (SD.weather) SD.weather.sync();
     raf = requestAnimationFrame(loop);
@@ -318,11 +417,11 @@
       for (let x = x0; x < x1; x++) drawObject(x, y, tile(x, y), t);
       if (y === 5) drawWell();
       if (y === 6) drawBoard(t);
-      people().forEach(n => { if (n.y === y) drawNpc(n, t); });
-      WANDER.forEach(w => { if (Math.round(w.py) === y) person(w.id, w.px, w.py, t, w.face, Math.abs(w.px - w.x) + Math.abs(w.py - w.y) > 0.01); });
+      people().forEach(n => { if (Math.round(yy(n)) === y) drawNpc(n, t); });
+      if (outdoorsy()) WANDER.forEach(w => { if (Math.round(w.py) === y) person(w.id, w.px, w.py, t, w.face, Math.abs(w.px - w.x) + Math.abs(w.py - w.y) > 0.01); });
       if (Math.round(P.py) === y) { drawPip(t); drawPlayer(t); }
     }
-    WANDER.forEach(w => { if (w.emoT > 0) emote(w.emo, w.px * ts + ts / 2, headY(w.py)); });
+    if (outdoorsy()) WANDER.forEach(w => { if (w.emoT > 0) emote(w.emo, w.px * ts + ts / 2, headY(w.py)); });
     // The time of day over the ground and people, with lamps and windows lit (js/clock.js). Signs and names stay
     // on top so they read at night.
     ctx.restore();
@@ -330,14 +429,16 @@
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
-      if (BUILD[c] && !'BNE'.includes(c)) label(x, y, BUILD[c].name, t, H.markers && H.markers[c]);
+      if (BUILD[c] && !'BNE'.includes(c)) label(x, y, BUILD[c].name, t, (H.markers && H.markers[c]) || doorMarks[c]);
+      // In the storm everyone is inside, worrying: a little bubble at each door with someone behind it.
+      if (DOORS.includes(c) && SD.folk && SD.folk.storm() && (t * 0.7 + x * 0.37) % 4 < 2 && SD.folk.residents(c).length) emote('dots', (x + 0.5) * ts + ts * 0.9, (y - 0.75) * ts);
     }
     // The exits sit on the map's edge, so their signs stand on the path instead, once the road is clear.
     if (H.exitOpen('N')) label(20, 1.6, BUILD.N.name, t, H.markers && H.markers.N);
     if (H.exitOpen('E')) label(46, 7.5, BUILD.E.name, t, H.markers && H.markers.E);
     label(15.5, 5.6, 'QUEST BOARD', t, H.markers && H.markers.B);
     label(38, 15.2, "CRON'S FARM", t, false);
-    people().forEach(n => label(n.x, n.y + 1.45, n.name, t, (H.npcMarks && H.npcMarks[n.id]) || (n.mark && n.mark()), true));
+    people().forEach(n => label(xx(n), yy(n) + 1.45, n.name, t, (H.npcMarks && H.npcMarks[n.id]) || (n.mark && n.mark()), true));
     if (!dark()) petals.forEach(f => {
       const fx = (f.x + Math.sin(t * 0.4 + f.p) * 0.8) * ts, fy = (f.y + Math.cos(t * 0.3 + f.p) * 0.6) * ts;
       const flap = Math.abs(Math.sin(t * 8 + f.p));
@@ -595,11 +696,11 @@
     if (n.block) return obj(n.block, (n.x + 0.5) * ts, (n.y + 1) * ts, 0.8);
     if (n.bench) return drawBench(n.x, n.y);
     if (n.bird) drawBird(n, t);
-    else person(n.id, n.x, n.y, t, facing(n), false);
+    else person(n.id, xx(n), yy(n), t, n.moving ? n.face : facing(n), !!n.moving);
     // Gary sips coffee. Everyone else occasionally has a feeling about something.
     const phase = (t + n.x) % 9;
     // A quest marker replaces the feeling, so the two never overlap.
-    if (phase < 2.2 && !(H.npcMarks && H.npcMarks[n.id])) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', n.x * ts + ts / 2, n.bird ? n.y * ts : headY(n.y));
+    if (phase < 2.2 && !n.moving && !(H.npcMarks && H.npcMarks[n.id])) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', xx(n) * ts + ts / 2, n.bird ? yy(n) * ts : headY(yy(n)));
   }
   // The plaza bench, drawn in code: two planks on stubby legs, in the village's ink outline.
   function drawBench(x, y) {
@@ -615,7 +716,7 @@
   }
   // Postmaster Coo is a pigeon, bobbing like pigeons do.
   function drawBird(n, t) {
-    const X = n.x * ts + ts / 2, Y = n.y * ts + ts * 0.9, bob = Math.sin(t * 5) > 0.6 ? -3 * ts / 32 : 0;
+    const X = xx(n) * ts + ts / 2, Y = yy(n) * ts + ts * 0.9, bob = Math.sin(t * 5) > 0.6 ? -3 * ts / 32 : 0;
     ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y, ts * 0.28, ts * 0.09, 0, 0, Math.PI * 2); ctx.fill();
     obj('coo', X, Y + bob, 1, n.x < P.x);
   }

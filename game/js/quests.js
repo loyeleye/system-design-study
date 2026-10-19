@@ -777,6 +777,7 @@
     kaito: ['Hmph. I am merely standing here dramatically. It is not posing.', "I'm working on a new design. Only forty-six microservices this time. Growth.", "You're not my rival. I don't have rivals. I have... future colleagues."],
     doug: ['Kevin? Kevin is doing great. Kevin is rate limited now, but he\'s doing great.', "I'm working on a new bot. It politely waits for Retry-After. It's very boring.", "Don't look at my laptop. It's mostly cat pictures. And a scraper. Mostly cat pictures."]
   };
+  QS.hasIdle = who => !!IDLE[who];
   QS.idle = async function (who) {
     const sv = S.save;
     const k = 'idle-' + who, i = sv.flags[k] || 0;
