@@ -218,7 +218,16 @@
       const cast = SD.roadTalk.cast;
       SD.roadTalk.cast = function (sc, where) {
         if (cast) cast.call(this, sc, where);
-        if (where === 'exchange') LINE_IDS.forEach(id => sc.hide(id, done()));
+        if (where !== 'exchange') return;
+        LINE_IDS.forEach(id => sc.hide(id, done()));
+        // The line, the ropes, the signs and the guard stay put (the daily schedules in js/northroad.js would
+        // otherwise send everyone pacing about).
+        Object.entries(NR.maps.exchange.actors).forEach(([id, d]) => {
+          const a = sc.actors[id];
+          if (!a || d.nextStroll !== Infinity) return;
+          if (a.x !== d.x || a.y !== d.y) sc.place(id, d.x, d.y);
+          Object.assign(a, { home: [d.x, d.y], nextStroll: Infinity, goal: null, path: [] });
+        });
       };
     }
 
