@@ -14,7 +14,8 @@
 //     they say their worried lines in there.
 //   - The PR Club's members who sleep outdoors move into the gym (js/club-life.js), and say a worried line there.
 //   - Islanders go into their island's building (js/interiors.js has the rooms) and talk from there.
-//   - The Exchange's townsfolk and the trader go home, and the Arena's crowd too (js/northroad-arena.js).
+//   - The Exchange's townsfolk go home, and the Arena's crowd too (js/northroad-arena.js). The Exchange's trader
+//     stays at his stall to keep the relic shop open, with a worried word first.
 // Everyone you can talk to is worried about the storm, the Cloud, Gary (if they know him) or Kyu (if they know her).
 // On the Isles nobody says "Kyu" until the lighthouse chain is done (docs/cast-bible-road-isles.md); before that she
 // is "K.". Loads after js/club-life.js and js/nari.js.
@@ -77,12 +78,14 @@
       old: { door: [5, 17], knock: [5, 16], name: 'the old heroes\' tent' }
     }
   };
-  // Who shelters where. 'gone': gone home, off the map. Anyone not listed keeps their own schedule.
+  // Who shelters where: a shelter key, 'gone' (home, off the map), or a schedule entry of their own for the storm
+  // (js/folk-far.js's format). Anyone not listed keeps their own schedule.
   const ROAD = C.ROAD = {
     road: { fen: 'post', v3: 'post', ren: 'post', v2: 'post', v4: 'post', marta: 'caravan', v1: 'caravan', lyra: 'stage' },
     arena: { gong: 'gate', suzu: 'gate', zen: 'gate', v1: 'booth', v2: 'booth', v3: 'booth', v4: 'booth' },
     camp: { hero77: 'old', hero256: 'old', hero1023: 'old', hero500: 'old', hero3: 'tent', hypewagon: 'tent', akane: 'tent' },
-    exchange: { v3: 'gone' }
+    // The trader keeps the relic shop open at his stall (js/relic-exchange.js): shops are core. Awake, not dozing.
+    exchange: { v3: [40, 45, 'east', 'alert'] }
   };
   // The road's schedules (js/folk-far.js) as js/northroad.js reads them, with tonight's place swapped in during the
   // storm. Writes still go to the real tables.
@@ -92,8 +95,8 @@
       get(t, id) {
         const k = typeof id === 'string' && ROAD[map][id];
         if (!k) return t[id];
-        const sh = SHELTERS[map] && SHELTERS[map][k];
-        return Object.assign({}, t[id], { night: sh ? ['in', sh.door[0], sh.door[1]] : ['in'] });
+        const sh = !Array.isArray(k) && SHELTERS[map] && SHELTERS[map][k];
+        return Object.assign({}, t[id], { night: Array.isArray(k) ? k : sh ? ['in', sh.door[0], sh.door[1]] : ['in'] });
       }
     });
     SD.folkFar.road = new Proxy(real, {
@@ -198,7 +201,8 @@
       ['Kyu used to fix me every night and leave a note: "You\'re doing great. K." No note tonight. I checked my coin tray twice.']],
     hero404: [['A sign on the ground says NOT FOUND. Someone has added, underneath, in the rain: "STILL NOT FOUND. NEITHER IS GARY."']],
     // The Exchange
-    trader: [['I bet on rain. It rained. I\'m rich, on wet paper.']]
+    trader: [['I bet on rain. It rained. I\'m rich, on wet paper. Buy something. Please. Relics don\'t mind the damp.'],
+      ['Kyu\'s tower is the only light in the city. I keep the stall open so it isn\'t the only one.']]
   };
   C.ROADWORRY = ROADWORRY;
   const speaker = (map, id) => (SD.roadFolk && SD.roadFolk.speaker ? SD.roadFolk.speaker(map, id) : id);
@@ -241,6 +245,11 @@
       return it.apply(this, arguments);
     };
   }
+  // The Exchange's trader: a worried word, then the relic shop as usual (js/relic-exchange.js takes it from there).
+  if (NR && NR.onTalk) NR.onTalk.unshift(async (map, id) => {
+    if (storm() && map === 'exchange' && id === 'v3' && !(SD.quests && SD.quests.pending(id).length)) { const w = say(speaker(map, id)); if (w) await U.dialog([w]); }
+    return false;
+  });
   // Explodia stays at her crater and runs the Academy in the rain: a worried word first, then her menu.
   if (SD.explodia && SD.explodia.talk) {
     const et = SD.explodia.talk;
