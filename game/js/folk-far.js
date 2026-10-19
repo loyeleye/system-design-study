@@ -54,7 +54,7 @@
       akane: { evening: [22, 14, 'north', 'idea'], night: ['in'] }
     },
     exchange: {
-      v3: { night: [17, 20, 'north', 'sleep'] }   // the trader warms his hands at the fire pit
+      v3: { night: [41, 45, 'north', 'sleep'] }   // the trader dozes by the market stalls
     }
   };
 

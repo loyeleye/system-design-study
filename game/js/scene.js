@@ -59,6 +59,10 @@
     const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
     const terr = (x, y) => (def.terrain || {})[tile(x, y)] || 'ground';
     const top = def.top || ['water', 'plaza', 'farm', 'dirt'];
+    // Isometric maps (def.iso): the same grid of cells, drawn as diamonds twice as wide as they are tall. Cell (x, y)'s
+    // top corner is at ((x - y) * ts, (x + y) * ts / 2); things are sorted by their footprints rather than by row.
+    const ISO = def.iso || null;
+    const ix = (x, y) => (x - y) * ts, iy = (x, y) => (x + y) * ts / 2;
     sc.tile = tile;
     function actorAt(x, y) { return Object.values(sc.actors).find(a => !a.hidden && !a.player && Math.round(a.x) === x && Math.round(a.y) === y && a.solid !== false); }
     sc.walkable = (x, y) => !(def.solid || 'T#').includes(tile(x, y)) && tile(x, y) !== 'T' && !actorAt(x, y);
@@ -128,7 +132,14 @@
     function onTap(e) {
       if (!sc.active || !sc.P) return;
       const r = canvas.getBoundingClientRect(), { cx, cy } = cam();
-      const tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
+      let tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
+      if (ISO) {
+        // The frontmost person under the finger, else the cell of ground under it.
+        const wx = e.clientX - r.left + Math.round(cx), wy = e.clientY - r.top + Math.round(cy);
+        const hit = drawn.slice().reverse().find(d => wx >= d.r[0] && wx <= d.r[0] + d.r[2] && wy >= d.r[1] && wy <= d.r[1] + d.r[3]);
+        const u = wx / ts, v = 2 * wy / ts;
+        [tx, ty] = hit ? [Math.round(hit.a.x), Math.round(hit.a.y)] : [Math.floor((u + v) / 2), Math.floor((v - u) / 2)];
+      }
       const P = sc.P, a = actorAt(tx, ty);
       if (a && a.talk !== false) {
         if (DIRS.some(([dx, dy]) => P.x + dx === tx && P.y + dy === ty)) { if (sc.onTalk) sc.onTalk(a.id); return; }
@@ -148,11 +159,19 @@
       dpr = Math.min(2, window.devicePixelRatio || 1);
       const r = canvas.getBoundingClientRect();
       canvas.width = Math.max(1, r.width * dpr); canvas.height = Math.max(1, r.height * dpr);
-      ts = def.zoom || (Math.max(r.width / 15, r.height / (Math.min(HT, 14) - 1)) >= 44 ? 48 : 32);
+      ts = def.zoom || (ISO ? 32 : Math.max(r.width / 15, r.height / (Math.min(HT, 14) - 1)) >= 44 ? 48 : 32);
     }
     function cam() {
       const vw = canvas.width / dpr, vh = canvas.height / dpr;
       const f = sc.actors[sc.follow] || { px: def.cam ? def.cam[0] : W / 2, py: def.cam ? def.cam[1] : HT / 2 };
+      if (ISO) {
+        // The diamond's bounding box, with room for the sky over the far corner.
+        const L = -HT * ts, R = W * ts, T = -(ISO.sky || 0) * ts, B = (W + HT) * ts / 2 + (ISO.foot || 1) * ts;
+        let cx = ix(f.px + 0.5, f.py + 0.5) - vw / 2, cy = iy(f.px + 0.5, f.py + 0.5) - vh * 0.55;
+        cx = R - L < vw ? (L + R - vw) / 2 : Math.max(L, Math.min(R - vw, cx));
+        cy = B - T < vh ? (T + B - vh) / 2 : Math.max(T, Math.min(B - vh, cy));
+        return { cx, cy };
+      }
       let cx = f.px * ts + ts / 2 - vw / 2, cy = f.py * ts + ts / 2 - vh / 2;
       cx = Math.max(0, Math.min(W * ts - vw, cx)); cy = Math.max(0, Math.min(HT * ts - vh, cy));
       if (W * ts < vw) cx = (W * ts - vw) / 2;
@@ -172,7 +191,7 @@
           a.py += (P.py - 0.4 - a.py) * Math.min(1, dt * 4);
           return;
         }
-        const sp = dt * a.speed;
+        const sp = dt * a.speed * (a.slow || 1);
         a.moving = Math.abs(a.px - a.x) + Math.abs(a.py - a.y) > 0.01;
         a.px += Math.sign(a.x - a.px) * Math.min(Math.abs(a.x - a.px), sp);
         a.py += Math.sign(a.y - a.py) * Math.min(Math.abs(a.y - a.py), sp);
@@ -188,18 +207,27 @@
       if (!P || !sc.active) return;
       stepT -= dt;
       if (P.moving || stepT > 0) return;
-      let nx = P.x, ny = P.y;
-      if (keys.arrowup || keys.w) ny--; else if (keys.arrowdown || keys.s) ny++;
-      else if (keys.arrowleft || keys.a) nx--; else if (keys.arrowright || keys.d) nx++;
+      let nx = P.x, ny = P.y, face = null;
+      // On an isometric map the keys move along the screen: a diagonal step on the grid, or half of one round a corner.
+      const kd = (keys.arrowup || keys.w) ? [-1, -1, 'north'] : (keys.arrowdown || keys.s) ? [1, 1, 'south']
+        : (keys.arrowleft || keys.a) ? [-1, 1, 'west'] : (keys.arrowright || keys.d) ? [1, -1, 'east'] : null;
+      if (kd && ISO) {
+        // Someone straight ahead is someone to talk to, not to slide round.
+        const [dx, dy] = kd, open = (a, b) => sc.walkable(P.x + a, P.y + b), who = actorAt(P.x + dx, P.y + dy);
+        const s = who && who.talk !== false ? null : [[dx, dy], [dx, 0], [0, dy]].find(([a, b]) => open(a, b) && (!(a && b) || open(a, 0) || open(0, b)));
+        [nx, ny] = s ? [P.x + s[0], P.y + s[1]] : [P.x + dx, P.y + dy]; face = kd[2];
+      } else if (kd) { nx += { west: -1, east: 1 }[kd[2]] || 0; ny += { north: -1, south: 1 }[kd[2]] || 0; }
       else if (P.path.length) [nx, ny] = P.path.shift();
       else if (P.want) { const w = P.want; P.want = null; if (talkTarget() === w && sc.onTalk) sc.onTalk(w); return; }
       if ((nx !== P.x || ny !== P.y) && sc.walkable(nx, ny)) {
-        P.face = nx > P.x ? 'east' : nx < P.x ? 'west' : ny < P.y ? 'north' : 'south';
+        P.face = face || (nx > P.x ? 'east' : nx < P.x ? 'west' : ny < P.y ? 'north' : 'south');
+        // A sideways diagonal crosses twice the screen distance, so it takes twice as long.
+        P.slow = ISO && nx - P.x && ny - P.y && nx - P.x !== ny - P.y ? 0.55 : 1;
         P.x = nx; P.y = ny; stepT = 0.02;
         const d = isDoor(nx, ny);
         if (d) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => sc.onDoor && sc.onDoor(d, tile(nx, ny)), 140); }
       } else if (nx !== P.x || ny !== P.y) {
-        const a = actorAt(nx, ny); P.path = [];
+        const a = actorAt(nx, ny) || (ISO && kd && (actorAt(P.x + kd[0], P.y) || actorAt(P.x, P.y + kd[1]))); P.path = [];
         if (a && a.talk !== false && sc.onTalk) { Object.keys(keys).forEach(k => keys[k] = false); sc.onTalk(a.id); }
       }
     }
@@ -229,15 +257,21 @@
       ctx.beginPath(); ctx.moveTo(px - 4, py); ctx.lineTo(px, py + 6); ctx.lineTo(px + 4, py); ctx.closePath(); ctx.fill();
       ctx.drawImage(EMOTE, sx, sy, 16, 16, px - S / 2, py - S * 1.04, S, S);
     }
+    // Where a person's feet are (world pixels). People are drawn bigger on isometric maps, to the buildings' scale.
+    // ISO.lift(px, py) raises people standing on steps or a bridge (pixels at ts 32).
+    const feet = (px, py) => ISO ? [ix(px + 0.5, py + 0.5), iy(px + 0.5, py + 0.5) - (ISO.lift ? ISO.lift(px, py) : 0) * ts / 32] : [px * ts + ts / 2, py * ts + ts * 0.95];
+    const CS = ISO ? (ISO.cs || 1.6) : 1;
+    let drawn = [];                     // isometric maps: the people drawn this frame and where, front last, for taps
     function person(a, t) {
       if (a.hidden) return;
-      if (a.pip) { obj('pip', a.px * ts + ts / 2, a.py * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, (sc.P && sc.P.face === 'west')); return; }
-      if (a.draw) return a.draw(ctx, a.px * ts + ts / 2, a.py * ts + ts * 0.95, ts, t);
+      const [fx, fy] = feet(a.px, a.py), gy = fy - (ISO ? 0 : ts * 0.05);
+      if (a.pip) { obj('pip', fx, fy - ts * (ISO ? 0.15 : 0.4) + Math.sin(t * 3) * 3, 0.8 * CS, (sc.P && sc.P.face === 'west')); return; }
+      if (a.draw) return a.draw(ctx, fx, fy, ts, t);
       const c = charArt(a.sprite);
       // Optional per-actor extras: under() paints the ground beneath them, over() paints on top of the sprite.
-      if (a.under) a.under(ctx, a.px * ts + ts / 2, a.py * ts + ts * 0.9, ts, t);
+      if (a.under) a.under(ctx, fx, gy, ts, t);
       ctx.fillStyle = 'rgba(43,35,64,0.22)';
-      ctx.beginPath(); ctx.ellipse(a.px * ts + ts / 2, a.py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(fx, gy, ts * 0.32 * CS, ts * 0.11 * CS, 0, 0, Math.PI * 2); ctx.fill();
       if (!c) return;
       const im = pic(c.src); if (!ok(im)) return;
       const row = ROW[a.face] || 0, n = c.n[row];
@@ -245,28 +279,119 @@
       const going = a.moving || (a.path && a.path.length);
       const col = n && (going || !c.walk) ? 1 + Math.floor(t * (going ? 8 : 5)) % n : 0;
       const bob = a.moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
-      const k = a.scale || 1, w = c.w * ts / 32 * k, h = c.h * ts / 32 * k;
+      const k = (a.scale || 1) * CS, w = c.w * ts / 32 * k, h = c.h * ts / 32 * k, y = fy + (ISO ? ts / 16 : 0);
       ctx.save();
       if (a.alpha != null) ctx.globalAlpha = a.alpha;
       if (a.glow) { ctx.shadowColor = a.glow; ctx.shadowBlur = 14 + 6 * Math.sin(t * 4); }
-      ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, a.px * ts + ts / 2 - w / 2, a.py * ts + ts * 0.95 - h + bob, w, h);
+      ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, fx - w / 2, y - h + bob, w, h);
       ctx.restore();
-      if (a.over) a.over(ctx, a.px * ts + ts / 2, a.py * ts + ts * 0.95, ts, t, h);
+      if (a.over) a.over(ctx, fx, fy, ts, t, h);
+      if (ISO && !a.player && a.talk !== false) drawn.push({ a, r: [fx - w / 2, y - h, w, h] });
     }
     // For pictures of people drawn elsewhere, like the reflection in the studio's mirror (js/club-mirror.js).
     sc.drawActor = person;
-    function label(x, y, text, marker, small) {
-      const X = x * ts + ts / 2, Y = y * ts - ts * 0.35;
-      ctx.font = `600 ${Math.max(10, ts * (small ? 0.26 : 0.3))}px Fredoka, sans-serif`;
+    function emoteAt(a) {
+      if (!ISO) return [a.px * ts + ts / 2, (a.py - 0.55 - (a.scale || 1) * 0.5 + 0.5) * ts];
+      const [fx, fy] = feet(a.px, a.py), c = charArt(a.sprite);
+      return [fx, fy - (c ? c.h : 52) * ts / 32 * CS * (a.scale || 1) - ts * 0.1];
+    }
+    const LS = ISO ? 1.45 : 1;          // labels, scaled with the people
+    function labelAt(X, Y, text, marker, small) {
+      ctx.font = `600 ${Math.max(10, ts * LS * (small ? 0.26 : 0.3))}px Fredoka, sans-serif`;
       ctx.textAlign = 'center';
-      const w = ctx.measureText(text).width + 14, h = ts * 0.44;
+      const w = ctx.measureText(text).width + 14 * LS, h = ts * 0.44 * LS;
       ctx.fillStyle = small ? '#fffaf0' : '#d9a066'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-      rr(X - w / 2, Y - h * 0.72, w, h, 6); ctx.fill(); ctx.stroke();
+      rr(X - w / 2, Y - h * 0.72, w, h, 6 * LS); ctx.fill(); ctx.stroke();
       ctx.fillStyle = INK; ctx.fillText(text, X, Y);
       if (marker) {
-        ctx.fillStyle = '#ffe14d'; ctx.beginPath(); ctx.arc(X + w / 2 + 6, Y - h * 0.3, ts * 0.16, 0, 7); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = INK; ctx.fillText('!', X + w / 2 + 6, Y - h * 0.3 + ts * 0.09);
+        ctx.fillStyle = '#ffe14d'; ctx.beginPath(); ctx.arc(X + w / 2 + 6, Y - h * 0.3, ts * 0.16 * LS, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = INK; ctx.fillText('!', X + w / 2 + 6, Y - h * 0.3 + ts * 0.09 * LS);
       }
+    }
+    function label(x, y, text, marker, small) {
+      if (ISO) labelAt(ix(x + 0.5, y + 0.5), iy(x + 0.5, y + 0.5) - ts * 0.35, text, marker, small);
+      else labelAt(x * ts + ts / 2, y * ts - ts * 0.35, text, marker, small);
+    }
+
+    // ---------- Isometric maps ----------
+    // def.iso: { ground(x, y) -> tile number in xi-tiles.webp, or [n, dy, flip], or null; cs: people's scale;
+    //   sky: cells of room above the far corner; foot: below the near one; lift(px, py): how high people stand }. def.objects stand on footprints:
+    //   { name, x, y, w, h, k, flip, dy } covers cells x..x+w-1, y..y+h-1, with the art's base point
+    //   (SD.isoArt.base) on the footprint's near corner. def.backdrop(ctx, t, vw, vh, cam) paints the sky behind it all.
+    // People can say how much room they take with foot: [x0, y0, x1, y1] (cells, from where they stand) and how
+    // much screen with box: [left, top, w, h] (pixels at ts 32, from their feet); signs and ropes drawn in code do.
+    function isoArt(name) {
+      const A = SD.isoArt, a = A && A.objects[name];
+      if (a) return { src: 'assets/img/arc/' + name + '.webp', w: a[0], h: a[1], base: (A.base && A.base[name]) || [a[0] / 2, a[1]] };
+      const b = objArt(name);
+      return b && Object.assign(b, { base: [b.w / 2, b.h] });
+    }
+    function isoRect(o) {
+      const a = isoArt(o.name); if (!a) return null;
+      const k = (o.k || 1) * ts / 32, X = ix(o.x + (o.w || 1), o.y + (o.h || 1)), Y = iy(o.x + (o.w || 1), o.y + (o.h || 1)) + (o.dy || 0) * ts / 32;
+      const bx = o.flip ? a.w - a.base[0] : a.base[0];
+      return [X - bx * k, Y - a.base[1] * k, a.w * k, a.h * k];
+    }
+    function isoObj(o, r) {
+      const a = isoArt(o.name), im = a && pic(a.src); if (!im || !ok(im)) return;
+      if (o.alpha != null) ctx.globalAlpha = o.alpha;
+      if (o.flip) { ctx.save(); ctx.translate(r[0] + r[2], r[1]); ctx.scale(-1, 1); ctx.drawImage(im, 0, 0, r[2], r[3]); ctx.restore(); }
+      else ctx.drawImage(im, r[0], r[1], r[2], r[3]);
+      ctx.globalAlpha = 1;
+    }
+    // Draw order: whatever is wholly behind something along x or y goes first; overlaps fall back to the nearer centre.
+    function before(A, B) {
+      const ab = A.x1 <= B.x0 + 1e-6 || A.y1 <= B.y0 + 1e-6, ba = B.x1 <= A.x0 + 1e-6 || B.y1 <= A.y0 + 1e-6;
+      if (ab !== ba) return ab;
+      return A.x0 + A.x1 + A.y0 + A.y1 < B.x0 + B.x1 + B.y0 + B.y1;
+    }
+    let ORDER = null;
+    function isoWorld(t, cx, cy, vw, vh) {
+      const z = ts / 32, TL = (SD.isoArt && SD.isoArt.tiles) || { size: 64, top: 12 }, sheetIm = pic('assets/img/arc/xi-tiles.webp');
+      const inView = (x, y, w, h) => x + w > cx && x < cx + vw && y + h > cy && y < cy + vh;
+      if (!ORDER) { ORDER = []; for (let s = 0; s < W + HT - 1; s++) for (let x = Math.max(0, s - HT + 1); x <= Math.min(W - 1, s); x++) ORDER.push([x, s - x]); }
+      if (ok(sheetIm) && ISO.ground) ORDER.forEach(([x, y]) => {
+        const sx = ix(x, y) - ts, sy = iy(x, y) - TL.top * z, S = TL.size * z;
+        if (!inView(sx, sy, S, S)) return;
+        let g = ISO.ground(x, y); if (g == null) return;
+        if (!Array.isArray(g)) g = [g, 0];
+        const [n, dy, flip] = g;
+        if (flip) { ctx.save(); ctx.translate(sx + S, 0); ctx.scale(-1, 1); ctx.drawImage(sheetIm, n * TL.size, 0, TL.size, TL.size, 0, sy + (dy || 0) * z, S, S); ctx.restore(); }
+        else ctx.drawImage(sheetIm, n * TL.size, 0, TL.size, TL.size, sx, sy + (dy || 0) * z, S, S);
+      });
+      if (def.under) def.under(ctx, ts, t);
+      const items = [];
+      (def.objects || []).forEach(o => {
+        if (o.hidden) return;
+        const r = isoRect(o); if (!r || !inView(r[0], r[1], r[2], r[3])) return;
+        items.push({ o, r, x0: o.x, y0: o.y, x1: o.x + (o.w || 1), y1: o.y + (o.h || 1) });
+      });
+      Object.values(sc.actors).forEach(a => {
+        if (a.hidden) return;
+        const [fx, fy] = feet(a.px, a.py), b = a.box || [-24, -100, 48, 108], f = a.foot || [0.2, 0.2, 0.8, 0.8];
+        const r = [fx + b[0] * z, fy + b[1] * z, b[2] * z, b[3] * z];
+        if (!inView(r[0], r[1], r[2], r[3])) return;
+        items.push({ a, r, x0: a.px + f[0], y0: a.py + f[1], x1: a.px + f[2], y1: a.py + f[3] });
+      });
+      const n = items.length, behind = items.map(() => []);
+      for (let i = 0; i < n; i++) {
+        const A = items[i];
+        for (let j = i + 1; j < n; j++) {
+          const B = items[j];
+          if (A.r[0] >= B.r[0] + B.r[2] || B.r[0] >= A.r[0] + A.r[2] || A.r[1] >= B.r[1] + B.r[3] || B.r[1] >= A.r[1] + A.r[3]) continue;
+          if (before(A, B)) behind[j].push(i); else behind[i].push(j);
+        }
+      }
+      const seen = new Uint8Array(n);
+      drawn = [];
+      const visit = i => {
+        if (seen[i]) return; seen[i] = 1;
+        behind[i].forEach(visit);
+        const it = items[i];
+        if (it.o) isoObj(it.o, it.r); else person(it.a, t);
+      };
+      items.map((it, i) => i).sort((i, j) => (items[i].x0 + items[i].y0) - (items[j].x0 + items[j].y0)).forEach(visit);
+      return (def.objects || []).filter(o => !o.hidden);
     }
     const SKY = { dusk: 'rgba(255,120,60,.16)', dark: 'rgba(14,10,40,.45)', grey: 'rgba(120,120,130,.0)', night: 'rgba(20,24,70,.35)' };
     function draw(t) {
@@ -275,19 +400,24 @@
       ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = def.bg || '#5fbf5f'; ctx.fillRect(0, 0, vw, vh);
       const { cx, cy } = cam();
+      if (ISO && def.backdrop) def.backdrop(ctx, t, vw, vh, { cx: Math.round(cx), cy: Math.round(cy), ts });
       ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
-      const x0 = Math.max(0, Math.floor(cx / ts) - 1), x1 = Math.min(W, Math.ceil((cx + vw) / ts) + 1);
-      const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
-      if (def.ground !== false) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) corner(x, y);
-      if (def.under) def.under(ctx, ts, t);
-      // Trees ring the map; objects and people are drawn row by row so you walk behind them.
-      const objs = (def.objects || []).filter(o => !o.hidden);
-      for (let y = y0; y < y1 + 3; y++) {
-        if (y < HT) for (let x = x0; x < x1; x++) if (MAP[y][x] === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
-        objs.forEach(o => { if (Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
-        Object.values(sc.actors).forEach(a => { if (Math.round(a.py) === y) person(a, t); });
+      let objs;
+      if (ISO) objs = isoWorld(t, Math.round(cx), Math.round(cy), vw, vh);
+      else {
+        const x0 = Math.max(0, Math.floor(cx / ts) - 1), x1 = Math.min(W, Math.ceil((cx + vw) / ts) + 1);
+        const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
+        if (def.ground !== false) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) corner(x, y);
+        if (def.under) def.under(ctx, ts, t);
+        // Trees ring the map; objects and people are drawn row by row so you walk behind them.
+        objs = (def.objects || []).filter(o => !o.hidden);
+        for (let y = y0; y < y1 + 3; y++) {
+          if (y < HT) for (let x = x0; x < x1; x++) if (MAP[y][x] === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
+          objs.forEach(o => { if (Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
+          Object.values(sc.actors).forEach(a => { if (Math.round(a.py) === y) person(a, t); });
+        }
       }
-      Object.values(sc.actors).forEach(a => { if (!a.hidden && a.emoT > 0 && a.emo) emote(a.emo, a.px * ts + ts / 2, (a.py - 0.55 - (a.scale || 1) * 0.5 + 0.5) * ts); });
+      Object.values(sc.actors).forEach(a => { if (!a.hidden && a.emoT > 0 && a.emo) { const [ex, ey] = emoteAt(a); emote(a.emo, ex, ey); } });
       const sk = typeof def.sky === 'function' ? def.sky() : def.sky;
       const wk = SD.weather ? SD.weather.now(def.weather) : 'clear';
       if (def.clouds && SD.sky) { ctx.restore(); SD.sky.shadows(ctx, t, vw, vh, cx, cy, wk); ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy)); }
@@ -298,7 +428,10 @@
         ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
       }
       (def.labels || []).forEach(l => { if (!l.hidden) label(l.x, l.y, l.text, l.marker); });
-      Object.values(sc.actors).forEach(a => { if (a.name && !a.hidden) label(a.px, a.py + 1.45, a.name, a.marker, true); });
+      Object.values(sc.actors).forEach(a => {
+        if (!a.name || a.hidden) return;
+        if (ISO) { const [fx, fy] = feet(a.px, a.py); labelAt(fx, fy + ts * 0.8, a.name, a.marker, true); } else label(a.px, a.py + 1.45, a.name, a.marker, true);
+      });
       sc.fx.forEach(f => f(ctx, t, ts));
       ctx.restore();
       if (def.clouds && SD.sky) SD.sky.clouds(ctx, t, vw, vh, cx, cy, wk);
@@ -315,10 +448,13 @@
       'o-shrine': [0.45, 1.8, '255,170,80'] };
     function lights(objs, cx, cy) {
       if (!SD.clock.dark()) return [];
-      return objs.filter(o => LIGHT[o.name] && objArt(o.name)).map(o => {
+      return objs.filter(o => !ISO && LIGHT[o.name] && objArt(o.name)).map(o => {
         const [f, r, rgb] = LIGHT[o.name], a = objArt(o.name);
         return { x: (o.x + 0.5) * ts - cx, y: (o.y + 1) * ts - a.h * ts / 32 * (o.k || 1) * f - cy, r: r * ts, rgb };
-      }).concat((def.lights || []).map(l => ({ x: (l.x + 0.5) * ts - cx, y: (l.y + 0.5) * ts - cy, r: (l.r || 3) * ts, rgb: l.rgb })));
+      }).concat((def.lights || []).map(l => ISO
+        // Isometric lights sit over a cell's centre, raised by h pixels (at ts 32) for lamp heads and windows.
+        ? { x: ix(l.x + 0.5, l.y + 0.5) - cx, y: iy(l.x + 0.5, l.y + 0.5) - (l.h || 0) * ts / 32 - cy, r: (l.r || 3) * ts, rgb: l.rgb }
+        : { x: (l.x + 0.5) * ts - cx, y: (l.y + 0.5) * ts - cy, r: (l.r || 3) * ts, rgb: l.rgb }));
     }
     function frame(now) {
       if (!sc.active) return;
