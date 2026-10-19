@@ -738,7 +738,7 @@
   function def(key) {
     const r = ROOMS[key];
     return {
-      map: r.map, ground: false, bg: '#1a1530', solid: '#', indoors: true,
+      map: r.map, ground: false, bg: '#1a1530', solid: '#', indoors: true, room: key,
       ambience: r.ambience !== undefined ? r.ambience : outside.place,
       doors: { D: 'out', U: 'up', S: 'down' },
       lights: r.lights,

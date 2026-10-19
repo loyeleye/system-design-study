@@ -1,8 +1,9 @@
 """Hand-pixelled yawn frames for the sleepy villagers (js/clock.js decides who yawns, and when).
 
-usage: yawn_art.py [PREVIEW.png]
+usage: yawn_art.py [PREVIEW.png] [ID ...]
 Reads each villager's standing south frame from assets/img/village/c-<id>.webp and writes
 assets/img/village/y-<id>.webp: two frames side by side, a half yawn (eyes shut, mouth opening) and a full yawn.
+With IDs, only those villagers. Uptima's sheet size comes from js/uptima-art.js (tools/uptima_art.py).
 PixelLab edits flatten faces this small, so the eyes and mouth are drawn here pixel by pixel instead.
 """
 import json, os, re, sys
@@ -11,6 +12,9 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 VIL = os.path.join(HERE, '..', 'assets', 'img', 'village')
 CHARS = json.loads(re.search(r'"chars": (\{.*?\}\})', open(os.path.join(HERE, '..', 'js', 'village-art.js')).read()).group(1))
+CHARS['uptima'] = json.loads(re.search(r'chars\.uptima = (\{.*?\});', open(os.path.join(HERE, '..', 'js', 'uptima-art.js')).read()).group(1))
+PREVIEW = next((a for a in sys.argv[1:] if a.endswith('.png')), None)
+ONLY = [a for a in sys.argv[1:] if not a.endswith('.png')]
 
 # Per villager, in sprite pixels: skin (a pixel to copy skin colour from), eyes (x0, x1, y0, y1 boxes to paint
 # over with skin, inclusive, optionally with their own lid row), lid (the row the shut eyelids sit on), mouth (x0, x1, top row) and how many rows the
@@ -23,7 +27,7 @@ FACES = {
                     lens=(205, 236, 214)),
     'lexi':    dict(skin=(13, 19), eyes=[(9, 13, 16, 18), (18, 18, 13, 15, 15)], lid=18, mouth=(13, 14, 20), rows=2),
     'doug':    dict(skin=(12, 14), eyes=[(8, 11, 12, 13), (14, 17, 12, 13)], lid=13, mouth=(12, 13, 17), rows=2),
-    'uptima':  dict(skin=(12, 13), eyes=[(9, 12, 14, 16), (15, 18, 14, 16)], lid=16, mouth=(13, 14, 19), rows=3),
+    'uptima':  dict(skin=(23, 17), eyes=[(18, 21, 15, 18), (26, 29, 15, 18)], lid=17, mouth=(23, 24, 20), rows=3),
 }
 INK, THROAT = (43, 26, 36, 255), (150, 52, 66, 255)
 
@@ -51,13 +55,14 @@ def frame(base, f, full):
 def main():
     sheets = []
     for k, f in FACES.items():
+        if ONLY and k not in ONLY: continue
         c = CHARS[k]
         base = Image.open(os.path.join(VIL, 'c-' + k + '.webp')).convert('RGBA').crop((0, 0, c['w'], c['h']))
         out = Image.new('RGBA', (c['w'] * 2, c['h']))
         out.paste(frame(base, f, False), (0, 0)); out.paste(frame(base, f, True), (c['w'], 0))
         out.save(os.path.join(VIL, 'y-' + k + '.webp'), lossless=True, quality=100, method=6)
         sheets.append((base, out))
-    if len(sys.argv) > 1:
+    if PREVIEW:
         # Preview: each villager standing, then the half and full yawn, at 6x, four to a row.
         Z, W, H = 6, max(b.width for b, _ in sheets), max(b.height for b, _ in sheets)
         cw, ch = (W * 3 + 8) * Z, (H + 6) * Z
@@ -65,7 +70,7 @@ def main():
         for i, (b, o) in enumerate(sheets):
             row = Image.new("RGBA", (W * 3 + 2, H)); row.paste(b, (0, 0)); row.paste(o, (b.width + 2, 0))
             pv.alpha_composite(row.resize(((W * 3 + 2) * Z, H * Z), Image.NEAREST), ((i % 4) * cw, (i // 4) * ch))
-        pv.save(sys.argv[1])
+        pv.save(PREVIEW)
 
 
 main()
