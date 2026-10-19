@@ -1042,8 +1042,8 @@ SD.metaShop = [
   { id: 'metronome', name: "The Rollouts' Metronome", cost: 0, rank: 'B', gift: true, text: 'If you play 3 or fewer cards in a turn, draw 3 extra cards at the start of your next turn.' }   // Pocketwatch
 ];
 
-// Ayo's Card Forge: cards bought with Memory Shards join your starting deck in every future run (you can
-// bench them). Most borrow an idea from a Slay the Spire card (named in the comment). One is on sale each loop.
+// Aigerim's card shop (js/peddler.js): cards bought with Memory Shards unlock for good as card rewards in every
+// future run (S.cardPool in js/state.js). Most borrow an idea from a Slay the Spire card (named in the comment). One is on sale each loop.
 Object.assign(SD.cards, {
   defdepth: { name: 'Defense in Depth', cost: 1, kind: 'action', mit: 5, abs: { any: 5 }, tags: ['ops'], text: 'Mitigate {mit}. Absorb {any} load of any kind.', art: 'lock', rarity: 'uncommon', shop: true },   // Iron Wave
   graceful: { name: 'Graceful Degradation', cost: 1, kind: 'action', abs: { any: 8 }, draw: 1, tags: ['ops'], text: 'Absorb {any} load of any kind. Draw 1. Serve something rather than nothing.', art: 'shed', rarity: 'uncommon', shop: true },   // Shrug It Off

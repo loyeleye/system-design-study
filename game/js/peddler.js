@@ -2,7 +2,8 @@
 // append-only diary of everything you do. From chapter 3 she turns up somewhere new in Pingsby each loop, with four
 // modest cards tucked inside her coat at full price. Once the North Road opens she follows you there and opens a real
 // shop: every card on the shelf, two of them on sale each loop. The road places her and calls SD.peddler.open({ full: true }).
-// Bought cards join your starting deck in every later run unless you bench them.
+// Bought cards unlock for good as card rewards (S.cardPool in js/state.js): from the next run on they can be offered
+// after any fight. Quest prize cards are the ones that join your starting deck (S.save.cardLib), and can be benched.
 // After her chapter 7 quest (js/sidequests.js, "Right to Be Forgotten (Please)") the road shop adds a Rare Shelf, like
 // the rare slot in a Slay the Spire shop: one rare or Ancient card each loop, at a rare price.
 (function () {
@@ -28,7 +29,7 @@
     steppewind: { name: 'Steppe Wind', cost: 0, xcost: true, kind: 'action', xmit: 9, tags: ['ops'], text: 'Spend all your Capacity. Mitigate 9 for each one spent. It has been blowing since before the Cloud.', art: 'wave-crest', rarity: 'ancient', concept: 'nines' },
     dombra: { name: 'Two-String Dombra', cost: 1, kind: 'infra', each: { any: 4 }, eachMit: 2, tags: ['backoff', 'ops'], text: 'Infra. Absorb 4 load and mitigate 2 each turn. Two strings: one for retries, one for jitter.', art: 'linked-rings', rarity: 'ancient', concept: 'backoff' }
   });
-  const ANCIENT = ['berkut', 'diary', 'yurt', 'shred', 'steppewind', 'dombra'];
+  const ANCIENT = P.ANCIENT = ['berkut', 'diary', 'yurt', 'shred', 'steppewind', 'dombra'];
   // Prices sit above the whole shop (150-400), as a Slay the Spire rare does over a common.
   P.shelfPrice = id => SD.cards[id].rarity === 'ancient' ? 750 : 500;
   P.shelfOpen = () => !!S.save.flags.aigShelf;
@@ -37,9 +38,10 @@
     const sv = S.save, f = sv.flags;
     if (!P.shelfOpen()) return null;
     if (f.aigShelfLoop !== sv.loop) {
-      const lib = (sv.cardLib || []).map(x => x.id);
+      // Anything you can already be offered (bought, or a rare you won by clearing its chapter) stays off it.
+      const have = S.unlockedCards();
       const rares = Object.values(SD.chapters).map(c => c.rareCard).filter(id => id && SD.cards[id]);
-      const pool = ANCIENT.concat(rares).filter(id => !lib.includes(id));
+      const pool = ANCIENT.concat(rares).filter(id => !have.includes(id));
       f.aigShelfLoop = sv.loop; f.aigShelfCard = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
       S.persist();
     }
@@ -58,7 +60,7 @@
   P.sales = function () {
     const sv = S.save, f = sv.flags;
     if (f.aigSaleLoop !== sv.loop) {
-      const lib = (sv.cardLib || []).map(x => x.id);
+      const lib = S.cardPool();
       const pool = SD.cardShop.map(x => x.id).filter(id => !lib.includes(id)).sort(() => Math.random() - 0.5);
       f.aigSaleLoop = sv.loop; f.aigSales = pool.slice(0, 2);
       S.persist();
@@ -71,7 +73,7 @@
     { s: 'you', t: 'Do I... know you?' },
     { s: 'aigerim', t: "Aigerim. From the steppe, far east of here. I sell cards. Only to people I've chosen. I've chosen you.", e: 'blush' },
     { s: 'aigerim', t: "My diary is append-only, like a good log. Every page is you. I can't delete any of them. I checked.", e: 'yandere' },
-    { s: 'aigerim', t: "Look inside my coat. No, not like that. The cards! Pick one. They'll be in your deck every run. Like me, but in card form.", e: 'blush' }
+    { s: 'aigerim', t: "Look inside my coat. No, not like that. The cards! Pick one. Once it's yours it turns up after your fights, every run. Like me, but in card form.", e: 'blush' }
   ];
   const HELLO = [
     "Oh, what a coincidence. I happened to be standing exactly where you'd walk. Again.",
@@ -120,40 +122,43 @@
     let tab = 'shop';
     const stock = () => full ? SD.cardShop : SD.cardShop.filter(it => COAT.includes(it.id));
     const render = () => {
-      const sales = full ? P.sales() : [], owned = id => sv.cardLib.find(x => x.id === id);
+      const sales = full ? P.sales() : [], owned = id => S.cardPool().includes(id), deck = id => sv.cardLib.find(x => x.id === id);
       const price = it => sales.includes(it.id) ? Math.round(it.cost / 2) : it.cost;
       const pitch = full ? "Every card I own, for you. Two are on sale. I chose which. You know why."
         : "Psst. Cards. Hand-picked. Don't tell Ayo, he thinks cards are a fad.";
       let body = `<div class="shopkeep">${SD.art.portrait('aigerim', 72)}<p>"${U.esc(pitch)}"</p></div>
         <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span></div>
-        <div class="tabs" role="tablist">${[['shop', full ? 'Shop' : 'Her coat'], ['lib', `Your cards (${sv.cardLib.length})`]].map(([k, l]) => `<button role="tab" class="tab${k === tab ? ' on' : ''}" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
+        <div class="tabs" role="tablist">${[['shop', full ? 'Shop' : 'Her coat'], ['lib', `Your cards (${sv.cardLib.length + S.cardPool().length})`]].map(([k, l]) => `<button role="tab" class="tab${k === tab ? ' on' : ''}" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
       if (tab === 'shop') {
         const sh = full && P.shelf();
         if (sh) {
           const have = owned(sh), p = P.shelfPrice(sh);
           body += `<div class="aig-shelf"><h4>THE RARE SHELF · ${SD.cards[sh].rarity === 'ancient' ? 'ANCIENT' : 'RARE'}</h4><p class="muted small">One card a loop. "My grandmother's eagle brought this one. It chose you. I may have helped it choose."</p>
-            <div class="cardgrid pick"><div class="buy">${U.cardHtml({ id: sh }, { i: sh, dim: have || sv.shards < p })}<span class="price">${have ? 'Owned' : p + ' shards'}</span></div></div></div>`;
+            <div class="cardgrid pick"><div class="buy">${U.cardHtml({ id: sh }, { i: sh, dim: have || sv.shards < p })}<span class="price">${have ? 'Unlocked' : p + ' shards'}</span></div></div></div>`;
         } else if (full && P.shelfOpen()) body += '<div class="aig-shelf"><h4>THE RARE SHELF</h4><p class="muted small">Empty. You own everything on it. She is so proud of you it is frightening.</p></div>';
-        body += `<p class="muted small">Bought cards join your starting deck in every future run.${full ? ' Two cards are half price each loop.' : ' She opens a proper shop later, somewhere you are going.'}</p>
+        body += `<p class="muted small">Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on.${full ? ' Two cards are half price each loop.' : ' She opens a proper shop later, somewhere you are going.'}</p>
           <div class="cardgrid pick">${stock().map(it => {
             const have = owned(it.id), p = price(it);
-            return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || sv.shards < p })}<span class="price">${have ? 'Owned' : sales.includes(it.id) ? `<s>${it.cost}</s> <b>${p}</b> · SALE` : p + ' shards'}</span></div>`;
+            return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || sv.shards < p })}<span class="price">${have ? 'Unlocked' : sales.includes(it.id) ? `<s>${it.cost}</s> <b>${p}</b> · SALE` : p + ' shards'}</span></div>`;
           }).join('')}</div>`;
       } else {
-        body += sv.cardLib.length ? `<p class="muted small">Tap a card to bench it or put it back. Benched cards stay yours but skip your next runs.</p>
-          <div class="cardgrid pick">${sv.cardLib.map(x => `<div class="buy">${U.cardHtml({ id: x.id }, { i: x.id, dim: !x.on })}<span class="price">${x.on ? 'In your deck' : 'Benched'}</span></div>`).join('')}</div>`
-          : '<p class="muted small">Nothing yet. She has already written down which one you will buy first.</p>';
+        const pool = S.cardPool();
+        body += pool.length ? `<p class="muted small">Unlocked: these can turn up as card rewards after any fight.</p>
+          <div class="cardgrid pick">${pool.map(id => `<div class="buy">${U.cardHtml({ id }, { i: '' })}<span class="price">In card rewards</span></div>`).join('')}</div>` : '';
+        body += sv.cardLib.length ? `<p class="muted small">Quest prizes join your starting deck. Tap one to bench it or put it back; benched cards stay yours but skip your next runs.</p>
+          <div class="cardgrid pick">${sv.cardLib.map(x => `<div class="buy">${U.cardHtml({ id: x.id }, { i: x.id, dim: !x.on })}<span class="price">${x.on ? 'In your deck' : 'Benched'}</span></div>`).join('')}</div>` : '';
+        if (!pool.length && !sv.cardLib.length) body += '<p class="muted small">Nothing yet. She has already written down which one you will buy first.</p>';
       }
       const b = U.panel(body, { title: full ? "AIGERIM'S CARD SHOP" : "AIGERIM'S COAT", cls: 'wide' });
       b.querySelectorAll('[data-tab]').forEach(el => el.onclick = () => { tab = el.dataset.tab; render(); });
       b.querySelectorAll('.card').forEach(el => el.onclick = () => {
         const id = el.dataset.i;
-        if (tab === 'lib') { const x = owned(id); x.on = !x.on; S.persist(); AU.sfx('blip'); render(); return; }
+        if (tab === 'lib') { const x = deck(id); if (!x) return; x.on = !x.on; S.persist(); AU.sfx('blip'); render(); return; }
         const shelf = full && P.shelf() === id;
         const it = shelf ? { id, cost: P.shelfPrice(id) } : stock().find(x => x.id === id), p = it && (shelf ? it.cost : price(it));
         if (!it || owned(id) || sv.shards < p) return;
-        sv.shards -= p; sv.cardLib.push({ id, on: true }); S.persist();
-        U.system('CARD GET!', `${U.esc(SD.cards[id].name)} joins your starting deck from your next run. "${U.esc(pick(BUY))}"`, 'gold'); render();
+        sv.shards -= p; S.cardPool().push(id); S.persist();
+        U.system('CARD UNLOCKED!', `${U.esc(SD.cards[id].name)} can turn up as a card reward from your next run. "${U.esc(pick(BUY))}"`, 'gold'); render();
       });
     };
     render();

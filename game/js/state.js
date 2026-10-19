@@ -108,8 +108,21 @@
   S.syncChapter = function () {
     for (const k in SD.chapters) if (S.chapterReached(+k) && (S.save.chapter || 1) < +k) S.save.chapter = +k;
   };
+  // Cards bought at Aigerim's and Toro's shops unlock as card rewards for good (S.save.cardPool). They used to join
+  // the starting deck (S.save.cardLib, where quest prizes still go), so an older save moves them over once.
+  S.cardPool = function () {
+    const sv = S.save;
+    if (!sv.cardPool) {
+      const shop = new Set((SD.cardShop || []).map(x => x.id).concat((SD.peddler && SD.peddler.ANCIENT) || [],
+        (SD.cardExchange || []).map(x => x.id), Object.values(SD.chapters).map(c => c.rareCard).filter(Boolean)));
+      const lib = sv.cardLib || [];
+      sv.cardPool = lib.filter(x => shop.has(x.id)).map(x => x.id);
+      sv.cardLib = lib.filter(x => !shop.has(x.id));
+    }
+    return sv.cardPool;
+  };
   S.unlockedCards = function () {
-    const out = [];
+    const out = S.cardPool().slice();
     for (const lvl in SD.cardUnlocks) if (S.save.level >= +lvl) out.push(...SD.cardUnlocks[lvl]);
     for (const ch in SD.chapterCards) if (S.chapterReached(+ch)) out.push(...SD.chapterCards[ch]);
     // A chapter's rare card is the prize for clearing it.

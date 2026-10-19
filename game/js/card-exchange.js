@@ -11,8 +11,8 @@
 // card can wait for a turn with Capacity to spare). Sleeper Stock, the rarest, hands Replay 2 to a random card you
 // already own, so it is as good as your deck and needs nothing from it.
 //
-// Bought with Memory Shards and kept in S.save.cardLib like Aigerim's cards (js/peddler.js), so they join your
-// starting deck in every later run; bench them in the "Your cards" tab of her shop. Prices sit above her Rare Shelf
+// Bought with Memory Shards, like Aigerim's cards (js/peddler.js): a bought card unlocks for good as a card reward
+// (S.cardPool in js/state.js), so from the next run on it can be offered after any fight. Prices sit above her Rare Shelf
 // (500-750) and alongside the Exchange's relics (850-1800). Shelves open with your Guild rank, as the relics' do.
 // The new card effects, `nextCap` (+Capacity next turn), `replay`, `retain` and `gem`, are in js/run.js.
 (function () {
@@ -68,30 +68,29 @@
   // Resolves true if you shopped, false to let Toro just chat.
   function open() {
     const sv = S.save, rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
-    sv.cardLib = sv.cardLib || [];
     const pitch = pick(PITCH);
     return new Promise(res => {
       let shopped = false;
-      const owned = id => sv.cardLib.some(x => x.id === id);
+      const owned = id => S.cardPool().includes(id);
       const render = () => {
         const shelves = ['A', 'S', 'Floor'].map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
           return `<p class="q-ctx">${LABEL[r]}${ok ? '' : ` · unlocks at ${SHELF[r]}-Rank`}</p><div class="cardgrid pick">${SD.cardExchange.filter(it => it.rank === r).map(it => {
             const have = owned(it.id);
-            return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || !ok || sv.shards < it.cost })}<span class="price">${have ? 'Owned' : it.cost + ' shards'}</span></div>`;
+            return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || !ok || sv.shards < it.cost })}<span class="price">${have ? 'Unlocked' : it.cost + ' shards'}</span></div>`;
           }).join('')}</div>`;
         }).join('');
         const b = U.panel(`<div class="shopkeep">${SD.art.portrait('toro', 72)}<p>"${U.esc(pitch)}"</p></div>
           <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
-          <p class="muted small">Bought cards join your starting deck in every future run. Bench them at Aigerim's shop on the road. Replay: the card goes again, free. Retain: it stays in your hand when your turn ends.</p>
+          <p class="muted small">Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on. Replay: the card goes again, free. Retain: it stays in your hand when your turn ends.</p>
           ${shelves}<div class="row"><button class="ghost" id="cx-chat">Just chat</button></div>`, { title: "THE EXCHANGE · TORO'S CARDS", cls: 'wide', onClose: () => res(shopped || 'closed') });
         b.querySelector('#cx-chat').onclick = () => { U.closePanel(); res(false); };
         b.querySelectorAll('.card').forEach(el => el.onclick = () => {
           const it = SD.cardExchange.find(x => x.id === el.dataset.i);
           if (!it || owned(it.id) || sv.shards < it.cost || rankAt(SHELF[it.rank]) > mine) return;
-          sv.shards -= it.cost; sv.cardLib.push({ id: it.id, on: true }); S.persist(); shopped = true;
+          sv.shards -= it.cost; S.cardPool().push(it.id); S.persist(); shopped = true;
           if (AU) AU.sfx('coin');
-          U.system('CARD GET!', `${U.esc(SD.cards[it.id].name)} joins your starting deck from your next run. "${U.esc(pick(BUY))}"`, 'gold'); render();
+          U.system('CARD UNLOCKED!', `${U.esc(SD.cards[it.id].name)} can turn up as a card reward from your next run. "${U.esc(pick(BUY))}"`, 'gold'); render();
         });
       };
       render();
