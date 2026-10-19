@@ -1,15 +1,16 @@
 // House interiors and the residential row (docs: /mnt/project-files/living-npcs/design.md, "Interiors").
 // Walking through a door with a room behind it loads a small room map instead of a menu: Mio's Treehouse, Seymour's
-// Bunker, the Cache Café with Wen's flat upstairs, and Lexi's house on the residential row. Whoever the schedules
-// put behind that door (SD.folk.residents) is inside; talking to the owner opens the same menu as today, and talking
-// to a villager outside their door still skips the room and opens the menu straight away (js/main.js).
-// The row's other houses (Kaito, Doug, Coo, Bru, Ayo) have no room yet: knocking gets whoever is home, or a note.
+// Bunker, the Cache Café with Wen's flat upstairs, and every house round the residential row's cul-de-sac (Lexi,
+// Kaito, Doug, Coo, Bru and Ayo). Whoever the schedules put behind that door (SD.folk.residents) is inside; talking
+// to the owner opens the same menu as today, and talking to a villager outside their door still skips the room and
+// opens the menu straight away (js/main.js). Walking into a row house when its owner is out shows the note on the
+// door first; nobody in Pingsby locks up. Bru is never home at night, and nothing in her room says where she goes.
 // In chapter 10's storm everyone is indoors and worried, so each room has its people in it with a worried word.
 //
 //   SD.interiors.has(door)     true if a room is behind that door
 //   SD.interiors.enter(door)   go inside; resolves when you walk back out
 //   SD.interiors.row(door)     true for a residential row door
-//   SD.interiors.knock(door)   knock on a row door with no room
+//   SD.interiors.knock(door)   knock on a row door (goes in, now that every row house has a room)
 //   SD.interiors.ROOMS         the rooms, for later threads (relationship scenes) to place people in
 //
 // Art: one PixelLab backdrop per room (assets/img/interiors/r-*.webp, 384x288, 32px a tile) made by
@@ -24,6 +25,9 @@
   // Map legend: # solid, . floor, D the way out, U up the café stairs, S down the flat's stairs.
   // spots: where people stand ([x, y, face]; y can be fractional, to stand behind a counter). props: things you
   // can look at, on solid tiles next to the floor. windows (in picture pixels) show the weather; lights glow at night.
+  // sleep: where the owner sleeps on a night outside the storm: the tile you talk to them from (on the bed, next to
+  // the floor), where the "Zz" floats (in tiles), and what you see. mat: the picture has no door, so a doormat is
+  // drawn over the way out.
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -31,6 +35,7 @@
         '#####...####', '#####.....##', '#####......#', '##...DD...##'],
       enter: [5, 7, 'north'],
       spots: { mio: [7, 5, 'south'] },
+      sleep: { at: [4, 6], zz: [2, 6.4], t: [['narr', 'Mio is fast asleep under the patchwork quilt, holding a crayon like a sword.'], ['pip', 'Shh. Tomorrow she draws you again. She just doesn\'t know it yet.']] },
       windows: [{ c: [195, 57, 32] }],
       lights: [{ x: 2, y: 4, r: 2.4 }],
       props: [
@@ -101,11 +106,96 @@
         { x: 3, y: 3, t: () => ['Shelves, alphabetised, then re-alphabetised by how dramatic the titles are.'] },
         { x: 9, y: 5, t: () => ['A spare eyepatch on the pillow. The Eye of Total Recall needs its rest.'] }
       ]
+    },
+    kaito: {
+      name: "KAITO'S HOUSE", door: 'Y', owner: 'kaito', mat: true,
+      map: ['############', '############', '############', '############', '##..########',
+        '##.......###', '##.......###', '##..#....###', '###.#DD..###'],
+      enter: [5, 7, 'north'],
+      spots: { kaito: [6, 5, 'south'] },
+      windows: [{ r: [172, 34, 56, 60] }],
+      lights: [{ x: 10.4, y: 3.2, r: 3 }],
+      props: [
+        { x: 2, y: 3, t: () => ['A whiteboard of boxes and arrows. Every box says KAITO. Every arrow points at another KAITO.', 'In the corner, very small: "single point of failure?" It has been rubbed out, and written again.'] },
+        { x: 5, y: 4, t: () => ['A weight rack. Each dumbbell is labelled with a number from 1 to 46, one for every instance.'] },
+        { x: 7, y: 4, t: () => ['A mirror, angled just so. A sticky note on the glass says "Good morning, all of you."'] },
+        { x: 4, y: 7, t: () => ['A ring light, switched on. Nobody is in front of it. It is lighting the room for the fans.'] },
+        { x: 9, y: 6, t: () => ['A navy blanket, folded with military corners. The pillow has a star stitched on it. He stitched it himself, badly.'] }
+      ]
+    },
+    doug: {
+      name: "DOUG'S HOUSE", door: 'D', owner: 'doug', mat: true,
+      map: ['############', '############', '############', '############', '####...#####',
+        '####....####', '####....####', '###.....####', '###..DD.####'],
+      enter: [5, 7, 'north'],
+      spots: { doug: [4, 6, 'west'] },
+      sleep: { at: [8, 5], zz: [9.6, 3.6], t: [['narr', 'Doug is asleep on top of the covers, still in his hoodie. One hand twitches now and then, refreshing something.'], ['pip', 'He set four alarms. Three of them are for Kevin.']] },
+      windows: [{ r: [168, 22, 92, 48] }],
+      lights: [{ x: 3, y: 4, r: 2.6 }],
+      props: [
+        { x: 7, y: 4, t: () => ["A little laptop on the bedside table, sleeping under a blanket the size of a tea towel. The sticker on its lid says KEVIN.", 'Its light blinks once every three seconds. Doug says that is snoring.'] },
+        { x: 3, y: 4, t: () => ['A server rack, humming. One light is red. A label underneath says "the red one is fine (probably)".'] },
+        { x: 2, y: 7, t: () => ['Three laptops and enough cable to rig a ship. One screen says "Refresh in 4... 3..."'] },
+        { x: 5, y: 3, t: () => ['The radiator, with socks drying on it. Cables run under it, over it and, somehow, through it.'] },
+        { x: 8, y: 6, t: () => doug() ? ['The bed. Doug in it, mostly.'] : ['An unmade bed. Under the pillow, a printed runbook titled WHAT TO DO IF KEVIN COMES BACK.'] }
+      ]
+    },
+    coo: {
+      name: "COO'S HOUSE", door: 'Q', owner: 'coo', mat: true,
+      map: ['############', '############', '############', '############', '##.....#####',
+        '####......##', '####......##', '####.....###', '#####DD#####'],
+      enter: [5, 7, 'north'],
+      spots: { coo: [6, 4, 'south'] },
+      sleep: { at: [8, 4], zz: [8.6, 4], t: [['narr', 'Coo is roosting in the big straw nest, head tucked under one wing.'], ['narr', 'Even asleep, one foot is resting on a letter. Just in case.']] },
+      windows: [{ c: [192, 48, 32] }],
+      lights: [{ x: 6, y: 2, r: 3 }],
+      props: [
+        { x: 3, y: 3, t: () => ['Pigeonholes from floor to ceiling, every one labelled with a villager\'s name. Yours is there too, stuffed full.'] },
+        { x: 5, y: 3, t: () => ['A bench under the round window, worn smooth in one spot exactly the size of a pigeon.'] },
+        { x: 3, y: 6, t: () => ['The sorting table. A parcel marked "DELIVER ONCE" sits next to an identical parcel marked "DELIVER ONCE (AGAIN)".'] },
+        { x: 9, y: 7, t: () => ['A sack of undelivered post. The tag says RETRY QUEUE. It is surprisingly heavy.'] },
+        { x: 9, y: 4, t: () => coo() ? ['The nest. Coo is in it. Do not disturb the nest.'] : ['A big straw nest, with a pillow in it shaped like a croissant.'] }
+      ]
+    },
+    bru: {
+      name: "BRU'S HOUSE", door: 'M', owner: 'bru', mat: true,
+      map: ['############', '############', '############', '############', '######..####',
+        '####......##', '####......##', '####......##', '#####DD...##'],
+      enter: [5, 7, 'north'],
+      spots: { bru: [7, 5, 'south'] },
+      windows: [{ r: [158, 28, 82, 60] }],
+      lights: [{ x: 6, y: 2.4, r: 3 }],
+      props: [
+        { x: 3, y: 5, t: () => ['A cot, made up so tightly you could bounce a coin off it. It looks slept in about once a month.', 'On the wall above it, photos of five brothers and sisters, all grinning, all with her eyebrows.'] },
+        { x: 4, y: 4, t: () => ['A washtub, dry. On the rim, a rubber duck in a tiny Guild uniform.'] },
+        { x: 8, y: 4, t: () => ['A corkboard copy of the Brújula Board, covered in red string. Every villager has a pin, and every pin has a string.', 'There is no pin for Bru.'] },
+        { x: 9, y: 4, t: () => ['A brass compass on the desk. Its needle swings slowly round the room, as if it is counting heads.'] },
+        { x: 6, y: 3, t: () => ['The window looks back up the lane towards town. You can see the Guild\'s roof from here, if you lean.'] }
+      ]
+    },
+    ayo: {
+      name: "AYO'S HOUSE", door: 'O', owner: 'ayo',
+      map: ['############', '############', '############', '############', '############',
+        '#####...####', '####....####', '###......###', '##DD########'],
+      enter: [3, 7, 'north'],
+      spots: { ayo: [5, 6, 'west'] },
+      sleep: { at: [8, 5], zz: [9.5, 3.7], t: [['narr', 'Ayo is asleep under the red blanket, snoring like a bellows. The fire snores back.'], ['pip', 'Even her snores are on-prem.']] },
+      windows: [{ r: [192, 40, 27, 33] }],
+      lights: [{ x: 2.9, y: 4.6, r: 3.6 }],
+      props: [
+        { x: 6, y: 4, t: () => ['Above the table, hammers hang in a row, each with a name card: MARGARET, BIG MARGARET, LITTLE MARGARET, KEVIN (NOT THAT KEVIN).'] },
+        { x: 3, y: 6, t: () => ['The hearth. On the mantel sits a clay pot, warm to the touch, with a coal glowing inside it.', ayo() ? 'Ayo told you once: her grandmother\'s fire. The Forge has the rest of it.' : 'A card propped against it says "Do not put out. Do not let Cron near it."'] },
+        { x: 9, y: 7, t: () => ['A little anvil by the bed, for ideas that come in the night.'] },
+        { x: 1, y: 6, t: () => ['Fire irons, a poker and a pair of tongs. The tongs have a name card too: GRANDMA.'] }
+      ]
     }
   };
-  const BY_DOOR = { H: 'treehouse', W: 'bunker', C: 'cafe', X: 'lexi' };
-  // Doors and whose building it is: what talking to the owner opens (js/main.js visit), as today.
-  const VISIT = { H: 'H', W: 'W', C: 'C', X: 'K' };
+  const home = id => !!SD.folk && SD.folk.residents(ROOMS[id].door).includes(id);
+  const doug = () => home('doug'), coo = () => home('coo'), ayo = () => home('ayo');
+  const BY_DOOR = { H: 'treehouse', W: 'bunker', C: 'cafe', X: 'lexi', Y: 'kaito', D: 'doug', Q: 'coo', M: 'bru', O: 'ayo' };
+  // Doors and whose building it is: what talking to the owner opens (js/main.js visit), as today. Kaito and Doug
+  // have no building, so talking to them at home is the same as talking to them anywhere.
+  const VISIT = { H: 'H', W: 'W', C: 'C', X: 'K', Y: 'kaito', D: 'doug', Q: 'P', M: 'U', O: 'F' };
   I.has = door => !!BY_DOOR[door] && !!SD.interiorsArt;
 
   // ---------- The residential row ----------
@@ -122,8 +212,8 @@
     kaito: 'A note on the door: "OUT. TRAINING. OR POSING. NOT POSING."',
     doug: 'A note on the door: "At work. If this note looks out of date, that\'s Kevin."',
     coo: 'A sign on the door: "Out on delivery. Delivered at least once."',
-    bru: 'Nobody home. Through the window: a cot that looks slept in about once a month, photos of five brothers and sisters, and a corkboard copy of the Brújula Board, covered in red string.',
-    ayo: 'Locked. Through the window, hammers hang on the wall, each with a name card. A note on the door says "At the Forge. Obviously."'
+    bru: 'Nobody home. The door isn\'t locked. A sign on it says "Back soon. Counted, not guessed."',
+    ayo: 'A note on the door says "At the Forge. Obviously."'
   };
   I.knock = async function (door) {
     if (I.has(door)) return I.enter(door);
@@ -196,7 +286,15 @@
     for (let i = 0; i < 3; i++) ctx.fillRect(x + 4 * k, y + (3 + i * 6) * k, w - 8 * k, 3 * k);
   }
 
-  let sc = null, cur = null, busy = false, done = null;
+  // A doormat over the way out, for pictures drawn without a door.
+  function mat(ctx, r, ts) {
+    const y = r.map.length - 1, xs = [...r.map[y]].map((c, x) => c === 'D' ? x : -1).filter(x => x >= 0);
+    const x0 = xs[0] * ts + ts * 0.15, w = (xs.length - 0.3) * ts;
+    ctx.fillStyle = '#5a3a2a'; ctx.fillRect(x0, y * ts + ts * 0.2, w, ts * 0.7);
+    ctx.strokeStyle = '#c98a4b'; ctx.lineWidth = Math.max(1, ts / 16);
+    ctx.strokeRect(x0 + ts * 0.1, y * ts + ts * 0.3, w - ts * 0.2, ts * 0.5);
+  }
+  let sc = null, cur = null, busy = false, done = null, greeted = false;
   function def(key) {
     const r = ROOMS[key];
     return {
@@ -208,6 +306,7 @@
         if (ok(im)) ctx.drawImage(im, 0, 0, im.naturalWidth * ts / 32, im.naturalHeight * ts / 32);
         windows(ctx, r, ts, t);
         if (r.hatch) hatch(ctx, ts);
+        if (r.mat) mat(ctx, r, ts);
       },
       overlay(ctx) {
         // The room's name, top left, like a sign over the door.
@@ -219,16 +318,16 @@
       }
     };
   }
-  // Put everyone in their places: residents, the counter, customers, props, and Mio asleep under her quilt.
+  // Put everyone in their places: residents, the counter, customers, props, and whoever is asleep in bed.
   function cast(key) {
     const r = ROOMS[key], here = people(key), marks = SD.quests && SD.quests.marks ? SD.quests.marks() : {};
     const free = (r.spots._ || []).slice();
     const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, extra));
     let counter = null;
     here.forEach(id => {
-      if (key === 'treehouse' && id === 'mio' && !storm() && block() === 'night') {
-        // Asleep under the patchwork quilt: a slow "Zz" over the pillow, two tiles left of where you talk to her.
-        sc.addActor('mio', { x: 4, y: 6, draw: zz, asleep: true });
+      if (r.sleep && id === r.owner && !storm() && block() === 'night') {
+        // Asleep: a slow "Zz" over the pillow, and you talk to them from beside the bed.
+        sc.addActor(id, { x: r.sleep.at[0], y: r.sleep.at[1], draw: zz(r.sleep.zz), asleep: r.sleep.t });
         return;
       }
       if (r.counter && !counter && (id === 'wen' || id === 'uptima')) { counter = id; actor(id, r.counter, storm() ? { worried: true } : {}); return; }
@@ -243,11 +342,11 @@
     }
     r.props.forEach((p, i) => sc.addActor('prop' + i, { x: p.x, y: p.y, draw() {}, prop: p }));
   }
-  function zz(ctx, x, y, ts, t) {
+  const zz = ([px, py]) => function (ctx, x, y, ts, t) {
     ctx.font = `700 ${Math.round(ts * 0.36)}px Fredoka, sans-serif`; ctx.textAlign = 'center';
     ctx.strokeStyle = '#2b2340'; ctx.lineWidth = 3; ctx.fillStyle = '#fff';
     [0, 1].forEach(i => {
-      const k = (t * 0.5 + i * 0.5) % 1, zx = x - ts * 2.5 + k * ts * 0.5, zy = y - ts * 0.55 - k * ts * 0.7;
+      const k = (t * 0.5 + i * 0.5) % 1, zx = px * ts + k * ts * 0.5, zy = py * ts - k * ts * 0.7;
       ctx.globalAlpha = Math.sin(k * Math.PI);
       ctx.strokeText(i ? 'Z' : 'z', zx, zy); ctx.fillText(i ? 'Z' : 'z', zx, zy);
     });
@@ -306,15 +405,19 @@
     const show = SD.main.show;
     SD.main.show = function () { if (cur) leave(); return show.apply(this, arguments); };
   }
-  I.enter = function (door) {
+  I.enter = async function (door) {
     const key = BY_DOOR[door];
-    if (!key) return Promise.resolve();
+    if (!key) return;
+    // A row house with its owner out: the note on the door, then in you go.
+    const id = ROW[door];
+    if (id && AWAY[id] && !F().residents(door).length) await U.dialog([{ s: 'narr', t: storm() ? 'Nobody\'s home. The windows are dark; whoever lives here is riding out the storm somewhere else.' : AWAY[id] }]);
     guard();
     const hub = document.getElementById('hub-canvas');
     canvas();
     hub.hidden = true; cv.hidden = false;
     go(key);
     F().meet(ROOMS[key].owner);
+    greeted = false;
     if (SD.weather) SD.weather.sync();
     return new Promise(res => { done = res; });
   };
@@ -344,10 +447,7 @@
         if (!a.over) { await U.dialog([{ s: 'narr', t: 'Nobody behind the counter. A card on the till says "Back in a minute. Wen. (Just outside, dear.)"' }]); return; }
         return await person(a.over);
       }
-      if (a.asleep) {
-        await U.dialog([{ s: 'narr', t: 'Mio is fast asleep under the patchwork quilt, holding a crayon like a sword.' }, { s: 'pip', t: 'Shh. Tomorrow she draws you again. She just doesn\'t know it yet.' }]);
-        return;
-      }
+      if (a.asleep) { await U.dialog(a.asleep.map(([s, t]) => ({ s, t }))); return; }
       await person(id);
     } finally {
       busy = false;
@@ -363,7 +463,11 @@
       if (w) await U.dialog([w]);
       if (id !== r.owner) { if (SD.quests.pending(id).length) await SD.quests.talk(id); return; }
     }
-    if (id === r.owner) return SD.main.visit(VISIT[r.door]);
+    if (id === r.owner) {
+      // A row owner says hello the first time you talk to them at home.
+      if (!storm() && !greeted && AT_HOME[id]) { greeted = true; await U.dialog(AT_HOME[id].map(([s, t]) => ({ s, t }))); }
+      return SD.main.visit(VISIT[r.door]);
+    }
     if (storm()) return;
     await F().chat(id);
   }
