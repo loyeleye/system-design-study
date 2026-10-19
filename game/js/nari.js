@@ -122,7 +122,9 @@
   // ---------- The North Road and its places ----------
   // She stands a few steps from where you come in, on open ground off the path, away from doors. The Exchange is
   // different: she lives there, and js/nari-home.js already has her dancing outside her own door until her gift is
-  // claimed, so there this file only answers when you talk to her.
+  // claimed, so there this file only answers when you talk to her. SPOTS pins her somewhere instead: [x, y, face].
+  // In the PR Club she dances on the grass behind the studio, between its two trees.
+  const SPOTS = { club: [5, 2, 'south'] };
   function spot(sc) {
     const def = sc.def, [sx, sy] = def.enter || def.back.S;
     const doors = new Set(Object.keys(def.back || {}).concat(Object.keys(def.doors || {})));
@@ -167,7 +169,7 @@
     let a = sc.actors.nari_sighting;
     if (!N.due(key)) { if (a && !a.leaving) sc.hide('nari_sighting', true); return; }
     if (!a) {
-      const [x, y, face] = spot(sc);
+      const [x, y, face] = SPOTS[key] || spot(sc);
       a = sc.addActor('nari_sighting', { x, y, face, sprite: SPRITE, still: true });
       a.speak = () => speak(key, () => vanish(sc, a));
     }
