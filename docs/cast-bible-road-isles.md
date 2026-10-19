@@ -211,79 +211,79 @@ Leilani grew up on Ferry Landing, the daughter and granddaughter of harbourmaste
 
 What Leilani wants is one thing the whole archipelago agrees on at the same moment. That is why she wrote the letter to Pingsby, and why the bridges matter to her more than she lets on. Her soft spot is Captain Kwame. When they were seven, the ferry left on time and left him behind on the dock overnight, and she sat with him and shared her tea. She still keeps a second cup of tea for him every evening, when he comes in to file the ferry log, and after the lighthouse opens she leaves one on its step too.
 
-By day she is at her board, with an afternoon on the harbour square, and she spends the night in the harbour office.
+By day she is at her board, chalking up the crossings. In the afternoon she watches for the ferry from the harbour square, and she spends the night in the harbour office, keeping an eye on the harbour from its window.
 
 ### Captain Kwame
 
 Kwame has captained the ferry for as long as anyone can say "late", and he has never once been on time. He calls it a feature. The truth is softer. The night he was left on the dock as a boy, he decided no ferry of his would ever leave anyone behind, so he waits for the last running passenger, the last parcel and, once, the last turtle. He still sails by the original schedule, the one with "ish" added in the margin in tidy handwriting, and he writes his logbook in the format from before the storm, which Lúcia keeps a whole dictionary for.
 
-He likes to say a captain should arrive last, and he likes even more that Leilani is always there when he does. He files the ferry log at the harbour office every evening, drinks her tea, and sleeps aboard. He will tell you he is eventually punctual. He is exactly as late every day, to the minute, and he is quietly proud of it.
+He likes to say a captain should arrive last, and he likes even more that Leilani is always there when he does. By day he waits at the end of the Landing's dock, looking back up the path in case anyone is still running for the boat. He files the ferry log at the harbour office desk every evening, drinks her tea, and sleeps aboard. He will tell you he is eventually punctual. He is exactly as late every day, to the minute, and he is quietly proud of it.
 
 ### Saule Apai
 
 Saule came from the steppe far to the east, where the sky is so big that you learn to count things properly: sheep, stars, late ferries. Her grandfather hunted with an eagle, her aunt could lift the yurt by herself, and her cousin went to the same yurt school as Aigerim's mother. She is strict, warm, and has marked Kwame late forty days in a row. Everyone calls her Apai in the end, even the Harbourmaster.
 
-As a girl she was the one who asked "But why?" until the grown-ups said "Because." She has never said "Because" to a child. Her secret is the Why Book, a fat notebook with a page for every question her pupils have ever asked, and a ribbon on each one she hasn't answered yet. She keeps one gradebook per subject, and she counts the Why Book as a subject. She teaches inside the school in the morning, takes her milk tea out on the path in front of the school in the afternoon, and goes home at night.
+As a girl she was the one who asked "But why?" until the grown-ups said "Because." She has never said "Because" to a child. Her secret is the Why Book, a fat notebook with a page for every question her pupils have ever asked, and a ribbon on each one she hasn't answered yet. She keeps one gradebook per subject, and she counts the Why Book as a subject. She teaches inside the school in the morning, reading the day's question out of the Why Book at the big table. In the afternoon she takes her milk tea out on the path in front of the school and keeps an eye on the class at break. In the evening she sweeps the school step and locks up, and she goes home at night.
 
 ### The children of the Isles School
 
 Three small students, aged six to nine, who raise their hands before anyone has finished a sentence. They ask why the ferry is late, how long "eventually" is (is it longer than lunch?), and why the sea is salty. One wants to be a ferry when they grow up, because ferries never have to hurry. One has a sister and a very loud cat. They play "Incident" at break, refuse to rub anything out of their workbooks since Mang Tomas visited, and draw moustaches on Uptima's poster.
 
-They are the Isles' teach-back: whatever you fix, they ask you to explain it to them, and they cheer when it makes sense. They want to know everything, and their soft spot is Saule Apai, who never tells them to stop asking. Mornings they are in class, in the evening they play on the harbour square, and at night they are home in bed.
+They are the Isles' teach-back: whatever you fix, they ask you to explain it to them, and they cheer when it makes sense. They want to know everything, and their soft spot is Saule Apai, who never tells them to stop asking. Mornings they are in class round the Why Book. At afternoon break they crowd round Apai on the path to ask her why, and in the evening they play on the harbour square and watch the ferry come in, because one of them is studying to be one. At night they are home in bed.
 
 ### Madame Farida
 
 Farida learnt her trade as a girl apprenticed to the market ledger, where she once watched a quiet woman balance a whole year's books in one evening by candlelight and sign it "K." She has run the Bank of the Isles ever since on one rule: balances must balance, and everything else is decoration. She is precise, dry, and very polite to Old Ruth in the way that makes the bank chilly. Her clerks Amira and Bashir are honest, fast, and now write `balance = balance + 50` for every deposit.
 
-She calls Admiral Mutex a hammer that sees every ship as a nail, and she has been bringing him her mother's ma'amoul for years, anonymously, in a tin. He locks them away and has never eaten one. She is in the bank all afternoon and counts the vault again by lamplight at night.
+She calls Admiral Mutex a hammer that sees every ship as a nail, and she has been bringing him her mother's ma'amoul for years, anonymously, in a tin. He locks them away and has never eaten one. Mornings and evenings she stands outside the bank with the Admiral's harbour receipts, counting the boats in his harbour against them. She is at the ledger all afternoon and counts the vault again by lamplight at night.
 
 ### Admiral Mutex
 
 The Admiral kept the Ledger's harbour safe for forty years with one rule: one ship at a time. It started with the Great Omelette, when he was a young officer who waved two egg boats into the same berth at the same moment. Nobody was hurt. Nothing else was ever the same. Since then he has locked the harbour, the vault door, the bakery on principle, the tide once (it took three days to get the sea back), his wardrobe, his moustache wax and his biscuit tin, whose key is inside the biscuit tin.
 
-Under the moustache he is gentle and a little lonely. After you clear his harbour queue he is practising "a lock for the rows that need it", and he fishes on Sundays from a rock Gary offered him. He stands watch over the harbour in the afternoon and goes home at night. He has always known who leaves the ma'amoul.
+Under the moustache he is gentle and a little lonely. After you clear his harbour queue he is practising "a lock for the rows that need it", and he fishes on Sundays from a rock Gary offered him. Mornings and evenings he minds the harbour berth himself and waves ships in one at a time. In the afternoon he stands watch over it from the top of the path, and he goes home at night. He has always known who leaves the ma'amoul.
 
 ### Mang Tomas
 
 Tomas has run the Log Mill for forty years on a design signed "K.": the sheds in a row, the basket, the logbook, and underneath, "Newest first. Always." He has never edited a plank; a change is a new plank, and the old one leaves at the night merge "like a polite guest". The logbook lives in a tin box, because he is not a monster. He calls everyone "anak", visits the school to talk about planks, and bakes, which is how he ended up both invited and uninvited to the Twin Festival.
 
-His soft spot is Plank #1, superseded eleven times and still his favourite, and Bloom. He watches the sunset from the shore below the mill in the evening and merges in the mill at night. He doesn't mind being tired. He minds customers waiting.
+His soft spot is Plank #1, superseded eleven times and still his favourite, and Bloom. By day he stacks the new planks at the mill door. He watches the sunset from the shore below the mill in the evening, and at night he does the merge at the big saw. He doesn't mind being tired. He minds customers waiting.
 
 ### Bloom
 
 Bloom is the fourth dog called Bloom, and wears the same red collar as the other three. The first Bloom arrived forty years ago as a puppy in a fish basket from Ruth's market, carried by a quiet woman who tucked a note in the collar, "Ask the dog first. K.", and left. Every Bloom since has been certain, beyond any argument, about where a plank is not. About where a plank might be, Bloom is an optimist: the third shed, a tree, a seagull, a handbag.
 
-Bloom wants snacks, the sunset and Mang Tomas, in roughly that order, and sleeps across all four shed doors during compaction, which should not be physically possible. The school measured Bloom's power level at over nine thousand. He wags at every footstep in case it is Tomas.
+Bloom wants snacks, the sunset and Mang Tomas, in roughly that order, and sleeps across all four shed doors during compaction, which should not be physically possible. The school measured Bloom's power level at over nine thousand. By day he sits a little way down the path from the mill door, watching Tomas, and wags at every footstep in case it is Tomas. He watches the sunset beside him in the evening and stays at his heel through the night merge.
 
 ### Professora Lúcia
 
 Lúcia keeps three dictionaries for every island (yesterday's, today's and tomorrow's) in the Tower of Tongues, plus one just for Kwame, and one that turned out to be a sandwich. The first dictionary in the tower is signed "K." and says "Add, never reuse" on page one, underlined nine times in three colours. She is dramatic, generous and genuinely moved when an old letter still makes sense. "Querido" is for everyone.
 
-She wants to search every letter ever written on the Isles, typos especially, because typos are the most romantic part. Her soft spot is Cartographer Minh, who writes her letters with no words in them, only maps. She is in the tower in the morning and at night, and takes the air on the path down to the pier in the evening.
+She wants to search every letter ever written on the Isles, typos especially, because typos are the most romantic part. Her soft spot is Cartographer Minh, who writes her letters with no words in them, only maps. She is at her three dictionaries in the tower in the morning. In the afternoon she reads the day's letters aloud on the tower step to the gulls, typos and all. In the evening she takes the air on the path down to the pier, watching for the ferry in case it brings a map from Minh, and at night she is back in the tower translating a letter.
 
 ### Cartographer Minh
 
 Minh knows where everything goes; that, and selling pencils, is the whole job. He mapped the ferry route twice because each Twin mayor wanted their own copy, and keeps more drawers than he has maps so a new cabinet can take whole drawers. He asks every customer what they will look for before he decides where anything goes. Most of them leave, and the good ones come back. He sold Kaito a pencil instead of a Kubernetes, and his reading glasses are on his head.
 
-Long ago he reused the anchor symbol on a map to mean "café", and three ships docked at a café. He has not reused a symbol since, and Lúcia has not let him forget it. His soft spot is the one drawer in the shop with no label, full of her letters. They are in a different format every time and he keeps every one. He opens the shop in the morning, walks down by the pier in the evening and sleeps over the shop.
+Long ago he reused the anchor symbol on a map to mean "café", and three ships docked at a café. He has not reused a symbol since, and Lúcia has not let him forget it. His soft spot is the one drawer in the shop with no label, full of her letters. They are in a different format every time and he keeps every one. He opens the shop in the morning and works on the half-drawn map of the Isles. In the afternoon he sits out in front of the shop sketching the coastline for the next edition. In the evening he walks down by the pier and looks across the water at the Tower. He sleeps over the shop, after a last look at the lighthouse through his telescope.
 
 ### Mayor Ha-jin
 
 The younger twin, by four minutes, and mayor of West Twin. Ha-jin is dry, stubborn and fair. He believes the stage belongs on the hill, because the beach floods at high tide, and that four minutes is nothing, barely a ferry delay, which makes them concurrent. He agrees with his sister more often than he will say, especially about clerks who keep whichever plan was saved last.
 
-His soft spot is his sister. Each year he plans her a birthday surprise, and each year it is somehow the same day as hers. He works in his hall in the afternoon and at night, and comes out to argue across the water in the morning and evening.
+His soft spot is his sister. Each year he plans her a birthday surprise, and each year it is somehow the same day as hers. He works in his hall in the afternoon, writing to East Twin at his desk, and at night he files away whatever East Twin disagreed with. In the morning and evening he comes out to argue across the water.
 
 ### Mayor Ha-eun
 
 The elder twin and mayor of East Twin. Ha-eun is quick, warm and absolutely right: the stage belongs on the beach, which is a fact with a sea view. She likes to think four minutes makes her the leader. She invited Mang Tomas to the festival, and was furious when the merge uninvited him after he had already baked the cake.
 
-The twins were elected on the same day by the same number of votes, and they have kept their own lantern tallies ever since, the only sum they have never argued about. Her soft spot is her brother, and she keeps his childhood drawing of the two islands with a bridge between them, which nobody had built yet. Her hours mirror his: her own hall in the afternoon and at night, the shore in the morning and evening.
+The twins were elected on the same day by the same number of votes, and they have kept their own lantern tallies ever since, the only sum they have never argued about. Her soft spot is her brother, and she keeps his childhood drawing of the two islands with a bridge between them, which nobody had built yet. Her hours mirror his. In the afternoon she writes to West Twin at the desk in her own hall, at night she talks to him on the tin-can telephone, and in the morning and evening she is on the shore, arguing back across the water.
 
 ### Old Ruth
 
 Ruth has counted the fish on the market since she was six. That is eighty years, and she has never lost one, though she puts one in the wrong hour constantly. When she was six, a quiet young woman with a notebook stood beside her at the stall and, without a word, showed her how to count by the tag and not the clock. The front of the market ledger still says "Count by the tag, not the clock. Eventually is good enough for fish. K."
 
-Ruth is brisk, funny, calls you "pet", gave Kwame his own column on the board ("later"), and sends Farida a tuna when she loses an argument. Her secret is a reply she wrote at six and never sent: a tally slip, folded small, that has lived in her apron pocket for eighty years. She counts in the market by morning and evening, works the far end of the market floor in the afternoon, and goes home at night.
+Ruth is brisk, funny, calls you "pet", gave Kwame his own column on the board ("later"), and sends Farida a tuna when she loses an argument. Her secret is a reply she wrote at six and never sent: a tally slip, folded small, that has lived in her apron pocket for eighty years. She counts the catch at her stall by morning and evening, works the far end of the market floor in the afternoon, looking back along the stalls, and goes home at night.
 
 ### The Keeper
 
@@ -295,31 +295,31 @@ The lighthouse chain reveals who she is: Kyu, Uptima's apprentice, who kept the 
 
 Ploy founded the Tide Pool Game Club, made herself president and made up the rules, usually halfway through a game. She is Thai, loud, sincere and an excellent detective about anything except the wind. Every game ends in a victory dance, whoever wins, because there are no losers in the Game Club, only dancers. She invented "last write wins" by accident ("I called it loud") and gives very good interview tips.
 
-What she wants is for the club to be real, and since Game Night it is: five members, five signatures, and an append-only scoreboard by order of the president. Her soft spot is Meron, who reads her rules back to her ("I love her. Don't tell her"), and, secretly, you. She is the only member who never goes home: the yard by day, and game night and rule-writing in the clubhouse until late.
+What she wants is for the club to be real, and since Game Night it is: five members, five signatures, and an append-only scoreboard by order of the president. Her soft spot is Meron, who reads her rules back to her ("I love her. Don't tell her"), and, secretly, you. She is the only member who never goes home. She chalks up the day's rules on the clubhouse board in the morning, presides over the game table in the yard in the afternoon, stopwatch in hand, and plays game night and writes rules in the clubhouse until late.
 
 ### Nok
 
 Nok is Ploy's eternal rival, self-appointed, and has been a member since the day he lost his first game to her. He is green, loud and burning with youth. He runs laps of the island when his feelings get too big, has lapped Kwame's ferry nine times, and drinks Meron's bitter training tea and asks for more. The score between him and Ploy is forty-nine all, or fifty to forty-nine, because the chalkboard got rained on.
 
-He wants a record nobody can rub out, and he got one; he has read it start to finish four times and cries at the same parts. His soft spot is losing magnificently. He is in the yard by day, in the clubhouse in the evening, and home at night.
+He wants a record nobody can rub out, and he got one; he has read it start to finish four times and cries at the same parts. His soft spot is losing magnificently. He is in the yard by day, playing Kai across the game table, in the clubhouse in the evening, and home at night.
 
 ### Kai
 
 Kai knows how every game ends before it starts. It is exhausting. The only thing he cannot see coming is Ploy changing the rules, which is why he comes every day. He is deadpan, polite, says "good grief", and will tell you nothing about the future for a plate of mango sticky rice, which is the best thing he can offer anyone.
 
-Everyone on the Isles thinks loudly except Meron, whose head is a quiet alphabetical list of plants, so he stands beside her when he needs a rest. He thinks about the third spin of Ploy's victory dance a great deal. He keeps the club's one surprise to himself whenever there is one, because surprises are rare and he likes other people to have them. He spends the day in the yard and the evening in the clubhouse, and goes home at night.
+Everyone on the Isles thinks loudly except Meron, whose head is a quiet alphabetical list of plants, so he stands beside her when he needs a rest. He thinks about the third spin of Ploy's victory dance a great deal. He keeps the club's one surprise to himself whenever there is one, because surprises are rare and he likes other people to have them. He spends the day in the yard across the game table from Nok, already knowing how it ends, and the evening in the clubhouse, and goes home at night.
 
 ### Arjun
 
 Arjun is the club treasurer. The club has eleven shells, and he counts them every hour in case one escapes. Awake, he is terrified of crabs, goddesses, taxes and Meron's coffee. Asleep, he speaks in calm, perfect sentences about sharding and snapshots, and he won Game Night with forty-one wins, all of them asleep. He does not remember any of them.
 
-He wants, very badly, to be brave, and he is braver than he knows, because he keeps coming back. His soft spot is the treasury. He spends the day in the yard under his umbrella and the evening in the clubhouse, and he sleeps at home, or wherever he happens to be.
+He wants, very badly, to be brave, and he is braver than he knows, because he keeps coming back. His soft spot is the treasury. He spends the day in the yard, napping in the shade of his umbrella, and the evening in the clubhouse, playing from his beanbag, and he sleeps at home, or wherever he happens to be.
 
 ### Meron
 
 Meron is the club's referee, herbalist and taster of everything. She grew up in her grandmother's coffee house in Addis, where coffee is served three times (abol, tona, baraka) and where, she says, the records were better than the club's even though half the customers were goats. She reads every rule Ploy invents and reads it back, tests anything before she signs it, licks ink to see what it's made of, and could hear colours until lunch after eating a pink flower by the school.
 
-She brews Nok bitter tea, offers Arjun coffee "not today", and lets Kai stand by her. Ploy has offered her vice president, and she is considering it, a mango at a time. Her soft spot is Ploy, which she would deny with evidence. She gathers herbs on the mainland path in the morning, plays in the clubhouse in the evening and goes home at night.
+She brews Nok bitter tea, offers Arjun coffee "not today", and lets Kai stand by her. Ploy has offered her vice president, and she is considering it, a mango at a time. Her soft spot is Ploy, which she would deny with evidence. She gathers herbs on the mainland path in the morning, referees at the game table in the yard in the afternoon and at game night in the clubhouse in the evening, and goes home at night.
 
 ### Kagemaru
 

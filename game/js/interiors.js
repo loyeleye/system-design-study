@@ -302,13 +302,15 @@
     },
 
     // ---------- The Eventual Isles (js/isles/isles-map.js) ----------
-    // Walking into an island building's door opens its room. The islanders stay outside by their buildings, so these
-    // rooms have no one in them: just their things to look at.
+    // Walking into an island building's door opens its room, with whoever the Isles schedules sent inside
+    // (js/folk-far.js) at what they're doing in there: a spot of their own, or one for each time of day.
     office: {
       name: "HARBOURMASTER'S OFFICE", isle: 'office', mat: true,
       map: ['############', '############', '############', '############', '####...#####',
         '#####.....##', '#####.....##', '####......##', '#####DD#####'],
       enter: [5, 7, 'north'],
+      // Kwame files the ferry log at the desk; Leilani keeps an eye on the harbour from the window.
+      spots: { kwame: [4, 4, 'west'], leilani: [6, 4, 'north'] },
       windows: [{ r: [163, 29, 74, 64] }],
       lights: [{ x: 6.2, y: 2, r: 3 }],
       props: [
@@ -326,6 +328,8 @@
       map: ['############', '############', '############', '############', '####...###.#',
         '####.#####.#', '##...###...#', '####....##.#', '#####DD....#'],
       enter: [5, 7, 'north'],
+      // Class round the Why Book: Apai reads out today's question, and the three of them want to know why.
+      spots: { saule: [6, 4, 'south'], kid1: [4, 6, 'east'], kid2: [7, 7, 'north'], kid3: [8, 6, 'west'] },
       windows: [{ r: [162, 26, 76, 60] }],
       lights: [{ x: 6, y: 1.8, r: 3 }],
       props: [
@@ -342,6 +346,8 @@
       map: ['############', '############', '############', '############', '###.#.....##',
         '##........##', '#.........##', '##.....#####', '#####DD#####'],
       enter: [5, 7, 'north'],
+      // Farida at the ledger all afternoon, and at the vault by lamplight.
+      spots: { farida: { afternoon: [5, 4, 'north'], _: [9, 4, 'east'] } },
       windows: [{ r: [214, 0, 44, 52] }],
       lights: [{ x: 5, y: 2.6, r: 3 }],
       props: [
@@ -359,6 +365,8 @@
       map: ['############', '############', '############', '############', '####......##',
         '#####.....##', '#####.#.####', '##.....#####', '######D#####'],
       enter: [6, 7, 'north'],
+      // The night merge at the big saw, and Bloom at Tomas's heel.
+      spots: { tomas: [5, 5, 'west'], bloom: [6, 5, 'west'] },
       windows: [{ r: [136, 18, 36, 34] }],
       lights: [{ x: 6, y: 1.2, r: 3 }],
       props: [
@@ -379,6 +387,8 @@
       map: ['############', '############', '############', '############', '############',
         '####.#######', '####.....###', '####.....###', '####..DD.###'],
       enter: [6, 7, 'north'],
+      // Lúcia at her three dictionaries in the morning, and at night translating a letter.
+      spots: { lucia: { morning: [5, 6, 'north'], _: [4, 7, 'west'] } },
       windows: [{ r: [182, 28, 36, 48] }],
       lights: [{ x: 5.2, y: 3.6, r: 2.6 }, { x: 7.2, y: 3.6, r: 2.2 }],
       props: [
@@ -394,6 +404,8 @@
       map: ['############', '############', '############', '############', '####......##',
         '#####.....##', '#####.....##', '#####...####', '#####DD#####'],
       enter: [5, 7, 'north'],
+      // Minh at the half-drawn map in the morning, and at the telescope on the lighthouse before bed.
+      spots: { minh: { morning: [4, 4, 'west'], _: [7, 4, 'north'] } },
       windows: [{ r: [174, 36, 50, 40] }],
       lights: [{ x: 5.2, y: 2.6, r: 2.4 }, { x: 7.2, y: 1.4, r: 2.4 }, { x: 0.6, y: 4.3, r: 2.4 }, { x: 11.4, y: 3.8, r: 2.4 }, { x: 1.8, y: 8.2, r: 2.4 }],
       props: [
@@ -412,6 +424,8 @@
       map: ['############', '############', '############', '############', '###..#######',
         '####.###..##', '####......##', '####......##', '#####DD#####'],
       enter: [5, 7, 'north'],
+      // Ha-jin writes to East Twin at his desk, and files what it disagrees with at night.
+      spots: { hajin: { afternoon: [4, 5, 'east'], _: [8, 5, 'north'] } },
       windows: [{ r: [168, 30, 66, 62] }],
       lights: [{ x: 7.3, y: 4.3, r: 2.6 }],
       props: [
@@ -428,6 +442,8 @@
       map: ['############', '############', '############', '############', '###..###.###',
         '###.......##', '###.......##', '###....#####', '#####DD#####'],
       enter: [5, 7, 'north'],
+      // Ha-eun writes to West Twin at her desk, and at night talks to him on the tin-can telephone.
+      spots: { haeun: { afternoon: [4, 4, 'east'], _: [8, 4, 'east'] } },
       windows: [{ r: [242, 20, 48, 64] }],
       lights: [{ x: 9.6, y: 1.4, r: 2.6 }, { x: 1.2, y: 5.4, r: 2.6 }],
       props: [
@@ -461,6 +477,9 @@
       map: ['############', '############', '############', '############', '###.#....###',
         '###.##..####', '###......###', '#####...####', '#####DD#####'],
       enter: [5, 7, 'north'],
+      // Game night round the board: Ploy, Nok and Kai play, Meron referees, Arjun wins in his sleep on his beanbag.
+      // Ploy chalks up the day's rules in the morning.
+      spots: { ploy: { morning: [8, 4, 'north'], _: [3, 5, 'east'] }, nok: [5, 4, 'west'], kai: [6, 5, 'west'], meron: [4, 6, 'north'], arjun: [6, 4, 'south'] },
       windows: [{ r: [178, 34, 34, 30] }],
       lights: [{ x: 6, y: 0.8, r: 4 }, { x: 9.3, y: 7.2, r: 2.6 }],
       props: [
@@ -585,8 +604,10 @@
     const ls = INN[id];
     if (ls) await U.dialog([{ s: id === 'v1' ? 'guest' : id, t: ls[innI++ % ls.length] }]);
   }
-  // The Isles rooms have nobody standing in them.
+  // Rooms with no spots of their own have an empty set.
   Object.values(ROOMS).forEach(r => { r.spots = r.spots || {}; });
+  // Someone's spot in a room: one [x, y, face], or one for each block of the day ({ morning: [...], _: the rest }).
+  const spotOf = (r, id) => { const s = r.spots[id]; return !s || Array.isArray(s) ? s : s[block()] || s._; };
   const hallOpen = () => !!SD.quests && SD.quests.status('library') === 'done';
   // Resolves when the open panel closes.
   const shut = () => new Promise(res => {
@@ -747,12 +768,13 @@
     const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: r.names && id in r.names ? r.names[id] : SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), r.looks && r.looks[id], extra));
     let counter = null;
     here.forEach(id => {
-      // Islanders: their Isles sprite faces you, at the size they stand on the Isles; the school's class is three kids.
+      // Islanders: their Isles sprite at their spot, at the size they stand on the Isles (anyone without a spot here,
+      // like a storm guest, on the open floor); the school's class is three kids.
       if (r.isle) {
         const nm = SD.isles.who(id).split(' ').slice(-1)[0].toUpperCase(), qm = Object.assign({}, SD.isles.marks(), marks);
-        if (id === 'kids') { ['kid1', 'kid2', 'kid3'].forEach((k, i) => { const at = free.shift(); if (at) actor(k, at, { face: 'south', name: i === 1 ? 'KIDS' : null, scale: 0.5, talkAs: 'kids', marker: !!qm.kids }); }); return; }
-        const at = free.shift();
-        if (at) actor(id, at, { face: 'south', name: nm, scale: id === 'bloom' ? 0.62 : 0.66, marker: !!qm[id] });
+        if (id === 'kids') { ['kid1', 'kid2', 'kid3'].forEach((k, i) => { const at = spotOf(r, k) || free.shift(); if (at) actor(k, at, { name: i === 1 ? 'KIDS' : null, scale: 0.5, talkAs: 'kids', marker: !!qm.kids }); }); return; }
+        const at = spotOf(r, id) || free.shift();
+        if (at) actor(id, at, { name: nm, scale: id === 'bloom' ? 0.62 : 0.66, marker: !!qm[id] });
         return;
       }
       if (r.sleep && id === r.owner && !storm() && block() === 'night') {
@@ -779,11 +801,13 @@
       if (ok(im)) ctx.drawImage(im, x, y, w, h, x * k, y * k, w * k, h * k);
     } }));
   }
-  // Open floor to stand on in a room with no spots of its own, from the back wall forward, clear of the way in.
+  // Open floor to stand on in a room with no spots of its own, from the back wall forward, clear of the way in and of
+  // everyone's own spots.
   function floor(r) {
     const out = [], H = r.map.length;
+    const own = Object.values(r.spots).flatMap(s => Array.isArray(s) ? [s] : Object.values(s)), mine = (x, y) => own.some(s => s[0] === x && s[1] === y);
     for (let y = 0; y < H - 2; y++) for (let x = 0; x < r.map[y].length; x++)
-      if (r.map[y][x] === '.' && !(r.enter && r.enter[0] === x && r.enter[1] === y) && !r.props.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) === 0)) out.push([x, y, 'south']);
+      if (r.map[y][x] === '.' && !(r.enter && r.enter[0] === x && r.enter[1] === y) && !r.props.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) === 0) && !mine(x, y)) out.push([x, y, 'south']);
     // Spread people out: every other tile first.
     return out.filter((_, i) => i % 2 === 0).concat(out.filter((_, i) => i % 2 === 1));
   }
