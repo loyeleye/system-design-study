@@ -653,6 +653,9 @@
   function beginTurn() {
     C.turn++;
     const sv = S.save;
+    // The Rollouts' Metronome (Pocketwatch): 3 or fewer cards played last turn draws 3 extra now (never on turn 1).
+    const metro = C.turn > 1 && rel('metronome') && (C.played || 0) <= 3 ? 3 : 0;
+    C.played = 0;
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
       + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry
@@ -672,7 +675,8 @@
       if (d.eachMit) mitigate(d.eachMit + (c.up ? 2 : 0), '', 'hit');
     });
     if (settle()) return;
-    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0));
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0) + metro);
+    if (metro) C.log = (C.log ? C.log + ' ' : '') + 'The Metronome ticks: a quiet turn, so 3 extra cards.';
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();
     if (garyShouldCome()) garyRescue();
@@ -692,6 +696,7 @@
     if (cost > C.energy) { C.log = 'Not enough Capacity.'; renderCombat(); return; }
     C.energy -= cost;
     C.hand.splice(i, 1);
+    C.played = (C.played || 0) + 1;   // for the Rollouts' Metronome
     AU.sfx(d.abs || d.each ? 'shield' : 'card');
     const sv = S.save, up = c.up ? 3 : 0;
     const cacheSpec = sv.spec === 'cache' && (d.tags || []).includes('cache');
