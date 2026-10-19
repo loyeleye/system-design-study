@@ -25,20 +25,25 @@
     'T.......L.....##G##.......L.......fffffffff....T',
     'T..............................................T',
     'T...T....T...........T....T...pp....T....T.....T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTT...ppL..TTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTppTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTpplTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTppTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTppTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTppTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTT...pp...TTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTT....pp....TTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTT.....pp.....TTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTT.###.Lpp..###.TTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTT..##X.,,,,.Q##..TTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTT.....,,,,,,.....TTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTT....,,,,,,,,....TTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTT###.,,,,,,,,.###TTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTT##Y.,,,,,,,,.M##TTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTT....,,,,,,,,....TTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTT.....,,,,,,.....TTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTT..##D.,,,,.O##..TTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTT.###......###.TTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTT...L......L.TTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTT.###l.pp.l###.TTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT..##X.pppp.Q##..TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT.....pppppp.....TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT...lppppppppl...TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT###.pppppppp.###TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT##Y.pppppppp.M##TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT....pppppppp....TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT...l.pppppp.l...TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT..##D.pppp.O##..TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTT.###.l..l.###.TTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
@@ -551,7 +556,7 @@
     const out = [], at = (x, y, r, rgb) => out.push({ x: x * ts - cx, y: y * ts - cy, r: r * ts, rgb });
     for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
-      if (c === 'L' && !down && DECO[hash(x, y) % DECO.length] === 'lamp') at(x + 0.5, y - 0.7, 2.6);
+      if ((c === 'l' || c === 'L' && DECO[hash(x, y) % DECO.length] === 'lamp') && !down) at(x + 0.5, y - 0.7, 2.6);
       if (BUILD[c] && !'BNE'.includes(c) && (!down || 'FG'.includes(c))) {
         const b = bbox(c);
         if (!b) continue;
@@ -679,10 +684,12 @@
   }
 
   // Each building is one picture standing on the bottom row of its footprint, fitted to the footprint's width.
+  // 'L' is a bit of street clutter picked by position; 'l' is always a street lamp (round the cul-de-sac).
   const DECO = ['bush', 'lamp', 'bush', 'barrel', 'sign'];
   function drawObject(x, y, c, t) {
     if (c === 'T') { obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2); return; }
     if (c === 'L') { obj(DECO[hash(x, y) % DECO.length], (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
+    if (c === 'l') { obj('lamp', (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
     if (c === 'f' && (x + y) % 2 === 0) { obj('crops', (x + 0.5) * ts, (y + 0.9) * ts, 0.8); return; }
     if (c !== '#' && !DOORS.includes(c)) return;
     if (c === 'N') return;   // no gate: a plain path leads north (Ladi, 2026-10-18)
