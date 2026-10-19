@@ -432,6 +432,8 @@
     }
     // Town quests can have steps on the Isles (js/ploy-quest.js): they come first, as they do in Pingsby.
     if (SD.quests && SD.quests.pending(w).length && await SD.quests.talk(w)) { AU.music('explore'); hud(); return; }
+    // Then a relationship scene that's due with them (js/folk-scenes.js); it waits out their commissions.
+    if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('isles', w)) { hud(); return; }
     const services = SERVICES[w] ? SERVICES[w]() : [];
     if (!services.length) { await I.talk(w); return; }
     const pend = I.pending(w);

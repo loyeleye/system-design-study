@@ -85,7 +85,7 @@ SD.concepts = {
     gist: 'Availability is the fraction of time a system works. 99.9% allows about 8.8 hours of downtime a year, 99.99% about 53 minutes, 99.999% about 5 minutes. Parts that all must work (in series) multiply: two 99.9% parts give about 99.8%. Redundant copies (in parallel) fail only together: two 99% replicas give 99.99%. Faster recovery (lower MTTR) is often the cheapest nine.',
     page: 'I am the Goddess of Five Nines. My temple runs at two nines. The other three are aspirational. — U.'
   },
-  // Chapter 2: the Tidewater Archives. Rate limiter and Dropbox-style file sync (Hello Interview week 3).
+  // Chapter 2: the Tidewater Archives. Rate limiter and Dropbox-style file sync.
   ratelimit: {
     name: 'Rate Limiting Algorithms', zone: 2,
     gist: 'Token bucket: tokens refill at a fixed rate and allow bursts up to the bucket size. Leaky bucket: a queue drained at a fixed rate, so output is smooth. Fixed window counters are simple but allow 2x bursts at window edges. Sliding window log is exact but stores every timestamp; sliding window counter approximates it cheaply.',
@@ -121,7 +121,7 @@ SD.concepts = {
     gist: 'Split files into chunks (around 4-5 MB) identified by a content hash. Uploads resume chunk by chunk, unchanged chunks are never re-sent, and identical chunks dedupe across users. To sync, clients compare chunk lists and fetch only what changed, then learn of changes by polling or a push channel.',
     page: 'If one page of the scroll changes, copy one page. Not the whole scroll. The scribes unionised over this. — U.'
   },
-  // Chapter 3: the Clockwork Spire. Ticketmaster, news feed, top-K and the ad click aggregator (Hello Interview weeks 4-5).
+  // Chapter 3: the Clockwork Spire. Ticketmaster, news feed, top-K and the ad click aggregator.
   indexes: {
     name: 'Database Indexes', zone: 3, tag: 'Indexes',
     gist: 'An index is a sorted lookup structure, so a query reads a few pages instead of scanning every row. B-trees (Postgres, MySQL) update pages in place and give fast, predictable reads. LSM trees (Cassandra, RocksDB) buffer writes in memory and flush sorted files, so writes are fast and reads may check several files. Every index speeds reads and slows writes.',
@@ -583,7 +583,7 @@ SD.chapters = {
   },
   3: {
     name: 'the Clockwork Spire', rank: 'C', boss: 'scalper', intro: 'boss3aIntro', win: 'boss3aWin',
-    // Two bosses, one per run: Ticketmaster or the news feed (Hello Interview week 4).
+    // Two bosses, one per run: Ticketmaster or the news feed.
     bosses: ['scalper', 'leviathan'],
     blurb: 'Eight floors of grinding gears, climbing up. The Scalper King or the Feed Leviathan waits at the top.',
     sevMult: 1.2, curses: ['gears', 'rifts', 'stacks'],

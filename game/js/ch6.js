@@ -1,4 +1,4 @@
-// Chapter 6 (optional): the Oracle Spire. AI-era systems from the study plan's Applied AI add-on: serving a
+// Chapter 6 (optional): the Oracle Spire. AI-era systems: serving a
 // large language model (tokens, streaming, continuous batching, the KV cache, routing), retrieval-augmented
 // generation, evals, guardrails, cost control and agents. It opens after chapter 5, sits beside the main path
 // until you first enter chapter 10, and clearing it unlocks a rare card for every dungeon.
