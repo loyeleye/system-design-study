@@ -698,5 +698,323 @@ SD.mock.problems = [
       },
       { id: 'bike', title: 'The exact red of the Subscribe button', kind: 'bikeshed', reply: 'Red. It\'s red. Next topic.', note: 'Chose to spend deep-dive time on button colour.' }
     ]
+  },
+
+  {
+    id: 'files', ch: 2, name: 'File Sync', like: 'Dropbox',
+    prompt: 'Design a file sync service like Dropbox: a file saved on one device shows up on all the others. The Gremlin of Lost Files is watching.',
+    concepts: ['chunksync', 'blobmeta', 'chunking', 'blob', 'estimation'],
+    clarify: [
+      { q: 'How many users, and how big do files get?', good: true, a: '100 million users. Most files are small, but some videos reach 50 GB.' },
+      { q: 'How fast must a change reach my other devices?', good: true, a: 'Within a few seconds, if they are online.' },
+      { q: 'What if two devices edit the same file while offline?', good: true, a: 'Keep both. Save the second as a conflicted copy; no merging.' },
+      { q: 'Is sharing in scope?', good: true, a: 'Sharing a file by link, yes. Editing together in real time, no.' },
+      { q: 'Should we write our own file system driver?', good: false, a: 'Let\'s not.', note: 'Jumped to kernel code before any design.' },
+      { q: 'What should the app icon look like?', good: false, a: 'A box.', note: 'Asked about branding in a backend round.' }
+    ],
+    req: [
+      { t: 'Upload a file from any device', k: 'f' },
+      { t: 'Download a file on another device', k: 'f' },
+      { t: 'Changes sync to all my devices', k: 'f' },
+      { t: 'Share a file by link', k: 'f' },
+      { t: 'A file is never lost or corrupted', k: 'nf' },
+      { t: 'A big upload resumes after a dropped connection', k: 'nf' },
+      { t: 'Edit a document together in real time', k: 'out' },
+      { t: 'Search inside the text of every file', k: 'out' }
+    ],
+    entities: [
+      { t: 'File (owner, path, version)', ok: true },
+      { t: 'Chunk (hash, size)', ok: true },
+      { t: 'File version (file, list of chunk hashes)', ok: true },
+      { t: 'Share link', ok: 'opt' },
+      { t: 'Video rendition', ok: false, why: 'Files are stored as they are. Nothing is transcoded here.' },
+      { t: 'Load balancer', ok: false, why: 'Infrastructure, not data the product stores.' }
+    ],
+    api: {
+      q: 'How do uploads and sync work at the API level?', c: 'chunksync',
+      opts: ['POST /files {path, chunk hashes} → upload URLs for missing chunks; GET /changes?cursor=…', 'POST /files with the whole file as one multipart body; GET /changes?cursor=… to sync', 'POST /files {path, chunk hashes} → upload URLs; GET /files returns every file, polled each minute', 'A GraphQL subscription that pushes each changed file\'s full bytes to every device at once'],
+      a: 0, no: [null, 'One 50 GB body ties up a server for hours, a drop starts it over, and identical chunks get sent again. Bytes go to storage in hashed chunks.', 'Listing every file every minute is a huge, mostly empty answer for 100 million users. A cursor over a change log returns only what changed.', 'Pushing whole files wastes bandwidth on devices that may never open them. Push a small "something changed" note; the device fetches what it needs.'],
+      why: 'The client hashes its chunks first, so the server can say which it already has; only the missing ones travel, straight to object storage. Sync reads a change log from a cursor, so a device that was offline catches up exactly where it stopped.'
+    },
+    est: {
+      pick: [
+        { t: 'Total storage, before deduplication.', k: 'best' },
+        { t: 'A table of average file size for every file type, by country.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '100 million users store 10 GB each on average. How many PB of storage, before deduplication?', unit: 'PB', lo: 700, hi: 1500,
+      ans: '~1,000 PB, about an exabyte (10^8 × 10 GB = 10^9 GB)', why: 'An exabyte is object-storage scale, never a database. Identical chunks across users (the same installer, the same meme) only need storing once, one more reason to address chunks by hash.'
+    },
+    hld: {
+      palette: ['lb', 'gateway', 'app', 'sql', 'nosql', 'blob', 'cache', 'queue', 'worker', 'notify', 'socket', 'cdn', 'search', 'stream'],
+      flows: [
+        { name: 'Upload a changed file', need: [['app'], ['blob'], ['sql', 'nosql']], ok: ['lb', 'gateway', 'queue', 'worker', 'cache'] },
+        { name: 'Another device picks up the change', need: [['app'], ['socket', 'notify'], ['sql', 'nosql'], ['blob']], ok: ['lb', 'gateway', 'queue', 'cdn', 'cache'], nudge: { socket: 'The phone is online. How does it learn a file changed without asking every few seconds?' } }
+      ],
+      why: {
+        c: 'blobmeta', q: '"Why keep file metadata in a database and the bytes in object storage?"',
+        opts: ['Metadata is small and needs transactions; the bytes are huge and need cheap durable storage', 'Object storage can\'t hold files over 5 GB, so the largest files must live in the database', 'Object storage keeps one copy only, so the database is there to make the bytes survive a failure', 'Object storage lists folders quickly, so the database only needs to hold the user accounts'],
+        a: 0, no: [null, 'One PUT is capped at 5 GB, but multipart uploads reach terabytes. Databases are the worse home for big bytes: backups and replicas balloon.', 'Object stores like S3 copy each object across several zones and are built for eleven nines of durability. Durability is their strength.', 'Buckets have no real folders, and listing a prefix of millions of keys is slow. Paths, versions and folders belong in the metadata database.'],
+        why: 'A file\'s metadata (path, version, list of chunk hashes) changes in small transactional updates and is queried all the time. Its bytes are written once and read now and then, so they go to object storage, which is cheap, durable and scales without limit.'
+      }
+    },
+    dives: [
+      {
+        id: 'delta', title: 'Re-uploading 2 GB for one change', kind: 'bottleneck', c: 'chunksync',
+        q: 'A user changes one slide in a 2 GB presentation, and the client uploads all 2 GB again. What fixes it?',
+        opts: ['Split files into hashed chunks and upload only the chunks the server lacks', 'Gzip the whole file before each upload, so fewer bytes cross the network', 'Send the file over HTTP/2, so the upload shares one multiplexed connection', 'Store each file as a single database row, so an update is one transaction'],
+        a: 0, no: [null, 'Every edit still sends the whole file, just smaller, so cost still tracks file size. Compression helps on top of chunking, not instead of it.', 'HTTP/2 lets many requests share one connection, but the file is still 2 GB. It speeds up pages that make many small requests.', 'A transaction makes the write atomic, but the whole file still crosses the network. Big bytes belong in object storage.'],
+        nudge: 'Most of the file didn\'t change. How could the client and the server agree on which parts did?',
+        why: 'With content-hashed chunks of a few MB, an edit changes one or two chunks and only those travel. The new version is just a new list of chunk hashes in the metadata.',
+        f: {
+          q: 'What does chunking by hash cost you?',
+          opts: ['More metadata: chunk lists per version, plus a job to delete unused chunks', 'Two users with the same file can no longer share chunks, so storage grows', 'Files can\'t be bigger than one chunk without changing the storage format', 'Each chunk must be decrypted with the uploader\'s key, so downloads slow down'],
+          a: 0, no: [null, 'The reverse: identical chunks have identical hashes, so they are stored once however many users have them. That is deduplication.', 'A file is a list of chunk hashes, so it can be any size. The chunk size only sets how much one edit re-uploads.', 'Chunks are encrypted at rest by the storage service with its own keys. Hashing changes how files are split, not how they are read.'],
+          why: 'You trade bytes on the wire for bookkeeping: a chunk list per version, reference counts, and a sweeper that deletes chunks no version points to. Deduplication across users is a bonus.'
+        }
+      },
+      {
+        id: 'notify', title: 'Telling other devices about a change', kind: 'real', c: 'realtime',
+        q: 'A file changes on the laptop. How does the phone find out within seconds?',
+        opts: ['A long poll or WebSocket tells it to fetch changes from its last cursor', 'Every device asks for the full file list every few seconds and compares', 'The laptop sends the new file straight to the phone over a peer link', 'A nightly batch job sends each device every file that changed that day'],
+        a: 0, no: [null, 'With 100 million users, almost every answer is "no change" and each is a full listing. Polling a cursor is fine as a fallback; a push note is cheaper.', 'The phone may be asleep or on another network, and the server must still keep the source of truth. Peer links suit LAN sync as an extra, not the main path.', 'A day is far from "a few seconds". Batch jobs suit reports and backups, not interactive sync.'],
+        nudge: 'Asking "anything new?" every few seconds from 100 million devices is a lot of empty answers. How could the server speak first?',
+        why: 'A lightweight push only says "something changed"; the device then reads the change log from its last cursor. A lost push is harmless, because the cursor makes catching up exact.',
+        f: {
+          q: 'Two devices edit the same file while offline. What happens when they sync?',
+          opts: ['The first upload wins; the second is saved next to it as a conflicted copy', 'The server merges both edits line by line, the way Git merges two branches', 'The edit from the device with the later clock wins, and the other is dropped', 'The server locks the file until both users agree on a single version of it'],
+          a: 0, no: [null, 'Most files are binary (images, slides, video), which can\'t be merged line by line. Merging suits text in version control, where people resolve conflicts.', 'Device clocks drift and can be set by hand, and the losing edit vanishes silently. Last-writer-wins by clock loses data.', 'Both devices were offline, so there was nobody to lock against. Locks need everyone connected to the same server.'],
+          why: 'Each upload says which version it was based on, and the server commits it only if that is still current (a compare-and-set). The loser becomes a conflicted copy, so no edit is lost and the person decides.'
+        }
+      },
+      {
+        id: 'resume', title: 'A 50 GB upload on hotel Wi-Fi', kind: 'real', c: 'chunking',
+        q: 'A 50 GB video upload drops at 80% on hotel Wi-Fi. How do you avoid starting over?',
+        opts: ['Send chunks one by one; after a drop, ask which arrived and send the rest', 'Raise the server\'s request timeout to hours, so slow uploads aren\'t cut off', 'Retry the whole upload with exponential backoff and jitter after each drop', 'Gzip the video on the device first, so every attempt sends fewer bytes'],
+        a: 0, no: [null, 'This upload dies because the connection drops, not because the server gives up. With a longer timeout, a drop still restarts from zero.', 'Backoff spaces retries out so they don\'t stampede the server, but each one resends all 50 GB. It changes when you retry, not what.', 'Video is already compressed, so gzip barely shrinks it, and a drop still restarts the upload. Gzip pays off on text like JSON and logs.'],
+        nudge: 'Forty of the fifty gigabytes already arrived. How would the client know which?',
+        why: 'Chunked, resumable uploads (S3 multipart, the tus protocol) make a drop cost one chunk, not the file. The chunk hashes the client already computed tell it which are missing.',
+        f: {
+          q: 'Chunks go straight to object storage on presigned URLs. What does that cost?',
+          opts: ['A commit step must check every chunk arrived with the right hash', 'Clients now hold permanent storage keys, which they could leak', 'Uploads lose TLS, since presigned URLs only work over plain HTTP', 'Each chunk still has to pass through an app server to be signed'],
+          a: 0, no: [null, 'A presigned URL is signed by your server, short-lived and scoped to one object. The client never sees a permanent key.', 'Presigned URLs are ordinary HTTPS requests. The gain is skipping your servers, not skipping encryption.', 'Your server signs the URL, not the bytes. The chunk goes straight to storage, which is the point.'],
+          why: 'Your servers no longer see the bytes, so the commit checks that each listed chunk exists with the right hash before writing the new file version. That keeps a half-finished upload from ever looking like a file.'
+        }
+      },
+      { id: 'bike', title: 'The sync icon\'s spin animation', kind: 'bikeshed', reply: 'It spins. Moving on.', note: 'Chose to spend deep-dive time on an icon.' }
+    ]
+  },
+
+  {
+    id: 'topk', ch: 3, name: 'Top-K Videos', like: 'YouTube\'s most-viewed chart',
+    prompt: 'Design the service behind a "top 100 most-viewed videos" chart for the last hour, the last day and all time. Hot Key Harold wants the number one spot.',
+    concepts: ['topk', 'streams', 'hotkey', 'sharding', 'estimation'],
+    clarify: [
+      { q: 'How many views come in?', good: true, a: 'About a billion a day, with peaks of around 50,000 a second.' },
+      { q: 'Which time windows?', good: true, a: 'The last hour, the last day, and all time.' },
+      { q: 'How fresh must the chart be?', good: true, a: 'A minute or two behind is fine.' },
+      { q: 'Must the counts be exact?', good: true, a: 'Counts can be slightly off, as long as the top 100 is the real top 100.' },
+      { q: 'Which charting library should draw the list?', good: false, a: 'It\'s a list.', note: 'Asked about a front-end library in a backend round.' },
+      { q: 'Can we let creators report their own view counts?', good: false, a: 'Hot Key Harold would love that.', note: 'Proposed trusting the people with the most reason to cheat.' }
+    ],
+    req: [
+      { t: 'Record every view', k: 'f' },
+      { t: 'Get the top K videos for a window', k: 'f' },
+      { t: 'Pick the last hour, day or all time', k: 'f' },
+      { t: 'The chart is at most a couple of minutes stale', k: 'nf' },
+      { t: 'Keep up with 50,000 views a second', k: 'nf' },
+      { t: 'Reading the chart takes milliseconds', k: 'nf' },
+      { t: 'A personal top list for each user', k: 'out' },
+      { t: 'Detect and remove fake views', k: 'out' }
+    ],
+    entities: [
+      { t: 'View event (video, time)', ok: true },
+      { t: 'Video count (video, window, count)', ok: true },
+      { t: 'Top-K list (window, ranked videos)', ok: true },
+      { t: 'Video (title, channel)', ok: 'opt' },
+      { t: 'User session', ok: false, why: 'Views are counted per video, not per user. Personal lists are out of scope.' },
+      { t: 'Upload chunk', ok: false, why: 'Uploads are another system. This one only counts views.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'topk',
+      opts: ['GET /top?window=1h&k=100 → a precomputed ranked list; views arrive as events on a stream', 'GET /top?window=1h&k=100, which sorts every video\'s count in the database on each call', 'POST /videos/{id}/view from each player, which bumps a row and returns the new top 100', 'GET /videos?sort=views&page=N, and the client pages until it has gathered the top 100'],
+      a: 0, no: [null, 'Sorting a billion counts per request takes seconds and melts the database when the chart trends. Rank ahead of time and serve the result.', 'Every view would wait on a hot row and a ranking. Views are fire-and-forget events; nobody watching a video needs the chart back.', 'Offset pages over a billion rows get slower the deeper they go, and the counts shift between pages. Precompute the list, then serve it in one read.'],
+      why: 'Reading the chart must be cheap, so each window\'s list is precomputed and served from a cache. Views are events from the players\' pipeline, never API calls that do work on the hot path.'
+    },
+    est: {
+      pick: [
+        { t: 'Average view events per second.', k: 'best' },
+        { t: 'Bytes per view event, for every field the player could log.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: 'A billion views a day. Average views per second?', unit: 'views/s', lo: 8000, hi: 16000,
+      ans: '~12,000 views/s (10^9 ÷ 86,400), with peaks a few times higher', why: 'Tens of thousands of increments a second is too many for one row per video when a video goes viral, but easy for a stream processor that counts in memory and flushes totals.'
+    },
+    hld: {
+      palette: ['lb', 'app', 'sql', 'nosql', 'cache', 'stream', 'queue', 'counter', 'worker', 'search', 'cdn', 'socket'],
+      flows: [
+        { name: 'A view is counted', need: [['queue'], ['stream'], ['nosql', 'counter']], ok: ['worker', 'sql'], nudge: { queue: 'Fifty thousand views a second arrive from players. Where do they land before anything counts them?' } },
+        { name: 'Someone opens the top 100 chart', need: [['app'], ['cache']], ok: ['lb', 'cdn', 'nosql', 'counter', 'sql'], nudge: { cache: 'Millions open the same chart. Do you rank the videos again for each of them?' } }
+      ],
+      why: {
+        c: 'streams', q: '"Why count views in a stream processor instead of updating a row per view?"',
+        opts: ['It counts in memory and writes totals in batches, so no row takes a write per view', 'It stores every view forever, so the all-time counts never need a database at all', 'A SQL row can only be updated once a second, so per-view updates would be rejected', 'Its counts are exact across shards, which databases can\'t promise under heavy load'],
+        a: 0, no: [null, 'Stream processors keep working state, not history. Totals still land in a store, and old events age out of the log.', 'There is no such limit; a row can take thousands of updates a second. The problem is lock contention on a few hot rows, and the cost of each write.', 'Exactness comes from the log and checkpoints, and databases are exact too. The win is throughput, not exactness.'],
+        why: 'A stream processor such as Flink reads views from a log like Kafka, keeps running counts per video in memory, and flushes totals every few seconds. Thousands of increments become one write, and a replay from the log rebuilds the counts after a crash.'
+      }
+    },
+    dives: [
+      {
+        id: 'viral', title: 'One video gets half the views', kind: 'bottleneck', c: 'hotkey',
+        q: 'Counts are sharded by video ID, and a viral video gets 20,000 views a second. What breaks, and what fixes it?',
+        opts: ['Its one shard is overloaded; count locally on many nodes and merge the partial sums', 'Nothing; sharding by video ID already spreads that video\'s views over every shard', 'Its shard is overloaded; add read replicas there so the extra writes have more nodes', 'Its shard is overloaded; put the counter behind a CDN so increments stop at the edge'],
+        a: 0, no: [null, 'Hashing by video ID sends every view of one video to the same shard. Sharding spreads many keys, never one hot key.', 'Replicas copy the primary\'s writes; they don\'t take writes of their own. They help with hot reads, not hot writes.', 'A CDN caches responses to reads. Each view is a write that must be counted, so an edge has nothing to answer it with.'],
+        nudge: 'Every view of that video lands on the same partition. Could each node count a little first?',
+        why: 'Pre-aggregate: each counting node keeps its own partial count and flushes it every few seconds, so the hot shard gets a handful of writes instead of 20,000. Splitting the key into sub-keys (video#1 to video#8) and summing them works too.',
+        f: {
+          q: 'What does pre-aggregating cost?',
+          opts: ['Counts lag by the flush interval, and the merge is one more moving part', 'Each view is counted on several nodes, so every total comes out too high', 'Partial counts are kept per user, so storage grows with the user count', 'Every node must hold a count for every video in the whole catalogue'],
+          a: 0, no: [null, 'Each view goes to exactly one node, which counts it once. Partial sums add up to the true total.', 'Partials are per video per node, and only for videos that node saw recently. Users don\'t come into it.', 'A node only tracks videos whose views reached it since the last flush. That is a small, changing set.'],
+          why: 'You buy write throughput with a little delay: counts arrive every few seconds instead of instantly, which fits a chart that may be two minutes stale.'
+        }
+      },
+      {
+        id: 'window', title: 'The last hour, not all time', kind: 'real', c: 'streams',
+        q: 'How do you count each video\'s views over the last hour, sliding forward minute by minute?',
+        opts: ['Count in one-minute buckets and sum the latest 60, dropping the oldest', 'Keep one counter per video and reset all of them at the top of each hour', 'Store the time of every view, and count the last hour\'s views on each read', 'Divide each video\'s all-time count by how many hours old the video is'],
+        a: 0, no: [null, 'At 10:01 every count is near zero, so the chart jumps each hour. That is a tumbling window; the chart needs a sliding one.', 'At 12,000 views a second that is 43 million rows an hour, scanned for every chart refresh. Raw events are for replay, not for answering reads.', 'That is lifetime average views per hour. A video that went viral twenty minutes ago would barely register.'],
+        nudge: 'Resetting on the hour shows almost nothing at one minute past. How could the hour slide forward?',
+        why: 'Minute buckets make a sliding window cheap: add the newest minute, subtract the minute that fell off. The day window works the same way with hour buckets.',
+        f: {
+          q: 'All time covers years. Do you keep minute buckets forever?',
+          opts: ['No: roll minutes into hours into days, and keep a running all-time total', 'Yes: minute buckets are tiny, so years of them per video fit in memory', 'No: rebuild the all-time count each night by scanning every view ever logged', 'Yes: the all-time chart needs minute detail to break ties between videos'],
+          a: 0, no: [null, 'Half a million minutes a year times a billion videos is far beyond memory. Old detail should be coarse.', 'That is a scan of trillions of events every night, for a number that only ever goes up. A running sum never needs a rescan.', 'Ties at the top of an all-time chart are rare, and any stable rule (such as video ID) settles them. Minute detail buys nothing.'],
+          why: 'Coarser buckets for older data keep storage bounded. All time is a running sum that only ever adds.'
+        }
+      },
+      {
+        id: 'heap', title: 'The top 100 of a billion videos', kind: 'real', c: 'topk',
+        q: 'There are a billion videos. How do you get the top 100 each minute without sorting them all?',
+        opts: ['Each shard keeps a heap of its own top 100, and a merger combines the lists', 'Sort every video by count in the database each minute and take the first 100', 'Ask every shard for all of its counts each minute and sort them on one machine', 'Keep the counts in a search index and query it sorted by count, 100 per page'],
+        a: 0, no: [null, 'A billion-row sort every minute is heavy work for a list that barely changes. A heap keeps the top 100 as counts arrive.', 'That ships a billion counts across the network every minute. Each shard only needs to send its leaders.', 'Re-indexing a billion documents as their counts change is expensive, and the counts are only fresh as of the last refresh. Search indexes suit text, not counters.'],
+        nudge: 'A full sort touches a billion rows a minute. Does each shard need to send everything?',
+        why: 'When videos are split across shards by ID, any global top-100 video is in the top 100 of its own shard. So each shard keeps a 100-item heap, and merging a few dozen short lists is tiny work.',
+        f: {
+          q: 'Counts may be approximate. What could a count-min sketch do here?',
+          opts: ['Count every video in fixed memory, sometimes a little high', 'Store the exact top 100 itself, so no heap is needed at all', 'Make counts exact across shards with no merge step needed', 'Replace the event log, so players write straight to cache'],
+          a: 0, no: [null, 'A sketch knows counts, not which videos lead. Pair it with a small heap that remembers the leaders.', 'A sketch can only overcount, never be exact, and each shard\'s sketch still has to be merged (cell by cell).', 'Without the log you can\'t replay after a crash, and the cache would take every write. The sketch lives inside the stream processor.'],
+          why: 'A count-min sketch is a small grid of counters hashed several ways. It never undercounts, may overcount slightly, and uses the same memory however many videos exist: a good fit when the top 100 matters and the exact counts don\'t.'
+        }
+      },
+      { id: 'bike', title: 'Showing 1.2M or 1,234,567', kind: 'bikeshed', reply: 'Whichever the designer likes. Next.', note: 'Chose to spend deep-dive time on number formatting.' }
+    ]
+  },
+
+  {
+    id: 'stays', ch: 4, name: 'Home Rentals', like: 'Airbnb',
+    prompt: 'Design a home rental site like Airbnb: guests search for places to stay and book them. The Duke of Double-Booking is in town.',
+    concepts: ['booking', 'geo', 'search', 'consistency', 'estimation'],
+    clarify: [
+      { q: 'How many listings and bookings?', good: true, a: 'About 10 million listings, and about a million bookings a day.' },
+      { q: 'How do guests search?', good: true, a: 'By a map area, dates and number of guests. Search is about 100 times busier than booking.' },
+      { q: 'Can two guests book overlapping nights?', good: true, a: 'Never. Each night at a listing is sold once.' },
+      { q: 'Do hosts approve each booking?', good: true, a: 'Instant book only, today. And use a payment provider like Stripe.' },
+      { q: 'Should listings have 3D virtual tours?', good: false, a: 'Not today.', note: 'Added a feature nobody asked for.' },
+      { q: 'Which map tile provider should we use?', good: false, a: 'One that draws maps.', note: 'Asked about a front-end vendor in a backend round.' }
+    ],
+    req: [
+      { t: 'Search listings by map area, dates and guests', k: 'f' },
+      { t: 'View a listing and its calendar', k: 'f' },
+      { t: 'Book a listing for a range of nights', k: 'f' },
+      { t: 'A night is never booked twice', k: 'nf' },
+      { t: 'Search answers in under half a second', k: 'nf' },
+      { t: 'Search results may be a few seconds stale', k: 'nf' },
+      { t: 'Hosts and guests message each other', k: 'out' },
+      { t: 'Reviews and ratings', k: 'out' }
+    ],
+    entities: [
+      { t: 'Listing (host, location, price, size)', ok: true },
+      { t: 'Night (listing, date, status)', ok: true },
+      { t: 'Booking (guest, listing, dates, payment status)', ok: true },
+      { t: 'Host / Guest', ok: 'opt' },
+      { t: 'Video rendition', ok: false, why: 'Wrong problem. Nothing is streamed here.' },
+      { t: 'CDN node', ok: false, why: 'Infrastructure, not data the product stores.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'booking',
+      opts: ['GET /search?bbox=…&dates=…&guests=…&cursor=…; GET /listings/{id}; POST /bookings', 'GET /search?city=… returns every listing in the city, and the app filters by dates', 'GET /search?bbox=…&dates=…; GET /listings/{id}; PUT /listings/{id}/calendar {"booked"}', 'One GraphQL query returning results, every full calendar and every review at once'],
+      a: 0, no: [null, 'A big city has hundreds of thousands of listings, mostly unavailable for those dates. Filter and page on the server; send the client one page.', 'The client would mark nights booked itself, with no availability check or payment. Booking is a POST the server checks and runs as one transaction.', 'GraphQL can fetch exactly what a screen needs, but this asks for everything: years of calendars and reviews for every result. Search returns a page of summaries.'],
+      why: 'Search is a read with a map box, dates and guests, paged by cursor. Booking is one POST for a range of nights: the server claims the nights, then confirms once the payment provider says yes.'
+    },
+    est: {
+      pick: [
+        { t: 'Search QPS.', k: 'best' },
+        { t: 'Storage for every listing photo for the next ten years.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: 'A million bookings a day, and 100 searches for every booking. Average search QPS?', unit: 'QPS', lo: 800, hi: 2000,
+      ans: '~1,200 QPS (10^8 ÷ 86,400), a few thousand at peak', why: 'Search is the hot path, 100 times busier than booking. Give it its own geo index and cache, and keep the booking database for the small stream of writes.'
+    },
+    hld: {
+      palette: ['lb', 'gateway', 'app', 'sql', 'nosql', 'cache', 'search', 'geo', 'hold', 'queue', 'cdn', 'stream', 'socket'],
+      flows: [
+        { name: 'Search a map area for some dates', need: [['lb', 'gateway'], ['app'], ['geo', 'search']], ok: ['cache', 'cdn', 'lb', 'gateway', 'geo', 'search'], nudge: { geo: 'A guest drags the map over Lisbon. Which part finds every listing inside that box?' } },
+        { name: 'Book a listing for three nights', need: [['lb', 'gateway'], ['app'], ['sql']], ok: ['hold', 'queue', 'lb', 'gateway'] }
+      ],
+      why: {
+        c: 'consistency', q: '"Why do bookings and availability live in a SQL database?"',
+        opts: ['A booking must claim every night in its range in one transaction, or none of them', 'With the right B-tree, SQL answers the map searches faster than a geo index can', 'A SQL primary spreads its writes across many nodes, so booking load splits itself', 'SQL replicas update in step with the primary, so every search sees each booking'],
+        a: 0, no: [null, 'A B-tree orders one column, so a map box becomes a scan of a long stripe. Geo indexes (geohash, quadtree, R-tree) are built for 2D areas.', 'A classic SQL primary takes every write on one node; sharding takes extra work. NoSQL stores were the ones built to spread writes.', 'Most replicas lag the primary by milliseconds to seconds, and search reads a separate index anyway. Strong reads go to the primary.'],
+        why: 'A three-night stay is all or nothing: Friday, Saturday and Sunday together, or not at all. A transaction over per-night rows with a unique key (or an exclusion constraint on the date range) gives that, so no night is ever sold twice.'
+      }
+    },
+    dives: [
+      {
+        id: 'overlap', title: 'Two guests book overlapping nights', kind: 'bottleneck', c: 'booking',
+        q: 'One guest books a flat for 3 to 6 June, another for 5 to 8 June, in the same second. How does exactly one win?',
+        opts: ['One transaction claims each night only if it is free, so the overlap fails', 'Read the calendar, check those nights are free, then insert the booking', 'Shard bookings by guest ID, so each guest\'s writes go to a single node', 'Let both book, then refund whichever guest\'s payment cleared second'],
+        a: 0, no: [null, 'Both requests can read "free" before either writes, so both succeed. The check and the claim must be one atomic step.', 'The two guests land on different shards, so nothing compares their dates. Shard by listing if you shard, so a listing\'s nights live together.', 'That breaks "never booked twice", and a guest finds out after paying. Refunds are a fallback, not concurrency control.'],
+        nudge: 'Both guests read the calendar before either writes. Where can the check and the claim be one step?',
+        why: 'Store one row per listing per night. A booking updates all its nights in one transaction, each only WHERE status = \'free\'; if any night is taken the whole booking rolls back, and the other guest wins cleanly.',
+        f: {
+          q: 'Why one row per night, rather than one row per booking with check-in and check-out dates?',
+          opts: ['A unique key on (listing, night) lets the database refuse any overlap', 'Per-night rows make the search index smaller, since each night is one entry', 'It cuts writes: a week-long stay becomes one row update instead of seven', 'Each night is independent, so a booking no longer needs a transaction'],
+          a: 0, no: [null, 'The search index stores availability either way, and per-night rows mean more of them, not fewer. Size isn\'t the reason.', 'It is the reverse: a week is seven row updates instead of one insert. You pay writes for a simple uniqueness rule.', 'The nights of one stay must still be claimed together, so the transaction stays. Per-night rows make each claim checkable, not independent.'],
+          why: 'Date ranges can overlap in many ways; equal keys clash in one. Per-night rows turn "no overlap" into a uniqueness rule the database enforces. The cost is rows: 10 million listings × 365 nights is billions, fine for a table partitioned by listing.'
+        }
+      },
+      {
+        id: 'map', title: 'Searching by map area', kind: 'real', c: 'geo',
+        q: 'Guests drag the map and expect the listings inside it in under half a second. How do you find them?',
+        opts: ['A geo index such as geohashes or a quadtree, so only nearby cells are read', 'A B-tree on latitude, then a filter on longitude over the rows it returns', 'Cache the results for every possible map view ahead of time in Redis', 'Shard listings by city and scan the whole shard for the city on screen'],
+        a: 0, no: [null, 'The latitude range is a stripe right round the planet, so most rows it returns are thousands of miles away. A B-tree sorts one dimension.', 'Map views have endless positions and zoom levels, so the cache would never be warm. Cache popular areas on top of the index, not instead of it.', 'A map view can cross cities or cover a corner of one, and scanning a whole city per drag is slow. Shards spread load; they don\'t index space.'],
+        nudge: 'An index on latitude finds a stripe around the whole planet. What indexes both dimensions at once?',
+        why: 'Geohashes and quadtrees turn 2D nearness into a few index lookups. Elasticsearch and PostGIS both support geo queries, and the same index can filter by price and guests.',
+        f: {
+          q: 'How does search know which listings are free on the guest\'s dates?',
+          opts: ['Copy availability into the index by change data capture; booking checks again', 'Ask the booking database about each listing in the box before showing results', 'Rebuild the search index every night, so availability is at most a day old', 'Let the search index own bookings too, so it is always the source of truth'],
+          a: 0, no: [null, 'A box can hold thousands of listings, so every search becomes thousands of database reads. The booking database would melt at 1,200 QPS.', 'A day-old calendar shows nights booked this morning as free, and guests hit "no longer available" all day. Change data capture keeps it seconds behind.', 'Search engines don\'t do multi-row transactions, so they can\'t guarantee "never booked twice". The database stays the source of truth.'],
+          why: 'The index can be a few seconds behind, which is fine for browsing. The booking transaction is the real check, so a listing that just sold shows "no longer available" at checkout: rare and harmless.'
+        }
+      },
+      {
+        id: 'pay', title: 'The payment times out', kind: 'real', c: 'sagas',
+        q: 'A guest taps Pay, the payment provider times out, and the app retries. How do you avoid charging twice?',
+        opts: ['Send an idempotency key with the charge, so a retry runs only once', 'Wrap the charge and the booking insert in one database transaction', 'Retry the charge with exponential backoff and jitter until it answers', 'Don\'t retry; tell the guest to check their bank before trying again'],
+        a: 0, no: [null, 'A transaction can\'t reach into Stripe\'s systems; it covers your database only. External calls need idempotency instead.', 'Backoff spaces retries out, but if the first charge went through, the retry charges again. It changes when, not whether.', 'The guest can\'t tell whether a timed-out charge worked, and many will give up. The system should make retries safe instead.'],
+        nudge: 'The first charge may have gone through before the timeout. How can the provider tell a retry from a new charge?',
+        why: 'An idempotency key, such as the booking ID, makes the charge safe to retry: the provider returns the first result instead of charging again. Stripe supports it directly.',
+        f: {
+          q: 'The nights are claimed, then the payment fails for good. What happens to them?',
+          opts: ['The pending booking expires or is cancelled, which frees its nights', 'The nights stay booked, and support releases them by hand later on', 'The nights free up the moment the guest closes the app mid-payment', 'The provider frees them, since it knows which nights the charge was for'],
+          a: 0, no: [null, 'Nights would sit empty and unsellable until someone noticed. Expiry makes failure clean up after itself.', 'A dropped signal looks like a closed app, so guests would lose stays mid-payment. Expiry is a reliable signal; disconnects aren\'t.', 'The provider only knows an amount and a reference. Your booking service owns the nights, so it must release them.'],
+          why: 'A booking stays pending until payment confirms, with an expiry, like a ticket hold. If payment fails or the guest leaves, the expiry frees the nights: a small saga of claim, pay, confirm, or compensate by releasing.'
+        }
+      },
+      { id: 'bike', title: 'The shape of the favourite button', kind: 'bikeshed', reply: 'Heart-shaped. It\'s a backend round.', note: 'Chose to spend deep-dive time on a button.' }
+    ]
   }
 ];
+
+// Menu order: by chapter, then as written.
+SD.mock.problems.sort((a, b) => a.ch - b.ch);

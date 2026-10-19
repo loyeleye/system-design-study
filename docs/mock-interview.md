@@ -44,12 +44,15 @@ The debrief shows the verdict, the rubric with notes, where the time went agains
 | --- | --- | --- | --- | --- |
 | URL Shortener | Chapter 1 | Unique short codes | A viral link; sharding billions of links | Copy-button colour |
 | Rate Limiter | Chapter 2 | Two gateways, one counter | Choosing the algorithm; when the limiter fails | 429 wording |
+| File Sync (Dropbox) | Chapter 2 | Re-uploading 2 GB for one change | Telling other devices; a 50 GB upload on hotel Wi-Fi | Sync icon spin |
 | News Feed | Chapter 3 | Celebrity posts | Feed cache size; pagination | Emoji reactions |
 | Ticket Booking | Chapter 3 | Two fans, one seat | The 10:00 surge; search | SVG or canvas |
+| Top-K Videos (YouTube) | Chapter 3 | One video gets half the views | Sliding windows; the top 100 of a billion | 1.2M or 1,234,567 |
 | Chat App | Chapter 4 | Finding Bob's server | Duplicates and ordering; storing 50 billion messages | The blue ticks |
+| Home Rentals (Airbnb) | Chapter 4 | Two guests, overlapping nights | Searching by map area; the payment times out | Favourite button |
 | Video Platform | Chapter 5 | Smooth playback | A viral trailer; resumable uploads | Subscribe-button red |
 
-They match the Hello Interview problems in weeks 1 to 8 of the study plan. Every prompt and explanation is written fresh.
+They match the Hello Interview problems in weeks 1 to 8 of the study plan; File Sync, Top-K Videos and Home Rentals were added after the Learning content depth review. Every multiple choice question follows `docs/question-style.md` and passes `node tools/question_lint.js`. Every prompt and explanation is written fresh.
 
 ## Rewards (main game)
 
@@ -57,7 +60,7 @@ XP and Memory Shards by verdict: strong hire 120 XP and 150 shards, senior hire 
 
 ## Files
 
-- `game/js/mock-data.js` — phases and budgets, the rubric, the nudges per part, the wrap-up questions, and the six problems (`SD.mock.problems`).
+- `game/js/mock-data.js` — phases and budgets, the rubric, the nudges per part, the wrap-up questions, and the nine problems (`SD.mock.problems`, listed by chapter).
 - `game/js/mock.js` — the round, the debrief and the menu. Self-contained: it injects its own styles under `.mi` and needs only `SD.mock` and `SD.wb.parts` (from `whiteboard-data.js`, so the parts palette shares names and icons with Smudge). It uses `SD.art`, `SD.cast`, `SD.concepts`, `SD.icons` and `SD.audio` when they are loaded.
   - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, concepts, spent, mins, cut }`.
   - `SD.mock.menu(root, { store, open, onResult, pid })` shows the problem list and runs rounds.
