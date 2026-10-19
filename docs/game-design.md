@@ -220,6 +220,7 @@ Side quests pay shards and a story instead of a Plot Device, and teach topics th
 | Quest | Giver | Posted | Story | Teaches | Mini-game (mechanic) |
 | --- | --- | --- | --- | --- | --- |
 | Who Goes There? (`js/bru-quest.js`) | Bru | After chapter 2, once Doug's Totally Legit Bot is done | A quest "from the Guild Master" offers free shards to anyone named Kevin, and the Brújula Board believes whoever says a name. Bru → Doug → Lexi → Coo → Bru → Wen | Authentication vs authorization; password hashing (salted, slow); sessions vs signed tokens (JWT); 401 vs 403; expiry, refresh tokens and deny lists; bearer tokens; OAuth 2.0 | **Guild Cards, Please**: be the Guild's front gate for two shifts. Read each card, the clock and Bru's rules, then let them in, send a 401 or send a 403 |
+| A Window for Kevin (`js/kevin-quest.js`) | Doug | After chapter 2, once Who Goes There? is done | Bru repaints the quest board, and Kevin, who copies it through a spyglass, decides every quest is given by "Bounty" and pays nothing. The Guild opens a Window for bots. Doug → Bru → Doug → Seymour → Bru | API styles (REST for outsiders, GraphQL for a screen that needs many resources, gRPC between internal services); page numbers vs cursors; breaking vs safe changes, versioning and retiring v1 with a sunset date; webhooks instead of polling; an API key per bot | **Kevin's Crawl**: tap what the Window sends Kevin for each request while quests are pinned and taken, first with page numbers, then with a bookmark. Then **Breaking or Safe?** (the shared sorter) with Seymour |
 
 ### Mini-games and the learning principle each one uses
 
@@ -252,6 +253,7 @@ Mini-games live in `game/js/minigames.js` (`SD.games`). Each takes the quest's `
 | Pager Panic | Page, ticket or silence five alerts, then fail a region over | Symptoms vs causes, SLO burn rate, failover | Interleaved judgement calls with a story consequence (Uptima's 400 pages) |
 | Rebuild the Recipe (revised) | The rules sit on screen, entries are listed by number, a live card shows the result, and Undo and Hint help when stuck | Snapshots and logs | Ladi found the first version confusing (2026-10-18); the goal and the three rules are now explicit before the first move |
 | Guild Cards, Please | Two shifts at the Guild gate, Papers, Please style: compare each card with its seal, its time, the deny list and what its rank may do | Authentication vs authorization, signatures, expiry, revocation, bearer tokens | Discrimination practice: near-identical cards that differ in one detail (a pencilled rank, a stranger's seal), each with Bru's reason |
+| Kevin's Crawl | Predict which quests the Guild Window returns for each of Kevin's requests while Bru pins quests and heroes take them, with page numbers and then with a cursor; Kevin's notebook shows the repeats and gaps | Offset vs cursor pagination | Productive failure: the page-number round goes wrong in front of you (two repeats, two gaps) before the bookmark fixes it, after a prediction |
 
 ## Shards, Wen's café and Aigerim's cards
 
