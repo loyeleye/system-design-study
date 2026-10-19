@@ -1,13 +1,15 @@
 // Relationship scenes: the eleven arcs from the cast bible, four scenes each, played at a place and a time block
 // (docs: /mnt/project-files/living-npcs/design.md, "Backstories and relationships"). The scenes are data, D.ARCS in
 // js/folk-data.js; this file decides which one is due, plays it, and remembers it.
-// Where they trigger: js/hub.js asks SD.folkScenes.near(x, y) as you walk about Pingsby and gathers the scene's
-// people round you; js/interiors.js asks find('room:<key>') as you walk into a room; talking to Aigerim asks
-// find('talk:aigerim'), in town and at her North Road shop.
+// A scene waits for you. While one is due, its people walk to its place as part of their day (this file adds the
+// stop to SD.folk.plan), and it starts when you talk to one of them there: js/hub.js asks talk(id) in town,
+// js/interiors.js asks talkIn(room, id) in a room, and talking to Aigerim asks find('talk:aigerim'), in town and
+// at her North Road shop. Nobody is moved anywhere they didn't walk to.
 // Saved: S.save.folk.seen = { sceneId: { loop, b, t } } (b is the block's index), and S.save.folk.read, the last
 // scene Aigerim has read back to you. A scene you've seen stays seen; one you miss comes round again.
 //
-//   SD.folkScenes.near(x, y)   the scene due within two tiles of that village tile, or null
+//   SD.folkScenes.talk(id)     in town: the scene due where that villager is standing, if they're in it, or null
+//   SD.folkScenes.talkIn(k, id) in room k: play the scene due there if that villager is in it; true if one played
 //   SD.folkScenes.find(at)     the scene due at a place ('room:cafe', 'talk:aigerim', a spot), or null
 //   SD.folkScenes.play(s)      play a scene (or a scene id), then offer the arc's review question if it's the last
 //   SD.folkScenes.seen(id)     whether you've seen a scene ('drawer-2' is arc "drawer", scene 2)
@@ -73,12 +75,56 @@
     return D.ARCS.map(a => next(a, c)).filter(nx => nx && blockOk(nx.s, c.block) && nx.s.when(c) && later(nx.s, nx.last, c) && !blocked(nx.s, c, m)).map(nx => nx.s);
   }
   FS.find = at => ready().find(s => s.at === at) || null;
-  FS.near = function (x, y) {
-    return ready().find(s => {
-      const sp = D.SPOTS[s.at];
-      return sp && sp.tiles && sp.tiles.some(([tx, ty]) => Math.max(Math.abs(tx - x), Math.abs(ty - y)) <= 2);
-    }) || null;
+  const near = (sp, [x, y]) => sp.tiles.some(([tx, ty]) => Math.max(Math.abs(tx - x), Math.abs(ty - y)) <= 2);
+  FS.talk = function (id) {
+    const at = SD.hub && SD.hub.actorAt(id);
+    if (!at) return null;
+    return ready().find(s => s.who.includes(id) && D.SPOTS[s.at] && D.SPOTS[s.at].tiles && near(D.SPOTS[s.at], at)) || null;
   };
+  FS.talkIn = async function (key, id) {
+    const s = ready().find(x => x.at === 'room:' + key && x.who.includes(id));
+    if (!s) return false;
+    await FS.play(s);
+    return true;
+  };
+
+  // ---------- Getting there ----------
+  // While a scene is due, its people head for its place instead of their usual spot for that block: to its tiles
+  // outdoors, or in through the room's door. Anyone already standing near the place stays put, and if the place
+  // runs out of free tiles the rest keep to their schedule (one of them is enough to start it). Only scenes whose
+  // people are all in town go on anyone's day.
+  if (SD.folk && SD.folk.plan) {
+    const plan = SD.folk.plan;
+    SD.folk.plan = function (list) {
+      const out = plan.apply(this, arguments);
+      if (!S.save) return out;
+      const here = new Set(list.map(n => n.id).filter(id => out[id])), used = {};
+      ready().forEach(s => {
+        if (s.at.startsWith('talk:') || !s.who.every(id => here.has(id)) || s.who.some(id => used[id])) return;
+        const room = s.at.startsWith('room:') && SD.interiors && SD.interiors.ROOMS && SD.interiors.ROOMS[s.at.slice(5)];
+        const sp = D.SPOTS[s.at], doing = 'Heading somewhere, with purpose';
+        if (room) {
+          const d = SD.hub.doorTile(room.door);
+          if (!d) return;
+          s.who.forEach(id => { used[id] = 1; out[id] = Object.assign({}, out[id], { spot: s.at, doing, say: null, act: null, label: place(s.at), route: null, x: d[0], y: d[1], hide: true, door: room.door }); });
+          return;
+        }
+        if (!sp || !sp.tiles) return;
+        const busy = new Set(Object.keys(out).filter(id => out[id] && !out[id].hide && !s.who.includes(id)).map(id => out[id].x + ',' + out[id].y));
+        const free = sp.tiles.filter(([x, y]) => !busy.has(x + ',' + y));
+        s.who.forEach(id => {
+          used[id] = 1;
+          const o = out[id];
+          if (o && !o.hide && !o.route && o.x != null && near(sp, [o.x, o.y])) { busy.add(o.x + ',' + o.y); return; }
+          const t = free.find(([x, y]) => !busy.has(x + ',' + y));
+          if (!t) return;
+          busy.add(t[0] + ',' + t[1]);
+          out[id] = Object.assign({}, o, { spot: s.at, doing, say: null, act: null, label: sp.label, route: null, x: t[0], y: t[1], hide: false, door: null });
+        });
+      });
+      return out;
+    };
+  }
 
   // ---------- Playing a scene ----------
   // What Aigerim's diary knows about you, from the scenes you've seen (arc 10 reads it back).
