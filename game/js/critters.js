@@ -39,7 +39,11 @@
     bfly2: { look: 'fly', k: 0.7, day: true, flap: 10, roam: 0.38 },
     bfly3: { look: 'fly', k: 0.7, day: true, flap: 8, roam: 0.3 },
     bee: { look: 'fly', k: 0.6, day: true, flap: 40, roam: 0.7, buzz: true },
-    dragonfly: { look: 'fly', k: 0.7, day: true, flap: 30, roam: 0.5, dart: true }
+    dragonfly: { look: 'fly', k: 0.7, day: true, flap: 30, roam: 0.5, dart: true },
+    // The Eventual Isles (js/isles/isles-map.js): gulls on the docks and beaches (the ones in the air are drawn there,
+    // from gullfly), and crabs on the shore, who stay out in the rain.
+    gull: { look: 'hop', k: 0.5, speed: 1.2, shy: 'fly', day: true, rest: [2, 6] },
+    crab: { look: 'bug', k: 0.5, speed: 0.9, shy: true, rain: true, rest: [2, 7] }
   };
 
   // Whether a kind is out right now: wild ones hide from rain and storms, rain lovers only from storms, and pets,

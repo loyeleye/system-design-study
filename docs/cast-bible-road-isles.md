@@ -211,7 +211,7 @@ Leilani grew up on Ferry Landing, the daughter and granddaughter of harbourmaste
 
 What Leilani wants is one thing the whole archipelago agrees on at the same moment. That is why she wrote the letter to Pingsby, and why the bridges matter to her more than she lets on. Her soft spot is Captain Kwame. When they were seven, the ferry left on time and left him behind on the dock overnight, and she sat with him and shared her tea. She still keeps a second cup of tea for him every evening, when he comes in to file the ferry log, and after the lighthouse opens she leaves one on its step too.
 
-By day she is at her board, chalking up the crossings. In the afternoon she watches for the ferry from the harbour square, and she spends the night in the harbour office, keeping an eye on the harbour from its window.
+By day she is at her board, chalking up the crossings. In the afternoon she watches for the ferry from the harbour square. In the evening she is in the harbour office with Kwame's cup of tea poured, waiting for him to file the ferry log, and she spends the night there, keeping an eye on the harbour from its window.
 
 ### Captain Kwame
 
@@ -227,9 +227,13 @@ As a girl she was the one who asked "But why?" until the grown-ups said "Because
 
 ### The children of the Isles School
 
-Three small students, aged six to nine, who raise their hands before anyone has finished a sentence. They ask why the ferry is late, how long "eventually" is (is it longer than lunch?), and why the sea is salty. One wants to be a ferry when they grow up, because ferries never have to hurry. One has a sister and a very loud cat. They play "Incident" at break, refuse to rub anything out of their workbooks since Mang Tomas visited, and draw moustaches on Uptima's poster.
+Three small students, aged six to nine, who raise their hands before anyone has finished a sentence: Tunde, Maisie and Malia. They ask why the ferry is late, how long "eventually" is (is it longer than lunch?), and why the sea is salty. One wants to be a ferry when they grow up, because ferries never have to hurry. One has a sister and a very loud cat. They play "Incident" at break, refuse to rub anything out of their workbooks since Mang Tomas visited, and draw moustaches on Uptima's poster.
 
-They are the Isles' teach-back: whatever you fix, they ask you to explain it to them, and they cheer when it makes sense. They want to know everything, and their soft spot is Saule Apai, who never tells them to stop asking. Mornings they are in class round the Why Book. At afternoon break they crowd round Apai on the path to ask her why, and in the evening they play on the harbour square and watch the ferry come in, because one of them is studying to be one. At night they are home in bed.
+- **Tunde** (eight, Nigerian, red backpack) wants to be a ferry when he grows up, not the captain, the ferry. Kwame once let him hold the rope and told him he was "on time for a ferry", which Tunde treats as the highest honour on the Isles. He has not rubbed anything out of his workbook since Mang Tomas visited, and it is very long.
+- **Maisie** (seven, Scottish, orange pigtails) plays the pager in "Incident" and shouts BEEP BEEP. She drew the moustache on Uptima's poster, and when Saule asked why, she said "Why not?", which went into the Why Book. Her gran says the sea is salty from fish crying.
+- **Malia** (six, Samoan, the smallest) has a big sister and a very loud cat called Captain, who shouts at the ferry. She doesn't play football, she cheers, because cheering is a job. Her question in the Why Book still has a ribbon on it.
+
+They are the Isles' teach-back: whatever you fix, they ask you to explain it to them, and they cheer when it makes sense. They want to know everything, and their soft spot is Saule Apai, who never tells them to stop asking. Mornings they are in class round the Why Book. At afternoon break they play football on the path in front of the school, Tunde and Maisie passing and Malia cheering, until someone comes over and they crowd round to ask why. In the evening they play on the harbour square and watch the ferry come in, because Tunde is studying to be one. At night they are home in bed.
 
 ### Madame Farida
 
@@ -326,6 +330,29 @@ She brews Nok bitter tea, offers Arjun coffee "not today", and lets Kai stand by
 Kagemaru is the card fixer in the cave above the Ledger bridge: completely hooded, a shadow and a grin, white gloves. He is soft-spoken, endlessly helpful and quietly sinister, and he laughs at people's misery, "Ah ha ha", which is the only time he sounds sincere. He pins cards into your starting deck off the books, for a tenth of the shop price, and they stay for as long as you keep winning. In chapter 10 he leaves the cave to watch the end of the world from the Exchange, and he is the only person in the realm enjoying it.
 
 He was once the Guild's card registrar, the man who signed off every change to every hero's deck. One night a hero was dying in a fight that a single card would have won, and he slipped the card into her deck with no paperwork. She lived. The Guild threw him out anyway and struck his name from every roll and ledger it kept, and a man nobody has a record of slowly stops having a face; he says he used to look like someone else and has forgotten who. He sneers at people with names in books, and he envies every one of them. That is why Aigerim unsettles him: her diary is the one place he is written down, and she won't stop writing.
+
+### Busy at their spot
+
+Each islander has one thing they do at their spot while you're not talking to them (`BUSY` in `js/isles/isles-map.js`; they stop and look at you when you come close). It is drawn from their story above.
+
+| Who | What | When |
+| --- | --- | --- |
+| Leilani | chalks the crossings on her board | mornings |
+| Kwame | waves up the path for anyone still running for the boat | now and then |
+| Saule | sweeps the school step | evenings |
+| The school | football: Tunde and Maisie pass, Malia cheers | afternoon break and evenings |
+| Farida | counts the Admiral's receipts | now and then |
+| Admiral Mutex | waves the ships in, one at a time | now and then |
+| Mang Tomas | stacks new planks at the mill door | now and then |
+| Lúcia | reads the day's letters aloud to the gulls | now and then |
+| Minh | sketches the coast for the next edition | now and then |
+| Ha-jin and Ha-eun | argue across the water | now and then |
+| Ploy | a victory dance | now and then |
+| Nok | jumping jacks | now and then |
+| Arjun | dozes on his feet | always, until you come close |
+| Meron | stoops to pick herbs | now and then |
+
+The Isles have wildlife too (`WILD` in `js/isles/isles-map.js`, drawn by `js/critters.js`): gulls wheeling over the sea and standing about on the docks, crabs on the beaches, and sparrows, rabbits, butterflies, bees, dragonflies, a frog and a snail on the islands. Gulls and the small animals go into hiding when it rains; crabs, frogs and snails stay out, and only a thunderstorm sends them in.
 
 ### Relationships on the Isles
 
