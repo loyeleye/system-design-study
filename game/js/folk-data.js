@@ -41,7 +41,15 @@
     'north-gate': { label: 'the road north, watching it', tiles: [[21, 2], [19, 2]] },
     sky: { label: 'somewhere over the rooftops', at: null },
     unknown: { label: '???', at: null },
-    road: { label: 'the North Road', road: 'N' }
+    road: { label: 'the North Road', road: 'N' },
+    // The residential row south of the gate (js/hub.js), one door per home; Lexi's has a room (js/interiors.js).
+    'row:lexi': { label: 'at home, on the residential row', door: 'X' },
+    'row:kaito': { label: 'at home, on the residential row', door: 'Y' },
+    'row:doug': { label: 'at home, on the residential row', door: 'D' },
+    'row:coo': { label: 'at home, on the residential row', door: 'Q' },
+    // Bru's house stays dark until arc 8 says where she goes at night.
+    'row:bru': { label: 'at home, on the residential row', door: 'M' },
+    'row:ayo': { label: 'at home, on the residential row', door: 'O' }
   };
 
   // Bru walks rounds in the afternoon, past a different door first each loop.
@@ -92,7 +100,7 @@
       act: 'guard',
       morning: ['stand', 'The backup of the morning', null, 'write'],
       afternoon: ['plaza', 'Drilling squires', 'SQUIRES! Again! A drill you have only done once is not a drill. It is a story.', 'drill'],
-      evening: c => ['stand', c.f.ch10 ? 'Running a restore drill' : 'Labelling tapes. Three times.', null, 'write'],
+      evening: c => ['bunker:in', c.f.ch10 ? 'Running a restore drill' : 'Labelling tapes. Three times.', null, 'write'],
       night: ['stand', 'Standing guard at the bunker door, then asleep in his armour', null, 'guard'],
       board: 'SEYMOUR: {spot}. {spot}. {spot}. (He sends three.)'
     },
@@ -110,7 +118,7 @@
       morning: ['stand', "Teaching Mio's class at the anvil", null, 'smith'],
       afternoon: c => c.f.ch7 ? ['road', 'Selling at the North Road market'] : ['stand', 'Apprentices at the anvils', null, 'smith'],
       evening: ['stand', "Writing the day's post-mortem", null, 'write'],
-      night: ['forge:in', 'Asleep by the fire. The Forge stays lit.'],
+      night: ['row:ayo', 'Asleep at home. The Forge stays lit.'],
       board: 'AYO: {spot}. On-prem. Does not use the board, but tells Bru in person.'
     },
     coo: {
@@ -118,7 +126,7 @@
       morning: c => c.f.ch7 && c.loop % 2 ? ['road', 'At the North Road courier post'] : ['stand', 'Sorting the post', null, 'read'],
       afternoon: c => ['sky', 'Flying rounds, over ' + ROOFS[c.loop % ROOFS.length]],
       evening: ['bench', 'On the plaza bench with Wen', 'Coo. Wen brings the seed, Coo brings the company. Fair trade.', 'talk:wen'],
-      night: ['post:in', 'Roosting'],
+      night: ['row:coo', 'Roosting at home'],
       board: 'COO: {spot}. Delivered at least once. Possibly twice.'
     },
     lexi: {
@@ -127,7 +135,7 @@
       afternoon: c => c.f.ch7 && c.loop % 2 ? ['road', 'Cataloguing books at the waystation']
         : [['library', 'post', 'guild', 'board', 'cafe'], 'Collecting overdue books, door to door', 'Overdue. OVERDUE. Kaito has had his own memoir for three loops.', 'browse'],
       evening: ['stand', 'Editing something, in secret', null, 'write'],
-      night: ['library:in', 'Reading'],
+      night: ['row:lexi', 'Reading in her nook at home'],
       board: 'LEXI: {spot}. Location: [SEALED].'
     },
     cron: {
@@ -151,7 +159,7 @@
       morning: ['stand', 'Laptop out, by the Post', null, 'laptop'],
       afternoon: [['board', 'post', 'cafe', 'plaza'], 'Refreshing the quest board, by hand this time, then checking it again', 'Rate limited. By myself. I set a timer. Five refreshes a walk.', 'laptop'],
       evening: c => c.f.ch5 ? ['terrace', 'On the café terrace, talking shop with {valentin}', null, 'talk:valentin'] : ['terrace', 'On the café terrace, laptop out', null, 'laptop'],
-      night: ['post:in', "Asleep. Kevin isn't."],
+      night: ['row:doug', "Asleep at home. Kevin isn't."],
       board: 'DOUG: bakery. (He is not in the bakery. That is Kevin.)'
     },
     // Aigerim's "stand" is wherever js/peddler.js put her shop this loop.
@@ -175,10 +183,10 @@
   };
 
   // Chapter 10, from Gary leaving until it's cleared: the Cloud is down, it's always a stormy night, and everyone
-  // stays indoors. Those without a home of their own shelter in Ayo's Forge, the only place still warm.
+  // stays indoors, at home or at work. Those without a door of their own shelter in Ayo's Forge, the only place still warm.
   D.STORM = {
     uptima: 'temple:in', wen: 'cafe:in', mio: 'treehouse:in', seymour: 'bunker:in', bru: 'guild:in', ayo: 'forge:in',
-    coo: 'post:in', lexi: 'library:in', kaito: 'forge:in', doug: 'forge:in', cron: 'forge:in', valentin: 'forge:in', aigerim: 'forge:in'
+    coo: 'post:in', lexi: 'row:lexi', kaito: 'row:kaito', doug: 'row:doug', cron: 'forge:in', valentin: 'post:in', aigerim: 'forge:in'
   };
   D.STORM_BOARD = 'Indoors. Everyone is indoors. I counted twice.';
 
@@ -194,7 +202,7 @@
     mio: [['mio', 'I\'m in a blanket fort. Pip says thunder is the sky doing a rollback. Is that TRUE?'],
       ['mio', 'I drew Gary so he doesn\'t get lost. I gave him an umbrella. And a croissant. Two croissants.'],
       ['mio', 'When the Cloud comes back, will I remember the storm? I want to. I think.']],
-    seymour: [['narr', 'Seymour peers out through the letterbox. "I prepared for this my whole life. I am not ready."'],
+    seymour: [['seymour', 'I prepared for this my whole life. I am not ready.', 'sad'],
       ['seymour', 'One tape. One drive. If you need me, I\'ll be checksumming it. Again.'],
       ['seymour', 'Backups are a promise to your future self. My future self is very nervous.']],
     bru: [['bru', 'Headcount: two hundred and three indoors, one missing. I keep recounting. It stays one.'],
@@ -208,7 +216,13 @@
       ['lexi', 'I found a manual on restoring a downed Cloud. Every page after the contents is blank.']],
     ayo: [['narr', 'The Forge is packed. Half the village is warming its hands at the fire, and steam rises off everyone\'s coats.'],
       ['ayo', 'Still one man. Still one fire. Sit down, you\'re dripping on the anvil.'],
-      ['ayo', 'The fire runs on-prem. So does the kettle. Someone make tea. Not on the anvil.']]
+      ['ayo', 'The fire runs on-prem. So does the kettle. Someone make tea. Not on the anvil.']],
+    kaito: [['kaito', 'I am not hiding. I am sheltering in place. Strategically. All forty-six instances of me.'],
+      ['kaito', 'Gary\'s spot is empty. Someone should keep it warm. ...Not in this rain. Tomorrow. Probably.'],
+      ['kaito', 'I tried to auto-scale my courage. The Cloud is down. It did not scale.']],
+    doug: [['doug', 'My bot keeps trying to reconnect every three seconds. I should add backoff. I should add jitter. I should have added both.'],
+      ['doug', 'Kevin is un-retired. He\'s pinging every door in town to check everyone\'s in. Yours too. Sorry.'],
+      ['doug', 'Three laptops, and not one of them can reach anything. It\'s the quietest my house has ever been.']]
   };
   // Those sheltering in the Forge, one line each when you come in.
   D.SHELTER = {

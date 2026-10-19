@@ -9,6 +9,7 @@
 //   F.meet(id)            remember that you've talked to someone
 //   F.chat(id)            talk to someone found away from their door
 //   F.indoors(door)       chapter 10: knock on a door and hear from whoever is sheltering inside
+//   F.worry(id)           chapter 10: one worried line from someone indoors, { s, t, e }, a different one each time
 //   F.board()             the Brújula Board page (in the Menu)
 //   F.storm()             true while everyone is indoors (chapter 10's stormy night)
 (function () {
@@ -117,19 +118,25 @@
   // Chapter 10: nobody is out in the storm. Knocking gets a worried word from whoever lives there, a different one
   // each visit; the Forge, where the homeless shelter, has a word from each of them, and their quests still work.
   F.indoors = async function (door) {
-    const owner = D.DOOR_OWNER[door];
-    const inside = F.residents(door).filter(id => id !== owner);
+    const home = F.residents(door), owner = home.includes(D.DOOR_OWNER[door]) ? D.DOOR_OWNER[door] : null;
+    const inside = home.filter(id => id !== owner);
     if (!owner && !inside.length) return;
-    const f = flags(), seen = f.worry = f.worry || {};
     const lines = [];
-    if (owner && D.WORRY[owner]) {
-      const i = seen[owner] || 0; seen[owner] = i + 1; S.persist();
-      const [s, t, e] = D.WORRY[owner][i % D.WORRY[owner].length];
-      lines.push({ s, t, e });
-    }
+    if (owner && D.WORRY[owner]) lines.push(F.worry(owner));
     inside.forEach(id => { const l = D.SHELTER[id]; if (l) { lines.push({ s: id, t: l }); F.meet(id); } });
     if (lines.length) await U.dialog(lines);
     for (const id of inside) if (SD.quests.pending(id).length) await SD.quests.talk(id);
+  };
+
+  // One worried line from someone sheltering in the storm (rooms in js/interiors.js use it too): their own rotation
+  // if they have one, a different line each time, else their line from the Forge.
+  F.worry = function (id) {
+    const ls = D.WORRY[id];
+    if (!ls) return D.SHELTER[id] ? { s: id, t: D.SHELTER[id] } : null;
+    const seen = flags().worry = flags().worry || {}, i = seen[id] || 0;
+    seen[id] = i + 1; S.persist();
+    const [s, t, e] = ls[i % ls.length];
+    return { s, t, e };
   };
 
   // ---------- The Brújula Board ----------

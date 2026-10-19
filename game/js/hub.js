@@ -24,6 +24,10 @@
     'T.............#####...............fffffffff....T',
     'T.......L.....##G##.......L.......fffffffff....T',
     'T..............................................T',
+    'T....T.........................................T',
+    'T.................###..###..###..###..###..###.T',
+    'T.........T.......#X#.L#Y#..#D#.L#Q#..#M#.L#O#.T',
+    'T..............................................T',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
   ];
   const W = MAP[0].length, HT = MAP.length;
@@ -33,14 +37,18 @@
     H: { name: "MIO'S TREEHOUSE" }, W: { name: "SEYMOUR'S BUNKER" },
     G: { name: 'DUNGEON (PROD)' }, B: { name: 'QUEST BOARD' },
     U: { name: "ADVENTURERS' GUILD" }, F: { name: 'FORGE' }, P: { name: 'PIGEON POST' }, K: { name: 'GRAND LIBRARY' },
-    N: { name: 'NORTH ROAD' }, E: { name: 'TO THE ISLES' }
+    N: { name: 'NORTH ROAD' }, E: { name: 'TO THE ISLES' },
+    // The residential row, south of the gate: homes for villagers who work in town (js/interiors.js).
+    X: { name: "LEXI'S HOUSE" }, Y: { name: "KAITO'S HOUSE" }, D: { name: "DOUG'S HOUSE" }, Q: { name: "COO'S HOUSE" },
+    M: { name: "BRU'S HOUSE" }, O: { name: "AYO'S HOUSE" }
   };
-  const DOORS = 'ACHWGUFPKNE';
+  const DOORS = 'ACHWGUFPKNEXYDQMO';
   // Dirt paths from each door to the plaza and the bridge (drawn as stepping stones, walkable).
   const PATHS = [[5, 6], [26, 6], ...[5, 6, 7, 8, 9, 10, 11, 12].map(x => [x, 7]), ...[19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 7]),
     ...[10, 11, 12, 13].map(y => [15, y]), ...[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 14]),
     ...[15, 16, 17].map(y => [12, y]), [12, 18], [13, 18], [14, 18], [15, 18], [16, 18], [15, 14],
-    ...Array.from({ length: 20 }, (_, i) => [27 + i, 7]), [38, 6], [45, 5], [45, 6], ...[1, 2, 3, 4, 5, 6].map(y => [20, y]), ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14])];
+    ...Array.from({ length: 20 }, (_, i) => [27 + i, 7]), [38, 6], [45, 5], [45, 6], ...[1, 2, 3, 4, 5, 6].map(y => [20, y]), ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14]),
+    ...[19, 20, 21, 22].map(y => [16, y]), ...Array.from({ length: 30 }, (_, i) => [16 + i, 22])];
   PATHS.forEach(([x, y]) => { if (MAP[y][x] === '.') MAP[y] = MAP[y].slice(0, x) + 'p' + MAP[y].slice(x + 1); });
   // Villagers' usual spots, by their doors; talking to one there is the same as walking in. Through the day they
   // walk to wherever their schedule says (js/folk-data.js). Sprites are in assets/img/village.
@@ -130,7 +138,7 @@
     const r = cv.getBoundingClientRect();
     cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr);
     // 32px art, drawn 1:1 on small screens and at 1.5x on large ones.
-    ts = Math.max(r.width / 15, r.height / (HT - 1)) >= 44 ? 48 : 32;
+    ts = Math.max(r.width / 15, r.height / 19) >= 44 ? 48 : 32;
     // Resizing wipes the canvas, and the village pauses while anyone talks, so a cleared canvas could sit behind
     // a whole conversation as a blank blue screen. Repaint straight away instead of waiting for the next frame.
     if (t0 && r.width && r.height) { try { draw(t0 / 1000, 0); } catch (e) { /* images still loading */ } }
@@ -382,7 +390,8 @@
       P.face = nx > P.x ? 'east' : nx < P.x ? 'west' : ny < P.y ? 'north' : 'south';
       P.x = nx; P.y = ny; stepT = 0.02;
       const t = tile(nx, ny);
-      if (DOORS.includes(t)) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => onDoor(t), 140); }
+      // A door with a room behind it takes you inside (js/interiors.js); the others open their building.
+      if (DOORS.includes(t)) { P.path = []; Object.keys(keys).forEach(k => keys[k] = false); setTimeout(() => onDoor(SD.interiors && SD.interiors.has(t) ? 'in:' + t : t), 140); }
       checkPage();
     } else if (nx !== P.x || ny !== P.y) {
       // Bumping into a villager starts a conversation.
@@ -553,12 +562,14 @@
   const load = src => { const im = new Image(); im.src = src; return im; };
   const EMOTE = load('assets/img/emotes.png');
   const PICS = {};
-  const pic = name => PICS[name] || (PICS[name] = load(VA + name + '.webp'));
+  // The residential row's houses live with the interiors art (assets/img/interiors, js/interiors-art.js).
+  const IA = () => SD.interiorsArt && SD.interiorsArt.objects;
+  const pic = name => PICS[name] || (PICS[name] = load((IA() && IA()[name] ? 'assets/img/interiors/' : VA) + name + '.webp'));
   const ok = im => im.complete && im.naturalWidth > 0;
   const ART = () => SD.villageArt;
   // Draw an object picture centred on x and standing on y (both in pixels), at `k` times the art scale.
   function obj(name, x, y, k, flip) {
-    const im = pic(name), sz = ART().objects[name];
+    const im = pic(name), sz = ART().objects[name] || (IA() && IA()[name]);
     if (!sz || !ok(im)) return;
     const w = sz[0] * ts / 32 * (k || 1), h = sz[1] * ts / 32 * (k || 1);
     if (flip) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(im, -w / 2, y - h, w, h); ctx.restore(); }
@@ -623,7 +634,7 @@
     if (c === 'N') return;   // no gate: a plain path leads north (Ladi, 2026-10-18)
     const o = blockOwner(x, y), b = bbox(o);
     if (!b || x !== b.x0 || y !== b.y1) return;
-    const name = 'b-' + o, sz = ART().objects[name];
+    const name = 'b-' + o, sz = ART().objects[name] || (IA() && IA()[name]);
     if (!sz) return;
     // As wide as the footprint, but never taller than it plus a row and a half of roof.
     const fw = (b.x1 - b.x0 + 1) * 32, fh = (b.y1 - b.y0 + 2.5) * 32, k = Math.min(1.35, (fw + 16) / sz[0], fh / sz[1]);

@@ -40,7 +40,9 @@
   // def: { map: [rows], terrain: { char: sheetKey }, top: [sheet keys, highest first], base: sheetKey for plain ground,
   //   solid: chars you can't walk on, objects: [{ name, x, y, k, flip }], actors: { id: { x, y, face } },
   //   labels: [{ x, y, text }], tint, sky: 'sun'|'dusk'|'dark'|'grey', weather: a map's own weather (js/weather.js),
-  //   clock: false to keep the time of day off a walkable map (js/clock.js) }
+  //   clock: false to keep the time of day off a walkable map (js/clock.js), under(ctx, ts, t): paint the ground
+  //   (a room's backdrop, js/interiors.js), ground: false for no terrain tiles under it, indoors: true to hear the
+  //   weather without drawing it }
   // Walkable maps (ones with a player) show the time of day and the weather; cutscenes only show weather they ask for.
   SC.create = function (canvas, def) {
     const sc = { def, actors: {}, P: null, active: false, onTalk: null, onDoor: null, follow: null, fx: [] };
@@ -266,7 +268,8 @@
       ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
       const x0 = Math.max(0, Math.floor(cx / ts) - 1), x1 = Math.min(W, Math.ceil((cx + vw) / ts) + 1);
       const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) corner(x, y);
+      if (def.ground !== false) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) corner(x, y);
+      if (def.under) def.under(ctx, ts, t);
       // Trees ring the map; objects and people are drawn row by row so you walk behind them.
       const objs = (def.objects || []).filter(o => !o.hidden);
       for (let y = y0; y < y1 + 3; y++) {
@@ -288,7 +291,7 @@
       ctx.restore();
       const tint = SKY[sk] || (/^(rgba?|#)/.test(sk || '') ? sk : null);
       if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, vw, vh); }
-      if (SD.weather && (sc.P || def.weather)) SD.weather.draw(ctx, t, vw, vh, SD.weather.now(def.weather));
+      if (SD.weather && (sc.P || def.weather) && !def.indoors) SD.weather.draw(ctx, t, vw, vh, SD.weather.now(def.weather));
       if (sk === 'grey' || (typeof def.grey === 'function' && def.grey())) { ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#888'; ctx.fillRect(0, 0, vw, vh); ctx.globalCompositeOperation = 'source-over'; }
       if (def.overlay) def.overlay(ctx, t, vw, vh);
     }
