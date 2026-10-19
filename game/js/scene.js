@@ -345,7 +345,10 @@
     }
     // For pictures of people drawn elsewhere, like the reflection in the studio's mirror (js/club-mirror.js).
     sc.drawActor = person;
+    // tall: how tall someone drawn their own way (draw()) is, in pixels at ts 32, so their bubbles sit on their heads
+    // (Leon and Thea sitting down, js/club-loft.js).
     function emoteAt(a) {
+      if (!ISO && a.tall) return [a.px * ts + ts / 2, (a.py + 0.95 - a.tall / 32) * ts - 6];
       if (!ISO) return [a.px * ts + ts / 2, (a.py - 0.55 - (a.scale || 1) * 0.5 + 0.5) * ts];
       const [fx, fy] = feet(a.px, a.py), c = charArt(a.sprite);
       return [fx, fy - (c ? c.h : 52) * ts / 32 * CS * (a.scale || 1) - ts * 0.1];

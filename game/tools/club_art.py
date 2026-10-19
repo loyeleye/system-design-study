@@ -101,11 +101,12 @@ def clean(im, pal, near={}):
     return im
 
 PALS = {}
-manifest = {'chars': {}, 'extra': {}, 'objects': {}, 'rooms': {}}
+manifest = {'chars': {}, 'extra': {}, 'seated': {}, 'objects': {}, 'rooms': {}}
 # Extra sheets made from a member's: the same rows, with the facing-south idle swapped for another of their animations
 # (anim/<id>/<anim>/south-<i>.png, made from chars/<id>/<pose>.png, whose colours the cleaning keeps too). Imani doing
-# the books, ledger in hand, in the lounge (js/club-loft.js). In the manifest's extra, so they don't count as members.
-EXTRA = {'imani-books': ('imani', 'books-v3', 'books')}
+# the books, ledger in hand, and Paz timing the rain with her stopwatch, in the lounge (js/club-loft.js). In the
+# manifest's extra, so they don't count as members.
+EXTRA = {'imani-books': ('imani', 'books-v3', 'books'), 'paz-stopwatch': ('paz', 'stopwatch-v3', 'stopwatch')}
 
 def colours(*paths):
     return {c[:3] for p in paths for _, c in Image.open(p).convert('RGBA').getcolors(1 << 24) if c[3] >= 110}
@@ -161,6 +162,40 @@ def build(cid, name, idle=None):
 for cid in CHARS: build(cid, cid)
 for name, (cid, anim, pose) in EXTRA.items():
     if os.path.exists(os.path.join(SRC, 'anim', cid, anim, 'south-0.png')): build(cid, name, (anim, pose))
+
+# Members sitting on the lounge's sofa (js/club-loft.js): chars/<id>/sit.png (the south rotation edited to sit down),
+# sit-left.png and sit-right.png (the same, head turned toward that side of the picture) and anim/<id>/sit-breathe/
+# south-<i>.png (breathing, made from sit.png on a 176px canvas). One strip each, c-<id>-sit.webp: the breathing frames,
+# then looking left, then looking right, standing on the same bottom edge (the manifest's seated: w, h and n breaths).
+SEATED = ['leon', 'thea']
+
+def seated(cid):
+    d = os.path.join(SRC, 'chars', cid)
+    if not os.path.exists(os.path.join(d, 'sit.png')): return
+    key = cid + '-sit'
+    PALS[key] = list(colours(*[os.path.join(d, f + '.png') for f in ['sit', 'sit-left', 'sit-right']]))
+    n = 0
+    while os.path.exists(os.path.join(SRC, 'anim', cid, 'sit-breathe', 'south-%d.png' % n)): n += 1
+    frames = [clean(Image.open(os.path.join(SRC, 'anim', cid, 'sit-breathe', 'south-%d.png' % i)), key) for i in range(n)] or [Image.open(os.path.join(d, 'sit.png'))]
+    frames += [Image.open(os.path.join(d, f + '.png')).convert('RGBA') for f in ['sit-left', 'sit-right']]
+    side = max(max(im.size) for im in frames)
+    def pad(im):
+        out = Image.new('RGBA', (side, side)); out.alpha_composite(im.convert('RGBA'), ((side - im.width) // 2, (side - im.height) // 2))
+        return out
+    cells = [half(pad(im)) for im in frames]
+    box = None
+    for im in cells:
+        b = im.getbbox()
+        box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3]))
+    cw = cells[0].width; hw = max(cw / 2 - box[0], box[2] - cw / 2)
+    x0, x1 = int(cw / 2 - hw), int(cw / 2 + hw + 0.5)
+    fw, fh = x1 - x0, box[3] - box[1]
+    strip = Image.new('RGBA', (fw * len(cells), fh))
+    for i, im in enumerate(cells): strip.alpha_composite(im.crop((x0, box[1], x1, box[3])), (i * fw, 0))
+    save(strip, os.path.join(IMG, 'arc', 'c-' + key + '.webp'))
+    manifest['seated'][cid] = {'w': fw, 'h': fh, 'n': len(cells) - 2}
+
+for cid in SEATED: seated(cid)
 
 def studio_rail(im):
     # The studio's outside stairs and landing railing on their own (pr-studio-rail, the same size as pr-studio): drawn
