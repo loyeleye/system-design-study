@@ -1,5 +1,5 @@
 // The Exchange's relic dealer. Once the Exchange is open, the trader at its market sells keepsakes as well as
-// panicking: four A-rank and three S-rank ones Grandma Wen doesn't stock, and three Ancient ones nobody else has.
+// panicking: four A-rank and three S-rank ones Grandma Wen doesn't stock, and four Ancient ones nobody else has.
 // Six borrow an idea from a Slay the Spire relic the café doesn't use (named in the comment).
 // They are bought with Memory Shards and kept in S.save.relics like Wen's, so they last through every loop; their
 // effects are in js/run.js (and the Genesis Ledger's in js/state.js). Shelves open with your Guild rank; the Ancient
@@ -19,7 +19,8 @@
     // Ancient
     { id: 'openingbell', name: 'The Opening Bell', cost: 1500, rank: 'Ancient', text: '+1 Capacity every turn. It rang before the Cloud, and it will ring after.' },
     { id: 'tradinghalt', name: 'Trading Halt', cost: 1650, rank: 'Ancient', text: 'The first time in a run you would drop to 0 SLA, come back at half instead. Then the bell rings again.' },   // Lizard Tail
-    { id: 'genesis', name: 'The Genesis Ledger', cost: 1800, rank: 'Ancient', text: '+25 max SLA. Entry one. Every balance since is built on it.' }
+    { id: 'genesis', name: 'The Genesis Ledger', cost: 1800, rank: 'Ancient', text: '+25 max SLA. Entry one. Every balance since is built on it.' },
+    { id: 'clearing', name: 'The Clearing House', cost: 2000, rank: 'Ancient', text: 'Break rooms let you Clear the Books: remove 2 cards from your deck and gain 5 max SLA for the run.' }   // Peace Pipe, twice, with a meal
   ];
   const SHELF = { A: 'A', S: 'S', Ancient: 'S' };   // the Guild rank each shelf opens at
 
