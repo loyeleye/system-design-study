@@ -180,6 +180,43 @@
             ['hero77', "And when it expires, we look again. Just in case he's found."]],
           diary: 'Hero #404 ate his lunch. Nobody saw him. I nearly did. I have drawn the lunch box, empty, as evidence.' }
       ]
+    },
+    {
+      // Nari's troupe, the Rollouts, in their house in the Exchange's old quarter and on the canal bridge (js/nari-home.js).
+      // The twins are a Bollywood lost-and-found pair (Judwaa, Seeta aur Geeta); Nari's own story is their side quest.
+      id: 'fair', title: 'Separated at the Fair', who: ['neel', 'hari', 'bitna', 'eunho'], concept: 'exchange', far: 'road',
+      scenes: [
+        { title: 'Same Spin', at: 'room:rollouts', block: 'any', who: ['neel', 'hari', 'bitna'], when: c => c.done('lostfound'),
+          lines: [['narr', 'Rehearsal in the practice room. Neel and Hari stand facing opposite walls. Neel straightens his cuffs. Across the room, without looking, Hari straightens his.'],
+            ['narr', 'Neel sneezes. Hari says "Bless me."'],
+            ['pip', 'How do you two DO that?', 'confused'],
+            ['hari', 'We were separated at birth. At the market fair. In the rain. There was a song.'],
+            ['neel', 'Per the records, there was a pickpocket and a very confused midwife. The song is disputed.'],
+            ['pip', 'That only happens in films!'],
+            ['hari', "Look outside. It's been raining since the day we met. We ARE in a film."],
+            ['bitna', 'I was there. I was lighting the bridge lamps. Two boys in the middle of the bridge, the same spin at the same moment, and the whole crowd screaming.'],
+            ['neel', 'She remembers it very precisely.'], ['hari', 'She does.']],
+          diary: 'The twins sneezed at the same time. You laughed. I sneezed later, alone, to see if you would bless me from wherever you were. You did not. Next time.' },
+        { title: 'Which One Is Which', at: 'road:exchange', block: 'evening', who: ['neel', 'hari', 'bitna'], when: c => c.f.ch10 && c.done('lostfound'), gap: true,
+          lines: [['narr', "Before the evening show outside the house, the twins swap sashes behind the tree: Neel in green, Hari in blue. They walk out to Bitna side by side, perfectly straight-faced."],
+            ['hari', 'Evening, Bitna. Hari here. Totally Hari.'],
+            ['bitna', 'Good evening, Neel.'],
+            ['neel', 'How? Per my last... how?'],
+            ['bitna', 'You fold your sleeves twice. Hari never folds anything.'],
+            ['narr', 'Neel looks at his sleeves. Neel goes very red. Hari, who can feel exactly how red, says nothing at all for once.'],
+            ['bitna', 'And because I look. Lanterns up, both of you. Show in five.']],
+          diary: 'Bitna knew which twin was which. She looks. I look too. I would know you in a swapped sash, a fake moustache, or a crowd of a thousand. I have practised.' },
+        { title: 'Feel the Stub', at: 'room:rollouts', block: ['morning', 'night'], when: c => c.f.ch10 && c.done('lostfound'), review: true,
+          lines: [['narr', 'Hari spins too close to the barre and stubs his toe on it. Upstairs, a second later, Neel yelps.'],
+            ['hari', 'All is well! All is well...', 'sad'],
+            ['eunho', '...You two are the Exchange\'s standby engine.'],
+            ['pip', 'Eun-ho! How long have you been there?', 'confused'],
+            ['eunho', 'Since breakfast. ...The main matching engine and its standby read the same numbered orders, in the same order, and do every step. The standby throws its answers away. So if the main one falls over, the standby is already standing exactly where it stood.'],
+            ['pip', "That's a hot-warm standby! Because matching is deterministic, the same sequence always gives the same order book, so the standby can take over in milliseconds without losing a trade."],
+            ['eunho', 'As long as nobody improvises. Hari added a twirl once. Neel walked into a wall.'],
+            ['neel', '(from the stairs) It was a load-bearing wall.']],
+          diary: 'Hari stubbed his toe and Neel felt it. I stub my toe sometimes, on purpose, in case you feel it. Did you? Write back.' }
+      ]
     }
 ,
     // ---------- The Eventual Isles ----------

@@ -19,6 +19,8 @@ ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat'
          'carto': 'i-carto', 'hallW': 'i-hallW', 'hallE': 'i-hallE', 'light': 'i-light2', 'club': 'i-club2', 'cards': 'i-cards',
          # The town's buildings (js/hub.js doors A, U, F, P and K).
          'temple': 'i-temple3', 'guild': 'i-guild', 'forge': 'i-forge', 'post': 'i-post', 'library': 'i-library',
+         # The Rollouts' house in the Exchange's old quarter (js/nari-home.js).
+         'rollouts': 'i-rollouts2',
          # Lord Latency's inn at the waystation, off the North Road (js/northroad.js door I).
          'inn': 'i-inn'}
 # Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo. Each house faces the middle of the

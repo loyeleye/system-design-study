@@ -1,5 +1,6 @@
 // The Exchange's relic dealer. Once the Exchange is open, the trader at its market sells keepsakes as well as
 // panicking: three A-rank and three S-rank ones Grandma Wen doesn't stock, and three Ancient ones nobody else has.
+// Five borrow an idea from a Slay the Spire relic the café doesn't use (named in the comment).
 // They are bought with Memory Shards and kept in S.save.relics like Wen's, so they last through every loop; their
 // effects are in js/run.js (and the Genesis Ledger's in js/state.js). Shelves open with your Guild rank; the Ancient
 // shelf opens at S-Rank. Talk to the trader to browse, or choose to just chat for the trader's usual lines.
@@ -7,16 +8,16 @@
   const S = SD.state, U = SD.ui;
   SD.exchangeShop = [
     // A-Rank
-    { id: 'orderbook', name: 'The Order Book', cost: 850, rank: 'A', text: 'Incidents drop 50% more bits. Every trade, in order, on the record.' },
-    { id: 'escrow', name: 'Escrow Vault', cost: 900, rank: 'A', text: 'Start every fight with 12 Any absorb already up. Held until it\'s safe to let go.' },
-    { id: 'sequencer', name: 'The Sequencer', cost: 950, rank: 'A', text: '+1 Capacity on the second turn of every fight. Everyone gets a number. Nobody cuts in.' },
+    { id: 'orderbook', name: 'The Order Book', cost: 850, rank: 'A', text: 'Every 10th card you play in a fight draws a card. Every trade, in order, on the record.' },   // Ink Bottle
+    { id: 'escrow', name: 'Escrow Vault', cost: 900, rank: 'A', text: 'If you end your turn with no absorb up, absorb 6 load of any kind. Held until it\'s safe to let go.' },   // Orichalcum
+    { id: 'sequencer', name: 'The Sequencer', cost: 950, rank: 'A', text: 'Every 3rd card you play in a turn absorbs 4 load of any kind. Everyone gets a number. Nobody cuts in.' },   // Kunai
     // S-Rank
     { id: 'heartbeat', name: 'Heartbeat Ticker', cost: 1100, rank: 'S', text: 'Heal 3 SLA at the start of each of your turns after the first.' },
     { id: 'marketdepth', name: 'Market Depth', cost: 1200, rank: 'S', text: 'Draw 1 more card every turn. There is always another order behind the first.' },
-    { id: 'bluechip', name: 'Blue-Chip Portfolio', cost: 1300, rank: 'S', text: 'Every card that mitigates mitigates 5 more. Boring. Reliable. Up.' },
+    { id: 'bluechip', name: 'Blue-Chip Portfolio', cost: 1300, rank: 'S', text: 'Whenever you would lose SLA, lose 1 less. Boring. Reliable. Up.' },   // Tungsten Rod
     // Ancient
     { id: 'openingbell', name: 'The Opening Bell', cost: 1500, rank: 'Ancient', text: '+1 Capacity every turn. It rang before the Cloud, and it will ring after.' },
-    { id: 'tradinghalt', name: 'Trading Halt', cost: 1650, rank: 'Ancient', text: 'The first two times you would lose SLA in each fight, lose none.' },
+    { id: 'tradinghalt', name: 'Trading Halt', cost: 1650, rank: 'Ancient', text: 'The first time in a run you would drop to 0 SLA, come back at half instead. Then the bell rings again.' },   // Lizard Tail
     { id: 'genesis', name: 'The Genesis Ledger', cost: 1800, rank: 'Ancient', text: '+25 max SLA. Entry one. Every balance since is built on it.' }
   ];
   const SHELF = { A: 'A', S: 'S', Ancient: 'S' };   // the Guild rank each shelf opens at
