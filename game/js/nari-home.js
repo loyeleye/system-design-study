@@ -94,9 +94,10 @@
     return true;
   };
 
-  // The five of them on the Exchange, and Hari on the road. Nari walks on her walking sheet and dances on the other
-  // whenever she stands still; the others dance on theirs while they stand in their places at the show. Eun-ho, behind
-  // the fountain, has no name over him while he dances: nobody notices him there.
+  // The five of them on the Exchange, and Hari on the road. They dance only at the evening show, on their dance sheets
+  // while they stand in their places there; at work and at home they just stand. Nari is the exception until you've
+  // met her on her doorstep: she dances there whenever she stands still, as at all her sightings (js/nari.js). Eun-ho,
+  // behind the fountain, has no name over him while he dances: nobody notices him there.
   const still = a => !a.moving && !(a.path && a.path.length);
   const dance = id => id === 'nari' ? 'nari-dance' : SD.arcArt.chars[id + '-dance'] ? id + '-dance' : id;
   const showtime = b => open() && done('lostfound') && !storm() && (b || block()) === 'evening';
@@ -109,7 +110,7 @@
       sprite: id === 'nari' ? 'nari-dance' : id,
       under() {
         const on = onStage(id, this);
-        this.sprite = still(this) && (id === 'nari' || on) ? dance(id) : id;
+        this.sprite = still(this) && (on || (id === 'nari' && !home())) ? dance(id) : id;
         if (id === 'eunho') this.name = on ? '' : 'EUN-HO';
       }
     });
@@ -165,9 +166,10 @@
   // of them dark), the mirror and barre, Eun-ho's curtain in the corner, the kitchen, and a shoe rack each side of the
   // door. Upstairs, the loft: Nari's bed with the yellow quilt, the twins' bunk bed, and Bitna's corner with her futon
   // and her desk lantern.
-  // Mornings Nari rehearses downstairs with Hari at the barre and Eun-ho at his curtain, while Neel and Bitna are
-  // upstairs; at night (and through the storm) everyone goes up to bed except Eun-ho, who writes the next day's counts
-  // by lamplight downstairs. Anyone with a quest marker comes down to the practice room to wait for you.
+  // Mornings Nari is downstairs with Hari at the barre and Eun-ho at his curtain, while Neel and Bitna are upstairs;
+  // at night (and through the storm) everyone goes up to bed except Eun-ho, who writes the next day's counts by
+  // lamplight downstairs. Nobody dances at home: they save it for the show. Anyone with a quest marker comes down to
+  // the practice room to wait for you.
   const UP = 'rolloutsUp';
   const UPSTAIRS = { morning: ['neel', 'bitna'], night: ['nari', 'neel', 'hari', 'bitna'] };
   const floor = id => !marked(id) && (UPSTAIRS[block()] || []).includes(id) ? UP : KEY;
@@ -183,20 +185,8 @@
     TROUPE.forEach(id => { if (where(id) === 'home' && floor(id) === key) out[id] = (bed && BEDTIME[id]) || SPOTS[key][id]; });
     return out;
   }
-  // Downstairs, whoever is home by day is rehearsing and dances while they stand; Nari dances whenever she's up.
   // Eun-ho's name keeps its hyphen.
   const NAMES = { eunho: 'EUN-HO' };
-  function dancers(key) {
-    return function (ctx, ts, t, sc) {
-      if (!sc) return;
-      const rehearsal = key === KEY && block() !== 'night' && !storm();
-      TROUPE.forEach(id => {
-        const a = sc.actors[id];
-        if (!a || a.asleep) return;
-        a.sprite = still(a) && (id === 'nari' || rehearsal) ? dance(id) : id;
-      });
-    };
-  }
   async function talk(id) {
     if (QS() && QS().pending(id).length) return QS().talk(id);
     await U.dialog([{ s: id, t: say(id, 'room') }]);
@@ -223,7 +213,6 @@
         { x: 9, y: 6, t: () => ['A low table with five bowls and five pairs of chopsticks.', 'A note in Neel\'s writing: "Count the bowls before you say someone\'s missing. Per my last message."'] },
         { x: 10, y: 6, t: () => ['A little stove with a pot of ramyeon big enough for six. Five of them eat. The sixth bowl goes behind the curtain and comes back empty.'] }
       ],
-      under: dancers(KEY),
       talk
     };
     I.ROOMS[UP] = {
@@ -246,7 +235,6 @@
         { x: 3, y: 6, t: () => ['Bitna\'s corner: a lavender futon, and a lantern she never lets go out. A note over the pillow says "Nothing starts until I say so. That includes mornings."'] },
         { x: 7, y: 6, t: () => ['The stairs down to the practice room. The third step from the top creaks on the beat.'] }
       ],
-      under: dancers(UP),
       talk
     };
   }
@@ -260,7 +248,7 @@
       home: ['Five, six, seven, eight! Every new floor gets me first. If it holds, the others follow. If it doesn\'t, only one of us falls through.', 'What\'s under the veil? A dancer who\'s scared every single time. Don\'t tell the floor.', 'If it isn\'t a happy ending, it isn\'t the end. That goes for floors, shows and releases.', 'I danced on every board upstairs before anyone moved in. Two of them squeak. I named them Five and Six.'],
       lostStorm: ['Neel, Hari and Bitna are out somewhere in this storm. Eun-ho too, probably. I went out first to check the streets. They aren\'t in them.'],
       storm: ['The Exchange has been dark for days. I went out first to check the streets. Twice. My knees are fine. Mostly.', 'Kyu\'s tower hasn\'t blinked once since the storm came. Somebody should go up there first. ...Not me. Probably me.'],
-      afternoon: ['I dance one square of the market floor first. Then ten. Then half of it. Never all of it at once. Rollout complete!', 'If my square creaks, I stop, and nobody else ever steps on it. That\'s the whole trick.'],
+      afternoon: ['I check one square of the market floor first. Then ten. Then half of it. Never all of it at once. Rollout complete!', 'If my square creaks, I stop, and nobody else ever steps on it. That\'s the whole trick.'],
       evening: ['The new move goes in at the end of the second verse, and only I do it. If it lands, everyone does it tomorrow.', 'If it isn\'t a happy ending, it isn\'t the end!']
     },
     neel: {
