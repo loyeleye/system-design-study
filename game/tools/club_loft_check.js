@@ -8,8 +8,9 @@
 //     and goes into the lounge
 //   - Imani is in the lounge at night, with her books sheet
 //   - walking out of the lounge brings the hero back down the stairs to the foot of them, railing hidden again
-//   - in chapter 10's storm, Paz, Imani, Leon and Thea are in the lounge, and the board says so, Leon and Thea
-//     sitting on the sofa and turning their heads to look at the hero off to one side
+//   - in chapter 10's storm, Paz, Imani, Leon and Thea are in the lounge, and the board says so, and you can walk up
+//     to each of them from the door (nobody stands in the way, the furniture is solid), Leon and Thea sitting on
+//     the sofa and turning their heads to look at the hero off to one side
 // With --shots it saves screenshots of the climb, the lounge and the way down. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -113,6 +114,19 @@ const server = http.createServer((req, res) => {
   const sheltering = await page.evaluate(() => Object.keys(SD.interiors.ROOMS.prloft.spots));
   console.log('in the lounge in the storm: ' + sheltering.join(', '));
   ['paz', 'imani', 'leon', 'thea'].forEach(id => { if (!sheltering.includes(id)) bad(`${id} is not in the lounge in the storm`); });
+  // Walk the floor from the door, around everyone standing and the furniture: each member needs a free tile beside
+  // them (or beside the spot you talk to them across, for anyone behind the table).
+  const reach = await page.evaluate(() => {
+    const r = SD.interiors.ROOMS.prloft, spots = r.spots, taken = new Set(Object.values(spots).map(([x, y]) => Math.round(x) + ',' + Math.round(y)));
+    const free = (x, y) => r.map[y] && r.map[y][x] === '.' && !taken.has(x + ',' + y);
+    const seen = new Set([r.enter[0] + ',' + r.enter[1]]), todo = [r.enter.slice(0, 2)];
+    while (todo.length) { const [x, y] = todo.pop(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const k = (x + dx) + ',' + (y + dy); if (!seen.has(k) && free(x + dx, y + dy)) { seen.add(k); todo.push([x + dx, y + dy]); } }); }
+    const next = ([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((Math.round(x) + dx) + ',' + (Math.round(y) + dy)));
+    const solid = ['3,5', '4,5', '7,5', '8,5', '5,4', '6,4'].filter(k => { const [x, y] = k.split(',').map(Number); return r.map[y][x] === '.'; });
+    return { out: Object.keys(spots).filter(id => !next(spots[id]) && !(r.across || []).some(([x, y, who]) => who === id && next([x, y]))), solid };
+  });
+  reach.out.forEach(id => bad(`you can't walk up to ${id} in the lounge`));
+  if (reach.solid.length) bad('the armchairs or coffee table can be walked through at ' + reach.solid.join(' '));
   // On the sofa: ahead of them they look ahead; off to one side, they turn to look.
   for (const [x, y, want] of [[5, 7, { leon: 0, thea: 0 }], [2, 4, { leon: 1, thea: 1 }], [9, 5, { leon: 0, thea: 2 }], [6, 5, { leon: 2, thea: 0 }]]) {
     await page.evaluate(([x, y]) => { const sc = SD.clubLoft.lounge(); sc.place('you', x, y); sc.face('you', 'north'); }, [x, y]);

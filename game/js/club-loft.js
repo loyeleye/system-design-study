@@ -144,7 +144,7 @@
     map: ['############', '############', '############', '############', '##...#######',
       '##.##..##.##', '#..........#', '#..........#', '#####DD#####'],
     enter: [5, 7, 'north'],
-    spots: { imani: [10, 6, 'south'], leon: sat('leon') ? seat(165) : [4, 4, 'south'], thea: sat('thea') ? seat(195) : [8, 6, 'west'], paz: [2, 6, 'east'] },
+    spots: { imani: [10, 6, 'south'], leon: sat('leon') ? seat(165) : [4, 4, 'south'], thea: sat('thea') ? seat(195) : [8, 6, 'west'], paz: [1, 6, 'east'] },
     looks,
     // Leon from beside the sofa's arm, Thea across the table (Leon across it is the mugs).
     across: [sat('leon') && [4, 3, 'leon'], sat('thea') && [6, 4, 'thea']].filter(Boolean),
