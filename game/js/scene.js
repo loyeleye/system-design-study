@@ -321,10 +321,15 @@
       const col = c.frame != null && !going && c.n[row] ? 1 + c.frame % c.n[row] : SD.art.sheetCol(c, row, going, t, run && c.rn ? a.speed / 5 : 1, run, turn);
       const bob = a.moving && !SD.art.walks(c, row) ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
       const k = (a.scale || 1) * CS, w = c.w * ts / 32 * k, h = c.h * ts / 32 * k, y = fy + (ISO ? ts / 16 : 0);
+      // Uptima's idle gags (js/uptima-idle.js): a spin on the spot, or a cell of her gag sheet. Dusting is for the café.
+      const gag = a.sprite === 'uptima' && SD.uptimaIdle ? SD.uptimaIdle.pose(a, t, { still: !going && a.face === 'south' && !a.worried, cafe: def.room === 'cafe' }) : null;
       ctx.save();
       if (a.alpha != null) ctx.globalAlpha = a.alpha;
       if (a.glow) { ctx.shadowColor = a.glow; ctx.shadowBlur = 14 + 6 * Math.sin(t * 4); }
-      ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, fx - w / 2, y - h + bob, w, h);
+      if (gag && gag.im) ctx.drawImage(gag.im, gag.col * c.w, gag.row * c.h, c.w, c.h, fx - w / 2, y - h, w, h);
+      else if (gag) ctx.drawImage(im, 0, ROW[gag.face] * c.h, c.w, c.h, fx - w / 2, y - h, w, h);
+      else ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, fx - w / 2, y - h + bob, w, h);
+      if (gag && gag.bub) emote(gag.bub, ...emoteAt(a));
       ctx.restore();
       if (a.over) a.over(ctx, fx, fy, ts, t, h);
       if (ISO && !a.player && a.talk !== false) drawn.push({ a, r: [fx - w / 2, y - h, w, h] });

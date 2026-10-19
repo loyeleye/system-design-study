@@ -749,6 +749,14 @@
     if (y && ok(y)) return ctx.drawImage(y, yawn * c.w, 0, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h, w, h);
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h + bob, w, h);
   }
+  // One cell of another sheet the size of c's (Uptima's gags), drawn where person() would draw that character.
+  function cell(im, col, row, c, px, py) {
+    if (!c || !ok(im)) return;
+    const w = c.w * ts / 32, h = c.h * ts / 32;
+    ctx.fillStyle = 'rgba(43,35,64,0.22)';
+    ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h, w, h);
+  }
   const headY = y => (y - 0.55) * ts;
   function drawPlayer(t) {
     if (drop && !drop.landed && lastCloud) {
@@ -789,7 +797,7 @@
     if (n.block) return obj(n.block, (n.x + 0.5) * ts, (n.y + 1) * ts, 0.8);
     if (n.bench) return drawBench(n.x, n.y);
     const a = !n.moving && n.act ? doing(n, t) : null;
-    let face = 'south', yawn = -1;
+    let face = 'south', yawn = -1, gag = null;
     if (n.bird) drawBird(n, t);
     else {
       // You walking up gets their attention; otherwise they face their work.
@@ -798,15 +806,19 @@
       ctx.save(); if (a && a.dy) ctx.translate(0, a.dy * ts);
       yawn = !n.moving && face === 'south' && SD.clock ? SD.clock.yawnFrame(n.id, t) : -1;
       const going = !!n.moving || !!(a && a.anim);
-      person(n.id, xx(n), yy(n), t, face, going, false, n.moving ? pace(n) : 1, yawn, SD.art.turned(n, face, going, t));
+      // Uptima's idle gags (js/uptima-idle.js): a spin on the spot, or a frame of her gag sheet instead of her own.
+      gag = n.id === 'uptima' && SD.uptimaIdle ? SD.uptimaIdle.pose(n, t, { still: !going && face === 'south' && yawn < 0 }) : null;
+      if (gag && gag.im) cell(gag.im, gag.col, gag.row, ART().chars.uptima, xx(n), yy(n));
+      else person(n.id, xx(n), yy(n), t, gag ? gag.face : face, going, false, n.moving ? pace(n) : 1, yawn, SD.art.turned(n, gag ? gag.face : face, going, t));
       ctx.restore();
-      if (a && a.fx) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
+      if (a && a.fx && !gag) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
     }
     // A quest marker replaces any bubble, so the two never overlap.
     if (n.moving || (H.npcMarks && H.npcMarks[n.id])) return;
     const X = xx(n) * ts + ts / 2, Y = n.bird ? yy(n) * ts : headY(yy(n)) + (a && a.dy ? a.dy * ts : 0);
     // Now and then a sleepy villager yawns (js/clock.js decides who and when), with a yawn bubble over their head.
     if (SD.clock && SD.clock.yawning(n.id, t)) return SD.clock.drawYawn(ctx, X, Y, ts);
+    if (gag) { if (gag.bub) emote(gag.bub, X, Y); return; }
     if (a) { if (a.bub) emote(a.bub, X, Y); return; }
     // Without an act: Gary sips coffee, everyone else occasionally has a feeling about something.
     if ((t + n.x) % 9 < 2.2) emote(n.id === 'gary' ? 'dots' : n.emo || 'music', X, Y);
