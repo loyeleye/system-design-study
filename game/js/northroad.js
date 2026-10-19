@@ -214,7 +214,7 @@
         { kind: 'duck', x: 19, y: 21 }, { kind: 'duck', x: 6, y: 21 }
       ],
       back: { D: [8, 8, 'south'], E: [28, 10, 'west'] }, enter: [28, 10, 'west'], ch: 9, music: 'ch9', weather: 'rain',
-      // Rain on the tents, under grey clouds, and the campfire crackling.
+      // Rain on the tents, under grey clouds, and the campfire crackling when it's dry enough to burn.
       clouds: true, ambience: 'fire'
     };
   })();
@@ -403,11 +403,11 @@
     ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(x + sway, y + 0.6 * k, 0.8 * k, 1.6 * k * f, 0, 0, Math.PI * 2); ctx.fill();
   }
 
-  // The camp's campfire: lit (and flickering, js/scene.js ANIM) until chapter 10's storm puts it out. While the storm
-  // rains on it, it's charred logs with smoke curling up off them, and no crackle.
+  // The camp's campfire: lit (and flickering, js/scene.js ANIM) whenever it's dry. Any rain puts it out: charred logs
+  // with smoke curling up off them, and no crackle.
   SD.arcArt.objects['cp-fire-out'] = [55, 60];
   const FIRE = camp.objects.find(o => o.name === 'cp-fire');
-  const fireOut = () => !!(SD.folk && SD.folk.storm()) && ['drizzle', 'rain', 'storm'].includes(SD.weather ? SD.weather.now(camp.weather) : '');
+  const fireOut = () => ['drizzle', 'rain', 'storm'].includes(SD.weather ? SD.weather.now(camp.weather) : '');
   camp.ambience = () => fireOut() ? null : 'fire';
   function fireName() { FIRE.name = fireOut() ? 'cp-fire-out' : 'cp-fire'; }
   function campfire(ctx, t, ts) {
