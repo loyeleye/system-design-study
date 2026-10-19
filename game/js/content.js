@@ -1030,6 +1030,7 @@ SD.metaShop = [
   { id: 'standby', name: 'Warm Standby', cost: 250, rank: 'B', text: 'Start every fight with 8 Any absorb already up.' },   // Anchor
   { id: 'breaker', name: 'Circuit Breaker', cost: 275, rank: 'B', text: 'The first time you would lose SLA in each fight, lose none.' },   // Fossilized Helix
   { id: 'drip', name: 'Coffee Drip', cost: 290, rank: 'B', text: 'Every third turn, +1 Capacity.' },   // Happy Flower
+  { id: 'duster', name: "Grandma's Feather Duster", cost: 280, rank: 'B', text: 'Cafés in the dungeon let you remove a second card from your deck.' },   // Peace Pipe
   // A-Rank
   { id: 'membercard', name: 'Guild Membership Card', cost: 395, rank: 'A', text: 'Shops inside dungeons charge 40% fewer bits.' },   // Membership Card
   { id: 'stamp', name: 'Rubber Stamp of Approval', cost: 475, rank: 'A', text: 'Every 5th card that mitigates in a run mitigates double.' },   // Pen Nib
