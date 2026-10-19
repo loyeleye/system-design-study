@@ -10,6 +10,8 @@
 // chapter 10 places (js/nari.js and its house). Everyone else shelters indoors:
 //   - On the North Road's maps they walk to a shelter's door and go in. A shelter shows "..." while someone is
 //     inside; talk to its wall to knock, and each person in there says one worried line, a different one each time.
+//     The waystation has a real inn (js/interiors.js), where Lord Latency and his guest already spend the night, so
+//     they say their worried lines in there.
 //   - The PR Club's members who sleep outdoors move into the gym (js/club-life.js), and say a worried line there.
 //   - Islanders go into their island's building (js/interiors.js has the rooms) and talk from there.
 //   - The Exchange's townsfolk and the trader go home, and the Arena's crowd too (js/northroad-arena.js).
@@ -66,7 +68,6 @@
       caravan: { door: [18, 41], knock: [18, 40], name: 'Marta\'s caravan' },
       stage: { door: [20, 18], knock: [20, 17], name: 'the back room of the bard\'s stage' }
     },
-    waystation: { inn: { door: [6, 8], knock: [6, 7], name: 'the waystation' } },
     arena: {
       gate: { door: [20, 7], knock: [20, 6], name: 'the gatehouse by the fighters\' gate' },
       booth: { door: [36, 11], knock: [36, 10], name: 'the bookie\'s booth' }
@@ -79,7 +80,6 @@
   // Who shelters where. 'gone': gone home, off the map. Anyone not listed keeps their own schedule.
   const ROAD = C.ROAD = {
     road: { fen: 'post', v3: 'post', ren: 'post', v2: 'post', v4: 'post', marta: 'caravan', v1: 'caravan', lyra: 'stage' },
-    waystation: { latency: 'inn', v1: 'inn' },
     arena: { gong: 'gate', suzu: 'gate', zen: 'gate', v1: 'booth', v2: 'booth', v3: 'booth', v4: 'booth' },
     camp: { hero77: 'old', hero256: 'old', hero1023: 'old', hero500: 'old', hero3: 'tent', hypewagon: 'tent', akane: 'tent' },
     exchange: { v3: 'gone' }
@@ -227,6 +227,18 @@
         if (w) { await U.dialog([w]); return true; }
       }
       return rt.apply(this, arguments);
+    };
+  }
+  // The waystation inn: Lord Latency and his guest, worried, unless a quest step is waiting.
+  const ROOMS = SD.interiors && SD.interiors.ROOMS;
+  if (ROOMS && ROOMS.inn && ROOMS.inn.talk) {
+    const it = ROOMS.inn.talk;
+    ROOMS.inn.talk = async function (id) {
+      if (storm() && !(SD.quests && SD.quests.pending(id).length)) {
+        const w = say(speaker('waystation', id));
+        if (w) { await U.dialog([w]); return; }
+      }
+      return it.apply(this, arguments);
     };
   }
   // Explodia stays at her crater and runs the Academy in the rain: a worried word first, then her menu.
