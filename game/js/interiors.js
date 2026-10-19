@@ -774,6 +774,8 @@
     const r = ROOMS[cur];
     // A relationship scene due in this room starts when you talk to someone in it (js/folk-scenes.js).
     if (SD.folkScenes && await SD.folkScenes.talkIn(cur, id)) return;
+    // A room with its own talk (js/club.js) handles everyone in it.
+    if (r.talk) return r.talk(id);
     // Aigerim in her shop: a quest step for her first, as on the road; otherwise the shop opens.
     if (r.road) {
       if (SD.quests && SD.quests.pending(id).length) return SD.quests.talk(id);

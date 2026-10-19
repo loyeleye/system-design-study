@@ -227,6 +227,13 @@
   const NAME = { waystation: "Lord Latency's waystation", arena: 'the tournament arena', camp: "the heroes' camp", exchange: 'the Exchange' };
   const WHERE = { 7: 'waystation', 8: 'arena', 9: 'camp', 10: 'exchange' };
   const ROAD_DOOR = { waystation: 'L', arena: 'R', camp: 'K', exchange: 'X' };
+  // Later files add places off the road without a dungeon of their own (js/club.js): a door on the road map, a map,
+  // and def.open() for when its path is open. def.onDoor(d) may handle the place's own doors (a building to go into);
+  // it returns 'moved' if it changed maps, true if it handled the door, or nothing to let the road handle it.
+  NR.addPlace = function (key, def, o) {
+    MAPS[key] = def; PLACE[o.door] = key; ROAD_DOOR[key] = o.door; NAME[key] = o.name; TITLE[key] = o.title;
+    if (o.arrive) ARRIVE[key] = o.arrive;
+  };
 
   // ---------- The screen ----------
   const scenes = {};
@@ -333,12 +340,13 @@
         if (d === 'S') { moved = true; return NR.leave(); }
         if (d === 'C') return await shop();
         const key = PLACE[d];
-        if (!A.open(MAPS[key].ch) || !SD.chapters[MAPS[key].ch]) return await closed(key);
+        if (MAPS[key].open ? !MAPS[key].open() : (!A.open(MAPS[key].ch) || !SD.chapters[MAPS[key].ch])) return await closed(key);
         moved = true; go(key, MAPS[key].enter);
         if (!(flags().nrPlaces || []).includes(key)) { flags().nrPlaces = (flags().nrPlaces || []).concat(key); S.persist(); await arrive(key); }
         return;
       }
       // Places: D is the chapter's dungeon; any other door goes back to the road.
+      if (MAPS[cur].onDoor) { const r = await MAPS[cur].onDoor(d); if (r) { moved = r === 'moved'; return; } }
       if (d === 'D') return await dungeon(MAPS[cur].ch);
       moved = true; go('road', road.back[ROAD_DOOR[cur]]);
     } finally {
@@ -352,6 +360,7 @@
     }
   }
   async function closed(key) {
+    if (MAPS[key].closed) return U.dialog(MAPS[key].closed());
     const ch = MAPS[key].ch;
     await U.dialog([{ s: 'uptima', e: 'confused', t: `The path to ${NAME[key]} is roped off. A sign says "Opens after chapter ${ch - 1}". Someone drew a frowny face on it.` }]);
   }
