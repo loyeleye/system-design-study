@@ -4,6 +4,9 @@ the gym and its yard props, and the gym's two room backdrops.
 usage: club_art.py SRC_DIR js/club-art.js
 SRC_DIR (/mnt/project-files/fitness-club-raw) holds:
   chars/<id>/{south,west,east,north}.png   136x136 PixelLab rotations, halved to the game's 68px scale
+  anim/<id>/<anim>/<dir>-<i>.png           PixelLab animations of those rotations: the breathing-idle,
+                                           walking-4-frames and running-6-frames templates (136x136), and the
+                                           text-driven idle-v3, walk-v3 and run-v3 (176x176, the rotation centred)
   portraits/<id>-neutral.png               busts cut from the concept sheets, already on transparent backgrounds
   objects/pr-*.png                         map objects; a flat background is flood-filled away
   rooms/gym.png, rooms/studio.png          384x288 room backdrops at 32px a tile (js/interiors.js)
@@ -19,6 +22,15 @@ IMG = os.path.join(ROOT, 'assets', 'img')
 CHARS = ['sunny', 'leon', 'delphine', 'kofi', 'paz', 'kenji', 'imani', 'magnus', 'thea', 'rico']
 OBJECTS = ['pr-gym', 'pr-studio', 'pr-block', 'pr-weights', 'pr-board', 'pr-judge']
 DIRS = ['south', 'west', 'east', 'north']   # sheet rows, as js/scene.js reads them
+# anim/<id>/<anim>/<dir>-<i>.png, in sheet order: idle, walk, run. The -v3 ones (PixelLab's text-driven animation,
+# aligned to the rotations on a 176px canvas) win over the templates, which drop capes and held things in some frames.
+ANIMS = [['idle-v3', 'breathing-idle'], ['walk-v3', 'walking-4-frames'], ['run-v3', 'running-6-frames']]
+# Directions (s, w, e, n) where the template came out better: the v3 one drifted (Thea's spear turning into a mace)
+# or the template keeps everything the rotation has.
+TEMPLATE = {'thea': ['swen', 'wen', 'swen'], 'leon': ['swen', 'sn', ''], 'sunny': ['', 'n', '']}
+# Rows drawn as the opposite side's frames, flipped: Thea's run west came out with her trousers turning blue (the
+# template) or a spear flickering in and out (v3), and she carries nothing in her side views.
+MIRROR = {('thea', 2, 'west'): 'east'}
 
 def save(im, path):
     im.save(path, lossless=True, quality=100, method=6)
@@ -56,21 +68,77 @@ def half(im):
             op[x, y] = (min(255, r * 255 // a), min(255, g * 255 // a), min(255, b * 255 // a), 255) if a >= 110 else (0, 0, 0, 0)
     return out
 
+def clean(im, pal, near={}):
+    # The text-driven animations sometimes add effects nobody asked for (sparks, glowing rings). Drop any colour
+    # that isn't close to one in the member's own rotations, then any specks left floating apart from the figure.
+    im = im.convert('RGBA'); px = im.load(); w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            c = px[x, y]
+            if c[3] < 110: continue
+            k = (pal, c[:3])
+            if k not in near: near[k] = any((c[0] - r) ** 2 + (c[1] - g) ** 2 + (c[2] - b) ** 2 <= 1600 for r, g, b in PALS[pal])
+            if not near[k]: px[x, y] = (0, 0, 0, 0)
+    seen = set()
+    for y in range(h):
+        for x in range(w):
+            if (x, y) in seen or px[x, y][3] < 110: continue
+            part, st = [], [(x, y)]; seen.add((x, y))
+            while st:
+                cx, cy = st.pop(); part.append((cx, cy))
+                for nx in (cx - 1, cx, cx + 1):
+                    for ny in (cy - 1, cy, cy + 1):
+                        if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen and px[nx, ny][3] >= 110: seen.add((nx, ny)); st.append((nx, ny))
+            if len(part) < 30:
+                for q in part: px[q] = (0, 0, 0, 0)
+    return im
+
+PALS = {}
 manifest = {'chars': {}, 'objects': {}, 'rooms': {}}
 for cid in CHARS:
-    frames = [half(Image.open(os.path.join(SRC, 'chars', cid, d + '.png'))) for d in DIRS]
+    PALS[cid] = list({c[:3] for d in DIRS for _, c in Image.open(os.path.join(SRC, 'chars', cid, d + '.png')).convert('RGBA').getcolors(1 << 24) if c[3] >= 110})
+    # Each row: the rotation standing, then its breathing idle, walk and (for the runners) run frames, as many as
+    # anim/ has for that direction.
+    rows = []
+    for d in DIRS:
+        row = [Image.open(os.path.join(SRC, 'chars', cid, d + '.png'))]
+        for si, slot in enumerate(ANIMS):
+            # A slot can name several animations: the first that exists wins, unless TEMPLATE picks the template.
+            if d[0] in TEMPLATE.get(cid, ['', '', ''])[si]: slot = slot[-1:]
+            anim = next((a for a in slot if os.path.exists(os.path.join(SRC, 'anim', cid, a, d + '-0.png'))), slot[-1])
+            src = MIRROR.get((cid, si, d), d)
+            n = 0
+            while os.path.exists(os.path.join(SRC, 'anim', cid, anim, '%s-%d.png' % (src, n))): n += 1
+            frames = [Image.open(os.path.join(SRC, 'anim', cid, anim, '%s-%d.png' % (src, i))) for i in range(n)]
+            if src != d: frames = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in frames]
+            row += [clean(f, cid) for f in frames] if anim.endswith('-v3') else frames
+            row.append(n)
+        rows.append(row)
+    # Custom animations come on a bigger canvas than the rotations, with the figure centred: centre everything on
+    # the biggest canvas so the frames line up.
+    side = max(max(im.size) for row in rows for im in row if not isinstance(im, int))
+    def pad(im):
+        out = Image.new('RGBA', (side, side)); out.alpha_composite(im.convert('RGBA'), ((side - im.width) // 2, (side - im.height) // 2))
+        return out
+    cells = [half(pad(im)) for row in rows for im in row if not isinstance(im, int)]
     box = None
-    for im in frames:
+    for im in cells:
         b = im.getbbox()
         box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3]))
     # Centred on the canvas, so turning doesn't shift the sprite.
-    cw = frames[0].width; hw = max(cw / 2 - box[0], box[2] - cw / 2)
+    cw = cells[0].width; hw = max(cw / 2 - box[0], box[2] - cw / 2)
     x0, x1 = int(cw / 2 - hw), int(cw / 2 + hw + 0.5)
     fw, fh = x1 - x0, box[3] - box[1]
-    sheet = Image.new('RGBA', (fw, fh * 4))
-    for i, im in enumerate(frames): sheet.alpha_composite(im.crop((x0, box[1], x1, box[3])), (0, i * fh))
+    counts = [[c for c in row if isinstance(c, int)] for row in rows]
+    sheet = Image.new('RGBA', (fw * max(len(row) - len(ANIMS) for row in rows), fh * 4))
+    i = 0
+    for r, row in enumerate(rows):
+        for c in range(len(row) - len(ANIMS)):
+            sheet.alpha_composite(cells[i].crop((x0, box[1], x1, box[3])), (c * fw, r * fh)); i += 1
     save(sheet, os.path.join(IMG, 'arc', 'c-' + cid + '.webp'))
-    manifest['chars'][cid] = {'w': fw, 'h': fh, 'n': [0, 0, 0, 0]}
+    # js/art.js reads n as the idle frames, wk as the walk and rn as the run (SD.art.sheetCol).
+    manifest['chars'][cid] = dict({'w': fw, 'h': fh, 'n': [c[0] for c in counts], 'wk': [c[1] for c in counts]},
+                                  **({'rn': [c[2] for c in counts]} if any(c[2] for c in counts) else {}))
     save(Image.open(os.path.join(SRC, 'portraits', cid + '-neutral.png')).convert('RGBA'), os.path.join(IMG, 'portraits', cid + '-neutral.webp'))
 
 for name in OBJECTS:

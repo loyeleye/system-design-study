@@ -198,11 +198,21 @@
           a.py += (P.py - 0.4 - a.py) * Math.min(1, dt * 4);
           return;
         }
-        const sp = dt * a.speed * (a.slow || 1);
+        let sp = dt * a.speed * (a.slow || 1);
         a.moving = Math.abs(a.px - a.x) + Math.abs(a.py - a.y) > 0.01;
-        a.px += Math.sign(a.x - a.px) * Math.min(Math.abs(a.x - a.px), sp);
-        a.py += Math.sign(a.y - a.py) * Math.min(Math.abs(a.y - a.py), sp);
         a.emoT -= dt;
+        // A walker who reaches a tile with more path ahead carries on into the next one in the same frame, so they
+        // cover a.speed tiles a second whatever the frame rate.
+        while (true) {
+          const dx = Math.abs(a.x - a.px), dy = Math.abs(a.y - a.py);
+          a.px = dx <= sp ? a.x : a.px + Math.sign(a.x - a.px) * sp;
+          a.py = dy <= sp ? a.y : a.py + Math.sign(a.y - a.py) * sp;
+          sp -= Math.max(dx, dy);
+          if (!a.moving || a.player || sp <= 0 || !a.path.length) break;
+          const [nx, ny] = a.path.shift();
+          a.face = nx > a.x ? 'east' : nx < a.x ? 'west' : ny < a.y ? 'north' : 'south';
+          a.x = nx; a.y = ny;
+        }
         if (a.moving || a.player) return;
         if (a.path.length) {
           const [nx, ny] = a.path.shift();
@@ -301,8 +311,9 @@
       const row = ROW[a.face] || 0;
       // Walk cycles play only while walking; idle cycles (breathing) play standing still (SD.art.sheetCol).
       const going = a.moving || (a.path && a.path.length);
-      // A sprite can pick its own idle frame (`frame`: Kagemaru's moods in js/card-dealer.js).
-      const col = c.frame != null && !going && c.n[row] ? 1 + c.frame % c.n[row] : SD.art.sheetCol(c, row, going, t);
+      // A sprite can pick its own idle frame (`frame`: Kagemaru's moods in js/card-dealer.js). Anyone moving at a run
+      // (4 tiles a second or more) plays their running frames, if they have them.
+      const col = c.frame != null && !going && c.n[row] ? 1 + c.frame % c.n[row] : SD.art.sheetCol(c, row, going, t, 1, a.speed >= 4);
       const bob = a.moving && !SD.art.walks(c, row) ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
       const k = (a.scale || 1) * CS, w = c.w * ts / 32 * k, h = c.h * ts / 32 * k, y = fy + (ISO ? ts / 16 : 0);
       ctx.save();

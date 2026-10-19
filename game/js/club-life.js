@@ -4,7 +4,8 @@
 // the scene outlines are in docs/pr-club-cast.md.
 //
 // A member's place is one of: 'prgym' or 'prstudio' (inside, at their spot in that room), a yard tile
-// [x, y, face, emote], 'laps' (round the track) or 'away' (off the map: down the road, or up into the hills).
+// [x, y, face, emote], a route round the track ('laps', 'intervals' or 'sprints') or 'away' (off the map: down the
+// road, or up into the hills).
 // Like everyone else, anyone with a quest marker stays at their usual spot, and a scene that's due sends its people
 // to its place, where it starts when you talk to one of them. A place is a pure function of (block, loop, flags,
 // quests), so nothing is saved for it. Scenes play through SD.folkScenes.play and are saved with Pingsby's
@@ -40,7 +41,7 @@
       evening: [G, 'Chalking the day\'s records onto the board'], night: [G, 'Checking every record on the board twice, by lamplight'] },
     leon: { morning: [G, 'Bench pressing, loudly'], afternoon: [[28, 8, 'west', 'star'], 'Flexing at the weights whenever Magnus lifts'],
       evening: [G, 'Telling the evening class about the old arena'], night: ['away', 'Back at the arena. He still has a key to the champion\'s room'] },
-    thea: { morning: [[12, 17, 'east', 'alert'], 'Running sprint drills on the track'], afternoon: [G, 'Coaching footwork in the ring'],
+    thea: { morning: ['sprints', 'Running sprint drills on the track'], afternoon: [G, 'Coaching footwork in the ring'],
       evening: [G, 'Taping hands for the evening sparring'], night: ['away', 'At the arena, drawing up tomorrow\'s qualifier bracket'] },
     rico: { morning: [ST, 'At Dawn Flow, in the back row, whispering'], afternoon: [G, 'Judging sparring in the ring, loudly'],
       evening: [[20, 11, 'south', 'alert'], 'Shadowboxing outside the gym'], night: [G, 'Doing push-ups in the empty ring'] },
@@ -48,7 +49,7 @@
       evening: [[7, 13, 'south', 'heart'], 'Watching the sun go down over the track'], night: [ST, 'Watering the plant. Lights out at ten, exactly'] },
     kofi: { morning: [ST, 'At Dawn Flow, upside down'], afternoon: [[10, 11, 'south', 'star'], 'Doing handstands for anyone passing'],
       evening: [[3, 11, 'east', 'music'], 'Juggling stones by the signpost'], night: [() => TREES[((S.save && S.save.loop) || 1) % TREES.length], 'Asleep under a different tree every night'] },
-    paz: { morning: ['laps', 'Running laps. She knows how many. Don\'t ask'], afternoon: ['laps', 'Intervals: one fast lap, one slow'],
+    paz: { morning: ['laps', 'Running laps. She knows how many. Don\'t ask'], afternoon: ['intervals', 'Intervals: one fast lap, one slow'],
       evening: [[17, 18, 'west', 'dots'], 'Checking the segment board for new records'], night: ['away', 'Home, asleep by nine, tomorrow\'s splits by the bed'] },
     kenji: { morning: ['away', 'Up in the hills, out of signal'], afternoon: ['away', 'Somewhere on the Ridge Loop'],
       evening: [[20, 21, 'west', 'dots'], 'Back from the hills, stretching'], night: [[24, 17, 'north', 'sleep'], 'Camped in the infield, under the stars'] },
@@ -68,8 +69,14 @@
   // Usual spots: the gym and studio people inside, the rest where the yard has them (js/club.js).
   const HOME = { sunny: G, leon: G, thea: G, rico: G, delphine: ST, kofi: ST };
   const home = id => HOME[id] || (yard.actors[id] ? [yard.actors[id].x, yard.actors[id].y, yard.actors[id].face] : G);
-  // Paz's lap: round the lanes, one straight leg at a time.
-  const LAPS = [[25, 15], [27, 15], [27, 16], [28, 16], [28, 20], [27, 20], [27, 21], [4, 21], [4, 20], [3, 20], [3, 16], [4, 16], [4, 15]];
+  // Paz's lap: round the lanes, one straight leg at a time, at 5 tiles a second (js/scene.js plays running frames
+  // at 4 and up). In the afternoon she runs intervals: a fast lap, then a slow one at a walk.
+  const LAP = [[25, 15], [27, 15], [27, 16], [28, 16], [28, 20], [27, 20], [27, 21], [4, 21], [4, 20], [3, 20], [3, 16], [4, 16], [4, 15]];
+  const pace = s => LAP.map(([x, y]) => [x, y, null, s]);
+  const LAPS = pace(5), INTERVALS = pace(5).concat(pace(3));
+  // Thea's sprint drills: sprint the bottom straight at 4 tiles a second, then walk back along the infield's edge.
+  const SPRINTS = [[6, 20, null, 2], [6, 21, null, 2], [25, 21, null, 4], [25, 20, null, 2]];
+  const ROUTES = { laps: LAPS, intervals: INTERVALS, sprints: SPRINTS };
   // Room spots for visitors; the rooms' own people stand where js/club.js has them.
   const VISIT = { prgym: { imani: [5, 5, 'south'], magnus: [1, 4, 'south'], delphine: [7, 5, 'east'] }, prstudio: { rico: [3, 4, 'east'] } };
 
@@ -356,7 +363,7 @@
     if (p === G) return ['in', 15, 9];
     if (p === ST) return ['in', 5, 8];
     if (p === 'away') return ['in'].concat(EXIT[id] || OUT);
-    if (p === 'laps') return 'route';
+    if (ROUTES[p]) return 'route';
     return p;
   }
   if (SD.folkFar) {
@@ -367,7 +374,7 @@
     });
   }
   // After the road places everyone: a gym or studio member with a quest marker is waiting inside, not in the yard,
-  // and Paz on her laps runs them.
+  // and Paz and Thea on the track run their routes.
   if (SD.roadTalk) {
     const cast = SD.roadTalk.cast;
     SD.roadTalk.cast = function (sc, map) {
@@ -377,7 +384,7 @@
         if (!DAY[a.id]) return;
         const p = where(a.id);
         if (a.marker && (p === G || p === ST)) { sc.hide(a.id, true); a.schedIn = true; }
-        else if (p === 'laps' && !a.marker && !a.route) { a.route = LAPS; a.home = null; }
+        else if (ROUTES[p] && !a.marker && a.route !== ROUTES[p]) { a.route = ROUTES[p]; a.home = null; }
       });
     };
   }
@@ -448,7 +455,7 @@
     if (p === G) return 'The PR Club gym';
     if (p === ST) return 'The studio, upstairs';
     if (p === 'away') return AWAY[id] || 'Away';
-    if (p === 'laps') return 'On the track';
+    if (ROUTES[p]) return 'On the track';
     const [x, y] = p;
     return x >= 22 && y <= 10 ? 'The auction block' : y >= 15 ? 'The track' : 'The club yard';
   }
