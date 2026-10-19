@@ -623,6 +623,8 @@
         const im = pic(key);
         if (ok(im)) ctx.drawImage(im, 0, 0, im.naturalWidth * ts / 32, im.naturalHeight * ts / 32);
         windows(ctx, r, ts, t);
+        // A room's own extras over its picture (the studio's mirror, js/club-mirror.js).
+        if (r.under) r.under(ctx, ts, t, sc);
         if (r.hatch) hatch(ctx, ts);
         if (r.mat) mat(ctx, r, ts);
       },

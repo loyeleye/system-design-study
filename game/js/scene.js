@@ -247,6 +247,8 @@
       ctx.restore();
       if (a.over) a.over(ctx, a.px * ts + ts / 2, a.py * ts + ts * 0.95, ts, t, h);
     }
+    // For pictures of people drawn elsewhere, like the reflection in the studio's mirror (js/club-mirror.js).
+    sc.drawActor = person;
     function label(x, y, text, marker, small) {
       const X = x * ts + ts / 2, Y = y * ts - ts * 0.35;
       ctx.font = `600 ${Math.max(10, ts * (small ? 0.26 : 0.3))}px Fredoka, sans-serif`;
