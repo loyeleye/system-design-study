@@ -29,13 +29,16 @@
 
   // Map legend: # solid, . floor, D the way out, U up the stairs, S down the stairs (the café's and the flat's unless a
   // room says where its own go: up, down).
-  // spots: where people stand ([x, y, face]; y can be fractional, to stand behind a counter). props: things you
-  // can look at, on solid tiles next to the floor. windows (in picture pixels) show the weather; lights glow at night.
+  // spots: where people stand ([x, y, face]; y can be fractional, to stand behind a counter). counter and over: where
+  // whoever minds the counter stands, and the tiles you talk to them across (Wen or Uptima in the café; clerk names
+  // anyone else's). looks: what to draw someone with ({ sprite }). props: things you can look at, on solid tiles next
+  // to the floor. windows (in picture pixels) show the weather; lights glow at night.
   // sleep: where the owner sleeps on a night outside the storm: the tile you talk to them from (on the bed, next to
   // the floor), where the "Zz" floats (in tiles), and what you see. mat: the picture has no door, so a doormat is
   // drawn over the way out. Rooms keep the music and sounds from outside unless they have a theme of their own:
   // music (a song in js/audio.js, or a function that picks one or null), ambience (its PLACE sound, or null for quiet),
-  // bell: a shop bell over the door.
+  // bell: a shop bell over the door. calm: nobody in it looks worried in the storm. front: [[x, y, w, h, row]], pieces
+  // of the picture (in its pixels) drawn again over whoever stands behind them, as standing on that row: counters, tables.
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -741,7 +744,7 @@
   function cast(key) {
     const r = ROOMS[key], here = people(key), marks = SD.quests && SD.quests.marks ? SD.quests.marks() : {};
     const free = (r.spots._ || (r.isle ? floor(r) : [])).slice();
-    const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: (r.names && r.names[id]) || SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), extra));
+    const actor = (id, at, extra) => sc.addActor(id, Object.assign({ x: at[0], y: at[1], face: at[2] || 'south', name: r.names && id in r.names ? r.names[id] : SD.hub.npcName(id) || id.toUpperCase(), marker: !!marks[id] }, looks(id), r.looks && r.looks[id], extra));
     let counter = null;
     here.forEach(id => {
       // Islanders: their Isles sprite faces you, at the size they stand on the Isles; the school's class is three kids.
@@ -758,9 +761,9 @@
         else sc.addActor(id, { x: r.sleep.at[0], y: r.sleep.at[1], draw: zz(r.sleep.zz), asleep: r.sleep.t });
         return;
       }
-      if (r.counter && !counter && (id === 'wen' || id === 'uptima')) { counter = id; actor(id, r.counter, storm() ? { worried: true } : {}); return; }
+      if (r.counter && !counter && (id === 'wen' || id === 'uptima' || id === r.clerk)) { counter = id; actor(id, r.counter, storm() && !r.calm ? { worried: true } : {}); return; }
       const at = (storm() && r.stormSpots && r.stormSpots[id]) || r.spots[id] || free.shift();
-      if (at) actor(id, at, storm() ? { worried: true } : {});
+      if (at) actor(id, at, storm() && !r.calm ? { worried: true } : {});
     });
     // Across the counter: talk to whoever has the shift.
     if (r.over) r.over.forEach(([x, y], i) => sc.addActor('over' + i, { x, y, draw() {}, over: counter || '' }));
@@ -769,6 +772,12 @@
       if (free.length) actor('v3', free.pop(), { name: null, customer: true });
     }
     r.props.forEach((p, i) => sc.addActor('prop' + i, { x: p.x, y: p.y, draw() {}, prop: p }));
+    // Furniture people stand behind: that part of the picture again, drawn with the row it stands on, so anyone
+    // further back is hidden behind it and anyone in front is drawn over it.
+    (r.front || []).forEach(([x, y, w, h, row], i) => sc.addActor('front' + i, { x: 0, y: row, solid: false, talk: false, draw(ctx, fx, fy, ts) {
+      const im = pic(key), k = ts / 32;
+      if (ok(im)) ctx.drawImage(im, x, y, w, h, x * k, y * k, w * k, h * k);
+    } }));
   }
   // Open floor to stand on in a room with no spots of its own, from the back wall forward, clear of the way in.
   function floor(r) {
