@@ -67,7 +67,8 @@
   F.rollouts = {
     lost: {
       nari: 'home', eunho: 'home',                       // Eun-ho never left. Nobody counted him.
-      neel: ['exchange', 30, 9, 'south', 'dots'],        // outside the hotel, with nine bookings
+      neel: ['in', 'exchange', 39, 15],                  // in the Coffee Diner across from the hotel, with nine bookings
+                                                         // (js/exchange-rooms.js)
       hari: ['road', 17, 20, 'north', 'music'],          // busking for soup by Lyra's stage
       bitna: ['exchange', 43, 44, 'west', 'alert']       // at the lamp-oil auction, ticket 212
     },

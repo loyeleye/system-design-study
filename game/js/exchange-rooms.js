@@ -8,6 +8,7 @@
 //                      25% off (js/card-dealer.js); otherwise it is padlocked.
 //   The Coffee Diner   across the avenue from the bank. Always open: it runs on gas, not the Cloud. A cook and a few
 //                      regulars; in chapter 10's storm, the townsfolk who went home from the streets shelter here.
+//                      Neel waits in a booth until Lost and Found (js/folk-far.js), across the street from his hotel.
 //   The bakery         on the avenue's south side, where the baker takes a smile when nobody can pay.
 //
 // The two shops play the shop tune, except in chapter 10's storm, when the city's music follows you in.
@@ -27,6 +28,7 @@
   const block = () => SD.clock ? SD.clock.block() : 'morning';
   const sale = () => !!(D && D.sale && D.sale());
   const pick = a => a[Math.floor(Math.random() * a.length)];
+  const marked = ids => !!QS() && !!QS().marks && ids.some(id => QS().marks()[id]);
 
   // ---------- Doors on the Exchange ----------
   // c: the door's tile character; at: the door tile, in front of the door in the building's art; back: where you
@@ -50,7 +52,8 @@
     return d ? d.at.slice() : doorFor ? doorFor(x, y) : null;
   };
   X.labels.push({ x: 48, y: 34, text: "TORO'S CARDS" }, { x: 34, y: 48, text: 'RELICS' },
-    { x: 47, y: 14, text: 'BACK ROOM · OPEN', get hidden() { return !sale(); } });
+    { x: 47, y: 14, text: 'BACK ROOM · OPEN', get hidden() { return !sale(); } },
+    { x: 40, y: 15, text: 'COFFEE DINER', get marker() { return marked(inDiner()); } });
 
   // Out of the rain and in; the Exchange stops while you're inside, and its door() starts it again on the way out.
   async function enter(key) {
@@ -114,6 +117,13 @@
     xdin3: [[''], ['I counted the seconds after the lightning. Then I lost count. Then I came here.', 'Is the tower still lit? Somebody look. I can\'t look.'], ['']]
   };
   const era = () => storm() ? 1 : flags().ch10 ? 2 : 0;
+  // Any of the Rollouts whose day sends them into the diner (js/folk-far.js: Neel, until Lost and Found) sits in a
+  // booth; talking to them is the same as on the street (js/nari-home.js's lines, quest steps first).
+  const DINER = DOORS.C.at;
+  const inDiner = () => SD.nariHome ? ['nari', 'neel', 'hari', 'bitna', 'eunho'].filter(id => {
+    const w = SD.nariHome.where(id);
+    return Array.isArray(w) && w[0] === 'in' && w[1] === 'exchange' && w[2] === DINER[0] && w[3] === DINER[1];
+  }) : [];
   async function folk(id) {
     if (QS() && QS().pending(id).length) return QS().talk(id);
     const ls = SAY[id][era()];
@@ -186,16 +196,16 @@
       '####......##', '#####..#####', '#####..#####', '#####DD#####'],
     enter: [5, 7, 'north'],
     clerk: 'xcook', counter: [4, 2.5, 'south'], over: [[4, 4], [5, 4], [6, 4]],
-    people: () => ['xcook', 'xdin0', 'xdin1'].concat(storm() ? ['xdin2', 'xdin3'] : []),
-    spots: { xdin0: [8, 4, 'south'], xdin1: [3, 5, 'east'], xdin2: [9, 5, 'west'], xdin3: [7, 4, 'south'] },
-    names: { xcook: 'HASH', xdin0: '', xdin1: '', xdin2: '', xdin3: '' },
+    people: () => ['xcook', 'xdin0', 'xdin1'].concat(storm() ? ['xdin2', 'xdin3'] : [], inDiner()),
+    spots: { xdin0: [8, 4, 'south'], xdin1: [3, 5, 'east'], xdin2: [9, 5, 'west'], xdin3: [4, 5, 'north'], neel: [7, 4, 'south'] },
+    names: { xcook: 'HASH', xdin0: '', xdin1: '', xdin2: '', xdin3: '', neel: 'NEEL' },
     looks: { xcook: { sprite: 'folk5' }, xdin0: { sprite: 'folk1' }, xdin1: { sprite: 'folk2' }, xdin2: { sprite: 'folk4' }, xdin3: { sprite: 'folk6' } },
     lights: [{ x: 3.4, y: 2, r: 2.4 }, { x: 6.1, y: 2, r: 2.4 }, { x: 8.6, y: 2.4, r: 2.4 }, { x: 10.6, y: 2.6, r: 2, rgb: '255,90,190' }],
     props: [
       { x: 10, y: 5, t: () => ['A jukebox with one song on it, playing on repeat since loop one. Nobody remembers putting a coin in.'] },
       { x: 9, y: 4, t: () => storm() ? ['A booth table with a wet coat over it. Under the table, a very small dog, also wet, also eating pie.'] : ['A booth table with a newspaper on it. Headline: EVERYTHING DOWN. Below it: PIE STILL 2 SHARDS.'] }
     ],
-    talk: id => folk(id)
+    talk: id => SAY[id] ? folk(id) : outside(id)
   };
   R.xbakery = {
     name: "MABEL'S BAKERY", ambience: 'fire',
