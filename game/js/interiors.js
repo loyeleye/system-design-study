@@ -8,7 +8,7 @@
 // have rooms too, with their keepers inside when their day puts them there. Bru is never home at night, and nothing in her room says where she goes.
 // In chapter 10's storm everyone is indoors and worried, so each room has its people in it with a worried word.
 // The Eventual Isles' buildings have rooms too (js/isles/isles-map.js), and so do Aigerim's card shop on the North
-// Road (js/northroad.js), where she minds the counter, and Lord Latency's inn at the waystation.
+// Road (js/northroad.js), where she minds the counter, Lyra's theatre with her stage, and Lord Latency's inn at the waystation.
 //
 //   SD.interiors.has(door)     true if a room is behind that door
 //   SD.interiors.enter(door)   go inside; resolves when you walk back out
@@ -517,6 +517,28 @@
         { x: 8, y: 5, t: () => ['A round table with a map of the road north under the glass. Someone has marked every stop with how long it takes to get there.', 'Every number has been crossed out and made a little bigger.'] }
       ],
       talk: id => innTalk(id)
+    },
+
+    // ---------- Lyra's theatre, on the North Road (js/northroad.js door B) ----------
+    // A little playhouse: Lyra on her stage at the back, three rows of benches and an aisle up the middle. She is in
+    // here whenever the road's schedules (js/folk-far.js) have sent her indoors, which is all day unless a quest
+    // keeps her outside. Talking to her is the same as on the road (quest steps, scenes and her own lines).
+    theatre: {
+      name: "LYRA'S THEATRE",
+      map: ['############', '############', '############', '###.......##', '#####..#####',
+        '######.#####', '######.#####', '######.#####', '#####DD#####'],
+      enter: [6, 7, 'north'],
+      spots: { lyra: [6, 3, 'south'] },
+      names: { lyra: 'LYRA' },
+      people: () => SD.northRoad && SD.northRoad.indoors ? SD.northRoad.indoors().filter(id => id === 'lyra') : [],
+      lights: [{ x: 1.8, y: 4.3, r: 2.4 }, { x: 10.2, y: 4.3, r: 2.4 }, { x: 4.2, y: 3.8, r: 2.2, rgb: '255,170,80' }, { x: 8.2, y: 3.8, r: 2.2, rgb: '255,170,80' }],
+      props: [
+        { x: 2, y: 3, t: () => ['A playbill: "THE BALLAD OF EVERYONE. Tonight: verses 1 to 212. Tomorrow: verse 213. Bring a cushion."'] },
+        { x: 10, y: 3, t: () => ['A playbill for a show called "Encore". Under it, in pencil: "Nobody has ever stayed for one. Yet."'] },
+        { x: 5, y: 5, t: () => ['The front bench. Someone has carved "RESERVED FOR WHOEVER STAYS FOR THE SECOND VERSE" into it.'] },
+        { x: 7, y: 5, t: () => ['A bench polished smooth by years of audiences. Under it: a button, two shards and a very old programme.'] }
+      ],
+      talk: id => SD.northRoad.say(id)
     }
   };
   // Lord Latency and his guest, indoors for the night: a quest step first, as on the road; otherwise a sleepy word.

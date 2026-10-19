@@ -43,7 +43,7 @@
   }
 
   // def: { map: [rows], terrain: { char: sheetKey }, top: [sheet keys, highest first], base: sheetKey for plain ground,
-  //   solid: chars you can't walk on, objects: [{ name, x, y, k, flip, flat }], actors: { id: { x, y, face } },
+  //   solid: chars you can't walk on, objects: [{ name, x, y, k, flip }], actors: { id: { x, y, face } },
   //   labels: [{ x, y, text }], tint, sky: 'sun'|'dusk'|'dark'|'grey', weather: a map's own weather (js/weather.js),
   //   clock: false to keep the time of day off a walkable map (js/clock.js), under(ctx, ts, t): paint the ground
   //   (a room's backdrop, js/interiors.js), ground: false for no terrain tiles under it, indoors: true to hear the
@@ -409,13 +409,11 @@
         const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
         if (def.ground !== false) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) corner(x, y);
         if (def.under) def.under(ctx, ts, t);
-        // Trees ring the map; objects and people are drawn row by row so you walk behind them. Flat objects (a stage's
-        // floor) lie on the ground under everyone, so you can walk on them.
+        // Trees ring the map; objects and people are drawn row by row so you walk behind them.
         objs = (def.objects || []).filter(o => !o.hidden);
-        objs.forEach(o => { if (o.flat) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
         for (let y = y0; y < y1 + 3; y++) {
           if (y < HT) for (let x = x0; x < x1; x++) if (MAP[y][x] === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
-          objs.forEach(o => { if (!o.flat && Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
+          objs.forEach(o => { if (Math.floor(o.y) === y) obj(o.name, (o.x + 0.5) * ts, (o.y + 1) * ts, o.k, o.flip); });
           Object.values(sc.actors).forEach(a => { if (Math.round(a.py) === y) person(a, t); });
         }
       }
@@ -449,7 +447,7 @@
     }
     // Lamps, fires and windows that glow after dark: [art height fraction above the base, radius in tiles, colour].
     const LIGHT = { lamp: [0.88, 2.6], 'ex-firepit': [0.3, 3.6, '255,140,60'], 'cp-fire': [0.3, 3.6, '255,140,60'], camp: [0.3, 3.6, '255,140,60'],
-      'ws-inn': [0.4, 3], 'ex-townhouse': [0.45, 2.4], 'ex-townhouse2': [0.45, 2.4], 'nr-roofs': [0.4, 2.2], 'nr-shop': [0.4, 2.4], 'nr-stagewall': [0.62, 2.4],
+      'ws-inn': [0.4, 3], 'ex-townhouse': [0.45, 2.4], 'ex-townhouse2': [0.45, 2.4], 'nr-roofs': [0.4, 2.2], 'nr-cardshop': [0.35, 2.4], 'nr-theatre': [0.3, 2.6],
       'ex-stall': [0.4, 1.8], 'cp-tent1': [0.4, 1.6], 'cp-tent2': [0.4, 1.6], 'ex-tower': [0.5, 3.6], 'nr-citygate': [0.4, 2.6], 'ws-stable': [0.4, 2], 'b-C': [0.4, 3],
       'o-shrine': [0.45, 1.8, '255,170,80'] };
     function lights(objs, cx, cy) {

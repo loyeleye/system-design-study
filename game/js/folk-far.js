@@ -27,7 +27,7 @@
       v4: { morning: [17, 32, 'west', 'star'], afternoon: [16, 9, 'north', 'idea'], evening: [17, 32, 'west', 'star'], night: [17, 32, 'west', 'sleep'] },   // prays, stares at the Exchange, prays, dozes by the candle
       marta: { night: ['in'] },
       fen: { night: ['in', 7, 29] },
-      lyra: { morning: [20, 16, 'south', 'music'], afternoon: [21, 17, 'south', 'music'], evening: [21, 17, 'south', 'music'], night: ['in', 21, 16] },   // warms up at the back of her stage, plays, headlines the evening show, sleeps backstage
+      lyra: { morning: ['in', 21, 18], afternoon: ['in', 21, 18], evening: ['in', 21, 18], night: ['in', 21, 18] },   // in her theatre all day: warms up, plays, headlines the evening show, sleeps backstage
       ren: { night: ['in'] },
       // Explodia chants at her crater in the morning, blasts it at noon, watches Lyra's evening show, and sleeps in the crater.
       explodia: { morning: [23, 19, 'west', 'alert'], evening: [19, 20, 'north', 'star'], night: [23, 19, 'west', 'sleep'] }

@@ -22,39 +22,40 @@
 
   // ---------- The road ----------
   // Doors: S south to Pingsby, L the waystation (west), R the arena (east), K the heroes' camp (west),
-  // X the city gate to the Exchange (north), C the card shop.
+  // X the city gate to the Exchange (north), C the card shop, B Lyra's theatre.
   const road = (function () {
     const W = 30, H = 46, m = grid(W, H, true);
     m.rect(14, 38, 15, 45, 'p'); m.rect(12, 37, 15, 38, 'p'); m.rect(12, 29, 13, 37, 'p');
     m.rect(12, 28, 16, 29, 'p'); m.rect(15, 17, 16, 28, 'p'); m.rect(14, 16, 16, 17, 'p'); m.rect(14, 8, 15, 16, 'p');
     m.rect(1, 35, 12, 36, 'p'); m.rect(16, 25, 28, 26, 'p'); m.rect(1, 13, 14, 14, 'p');
-    m.rect(7, 30, 11, 30, 'p'); m.rect(17, 19, 19, 19, 'p'); m.rect(16, 41, 18, 41, 'p'); m.rect(8, 22, 14, 22, 'p');
+    m.rect(7, 30, 11, 30, 'p'); m.rect(17, 19, 21, 19, 'p'); m.rect(16, 41, 18, 41, 'p'); m.rect(8, 22, 14, 22, 'p');
     m.put(0, 35, 'L'); m.put(0, 36, 'L');
     m.put(29, 25, 'R'); m.put(29, 26, 'R');
     m.put(0, 13, 'K'); m.put(0, 14, 'K');
     m.put(14, 45, 'S'); m.put(15, 45, 'S');
     m.rect(1, 0, 28, 5, 'w'); m.rect(10, 1, 19, 6, '#'); m.put(14, 7, 'X'); m.put(15, 7, 'X');   // the city wall and gate
-    m.rect(5, 19, 9, 21, 'b'); m.put(7, 22, 'C');
+    m.rect(5, 19, 8, 21, 'b'); m.put(7, 22, 'C');
     m.rect(5, 27, 8, 28, 'b');                               // courier post
-    m.rect(19, 15, 23, 15, 'b');                             // bard's stage: its back wall (you walk on the floor, rows 16-18)
+    m.rect(19, 15, 23, 17, 'b'); m.put(21, 18, 'B');         // Lyra's theatre, with her stage inside
     m.rect(18, 39, 22, 40, 'b');                             // Marta's caravan
     m.rect(15, 32, 16, 32, 'b');                             // the pilgrim's shrine
     m.rect(22, 30, 26, 32, '~'); m.rect(3, 40, 6, 42, '~');
     m.trees([[21, 9], [6, 10], [9, 8], [25, 11], [3, 17], [11, 18], [24, 20], [27, 16], [2, 24], [9, 25], [20, 22],
       [26, 21], [3, 31], [19, 33], [27, 35], [8, 38], [23, 36], [4, 44], [10, 43], [20, 44], [25, 42], [18, 11], [11, 11], [27, 29], [6, 33]]);
     return {
-      map: m.rows(), terrain: { p: 'dirt', L: 'dirt', R: 'dirt', K: 'dirt', S: 'dirt', X: 'dirt', C: 'dirt', '~': 'water', w: 'd10', '#': 'd10' },
+      map: m.rows(), terrain: { p: 'dirt', L: 'dirt', R: 'dirt', K: 'dirt', S: 'dirt', X: 'dirt', C: 'dirt', B: 'dirt', '~': 'water', w: 'd10', '#': 'd10' },
       top: ['water', 'd10', 'dirt'], solid: 'T#~wb', bg: '#5fbf5f',
-      doors: { S: 'S', L: 'L', R: 'R', K: 'K', X: 'X', C: 'C' },
-      doorFor: (x, y) => (x >= 10 && x <= 19 && y <= 7) ? [14, 8] : (x >= 5 && x <= 9 && y >= 17 && y <= 21) ? [7, 23] : null,
+      doors: { S: 'S', L: 'L', R: 'R', K: 'K', X: 'X', C: 'C', B: 'B' },
+      doorFor: (x, y) => (x >= 10 && x <= 19 && y <= 7) ? [14, 8] : (x >= 5 && x <= 9 && y >= 17 && y <= 21) ? [7, 23]
+        : (x >= 19 && x <= 23 && y >= 14 && y <= 17) ? [21, 19] : null,
       objects: [
         { name: 'nr-roofs', x: 3, y: 2.2 }, { name: 'nr-roofs', x: 8, y: 1.6 }, { name: 'nr-roofs', x: 21, y: 1.6 }, { name: 'nr-roofs', x: 26, y: 2.2 },
         { name: 'nr-roofs', x: 14.5, y: 0.6 },
         { name: 'nr-citywall', x: 3.2, y: 5.8 }, { name: 'nr-citywall', x: 7, y: 5.8 }, { name: 'nr-citywall', x: 22, y: 5.8 }, { name: 'nr-citywall', x: 25.8, y: 5.8 },
         { name: 'nr-citygate', x: 14.5, y: 7 },
-        { name: 'nr-shop', x: 7, y: 21 },
+        { name: 'nr-cardshop', x: 6.34, y: 22 },
         { name: 'nr-courierpost', x: 6.5, y: 28 },
-        { name: 'nr-stagefloor', x: 21, y: 18.25, flat: true }, { name: 'nr-stagewall', x: 21, y: 15 },
+        { name: 'nr-theatre', x: 21, y: 17.75 },
         { name: 'nr-caravan', x: 20, y: 40 },
         { name: 'nr-arch', x: 2, y: 34 }, { name: 'nr-arch', x: 27, y: 24 }, { name: 'nr-arch', x: 2, y: 12 },
         { name: 'nr-signpost', x: 11, y: 34 }, { name: 'nr-signpost', x: 17, y: 24 }, { name: 'nr-signpost', x: 13, y: 12 },
@@ -72,7 +73,7 @@
         seymour: { x: 17, y: 43, face: 'west', name: 'SEYMOUR' },
         marta: { x: 17, y: 41, face: 'south', name: 'MARTA' },
         fen: { x: 9, y: 31, face: 'east', name: 'FEN' },
-        lyra: { x: 21, y: 17, face: 'south', name: 'LYRA' },
+        lyra: { x: 20, y: 19, face: 'south', name: 'LYRA' },
         aigerim: { x: 9, y: 23, face: 'south', name: 'AIGERIM' },
         v2: { x: 13, y: 26, face: 'east', name: 'TRAVELLER' },
         v4: { x: 17, y: 32, face: 'west', name: 'PILGRIM' },
@@ -93,7 +94,7 @@
         { kind: 'ladybug', x: 11, y: 26, range: 2 }, { kind: 'ladybug', x: 18, y: 43, range: 2 }
       ],
       // Where you stand when you come back through each door.
-      back: { L: [1, 35, 'east'], R: [28, 25, 'west'], K: [1, 13, 'east'], X: [14, 8, 'south'], S: [14, 44, 'north'], C: [7, 23, 'south'] },
+      back: { L: [1, 35, 'east'], R: [28, 25, 'west'], K: [1, 13, 'east'], X: [14, 8, 'south'], S: [14, 44, 'north'], C: [7, 23, 'south'], B: [21, 19, 'south'] },
       music: 'ch7', weather: 'sun', clouds: true, ambience: null
     };
   })();
@@ -437,6 +438,7 @@
       if (cur === 'road') {
         if (d === 'S') { moved = true; return NR.leave(); }
         if (d === 'C') return await shop();
+        if (d === 'B') return await theatre();
         const key = PLACE[d];
         if (MAPS[key].open ? !MAPS[key].open() : (!A.open(MAPS[key].ch) || !SD.chapters[MAPS[key].ch])) return await closed(key);
         moved = true; go(key, MAPS[key].enter);
@@ -519,6 +521,16 @@
     AU.music(MAPS[cur].music);
     return true;
   }
+  // Lyra's theatre: her stage is inside, and so is she, whenever her day (js/folk-far.js) has sent her in.
+  async function theatre() {
+    if (!SD.interiors || !SD.interiors.room('theatre')) {
+      await U.dialog([{ s: 'pip', t: 'A sign on the door: "REHEARSAL IN PROGRESS. Verse two hundred and twelve. Please knock in about a year."' }]);
+      return;
+    }
+    sc.stop();
+    await SD.interiors.open('theatre', 'north-canvas');
+    AU.music(MAPS[cur].music);
+  }
   // Who on this map has gone indoors for the night, for the rooms behind its doors.
   NR.indoors = () => sc ? Object.values(sc.actors).filter(a => a.schedIn).map(a => a.id) : [];
 
@@ -543,23 +555,25 @@
     // Whoever you talk to stops and turns to you (the sparring heroes keep their stance).
     const who = sc.actors[id];
     if (who && sc.P && !STILL[id]) { if (who.path.length) { who.path = []; if (who.route && who.leg) who.leg--; } sc.face(id, toward(who, sc.P)); }
-    try {
-      // Later files can take a conversation first: f(key, id) resolves true if it handled it (Nari's gift in
-      // js/nari.js, the Exchange trader's relics in js/relic-exchange.js).
-      for (const f of NR.onTalk) if (await f(cur, id)) return;
-      // A relationship scene that's due with them on this map comes first (js/folk-scenes.js); it waits out quest steps.
-      if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('road:' + cur, id)) { AU.music(MAPS[cur].music); return; }
-      // Explodia runs her own Blast Academy (js/explodia.js), quest steps included; the road's ordinary
-      // people are in js/roadfolk.js.
-      if (id === 'explodia' && SD.explodia) { await SD.explodia.talk(); AU.music(MAPS[cur].music); return; }
-      if (QS() && QS().pending(id).length) { await QS().talk(id); AU.music(MAPS[cur].music); return; }
-      if (id === 'aigerim') { await shop(); AU.music(MAPS[cur].music); return; }
-      if (SD.roadFolk && await SD.roadFolk.talk(cur, id)) return;
-      const own = SD.roadTalk && SD.roadTalk.lines[id];
-      const lines = (own && own()) || (TALK[id] && TALK[id]());
-      if (!lines) return;
-      await U.dialog([{ s: id, t: lines[talkI++ % lines.length] }]);
-    } finally { busy = false; if (sc && sc.active) { cast(); hud(); } }
+    try { await say(id); } finally { busy = false; if (sc && sc.active) { cast(); hud(); } }
+  }
+  // What they say, here or in a room off this map (Lyra on her stage in the theatre, js/interiors.js).
+  async function say(id) {
+    // Later files can take a conversation first: f(key, id) resolves true if it handled it (Nari's gift in
+    // js/nari.js, the Exchange trader's relics in js/relic-exchange.js).
+    for (const f of NR.onTalk) if (await f(cur, id)) return;
+    // A relationship scene that's due with them on this map comes first (js/folk-scenes.js); it waits out quest steps.
+    if (SD.folkScenes && SD.folkScenes.talkFar && await SD.folkScenes.talkFar('road:' + cur, id)) { AU.music(MAPS[cur].music); return; }
+    // Explodia runs her own Blast Academy (js/explodia.js), quest steps included; the road's ordinary
+    // people are in js/roadfolk.js.
+    if (id === 'explodia' && SD.explodia) { await SD.explodia.talk(); AU.music(MAPS[cur].music); return; }
+    if (QS() && QS().pending(id).length) { await QS().talk(id); AU.music(MAPS[cur].music); return; }
+    if (id === 'aigerim') { await shop(); AU.music(MAPS[cur].music); return; }
+    if (SD.roadFolk && await SD.roadFolk.talk(cur, id)) return;
+    const own = SD.roadTalk && SD.roadTalk.lines[id];
+    const lines = (own && own()) || (TALK[id] && TALK[id]());
+    if (!lines) return;
+    await U.dialog([{ s: id, t: lines[talkI++ % lines.length] }]);
   }
 
   // ---------- Hook-ups ----------
@@ -680,6 +694,7 @@
   // A block that changes while you're on the road sends everyone walking to their next spot.
   if (SD.clock) SD.clock.onChange(() => { if (sc && sc.active) cast(); });
   NR.go = go;
+  NR.say = say;
   NR.onGo = [];
   NR.onTalk = [];
   NR.where = () => cur;

@@ -1,5 +1,5 @@
 // The North Road's side path east to the PR Club (js/club.js), across from the heroes' camp path: dirt from the main
-// road on rows 13 and 14, stepping down behind the bard's stage to door P on rows 15 and 16 at the road's east edge,
+// road on rows 13 and 14, stepping down behind Lyra's theatre to door P on rows 15 and 16 at the road's east edge,
 // which NR.addPlace('club', ...) points at the yard. Changes the road map at load, so js/northroad.js stays as it is.
 // Loads after js/club.js.
 (function () {
