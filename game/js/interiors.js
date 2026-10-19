@@ -28,7 +28,8 @@
   const block = () => SD.clock ? SD.clock.block() : 'morning';
 
   // Map legend: # solid, . floor, D the way out, U up the stairs, S down the stairs (the café's and the flat's unless a
-  // room says where its own go: up, down).
+  // room says where its own go: up, down). ways: [[x, y, face]], stairs you can only step onto going that way, so you
+  // climb from the bottom step or go down from the top, not in over the banister.
   // spots: where people stand ([x, y, face]; y can be fractional, to stand behind a counter). counter and over: where
   // whoever minds the counter stands, and the tiles you talk to them across (Wen or Uptima in the café; clerk names
   // anyone else's). looks: what to draw someone with ({ sprite }). props: things you can look at, on solid tiles next
@@ -741,6 +742,7 @@
       map: r.map, ground: false, bg: '#1a1530', solid: '#', indoors: true, room: key,
       ambience: r.ambience !== undefined ? r.ambience : outside.place,
       doors: { D: 'out', U: 'up', S: 'down' },
+      way: r.ways ? (x, y, nx, ny) => r.ways.every(([wx, wy, f]) => wx !== nx || wy !== ny || f === (nx > x ? 'east' : nx < x ? 'west' : ny > y ? 'south' : 'north')) : null,
       lights: r.lights,
       under(ctx, ts, t) {
         const im = pic(key);
