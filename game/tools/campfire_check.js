@@ -57,7 +57,7 @@ const server = http.createServer((req, res) => {
     await p.goto(base + '/index.html?debug&rank=S&at=camp&' + q);
     await p.waitForTimeout(4000);
     // Windy, the fire streams east: its wind strip has to load too.
-    const wind = await p.evaluate(() => new Promise(r => { const im = new Image(); im.onload = () => r(im.naturalWidth === 512 && im.naturalHeight === 72); im.onerror = () => r(false); im.src = 'assets/img/arc/cp-fire-wind.webp'; }));
+    const wind = await p.evaluate(() => new Promise(r => { const im = new Image(); im.onload = () => r(im.naturalWidth === 640 && im.naturalHeight === 72); im.onerror = () => r(false); im.src = 'assets/img/arc/cp-fire-wind.webp'; }));
     const st = await p.evaluate(() => ({ weather: SD.weather.now(SD.northRoad.maps.camp.weather), fire: SD.northRoad.maps.camp.objects.find(o => /^cp-fire/.test(o.name)).name, sound: SD.northRoad.maps.camp.ambience() }));
     await p.screenshot({ path: path.join(OUT, `camp-${name.replace(/ /g, '-')}.png`) });
     const ok = wind && (lit ? st.fire === 'cp-fire' && st.sound === 'fire' : st.fire === 'cp-fire-out' && st.sound === null) && !errs.length;
