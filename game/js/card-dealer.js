@@ -3,8 +3,8 @@
 // that can turn up as a card reward (S.unlockedCards: the cards you bought from Toro or Aigerim, S.cardPool, and the
 // ones your level and chapters unlocked). A pin costs a tenth of what the card costs to unlock at a shop (SD.cardPrice
 // in js/card-exchange.js), or of a price by rarity for cards no shop sells. Pinned cards join the starting deck on top
-// of the usual one, from the next run on, and stay pinned while you keep winning; dying or abandoning a run clears every
-// pin that was in it. One copy of each card. No refunds.
+// of the usual one, for the next run only: when that run ends (cleared, lost or abandoned), every pin that was in it is
+// gone. A pin bought during a run waits for the next one. One copy of each card. No refunds.
 //
 // His manner is modelled on Kisuke Urahara (Bleach): the giggling, overly polite shopkeeper who sells things nobody
 // should have, is never quite serious, and enjoys a catastrophe a little too much. His look is his own (PixelLab art,
@@ -12,10 +12,10 @@
 // During chapter 10 he leaves the cave for the Exchange (js/northroad-exchange.js's map), snickers at the end of the
 // world while everyone else worries (js/ch10-folk.js), and takes 25% off his pins for the occasion.
 //
-//   S.save.pins            [{ id, live }]: live once a run has started with it, and only live pins are cleared
+//   S.save.pins            [{ id, live }]: live once a run has started with it; only live pins are spent
 //   SD.dealer.pins()       the pinned card ids, for building a deck (js/run.js, js/raid.js)
 //   SD.dealer.arm()        marks every pin live and returns their ids (SD.run.start calls it)
-//   SD.dealer.lose()       a run was lost or abandoned: drops the live pins, returns how many (js/run.js endRun)
+//   SD.dealer.spend()      a run ended: drops the live pins, returns how many (js/run.js endRun)
 //   SD.dealer.price(id)    a pin's price in Memory Shards today
 (function () {
   const S = SD.state, U = SD.ui, AU = SD.audio;
@@ -27,7 +27,7 @@
   const list = () => S.save.pins || (S.save.pins = []);
   D.pins = () => list().map(p => p.id).filter(id => SD.cards[id]);
   D.arm = () => { list().forEach(p => { p.live = true; }); return D.pins(); };
-  D.lose = () => { const all = list(), keep = all.filter(p => !p.live); S.save.pins = keep; return all.length - keep.length; };
+  D.spend = () => { const all = list(), keep = all.filter(p => !p.live); S.save.pins = keep; return all.length - keep.length; };
   // Unlock prices for cards no shop sells: Aigerim's shop range for common and uncommon, her Rare Shelf's for the rest.
   const RARITY = { common: 100, uncommon: 200, rare: 500, ancient: 750 };
   D.base = id => (SD.cardPrice && SD.cardPrice(id)) || RARITY[SD.cards[id].rarity] || 200;
@@ -61,7 +61,7 @@
     { s: 'you', t: where === 'exchange' ? 'Is this... a shop? On a street corner?' : 'Is this... a shop? In a cave?' },
     { s: 'kagemaru', t: 'A shop? Goodness, no. Shops pay taxes. This is a cave where a humble man happens to know some things. Kagemaru. Card fixer. Strictly off the books.' },
     { s: 'kagemaru', t: 'Any card that can turn up after your fights, I can slip into your starting deck. From your next run. For a tenth of what the shops charge to unlock it. A bargain! Heh.' },
-    { s: 'kagemaru', t: 'The fine print, which I wrote very small: die, or walk out of a run, and every card I slipped into it comes back to me. No refunds. Keep winning and they stay right where I put them.' },
+    { s: 'kagemaru', t: 'The fine print, which I wrote very small: one run only. Win, die or walk out, and every card I slipped into it comes back to me. No refunds. Heh heh.' },
     { s: 'kagemaru', t: 'And not a word to Toro. Or Aigerim. Especially Aigerim. She writes everything down.' }
   ];
   const STORM = [
@@ -108,7 +108,7 @@
         const run = !!(sv.run && !sv.run.tutorial);
         const body = `<div class="shopkeep">${SD.art.portrait('kagemaru', 72)}<p>"${U.esc(hello)}"</p></div>
           <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span>${D.sale() ? '<span>25% off · the end of the world</span>' : ''}</div>
-          <p class="muted small">A pinned card joins your starting deck from your next run on, on top of your usual cards. It stays while you keep winning; dying or abandoning a run clears every pin that was in it. A pin costs a tenth of the card's unlock price${D.sale() ? ', and 25% less today' : ''}. No refunds.</p>
+          <p class="muted small">A pinned card joins your starting deck for your next run only, on top of your usual cards. When that run ends, however it ends, the pin is gone. A pin costs a tenth of the card's unlock price${D.sale() ? ', and 25% less today' : ''}. No refunds.</p>
           ${pinned.length ? `<p class="q-ctx">Pinned (${pinned.length})</p><div class="cardgrid pick">${pinned.map(p => grid([p.id], p.live && run ? 'In this run' : p.live ? 'In your deck' : 'From your next run')).join('')}</div>` : ''}
           ${mine.length ? `<p class="q-ctx">Cards you unlocked at the shops</p><div class="cardgrid pick">${grid(mine)}</div>` : ''}
           ${rest.length ? `<p class="q-ctx">Everyday card rewards</p><div class="cardgrid pick">${grid(rest)}</div>` : ''}
