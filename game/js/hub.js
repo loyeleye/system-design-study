@@ -27,7 +27,10 @@
     'T....T.........................................T',
     'T.................###..###..###..###..###..###.T',
     'T.........T.......#X#.L#Y#..#D#.L#Q#..#M#.L#O#.T',
-    'T..............................................T',
+    'T..T....T.......pppppppppppppppppppppppppppppp.T',
+    'T.T...T....T..T.pppppppppppppppppppppppp,,,,,,,T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTL.,,,,,.T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...TTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
   ];
   const W = MAP[0].length, HT = MAP.length;
@@ -38,7 +41,8 @@
     G: { name: 'DUNGEON (PROD)' }, B: { name: 'QUEST BOARD' },
     U: { name: "ADVENTURERS' GUILD" }, F: { name: 'FORGE' }, P: { name: 'PIGEON POST' }, K: { name: 'GRAND LIBRARY' },
     N: { name: 'NORTH ROAD' }, E: { name: 'TO THE ISLES' },
-    // The residential row, south of the gate: homes for villagers who work in town (js/interiors.js).
+    // The residential row, south of the gate on a little cul-de-sac in the trees: homes for villagers who work in
+    // town (js/interiors.js).
     X: { name: "LEXI'S HOUSE" }, Y: { name: "KAITO'S HOUSE" }, D: { name: "DOUG'S HOUSE" }, Q: { name: "COO'S HOUSE" },
     M: { name: "BRU'S HOUSE" }, O: { name: "AYO'S HOUSE" }
   };
