@@ -48,11 +48,16 @@
     { id: 'shop', isle: 'carto', x: 45, y: 27, w: 5, h: 3, name: 'MAP & TOOL SHOP' },
     { id: 'hallW', isle: 'twins', x: 32, y: 1, w: 3, h: 2, name: 'WEST TWIN' },
     { id: 'hallE', isle: 'twins', x: 39, y: 1, w: 3, h: 2, name: 'EAST TWIN' },
-    { id: 'light', isle: 'lighthouse', x: 57, y: 16, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [57.5, 12.4] },
+    { id: 'light', isle: 'lighthouse', x: 57, y: 16, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [57.5, 12.4], door: [57, 17] },
     { id: 'club', isle: 'landing', x: 16, y: 39, w: 4, h: 3, name: 'TIDE POOL GAME CLUB' },
     { id: 'gtable', isle: 'landing', x: 20, y: 44, w: 1, h: 1, name: '' },
     { id: 'umbrella', isle: 'landing', x: 26, y: 44, w: 1, h: 1, name: '' }
   ];
+  // Buildings with a room inside (js/interiors.js): walk into the door, the middle of the bottom row unless the
+  // landmark says otherwise (the Keeper's note stands in front of the lighthouse), to go in.
+  const ROOM = { office: 'office', school: 'school', bank: 'bank', mill: 'mill', tower: 'tower', shop: 'carto', hallW: 'hallW', hallE: 'hallE', light: 'light', club: 'club' };
+  const roomOf = l => l && ROOM[l.id] && SD.interiors && SD.interiors.room && SD.interiors.room(ROOM[l.id]) ? ROOM[l.id] : null;
+  const doorOf = l => l.door || [l.x + Math.floor(l.w / 2), l.y + l.h - 1];
   // Islanders stand by their landmarks. The keeper is a note pinned to the lighthouse door.
   const PEOPLE = [
     { id: 'ploy', x: 16, y: 43 }, { id: 'kai', x: 19, y: 44 }, { id: 'nok', x: 21, y: 44 }, { id: 'arjun', x: 26, y: 45 }, { id: 'meron', x: 23, y: 42 },
@@ -154,8 +159,8 @@
     built = true;
     const sec = document.createElement('section');
     sec.id = 'screen-isles'; sec.className = 'screen'; sec.hidden = true;
-    sec.innerHTML = `<div id="isles-hud"></div><canvas id="isles-canvas" aria-label="The Eventual Isles. Tap to walk; walk into people, docks and posts."></canvas>
-      <div class="hub-hint isles-hint">Tap to walk · walk into people, docks and tide posts</div>`;
+    sec.innerHTML = `<div id="isles-hud"></div><canvas id="isles-canvas" aria-label="The Eventual Isles. Tap to walk; walk into people, doors, docks and posts."></canvas>
+      <div class="hub-hint isles-hint">Tap to walk · walk into people, doors, docks and tide posts</div>`;
     document.body.appendChild(sec);
     cv = sec.querySelector('#isles-canvas'); ctx = cv.getContext('2d');
     window.addEventListener('resize', resize);
@@ -258,6 +263,7 @@
   function thingAt(x, y) {
     const p = personAt(x, y); if (p) return { kind: 'person', id: p.id };
     const l = landAt(x, y); if (l && l.id === 'board') return { kind: 'board' };
+    if (roomOf(l) && doorOf(l)[0] === x && doorOf(l)[1] === y) return { kind: 'room', id: l.id };
     const t = tideAt(x, y); if (t) return { kind: 'tide', id: t };
     const b = bridgeAt(x, y); if (b && !I.bridgeBuilt(b) && I.bridges.some(z => z.id === b)) return { kind: 'bridge', id: b };
     return null;
@@ -269,7 +275,10 @@
   function tap(e) {
     if (!active || busyTalk) return;
     const r = cv.getBoundingClientRect(), { cx, cy } = cam();
-    const tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
+    let tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
+    // Tapping anywhere on a building with a room walks you to its door and in.
+    const tl = get(tx, ty) === '#' && landAt(tx, ty);
+    if (roomOf(tl)) [tx, ty] = doorOf(tl);
     const th = thingAt(tx, ty);
     if (th) {
       const near = (x, y) => DIRS.some(([dx, dy]) => x + dx === tx && y + dy === ty);
@@ -317,8 +326,18 @@
       else if (th.kind === 'tide') await I.tideRound(th.id);
       else if (th.kind === 'bridge') await I.buildBridge(th.id);
       else if (th.kind === 'dock') await ferry(th.id);
+      else if (th.kind === 'room') await inside(th.id);
       else if (th.kind === 'exit') { busyTalk = false; I.close(); return; }
     } finally { busyTalk = false; hud(); }
+  }
+
+  // Going into a building: the room covers the map, which stops until you walk back out.
+  async function inside(id) {
+    AU.sfx && AU.sfx('door');
+    active = false; cancelAnimationFrame(raf);
+    try { await SD.interiors.open(roomOf(LAND.find(l => l.id === id)), 'isles-canvas'); } finally {
+      if (!document.getElementById('screen-isles').hidden) { active = true; resize(); t0 = 0; raf = requestAnimationFrame(loop); }
+    }
   }
 
   // Leilani, Kwame and Ploy have services as well as quests; everyone else just talks.

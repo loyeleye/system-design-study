@@ -38,6 +38,7 @@
     m.rect(5, 27, 8, 28, 'b');                               // courier post
     m.rect(19, 16, 23, 17, 'b');                             // bard's stage
     m.rect(18, 39, 22, 40, 'b');                             // Marta's caravan
+    m.rect(15, 32, 16, 32, 'b');                             // the pilgrim's shrine
     m.rect(22, 30, 26, 32, '~'); m.rect(3, 40, 6, 42, '~');
     m.trees([[21, 9], [6, 10], [9, 8], [25, 11], [3, 17], [11, 18], [24, 20], [27, 16], [2, 24], [9, 25], [20, 22],
       [26, 21], [3, 31], [19, 33], [27, 35], [8, 38], [23, 36], [4, 44], [10, 43], [20, 44], [25, 42], [18, 11], [11, 11], [27, 29], [6, 33]]);
@@ -59,7 +60,9 @@
         { name: 'nr-signpost', x: 11, y: 34 }, { name: 'nr-signpost', x: 17, y: 24 }, { name: 'nr-signpost', x: 13, y: 12 },
         { name: 'nr-milestone', x: 16, y: 43 }, { name: 'nr-milestone', x: 11, y: 30 }, { name: 'nr-milestone', x: 13, y: 10 },
         { name: 'nr-fence', x: 18, y: 37 }, { name: 'nr-fence', x: 21, y: 37 }, { name: 'nr-fence', x: 8, y: 16 },
-        { name: 'nr-rock', x: 24, y: 14 }, { name: 'nr-rock', x: 5, y: 8 }, { name: 'nr-rock', x: 21, y: 28 }, { name: 'nr-cart', x: 9, y: 40 }
+        { name: 'nr-rock', x: 24, y: 14 }, { name: 'nr-rock', x: 5, y: 8 }, { name: 'nr-rock', x: 21, y: 28 }, { name: 'nr-cart', x: 9, y: 40 },
+        // A little roadside shrine with a candle in it, turned towards the pilgrim, who stops here to pray.
+        { name: 'o-shrine', x: 15.6, y: 32, flip: true }
       ],
       labels: [
         { x: 2, y: 37.6, text: '← WAYSTATION' }, { x: 27, y: 27.6, text: 'THE ARENA →' }, { x: 2, y: 15.6, text: "← HEROES' CAMP" },
@@ -258,7 +261,8 @@
     if (cur === 'arena') sc.hide('hero500', !!flags().ch8);
     if (cur === 'waystation') sc.actors.latency.marker = sc.actors.latency.marker || (A.open(7) && !flags().ch7);
     if (SD.roadTalk && SD.roadTalk.cast) SD.roadTalk.cast(sc, cur);
-    if (cur === 'road') sc.hide('aigerim', !(NR.shop && NR.shop.ready()));
+    // Aigerim stands outside her shop, or minds the counter inside it once it has a room (js/interiors.js).
+    if (cur === 'road') sc.hide('aigerim', !(NR.shop && NR.shop.ready()) || inside());
     const shop = road.labels.find(l => l.id === 'shop');
     if (shop) shop.text = NR.shop && NR.shop.name ? NR.shop.name.toUpperCase() : 'CARD SHOP';
   }
@@ -269,6 +273,7 @@
     if (!scenes[key]) {
       scenes[key] = SD.scene.create($('#north-canvas'), def);
       scenes[key].onDoor = door; scenes[key].onTalk = talk;
+      if (key === 'road') scenes[key].fx.push(candle);
       const [x, y, f] = def.enter || def.back.S;
       scenes[key].player(x, y, f);
     }
@@ -277,6 +282,18 @@
     cast(); hud(); sc.start();
     AU.music(def.music);
     if (SD.weather) SD.weather.sync(SD.weather.now(def.weather));
+  }
+
+  // The candle in the pilgrim's shrine: a small flame that flickers, with a warm glow around it.
+  function candle(ctx, t, ts) {
+    const k = ts / 32, x = (15.6 + 0.5) * ts + 6.5 * k, y = 33 * ts - 28 * k;
+    const f = 0.75 + 0.15 * Math.sin(t * 13) + 0.1 * Math.sin(t * 29 + 1.3);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 9 * k * f);
+    g.addColorStop(0, 'rgba(255,200,110,.55)'); g.addColorStop(1, 'rgba(255,160,60,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 9 * k * f, 0, Math.PI * 2); ctx.fill();
+    const sway = Math.sin(t * 7) * 0.6 * k;
+    ctx.fillStyle = '#ff9a2e'; ctx.beginPath(); ctx.ellipse(x + sway * 0.5, y, 1.6 * k, 3 * k * f, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(x + sway, y + 0.6 * k, 0.8 * k, 1.6 * k * f, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   NR.enter = async function (fromRun) {
@@ -374,8 +391,16 @@
   // The card shop: Aigerim moves her stall here from Pingsby once the road opens (js/peddler.js has her and her stock).
   // NR.shop = { name, open(), ready() } is all the road needs, so another shop could take the spot.
   if (SD.peddler) NR.shop = { name: "Aigerim's Cards", open: () => SD.peddler.open({ full: true }), ready: () => SD.peddler.moved() };
+  const inside = () => !!(SD.interiors && SD.interiors.room && SD.interiors.room('cards')) && !!NR.shop && NR.shop.name === "Aigerim's Cards";
   async function shop() {
-    if (NR.shop && (!NR.shop.ready || NR.shop.ready())) return NR.shop.open();
+    if (NR.shop && (!NR.shop.ready || NR.shop.ready())) {
+      if (!inside()) return NR.shop.open();
+      // The road stops while you're inside; door() starts it again on the way out.
+      sc.stop();
+      await SD.interiors.open('cards', 'north-canvas');
+      AU.music(MAPS[cur].music);
+      return;
+    }
     await U.dialog([{ s: 'pip', t: 'A sign in the window: "OPENING SOON. Cards, rare and less rare. Discounts for heroes who have died at least once." That\'s everyone!' }]);
   }
 
