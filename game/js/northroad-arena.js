@@ -94,7 +94,7 @@
   // The crowd cheers in waves: every few seconds about a third of them (most of them, every fourth wave) give two
   // little hops, and now and then one of them sings or cheers out loud. Drawn here rather than by js/scene.js so
   // the hop can lift the sprite off its shadow; the sheets are laid out as scene.js expects (south, west, east, north;
-  // a standing pose, then the walk).
+  // a standing pose, then the idle and the walk).
   const ROW = { south: 0, west: 1, east: 2, north: 3 }, PICS = {}, CHEER = ['music', 'star', 'heart', 'laugh'];
   const img = src => PICS[src] || (PICS[src] = pic(src));
   const ok = im => im.complete && im.naturalWidth;
@@ -116,7 +116,7 @@
       ctx.fillStyle = 'rgba(43,35,64,0.22)';
       ctx.beginPath(); ctx.ellipse(x, y - ts * 0.05, ts * (0.32 - hop / ts * 0.3), ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
       if (!c || !ok(im)) return;
-      const row = ROW[this.face] || 0, n = c.n[row], col = n && going ? 1 + Math.floor(t * 8) % n : 0;
+      const row = ROW[this.face] || 0, col = SD.art.sheetCol(c, row, going, t + i * 0.37);   // out of step, so the stands breathe
       const w = c.w * ts / 32, h = c.h * ts / 32;
       ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, x - w / 2, y - h - hop, w, h);
     };

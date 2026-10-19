@@ -11,12 +11,13 @@ SRC_DIR (/mnt/project-files/dancer-raw) holds:
   portraits/nari-<mood>.png                   128px busts
 Everything is halved to the game's 68px scale like the PR Club's sprites (tools/club_art.py), and the PixelLab hot pink
 is darkened to the magenta of her portrait. Writes two sheets with a row per direction (south, west, east, north), each
-row starting with her standing: assets/img/arc/c-nari.webp (then 6 walk slots, 4 used facing south) and
+row starting with her standing: assets/img/arc/c-nari.webp (then 4 breathing frames, then 6 walk slots, 4 used facing south) and
 assets/img/arc/c-nari-dance.webp (then 12 dance frames); assets/img/portraits/nari-<mood>.webp (3x, hard pixel edges,
 like tools/pixel_portraits.py); and the manifest SD.nariArt.
 """
 import colorsys, glob, json, os, sys
 from PIL import Image
+from breathe import breathe
 
 SRC, JS = sys.argv[1], sys.argv[2]
 ROOT = os.path.join(os.path.dirname(__file__), '..')
@@ -173,8 +174,13 @@ def sheet(cols, name):
         for i, ci in enumerate(cols): sh.alpha_composite(r[ci], (i * CW, ri * CH))
     save(sh, os.path.join(IMG, 'arc', name))
     return sh.size
-sizes = [sheet(range(1 + WALK), 'c-nari.webp'), sheet([0] + list(range(1 + WALK, 1 + WALK + DANCE)), 'c-nari-dance.webp')]
-art = {'chars': {'nari': {'w': CW, 'h': CH, 'n': WALKN, 'walk': 1}, 'nari-dance': {'w': CW, 'h': CH, 'n': [DANCE] * 4}}}
+# Standing still (when she isn't dancing) she breathes: four frames drawn from her finished standing cell
+# (tools/breathe.py), so her hand-fixed scarf stays as it is. They go after the dance, so fixed/ keeps its numbering.
+IDLE = 4
+for r in cells: r += breathe(r[0])
+idle = list(range(1 + WALK + DANCE, 1 + WALK + DANCE + IDLE))
+sizes = [sheet([0] + idle + list(range(1, 1 + WALK)), 'c-nari.webp'), sheet([0] + list(range(1 + WALK, 1 + WALK + DANCE)), 'c-nari-dance.webp')]
+art = {'chars': {'nari': {'w': CW, 'h': CH, 'n': [IDLE] * 4, 'wk': WALKN}, 'nari-dance': {'w': CW, 'h': CH, 'n': [DANCE] * 4}}}
 
 moods = []
 for f in sorted(glob.glob(os.path.join(SRC, 'portraits', 'nari-*.png'))):
