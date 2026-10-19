@@ -140,7 +140,8 @@
   ];
   const looks = {};
   if (SD.arcArt && SD.arcArt.chars['imani-books']) looks.imani = { sprite: 'imani-books' };
-  // Paz times the rain with her stopwatch: no splits tonight, the track's a river (her lines in js/ch10-folk.js).
+  // Paz times the rain with her stopwatch: no splits tonight, the track's a river (her lines in js/ch10-folk.js). She
+  // stands in the gap between the sideboard and the left armchair, so the way round past the coat rack is closed.
   if (SD.arcArt && SD.arcArt.chars['paz-stopwatch']) looks.paz = { sprite: 'paz-stopwatch' };
   ['leon', 'thea'].forEach(id => { if (sat(id)) looks[id] = { draw: sitting(id), tall: SEATS[id].h }; });
   I.ROOMS.prloft = {
@@ -148,7 +149,7 @@
     map: ['############', '############', '############', '############', '##..########',
       '##.##..##.##', '#..........#', '#..........#', '#####DD#####'],
     enter: [5, 7, 'north'],
-    spots: { imani: [10, 6, 'south'], leon: sat('leon') ? seat(176) : [7, 7, 'north'], thea: sat('thea') ? seat(208) : [8, 6, 'west'], paz: [1, 6, 'south'] },
+    spots: { imani: [10, 6, 'south'], leon: sat('leon') ? seat(176) : [7, 7, 'north'], thea: sat('thea') ? seat(208) : [8, 6, 'west'], paz: [2, 5, 'south'] },
     looks,
     // Both of them across the coffee table, each sitting right behind their half of it.
     across: [sat('leon') && [5, 4, 'leon'], sat('thea') && [6, 4, 'thea']].filter(Boolean),

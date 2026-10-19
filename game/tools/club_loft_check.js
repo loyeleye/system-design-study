@@ -9,8 +9,9 @@
 //   - Imani is in the lounge at night, with her books sheet
 //   - walking out of the lounge brings the hero back down the stairs to the foot of them, railing hidden again
 //   - in chapter 10's storm, Paz, Imani, Leon and Thea are in the lounge, and the board says so, and you can walk up
-//     to each of them from the door (nobody stands in the way, the furniture and the sofa's end are solid), Leon and Thea sitting on
-//     the sofa and turning their heads to look at the hero off to one side, Paz timing the rain with her stopwatch
+//     to each of them from the door (nobody stands in the way, the furniture and the sofa's end are solid, and Paz
+//     closes the way round past the coat rack), Leon and Thea sitting on the sofa and turning their heads to look at
+//     the hero off to one side, Paz timing the rain with her stopwatch
 // With --shots it saves screenshots of the climb, the lounge and the way down. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -123,9 +124,10 @@ const server = http.createServer((req, res) => {
     while (todo.length) { const [x, y] = todo.pop(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const k = (x + dx) + ',' + (y + dy); if (!seen.has(k) && free(x + dx, y + dy)) { seen.add(k); todo.push([x + dx, y + dy]); } }); }
     const next = ([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has((Math.round(x) + dx) + ',' + (Math.round(y) + dy)));
     const solid = ['3,5', '4,5', '7,5', '8,5', '5,4', '6,4', '4,4'].filter(k => { const [x, y] = k.split(',').map(Number); return r.map[y][x] === '.'; });
-    return { out: Object.keys(spots).filter(id => !next(spots[id]) && !(r.across || []).some(([x, y, who]) => who === id && next([x, y]))), solid };
+    return { out: Object.keys(spots).filter(id => !next(spots[id]) && !(r.across || []).some(([x, y, who]) => who === id && next([x, y]))), solid, round: seen.has('3,4') };
   });
   reach.out.forEach(id => bad(`you can't walk up to ${id} in the lounge`));
+  if (reach.round) bad('Paz doesn\'t close the way round past the coat rack in the storm');
   const paz = await page.evaluate(() => (SD.interiors.ROOMS.prloft.looks.paz || {}).sprite);
   if (paz !== 'paz-stopwatch') bad('Paz is not timing the rain with her stopwatch sheet');
   if (reach.solid.length) bad('the armchairs, the coffee table or the sofa\'s end can be walked through at ' + reach.solid.join(' '));
