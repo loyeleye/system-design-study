@@ -297,12 +297,12 @@
       ctx.beginPath(); ctx.ellipse(fx, gy, ts * 0.32 * CS, ts * 0.11 * CS, 0, 0, Math.PI * 2); ctx.fill();
       if (!c) return;
       const im = pic(c.src); if (!ok(im)) return;
-      const row = ROW[a.face] || 0, n = c.n[row];
-      // Walk cycles play only while walking; idle cycles (breathing) play standing still.
+      const row = ROW[a.face] || 0;
+      // Walk cycles play only while walking; idle cycles (breathing) play standing still (SD.art.sheetCol).
       const going = a.moving || (a.path && a.path.length);
       // A sprite can pick its own idle frame (`frame`: Kagemaru's moods in js/card-dealer.js).
-      const col = n && (going || !c.walk) ? 1 + (c.frame != null && !going ? c.frame : Math.floor(t * (going ? 8 : 5))) % n : 0;
-      const bob = a.moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
+      const col = c.frame != null && !going && c.n[row] ? 1 + c.frame % c.n[row] : SD.art.sheetCol(c, row, going, t);
+      const bob = a.moving && !SD.art.walks(c, row) ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
       const k = (a.scale || 1) * CS, w = c.w * ts / 32 * k, h = c.h * ts / 32 * k, y = fy + (ISO ? ts / 16 : 0);
       ctx.save();
       if (a.alpha != null) ctx.globalAlpha = a.alpha;

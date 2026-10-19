@@ -93,7 +93,7 @@ the village's style (68px characters, low top-down, black outline; map objects a
 
 | What | Files | Drawn by |
 | --- | --- | --- |
-| Islander sheets: rows face south, west, east, north; column 0 stands, then a breathing idle facing south | `c-<id>.webp` (the school is `c-kid1` to `c-kid3`) | `sprite()` and `islander()` in `isles-map.js`, scaled to the villagers' height |
+| Islander sheets: rows face south, west, east, north; column 0 stands, then that direction's breathing idle (`n`), then its walk cycle (`wk`). Islanders face the way they walk and turn back to you at their spot. `node tools/isles_walk_check.js` checks both | `c-<id>.webp` (the school is `c-kid1` to `c-kid3`) | `sprite()` and `islander()` in `isles-map.js`, scaled to the villagers' height; `SD.art.sheetCol` picks the frame |
 | Portraits in `neutral`, `happy`, `angry`, `confused` (the Keeper is the note) | `portraits/<id>-<mood>.webp` | `I.portrait` in `isles-data.js` |
 | Landmarks: office, school, bank, mill (with `sails` turning on it and `planks`), tower, three fish stalls, shop, the twin halls, the lighthouse (its beam is drawn in code) | `<name>.webp` | `PIXEL` in `isles-map.js` |
 | Props: Kwame's `ferry`, the harbour queue's `boat`s and `pilings`, dock `bollard`s, the `tide` post, the Keeper's `note` | `<name>.webp` | `isles-map.js` |
