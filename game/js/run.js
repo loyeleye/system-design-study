@@ -373,9 +373,7 @@
     const pool = S.unlockedCards().filter(id => { const c = SD.cards[id].ch; return !SD.cards[id].quest && (!c || c === ch || (ch >= 4 && c < ch)); });
     const focus = new Set(S.pickConcepts(5, Object.keys(SD.concepts).filter(id => SD.concepts[id].zone <= ch)));
     const weighted = [];
-    // Cards you bought (S.cardPool) count double, so they turn up.
-    const bought = S.cardPool();
-    pool.forEach(id => { const d = SD.cards[id]; const w = (d.concept && focus.has(d.concept) ? 3 : 1) + (d.ch === ch && ch > 1 ? 2 : 0) + (bought.includes(id) ? 1 : 0); for (let i = 0; i < w; i++) weighted.push(id); });
+    pool.forEach(id => { const d = SD.cards[id]; const w = (d.concept && focus.has(d.concept) ? 3 : 1) + (d.ch === ch && ch > 1 ? 2 : 0); for (let i = 0; i < w; i++) weighted.push(id); });
     const out = [];
     let guard = 0;
     while (out.length < n && guard++ < 200) { const id = rnd(weighted); if (!out.includes(id)) out.push(id); }
