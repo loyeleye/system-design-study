@@ -9,7 +9,8 @@ SRC_DIR (/mnt/project-files/fitness-club-raw) holds:
                                            text-driven idle-v3, walk-v3 and run-v3 (176x176, the rotation centred)
   portraits/<id>-neutral.png               busts cut from the concept sheets, already on transparent backgrounds
   objects/pr-*.png                         map objects; a flat background is flood-filled away
-  rooms/gym.png, rooms/studio.png          384x288 room backdrops at 32px a tile (js/interiors.js)
+  rooms/gym.png, studio.png, loft.png      384x288 room backdrops at 32px a tile (js/interiors.js); loft.png is the
+                                           lounge up the studio's stairs, edited from studio.png on PixelLab
 Writes assets/img/arc/c-<id>.webp and pr-*.webp, assets/img/portraits/<id>-neutral.webp and
 assets/img/interiors/r-pr<room>.webp, and the manifest SD.clubArt. A file whose pixels haven't changed is left as it is.
 """
@@ -100,9 +101,17 @@ def clean(im, pal, near={}):
     return im
 
 PALS = {}
-manifest = {'chars': {}, 'objects': {}, 'rooms': {}}
-for cid in CHARS:
-    PALS[cid] = list({c[:3] for d in DIRS for _, c in Image.open(os.path.join(SRC, 'chars', cid, d + '.png')).convert('RGBA').getcolors(1 << 24) if c[3] >= 110})
+manifest = {'chars': {}, 'extra': {}, 'objects': {}, 'rooms': {}}
+# Extra sheets made from a member's: the same rows, with the facing-south idle swapped for another of their animations
+# (anim/<id>/<anim>/south-<i>.png, made from chars/<id>/<pose>.png, whose colours the cleaning keeps too). Imani doing
+# the books, ledger in hand, in the lounge (js/club-loft.js). In the manifest's extra, so they don't count as members.
+EXTRA = {'imani-books': ('imani', 'books-v3', 'books')}
+
+def colours(*paths):
+    return {c[:3] for p in paths for _, c in Image.open(p).convert('RGBA').getcolors(1 << 24) if c[3] >= 110}
+
+def build(cid, name, idle=None):
+    PALS[name] = list(colours(*[os.path.join(SRC, 'chars', cid, d + '.png') for d in DIRS] + ([os.path.join(SRC, 'chars', cid, idle[1] + '.png')] if idle else [])))
     # Each row: the rotation standing, then its breathing idle, walk and (for the runners) run frames, as many as
     # anim/ has for that direction.
     rows = []
@@ -112,13 +121,14 @@ for cid in CHARS:
             # A slot can name several animations: the first that exists wins, unless TEMPLATE picks the template.
             if d[0] in TEMPLATE.get(cid, ['', '', ''])[si]: slot = slot[-1:]
             anim = next((a for a in slot if os.path.exists(os.path.join(SRC, 'anim', cid, a, d + '-0.png'))), slot[-1])
+            if idle and si == 0 and d == 'south': anim = idle[0]
             src = MIRROR.get((cid, si, d), d)
             n = 0
             while os.path.exists(os.path.join(SRC, 'anim', cid, anim, '%s-%d.png' % (src, n))): n += 1
             if anim in ENDS_STANDING: n -= 1
             frames = [Image.open(os.path.join(SRC, 'anim', cid, anim, '%s-%d.png' % (src, i))) for i in range(n)]
             if src != d: frames = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in frames]
-            row += [clean(f, cid) for f in frames] if anim.endswith('-v3') else frames
+            row += [clean(f, name) for f in frames] if anim.endswith('-v3') else frames
             row.append(n)
         rows.append(row)
     # Custom animations come on a bigger canvas than the rotations, with the figure centred: centre everything on
@@ -142,11 +152,31 @@ for cid in CHARS:
     for r, row in enumerate(rows):
         for c in range(len(row) - len(ANIMS)):
             sheet.alpha_composite(cells[i].crop((x0, box[1], x1, box[3])), (c * fw, r * fh)); i += 1
-    save(sheet, os.path.join(IMG, 'arc', 'c-' + cid + '.webp'))
+    save(sheet, os.path.join(IMG, 'arc', 'c-' + name + '.webp'))
     # js/art.js reads n as the idle frames, wk as the walk and rn as the run (SD.art.sheetCol).
-    manifest['chars'][cid] = dict({'w': fw, 'h': fh, 'n': [c[0] for c in counts], 'wk': [c[1] for c in counts]},
+    manifest['extra' if idle else 'chars'][name] = dict({'w': fw, 'h': fh, 'n': [c[0] for c in counts], 'wk': [c[1] for c in counts]},
                                   **({'rn': [c[2] for c in counts]} if any(c[2] for c in counts) else {}))
-    save(Image.open(os.path.join(SRC, 'portraits', cid + '-neutral.png')).convert('RGBA'), os.path.join(IMG, 'portraits', cid + '-neutral.webp'))
+    if not idle: save(Image.open(os.path.join(SRC, 'portraits', cid + '-neutral.png')).convert('RGBA'), os.path.join(IMG, 'portraits', cid + '-neutral.webp'))
+
+for cid in CHARS: build(cid, cid)
+for name, (cid, anim, pose) in EXTRA.items():
+    if os.path.exists(os.path.join(SRC, 'anim', cid, anim, 'south-0.png')): build(cid, name, (anim, pose))
+
+def studio_rail(im):
+    # The studio's outside stairs and landing railing on their own (pr-studio-rail, the same size as pr-studio): drawn
+    # again over you as you climb to the lounge door, so you go up behind the balusters (js/club-loft.js). Only the
+    # wood and its dark outlines are kept, so the wall still shows between the balusters.
+    from PIL import ImageDraw
+    mask = Image.new('L', im.size, 0); d = ImageDraw.Draw(mask)
+    d.polygon([(18, 152), (60, 124), (60, 117), (68, 117), (68, 150), (30, 182), (18, 182)], fill=255)   # the stair's rail
+    d.rectangle([60, 117, 104, 144], fill=255)                                                       # the landing's
+    out = Image.new('RGBA', im.size); src = im.load(); o = out.load(); m = mask.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = src[x, y]
+            if m[x, y] and a >= 10 and ((r - b >= 30 and r > 60) or (r + g + b < 120 and r >= b - 10)): o[x, y] = (r, g, b, a)
+    save(out, os.path.join(IMG, 'arc', 'pr-studio-rail.webp'))
+    manifest['objects']['pr-studio-rail'] = list(out.size)
 
 for name in OBJECTS:
     im = unbackground(Image.open(os.path.join(SRC, 'objects', name + '.png')))
@@ -177,8 +207,9 @@ for name in OBJECTS:
             sx += 9
     save(im, os.path.join(IMG, 'arc', name + '.webp'))
     manifest['objects'][name] = list(im.size)
+    if name == 'pr-studio': studio_rail(im)
 
-for room in ['gym', 'studio']:
+for room in ['gym', 'studio', 'loft']:
     im = Image.open(os.path.join(SRC, 'rooms', room + '.png')).convert('RGB')
     if room == 'gym':
         # The arched door at the bottom drew under you as you walked in, so it is floored over with the planks two
