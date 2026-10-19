@@ -679,7 +679,12 @@
     if (C.nextCap) { C.energy += C.nextCap; C.nextCap = 0; }
     if (grouped()) { stash(); C.foes.forEach(f => { if (f.vuln) f.vuln--; }); load(C.fi); } else if (C.vuln) C.vuln--;
     // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
-    if (!C.infra.some(c => SD.cards[c.id].keepSh)) C.sh = zero();
+    // Thea's guards (js/club-shops.js) keep it for a set number of turns, too.
+    if (!C.infra.some(c => SD.cards[c.id].keepSh) && !(C.hold > 0)) C.sh = zero();
+    if (C.hold > 0) C.hold--;
+    // This-turn Thorns and Reflect wear off; Fight Camp adds Edge every turn.
+    C.tthorns = 0; C.reflect = 0;
+    if (C.edgeEach) C.edge = (C.edge || 0) + C.edgeEach;
     if (C.turn === 1 && rel('standby')) C.sh.any += 8;
     if (C.turn > 1 && rel('heartbeat') && sv.run) sv.run.sla = Math.min(S.maxSla(), sv.run.sla + 3);
     C.turnPlayed = 0; C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
@@ -726,6 +731,8 @@
       if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
       // Compound Interest (js/relic-exchange.js): every 3rd such card in a fight adds 2 to every one after it.
       if (rel('interest')) { plus += C.interest || 0; C.mits = (C.mits || 0) + 1; if (C.mits % 3 === 0) C.interest = (C.interest || 0) + 2; }
+      // Edge, from Rico's cards (js/club-shops.js): every card that mitigates does that much more, Knockout three times over.
+      plus += (C.edge || 0) * (d.edgeX || 1);
     }
     const boost = v => { const r = (v + (used ? 0 : plus)) * times; used = true; return r; };
     if (d.abs) for (const k in d.abs) {
@@ -757,6 +764,14 @@
     if (d.selfDmg) sv.run.sla = Math.max(1, sv.run.sla - d.selfDmg);
     if (d.gain) C.energy += d.gain;
     if (d.nextCap) C.nextCap = (C.nextCap || 0) + d.nextCap;
+    // The PR Club's cards (js/club-shops.js): Rico's Edge, Thea's Thorns, held guards and Reflect.
+    if (d.edge) C.edge = (C.edge || 0) + d.edge + (c.up ? 1 : 0);
+    if (d.edgeDouble) C.edge = (C.edge || 0) * 2;
+    if (d.edgeEach) C.edgeEach = (C.edgeEach || 0) + d.edgeEach + (c.up ? 1 : 0);
+    if (d.thorns) C.thorns = (C.thorns || 0) + d.thorns + (c.up ? 1 : 0);
+    if (d.tthorns) C.tthorns = (C.tthorns || 0) + d.tthorns + (c.up ? 1 : 0);
+    if (d.hold) C.hold = Math.max(C.hold || 0, d.hold);
+    if (d.reflect) C.reflect = Math.max(C.reflect || 0, d.reflect);
     // Sleeper Stock: a random action waiting in your draw pile gains Replay for the rest of this fight.
     if (d.gem) { const pool = (C.draw.length ? C.draw : C.disc).filter(x => SD.cards[x.id].kind !== 'infra'), g = pool[Math.floor(Math.random() * pool.length)]; if (g) { g.replay = (g.replay || 0) + d.gem; msg = `Sleeper stock: ${SD.cards[g.id].name} gains Replay ${d.gem}.`; } }
     if (d.doubleSh) for (const k in C.sh) C.sh[k] *= 2;
@@ -767,7 +782,9 @@
     // Everything below hits the target, or, for a card with `all: true`, every incident still standing.
     // Keepsake boosts (badge, whistle) still count once per card, on the first foe hit.
     const hit = () => {
-      if (d.mit) mitigate(boost(d.mit + up - (sv.spec === 'warden' ? 2 : 0)), d.all && grouped() ? 'It hit every incident at once.' : '', 'hit');
+      // Pound for Pound (js/club-shops.js) adds 1 for every card in your deck that mitigates.
+      const per = d.perMit && sv.run ? sv.run.deck.filter(x => SD.cards[x.id] && (SD.cards[x.id].mit || SD.cards[x.id].pow)).length * d.perMit : 0;
+      if (d.mit) mitigate(boost(d.mit + up + per - (sv.spec === 'warden' ? 2 : 0)), d.all && grouped() ? 'It hit every incident at once.' : '', 'hit');
       if (d.vuln) C.vuln = Math.max(C.vuln, d.vuln);
       if (d.pow) {
         const tags = d.tags || [];
@@ -844,6 +861,8 @@
       const used = Math.min(cap, left);
       left -= used; C.sh[k] -= used / eff;
     }
+    // Reflect (Thea's cards, js/club-shops.js): some of what you absorbed goes back at the incident that sent it.
+    if (C.reflect && n - left > 0) { mitigate((n - left) * C.reflect, '', 'hit'); C.spiked = true; }
     return Math.max(0, Math.round(left));
   }
   // Curses push some intents up and Plot Devices push them down. The intent shown in combat includes both.
@@ -1132,6 +1151,9 @@
       const it = C.e.pattern[C.ii % C.e.pattern.length];
       const held = hook('intent', C, it);
       let { dmg, note } = held || resolveIntent(it);
+      // Thorns (Thea's cards, js/club-shops.js): an incident that lunges at you takes some back, absorbed or not.
+      const spikes = it.n ? (C.thorns || 0) + (C.tthorns || 0) : 0;
+      if (spikes) { mitigate(spikes, '', 'hit'); note += `Thorns: ${spikes} back. `; C.spiked = true; }
       dmg = mod('dmg', dmg, C);
       // Uptima's Bent Halo: a small error budget each fight soaks the first hits.
       if (dmg > 0 && C.budget > 0) { const soak = Math.min(C.budget, dmg); C.budget -= soak; dmg -= soak; note += `The bent halo soaked ${soak}. `; }
@@ -1148,9 +1170,13 @@
       if (C.over) return;
       if (k >= order.length) return finish();
       const i = order[k];
+      if (group && C.foes[i].dead) return step(k + 1);   // Thorns or Reflect already took it out
       if (group) { stash(); load(i); }
+      C.spiked = false;
       const { dmg, attack } = act();
       if (group) { stash(); load(tgt); }
+      // Thorns or Reflect took the last of it: it goes down before its hit lands.
+      if (C.spiked && settle()) { C.busy = false; return; }
       run.sla -= dmg; C.taken = (C.taken || 0) + dmg;
       C.log = notes;
       renderCombat();
@@ -1274,6 +1300,10 @@
     if (C.choice) chips.push(`<span class="chip choice">${C.choice === 'cp' ? 'Consistency' : 'Availability'}</span>`);
     if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
     if (C.vuln) chips.push('<span class="chip">Load-tested: mitigation +50%</span>');
+    if (C.edge || C.edgeEach) chips.push(`<span class="chip" title="Every card that mitigates does ${C.edge || 0} more">Edge ${C.edge || 0}${C.edgeEach ? ` (+${C.edgeEach} a turn)` : ''}</span>`);
+    if (C.thorns || C.tthorns) chips.push(`<span class="chip" title="Every incident that hits you takes this much">Thorns ${(C.thorns || 0) + (C.tthorns || 0)}</span>`);
+    if (C.hold) chips.push(`<span class="chip">Guard held${C.hold > 20 ? '' : `: ${C.hold} turn${C.hold > 1 ? 's' : ''}`}</span>`);
+    if (C.reflect) chips.push(`<span class="chip">Reflect ${Math.round(C.reflect * 100)}%</span>`);
     if (C.throttle) chips.push('<span class="chip">Throttled</span>');
     if (C.backoff) chips.push('<span class="chip">Backing off</span>');
     if (C.chunk) chips.push('<span class="chip">Chunked</span>');
