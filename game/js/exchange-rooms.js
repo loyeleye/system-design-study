@@ -174,7 +174,11 @@
       { x: 3, y: 4, t: () => ['A barrel of rainwater. Something in the dark of it grins back at you, then stops.'] },
       { x: 10, y: 6, t: () => ['A barrel with a tap. The label says VINTAGE: THE END OF THE WORLD. It is nearly full. He is saving it.'] }
     ],
-    talk: async () => { if (!(await D.open('exchange'))) await U.dialog([{ s: 'kagemaru', t: pick(D.lines()) }]); }
+    // His relationship scenes come first when one is due (SD.folkScenes.talkTo, js/npc-arcs.js), as on the Isles.
+    talk: async () => {
+      if (SD.folkScenes && SD.folkScenes.talkTo && await SD.folkScenes.talkTo('kagemaru')) return;
+      if (!(await D.open('exchange'))) await U.dialog([{ s: 'kagemaru', t: pick(D.lines()) }]);
+    }
   };
   R.xdiner = {
     name: 'THE COFFEE DINER',
