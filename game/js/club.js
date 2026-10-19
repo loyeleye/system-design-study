@@ -73,6 +73,9 @@
     rect(22, 4, 29, 10, ','); rect(21, 3, 30, 3, '#'); rect(21, 4, 21, 10, '#'); rect(30, 4, 30, 10, '#');
     rect(22, 10, 29, 10, 'f'); g[10][25] = ','; g[10][26] = ',';
     rect(23, 5, 25, 6, 'f'); rect(27, 6, 28, 6, 'f');                         // auction block, weights
+    // Bushes between the studio and the gym (objects below), each on a tile you walk round.
+    const bushes = [[9, 4.7, 1.35], [10.2, 5.8, 1.15], [8.2, 6.1, 0.95, 1], [9.1, 7, 1.45, 1], [10.3, 8.1, 1.25], [8.9, 9.3, 1.35, 1], [10.4, 10.2, 1.05]];
+    bushes.forEach(([x, y]) => { g[Math.floor(y)][Math.round(x)] = '#'; });
     g[12][0] = 'E'; g[13][0] = 'E';
     [[2, 2], [9, 2], [20, 1], [25, 1], [28, 1], [9, 19], [22, 19], [30, 12]].forEach(([x, y]) => { g[y][x] = 'T'; });
     // Fence pieces (made by tools/club_art.py): a run east-west from x0 to x1 (tile edges) with its base on y,
@@ -90,12 +93,17 @@
         { name: 'pr-gym', x: 15.5, y: 9 }, { name: 'pr-studio', x: 5, y: 8.4 },
         { name: 'pr-block', x: 24, y: 6 }, { name: 'pr-weights', x: 27.5, y: 6 }, { name: 'pr-board', x: 15.5, y: 19.2 },
         { name: 'nr-signpost', x: 2, y: 10.6 }, { name: 'nr-rock', x: 30, y: 19 }
-      ].concat(fence),
+      ].concat(fence, bushes.map(([x, y, k, flip]) => ({ name: 'bush', x, y, k, flip: !!flip }))),
       labels: [
         { x: 15.5, y: 11.1, text: 'THE PR CLUB' }, { x: 5, y: 11.1, text: 'STUDIO' }, { x: 25.5, y: 3.75, text: 'AUCTION BLOCK' },
         { x: 15.5, y: 20.55, text: 'THE TRACK' }, { x: 2.5, y: 14.65, text: '← ROAD' }
       ],
+      // The gym's and the studio's people step out into the yard when their day takes them there (js/club-life.js);
+      // until then they wait inside, by their door.
       actors: {
+        sunny: { x: 15, y: 10, face: 'south', name: 'SUNNY' }, leon: { x: 16, y: 10, face: 'south', name: 'LEON' },
+        thea: { x: 15, y: 11, face: 'south', name: 'THEA' }, rico: { x: 16, y: 11, face: 'south', name: 'RICO' },
+        delphine: { x: 5, y: 9, face: 'south', name: 'DELPHINE' }, kofi: { x: 5, y: 10, face: 'south', name: 'KOFI' },
         paz: { x: 9, y: 15, face: 'east', name: 'PAZ' }, kenji: { x: 20, y: 21, face: 'west', name: 'KENJI' },
         imani: { x: 24, y: 7, face: 'south', name: 'IMANI' }, magnus: { x: 27, y: 7, face: 'south', name: 'MAGNUS' },
         bidder: { x: 23, y: 9, face: 'north', name: 'BIDDER', sprite: 'v1' }
@@ -148,7 +156,7 @@
         { x: 9, y: 7, t: () => ['Kettlebells, smallest to biggest. The biggest one has "MAGNUS" scratched into it, and under that, "please don\'t".'] },
         { x: 2, y: 7, t: () => ['A bench, worn smooth. Under it: a lost sock, a spare cape and a half-eaten mango.'] }
       ],
-      talk: id => C.talk(id)
+      talk: id => C.talk(id, 'prgym')
     };
     I.ROOMS.prstudio = {
       name: 'THE STUDIO', map: ['############', '############', '############', '####.....###', '#..........#',
@@ -161,12 +169,13 @@
         { x: 3, y: 3, t: () => ['The sign-up board for Dawn Flow, 6 a.m. Twenty pegs for twenty mats.', C.matsLine()] },
         { x: 2, y: 3, t: () => ['A potted plant. Delphine waters it at exactly 5:55 every morning. It is thriving. It is a little intimidated.'] }
       ],
-      talk: id => C.talk(id)
+      talk: id => C.talk(id, 'prstudio')
     };
   }
 
   // ---------- Talking ----------
-  // Quest steps first; otherwise each member says one of their own lines, in turn.
+  // Quest steps first; otherwise each member says one of their own lines, in turn. at is where you are ('prgym',
+  // 'prstudio' or 'yard'), for the relationship scenes js/club-life.js adds.
   const done = id => QS() && QS().status(id) === 'done';
   const ALL = ['prboard', 'dawnflow', 'longway', 'ironauction', 'gauntlet'];
   C.boardLine = () => done('prboard') ? 'The bottom half of the board is the realm\'s records now: Redis 100,000 a second. Postgres 10,000 writes. Kafka a million. A round trip across the sea, 150 ms. Leon has added "LEON: YES".'
