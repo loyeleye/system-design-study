@@ -58,6 +58,10 @@
       evening: [G, 'At the rack, in a staring contest with Leon'], night: [[28, 7, 'north', 'sleep'], 'Asleep beside his hammers. Gerald keeps watch'] }
   };
   const MEMBERS = Object.keys(DAY);
+  // Chapter 10's storm (js/ch10-folk.js): the clock is stuck at night, and nobody sleeps outdoors in it. Those who
+  // would (under a tree, in the infield, beside the hammers) sleep in the gym; the rest keep their night.
+  const storm = () => !!(SD.folk && SD.folk.storm());
+  const STORM = { kofi: G, kenji: G, magnus: G };
   // Where they go when they leave the map, and what the board says about it.
   const EXIT = { kenji: [30, 17] }, OUT = [0, 13];
   const AWAY = { leon: 'The arena', thea: 'The arena', paz: 'Home', imani: 'Home', kenji: 'The hills' };
@@ -324,7 +328,7 @@
   // Scenes that can play now, each member in at most one (the earliest arc wins), as { member id: scene }.
   function on() {
     const out = {};
-    if (!S.save || !open()) return out;
+    if (!S.save || !open() || storm()) return out;
     const c = ctx(), m = marks();
     ARCS.forEach(a => {
       const nx = next(a);
@@ -338,6 +342,7 @@
   // ---------- Where everyone is ----------
   function where(id) {
     if (marks()[id]) return home(id);
+    if (storm() && STORM[id]) return STORM[id];
     const s = on()[id];
     if (s) return s.at.startsWith('room:') ? s.at.slice(5) : PLACES[s.at].tiles[s.who.indexOf(id)];
     const cell = DAY[id] && DAY[id][block()];
