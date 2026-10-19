@@ -572,6 +572,7 @@
     if (gap > 0) X += X >= ex ? gap : -gap;
     const Y = R * 1.15 + 6 + Math.sin(t * 0.8) * 4;
     lastCloud = { X, Y, R };
+    if (SD.clock && SD.clock.frozen()) return drawDownCloud(X, Y, R, t);
     ctx.save(); ctx.globalAlpha = 0.97;
     ctx.fillStyle = INK;
     puff(X, Y + 3, R + 3, INK, false);
@@ -591,12 +592,62 @@
     if (dk) {
       // After dark the Cloud goes dusky blue, lit softly from inside by its servers (unless it's down, in chapter 10).
       puff(X, Y, R, `rgba(30,36,90,${0.6 * dk})`, false);
-      if (SD.clock.frozen()) { ctx.restore(); return; }
       ctx.globalCompositeOperation = 'lighter';
       const g = ctx.createRadialGradient(X, Y + R * 0.2, 0, X, Y + R * 0.2, R * 1.3);
       g.addColorStop(0, `rgba(120,200,255,${0.35 * dk * (0.85 + 0.15 * Math.sin(t * 2))})`); g.addColorStop(1, 'rgba(120,200,255,0)');
       ctx.fillStyle = g; ctx.fillRect(X - R * 1.4, Y - R * 1.2, R * 2.8, R * 2.8);
     }
+    ctx.restore();
+  }
+  // Chapter 10: Kyu has switched the Cloud off. It sags lower in the sky, grey and a little deflated, eyes shut and
+  // frowning, with a tear and its own drizzle. Its server lights are dark but for one slow red blink, and a tag
+  // hangs off it for the Great Maintenance Window.
+  function drawDownCloud(X, Y0, R, t) {
+    const Y = Y0 + R * 0.3 + Math.sin(t * 0.4) * 2;
+    ctx.save(); ctx.globalAlpha = 0.97;
+    // Its own drizzle, under everything else.
+    ctx.strokeStyle = 'rgba(150,170,210,.75)'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 6; i++) {
+      const k = (t * 1.3 + i * 0.37) % 1, dx = X - R * 0.9 + i * R * 0.36;
+      ctx.beginPath(); ctx.moveTo(dx, Y + R * 0.7 + k * R * 0.9); ctx.lineTo(dx - 2, Y + R * 0.7 + k * R * 0.9 + 6); ctx.stroke();
+    }
+    // Deflated: squashed flat and tipped a little to one side.
+    ctx.save(); ctx.translate(X, Y); ctx.rotate(-0.05); ctx.scale(1.06, 0.8);
+    puff(0, 3, R + 3, INK, false);
+    puff(0, 0, R, '#8f92a8', false);
+    ctx.restore();
+    for (let i = 0; i < 5; i++) {
+      const on = i === 3 && (t * 0.7) % 1 < 0.2;
+      ctx.fillStyle = on ? '#ff6b6b' : '#55536a';
+      ctx.beginPath(); ctx.arc(X - R * 0.8 + i * R * 0.4, Y + R * 0.38 + i * 0.6, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    // Shut eyes, brows raised in the middle, and a frown.
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    const ey = Y + R * 0.02;
+    [-1, 1].forEach(s => {
+      ctx.beginPath(); ctx.arc(X + s * R * 0.3, ey - 2, R * 0.09, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(X + s * R * 0.42, ey - R * 0.16); ctx.lineTo(X + s * R * 0.2, ey - R * 0.24); ctx.stroke();
+    });
+    ctx.beginPath(); ctx.arc(X, Y + R * 0.3, R * 0.13, 1.2 * Math.PI, 1.8 * Math.PI); ctx.stroke();
+    // A tear runs down from the left eye, falls, and starts again.
+    const k = (t * 0.45) % 1;
+    if (k < 0.8) {
+      const tx = X - R * 0.36, ty = ey + R * 0.06 + k * k * R * 0.5;
+      ctx.fillStyle = '#9fd0ff'; ctx.strokeStyle = INK; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(tx, ty - 4); ctx.quadraticCurveTo(tx + 3, ty + 1, tx, ty + 2.5); ctx.quadraticCurveTo(tx - 3, ty + 1, tx, ty - 4); ctx.fill(); ctx.stroke();
+    }
+    ctx.font = `600 ${Math.max(10, R * 0.26)}px Fredoka, sans-serif`; ctx.textAlign = 'center';
+    ctx.fillStyle = INK; ctx.fillText('THE CLOUD', X, Y - R * 0.42);
+    // The tag, swinging a little on two strings.
+    const sw = Math.sin(t * 1.1) * 0.06, ty = Y + R * 0.78;
+    ctx.save(); ctx.translate(X + R * 0.35, ty); ctx.rotate(sw);
+    ctx.font = `700 ${Math.max(8, R * 0.18)}px Fredoka, sans-serif`;
+    const lw = ctx.measureText('DOWN FOR MAINTENANCE').width + 10, lh = Math.max(8, R * 0.18) + 6;
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-lw * 0.3, -6); ctx.lineTo(-lw * 0.3, 6); ctx.moveTo(lw * 0.3, -6); ctx.lineTo(lw * 0.3, 6); ctx.stroke();
+    ctx.fillStyle = '#ffd34d'; rr(-lw / 2, 6, lw, lh, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = INK; ctx.textBaseline = 'middle'; ctx.fillText('DOWN FOR MAINTENANCE', 0, 6 + lh / 2 + 1);
+    ctx.restore();
     ctx.restore();
   }
 
