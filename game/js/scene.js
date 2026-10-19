@@ -313,8 +313,10 @@
       // Walk cycles play only while walking; idle cycles (breathing) play standing still (SD.art.sheetCol).
       const going = a.moving || (a.path && a.path.length);
       // A sprite can pick its own idle frame (`frame`: Kagemaru's moods in js/card-dealer.js). Anyone moving at a run
-      // (4 tiles a second or more) plays their running frames, if they have them.
-      const col = c.frame != null && !going && c.n[row] ? 1 + c.frame % c.n[row] : SD.art.sheetCol(c, row, going, t, 1, a.speed >= 4);
+      // (4 tiles a second or more) plays their running frames, if they have them, quicker the faster they go (12 a
+      // second at 5 tiles a second). Turning on the spot without idle frames takes a step round (SD.art.turned).
+      const run = a.speed >= 4, turn = SD.art.turned(a, a.face, going, t);
+      const col = c.frame != null && !going && c.n[row] ? 1 + c.frame % c.n[row] : SD.art.sheetCol(c, row, going, t, run && c.rn ? a.speed / 5 : 1, run, turn);
       const bob = a.moving && !SD.art.walks(c, row) ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
       const k = (a.scale || 1) * CS, w = c.w * ts / 32 * k, h = c.h * ts / 32 * k, y = fy + (ISO ? ts / 16 : 0);
       ctx.save();

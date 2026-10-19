@@ -74,8 +74,8 @@
   const LAP = [[25, 15], [27, 15], [27, 16], [28, 16], [28, 20], [27, 20], [27, 21], [4, 21], [4, 20], [3, 20], [3, 16], [4, 16], [4, 15]];
   const pace = s => LAP.map(([x, y]) => [x, y, null, s]);
   const LAPS = pace(5), INTERVALS = pace(5).concat(pace(3));
-  // Thea's sprint drills: sprint the bottom straight at 4 tiles a second, then walk back along the infield's edge.
-  const SPRINTS = [[6, 20, null, 2], [6, 21, null, 2], [25, 21, null, 4], [25, 20, null, 2]];
+  // Thea's sprint drills: sprint the bottom straight at 6 tiles a second, then walk back along the infield's edge.
+  const SPRINTS = [[6, 20, null, 2], [6, 21, null, 2], [25, 21, null, 6], [25, 20, null, 2]];
   const ROUTES = { laps: LAPS, intervals: INTERVALS, sprints: SPRINTS };
   // Room spots for visitors; the rooms' own people stand where js/club.js has them.
   const VISIT = { prgym: { imani: [5, 5, 'south'], magnus: [1, 4, 'south'], delphine: [7, 5, 'east'] }, prstudio: { rico: [3, 4, 'east'] } };

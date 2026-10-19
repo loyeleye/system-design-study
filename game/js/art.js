@@ -16,12 +16,23 @@
   // the sheet is marked walk, otherwise idle frames). Sheets with c.wk keep both: c.n[row] idle frames, then
   // c.wk[row] walk frames after them. Runners (c.rn) have c.rn[row] running frames after those, played when run is
   // set. sheetCol picks the column for one frame; walks() says whether a row has steps.
+  // Turning on the spot (to face you, say) into a row with walk frames but no idle frames takes one step round with
+  // the walk frames before standing: turn is the seconds since the turn (A.turned), or null.
   A.walks = (c, row) => !!(c.n[row] || (c.wk && c.wk[row]));
-  A.sheetCol = (c, row, going, t, pace, run) => {
+  A.sheetCol = (c, row, going, t, pace, run, turn) => {
     const n = c.n[row] || 0, k = c.wk ? c.wk[row] || 0 : 0, r = run && c.rn ? c.rn[row] || 0 : 0;
     if (going && r) return 1 + n + k + Math.floor(t * 12 * (pace || 1)) % r;
     if (going && k) return 1 + n + Math.floor(t * 8 * (pace || 1)) % k;
+    const steps = c.walk ? n : k, at = c.walk ? 1 : 1 + n;
+    if (!going && turn != null && (c.walk || !n) && steps && turn < steps / 8) return at + Math.floor(turn * 8);
     return n && (going || !c.walk) ? 1 + Math.floor(t * (going ? 8 * (pace || 1) : 5)) % n : 0;
+  };
+  // Call each frame with who's drawn (any object to keep notes on), the way they face, whether they're walking, and
+  // the time: the seconds since they last turned on the spot, for sheetCol's turn.
+  A.turned = (a, face, going, t) => {
+    if (a.turnFace !== face) { a.turnT = going || !a.turnFace ? null : t; a.turnFace = face; }
+    if (going) a.turnT = null;
+    return a.turnT == null ? null : t - a.turnT;
   };
   // Guess a mood from the line when the script doesn't give one.
   A.mood = function (who, text, e) {

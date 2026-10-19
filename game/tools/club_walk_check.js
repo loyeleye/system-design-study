@@ -9,7 +9,7 @@
 //     is big enough for them
 //   - nobody in the yard moves on a row without steps (which js/scene.js would draw as a hop)
 //   - Paz runs her laps with her running frames, at about 5 tiles a second, without stopping at the corners
-//   - Thea sprints the bottom straight with her running frames, at about 4 tiles a second
+//   - Thea sprints the bottom straight with her running frames, at about 6 tiles a second
 // With --shots it then puts the hero in the infield and saves screenshots of Paz and Thea running. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -116,14 +116,14 @@ const server = http.createServer((req, res) => {
   if (speed < 4.5 || speed > 5.5) bad(`Paz runs ${speed.toFixed(1)} tiles a second, not about 5`);
   if (longest > 200) bad(`Paz stopped for ${Math.round(longest)}ms on her laps`);
 
-  // Thea: her sprints use her running frames, at about 4 tiles a second.
+  // Thea: her sprints use her running frames, at about 6 tiles a second.
   const th = (log.thea || []).filter(p => p.run);
   if (!th.length) bad('Thea never used her running frames on her sprints');
   else {
     let d = 0; for (let i = 1; i < th.length; i++) if (th[i].t - th[i - 1].t < 120) d += Math.abs(th[i].px - th[i - 1].px);
     const ts = th.slice(1).reduce((s, p, i) => s + (p.t - th[i].t < 120 ? p.t - th[i].t : 0), 0) / 1000, v = d / (ts || 1);
     console.log(`Thea sprints at ${v.toFixed(1)} tiles a second`);
-    if (v < 3.5 || v > 4.5) bad(`Thea sprints at ${v.toFixed(1)} tiles a second, not about 4`);
+    if (v < 5.5 || v > 6.5) bad(`Thea sprints at ${v.toFixed(1)} tiles a second, not about 6`);
   }
 
   // Screenshots: the hero in the infield, so the camera has the track, until each runner has been caught running.
