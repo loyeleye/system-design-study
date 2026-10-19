@@ -152,5 +152,65 @@ def track():
     manifest['track'] = [ox, oy, im.width, im.height]
 track()
 
+# Wooden fences, drawn here so the pieces tile exactly: the track's fence and the auction block's enclosure (js/club.js).
+# Colours are the North Road fence's (nr-fence). Each piece stands on the bottom of its picture.
+#   pr-fence    one tile of fence running east-west, with its post on the left edge (o.x = the tile it covers)
+#   pr-post     the post that closes a run on its right
+#   pr-fence-v  one tile of fence running north-south: its post at the bottom, its rails going up to the next post
+#   pr-gate     a two-tile gateway: tall posts either side and both gates swung back against the fence
+INK, DARK, MID, LIGHT, HI = (38, 22, 17, 255), (65, 34, 23, 255), (110, 57, 31, 255), (165, 103, 60, 255), (209, 134, 71, 255)
+SHADE = (24, 40, 16, 70)
+def fences():
+    def post(px, x, ground, h=20, w=6):
+        top = ground - h
+        for y in range(top, ground):
+            for i in range(w):
+                c = INK if i in (0, w - 1) or y in (top, ground - 1) else LIGHT if i == 1 else DARK if i == w - 2 else MID
+                if y == top + 1 and 0 < i < w - 1: c = HI
+                px[x + i, y] = c
+    def rail(px, x0, x1, y):
+        for x in range(x0, x1):
+            for k, c in enumerate([INK, HI, MID, INK]): px[x, y + k] = c
+    def shade(px, x0, x1, y):
+        for x in range(x0, x1):
+            for k in range(2):
+                if y + k < im.height: px[x, y + k] = SHADE
+    out = {}
+    # East-west: rails at 5 and 12 above the ground, posts 20 tall; 2 px of shadow under it.
+    im = Image.new('RGBA', (32, 24)); px = im.load()
+    shade(px, 0, 32, 22); rail(px, 0, 32, 5); rail(px, 0, 32, 12); post(px, 0, 22)
+    out['pr-fence'] = im
+    im = Image.new('RGBA', (32, 24)); px = im.load(); post(px, 0, 22); out['pr-post'] = im
+    # North-south: seen from the front, the rails between two posts are one plank going up a tile.
+    im = Image.new('RGBA', (32, 56)); px = im.load()
+    for y in range(56 - 2 - 32 - 15, 56 - 2 - 7):
+        for i, c in enumerate([INK, HI, MID, DARK, INK]): px[13 + i, y] = c
+    for i in range(5): px[13 + i, 56 - 2 - 32 - 15] = INK
+    shade(px, 13, 19, 54); post(px, 13, 54)
+    out['pr-fence-v'] = im
+    # The gateway: posts 26 tall with a cap, and each gate a framed panel with a cross brace, folded back over
+    # the fence on its side (pixels 2-30 and 98-126), a pixel lower so it stands in front.
+    im = Image.new('RGBA', (128, 32)); px = im.load()
+    def leaf(x0):
+        x1, top, bot = x0 + 27, 11, 31
+        for y in range(top, bot):
+            for x in range(x0, x1):
+                edge = x in (x0, x1 - 1) or y in (top, bot - 1)
+                bar = y in (top + 1, top + 2, bot - 3, bot - 2) or x in (x0 + 1, x0 + 2, x1 - 3, x1 - 2)
+                brace = abs((x - x0) * (bot - top) / (x1 - x0) - (bot - 1 - y)) < 1.6
+                if edge: px[x, y] = INK
+                elif bar or brace: px[x, y] = HI if y == top + 1 else LIGHT if brace else MID
+        shade(px, x0, x1, bot)
+    leaf(2); leaf(99)
+    for x in (28, 92):
+        post(px, x, 30, h=26, w=8)
+        for i in range(2, 6): px[x + i, 3] = INK
+        for i in range(1, 7): px[x + i, 4] = HI if 1 < i < 6 else INK
+    out['pr-gate'] = im
+    for name, im in out.items():
+        save(im, os.path.join(IMG, 'arc', name + '.webp'))
+        manifest['objects'][name] = list(im.size)
+fences()
+
 open(JS, 'w').write('// Made by tools/club_art.py: sizes of the PR Club\'s sprites, props and rooms.\nSD.clubArt = ' + json.dumps(manifest) + ';\n')
 print(json.dumps(manifest))

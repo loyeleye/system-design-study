@@ -54,46 +54,62 @@
   });
 
   // ---------- The yard ----------
-  // T trees, # footprints, p dirt. Doors: E back to the road, G the gym, U the studio stairs.
+  // T trees, # footprints and fences, p dirt, , cobbles. Doors: E back to the road, G the gym, U the studio.
   const open = () => !!(A && A.open(8));
-  const track = new Image();
-  track.src = 'assets/img/arc/pr-track.webp';
+  const track = new Image(), dirt = new Image();
+  track.src = 'assets/img/arc/pr-track.webp'; dirt.src = 'assets/img/village/t-dirt.webp';
   const yard = (function () {
     const W = 32, H = 24;
     const g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (x === 0 || y === 0 || x === W - 1 || y === H - 1) ? 'T' : '.'));
     const rect = (x0, y0, x1, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) g[y][x] = c; };
     rect(11, 3, 20, 9, '#'); g[9][15] = 'G'; g[9][16] = 'G';                // the gym
-    rect(3, 4, 8, 8, '#'); g[8][4] = 'U';                                     // the studio, stairs up the front
-    rect(1, 12, 16, 13, 'p'); rect(15, 10, 16, 11, 'p'); rect(4, 9, 4, 11, 'p'); rect(17, 12, 22, 12, 'p');
-    rect(16, 14, 16, 14, 'p');                                                // to the track (SD.clubArt.track, painted by under())
-    rect(23, 10, 24, 11, '#'); rect(26, 11, 27, 11, '#');                     // auction block, weights
+    rect(3, 4, 7, 8, '#'); g[8][5] = 'U';                                     // the studio, its door under the stairs
+    rect(1, 12, 26, 13, 'p'); rect(15, 10, 16, 11, 'p'); rect(5, 9, 5, 11, 'p'); rect(25, 11, 26, 11, 'p');
+    // The track (SD.clubArt.track, painted by under()) is fenced off along row 14, with a gate at 15-16.
+    rect(1, 14, 30, 14, '#'); g[14][15] = '.'; g[14][16] = '.';
     rect(15, 19, 16, 19, '#');                                                // the segment board, in the infield
+    // The auction block's pen: cobbles (,) inside a fence, with its gate at 25-26 on the bottom side, where the
+    // fence stands on the cobbles (f).
+    rect(22, 4, 29, 10, ','); rect(21, 3, 30, 3, '#'); rect(21, 4, 21, 10, '#'); rect(30, 4, 30, 10, '#');
+    rect(22, 10, 29, 10, 'f'); g[10][25] = ','; g[10][26] = ',';
+    rect(23, 5, 25, 6, 'f'); rect(27, 6, 28, 6, 'f');                         // auction block, weights
     g[12][0] = 'E'; g[13][0] = 'E';
-    [[2, 2], [9, 2], [24, 3], [28, 5], [29, 9], [9, 19], [22, 19], [29, 14], [20, 2]].forEach(([x, y]) => { g[y][x] = 'T'; });
+    [[2, 2], [9, 2], [20, 1], [25, 1], [28, 1], [9, 19], [22, 19], [30, 12]].forEach(([x, y]) => { g[y][x] = 'T'; });
+    // Fence pieces (made by tools/club_art.py): a run east-west from x0 to x1 (tile edges) with its base on y,
+    // north-south at edge x from y0 to y1.
+    const fence = [];
+    const across = (x0, x1, y) => { for (let x = x0; x < x1; x++) fence.push({ name: 'pr-fence', x, y: y - 1 }); fence.push({ name: 'pr-post', x: x1, y: y - 1 }); };
+    const down = (x, y0, y1) => { for (let y = y0; y < y1; y++) fence.push({ name: 'pr-fence-v', x: x - 0.5, y }); };
+    across(1, 15, 14.8); across(17, 31, 14.8); fence.push({ name: 'pr-gate', x: 15.5, y: 13.8 });
+    across(22, 30, 4); down(22, 4, 11); down(30, 4, 11);
+    across(22, 25, 11); across(27, 30, 11); fence.push({ name: 'pr-gate', x: 25.5, y: 10 });
     return {
-      map: g.map(r => r.join('')), terrain: { p: 'dirt', E: 'dirt', G: 'dirt', U: 'dirt' }, top: ['dirt'], solid: 'T#', bg: '#5fbf5f',
+      map: g.map(r => r.join('')), terrain: { p: 'dirt', E: 'dirt', G: 'dirt', U: 'dirt', ',': 'plaza', f: 'plaza' }, top: ['plaza', 'dirt'], solid: 'T#f', bg: '#5fbf5f',
       doors: { E: 'E', G: 'G', U: 'U' },
       objects: [
-        { name: 'pr-gym', x: 15.5, y: 9 }, { name: 'pr-studio', x: 5.5, y: 8.4 },
-        { name: 'pr-block', x: 23.5, y: 11 }, { name: 'pr-weights', x: 26.5, y: 11 }, { name: 'pr-board', x: 15.5, y: 19.2 },
-        { name: 'nr-signpost', x: 2, y: 10.6 }, { name: 'nr-fence', x: 20, y: 9.6 },
-        { name: 'nr-rock', x: 30, y: 19 }
-      ],
+        { name: 'pr-gym', x: 15.5, y: 9 }, { name: 'pr-studio', x: 5, y: 8.4 },
+        { name: 'pr-block', x: 24, y: 6 }, { name: 'pr-weights', x: 27.5, y: 6 }, { name: 'pr-board', x: 15.5, y: 19.2 },
+        { name: 'nr-signpost', x: 2, y: 10.6 }, { name: 'nr-rock', x: 30, y: 19 }
+      ].concat(fence),
       labels: [
-        { x: 15.5, y: 11.1, text: 'THE PR CLUB' }, { x: 5.5, y: 10.6, text: 'STUDIO' }, { x: 24.5, y: 8.6, text: 'AUCTION BLOCK' },
-        { x: 15.5, y: 20.55, text: 'THE TRACK' }, { x: 2.5, y: 14.6, text: '← ROAD' }
+        { x: 15.5, y: 11.1, text: 'THE PR CLUB' }, { x: 5, y: 11.1, text: 'STUDIO' }, { x: 25.5, y: 3.75, text: 'AUCTION BLOCK' },
+        { x: 15.5, y: 20.55, text: 'THE TRACK' }, { x: 2.5, y: 14.65, text: '← ROAD' }
       ],
       actors: {
         paz: { x: 9, y: 15, face: 'east', name: 'PAZ' }, kenji: { x: 20, y: 21, face: 'west', name: 'KENJI' },
-        imani: { x: 22, y: 11, face: 'south', name: 'IMANI' }, magnus: { x: 25, y: 12, face: 'west', name: 'MAGNUS' },
-        bidder: { x: 23, y: 14, face: 'north', name: 'BIDDER', sprite: 'v1' }
+        imani: { x: 24, y: 7, face: 'south', name: 'IMANI' }, magnus: { x: 27, y: 7, face: 'south', name: 'MAGNUS' },
+        bidder: { x: 23, y: 9, face: 'north', name: 'BIDDER', sprite: 'v1' }
       },
-      back: { E: [1, 12, 'east'], G: [15, 10, 'south'], U: [4, 9, 'south'] }, enter: [1, 12, 'east'],
+      back: { E: [1, 12, 'east'], G: [15, 10, 'south'], U: [5, 9, 'south'] }, enter: [1, 12, 'east'],
       music: 'ch8', weather: 'sun',
       // The running track: one picture laid on the grass under everything else (made by tools/club_art.py).
+      // And the path runs right up to the pen's gate: where dirt meets cobbles the terrain leaves a strip of grass,
+      // so plain dirt is laid over it.
       under(ctx, ts) {
         const [x, y, w, h] = SD.clubArt.track, k = ts / 32;
         if (track.complete && track.naturalWidth) ctx.drawImage(track, x * k, y * k, w * k, h * k);
+        const at = SD.villageArt && SD.villageArt.terrain.dirt[15];
+        if (at && dirt.complete && dirt.naturalWidth) [25, 26].forEach(gx => ctx.drawImage(dirt, at[0], at[1], 32, 16, gx * ts, 11 * ts, ts, ts / 2));
       },
       open,
       closed: () => [{ s: 'pip', t: 'A sign on the gate: "PR CLUB. Opens when the arena does. Bring water." The arena opens after chapter 7.' }],
@@ -123,7 +139,7 @@
       name: 'THE PR CLUB', mat: true, map: ['############', '############', '############', '#.###...####', '#.###...####',
         '#.###...####', '#.......####', '###.....####', '#####DD#####'],
       enter: [5, 7, 'north'],
-      spots: { sunny: [6, 3, 'south'], leon: [1, 5, 'east'], thea: [7, 6, 'east'], rico: [9, 4, 'south'] },
+      spots: { sunny: [6, 3, 'south'], leon: [1, 6, 'east'], thea: [7, 6, 'east'], rico: [9, 4, 'south'] },
       lights: [{ x: 3.4, y: 1.4, r: 2.6 }, { x: 8.6, y: 1.4, r: 2.6 }],
       windows: [{ r: [100, 34, 26, 36] }, { r: [266, 34, 26, 36] }],
       props: [
