@@ -508,10 +508,11 @@
     ctx.restore();
   };
 
-  // While the Cloud is down, the sad theme Kyu's flashbacks use (kyusad) plays wherever a place or a talk would play
-  // its everyday tune: Pingsby, the road and its places, the PR Club and its rooms, the Isles, shops, quests and
-  // lessons. The Exchange keeps its own music (ch10), quest talks there included. Runs (the dungeon map and its
-  // fights) and the story's own tracks (cutscenes, Kyu, the storm, the credits) are left alone.
+  // While the Cloud is down, "Left Behind" (ch10calm: slow, melancholy, never quite settling) plays wherever a place
+  // or a talk would play its everyday tune: Pingsby, the road and its places, the PR Club and its rooms, the Isles,
+  // shops, quests and lessons. The Exchange keeps its own music (ch10), quest talks there included. Runs (the dungeon
+  // map and its fights) and the story's own tracks (cutscenes, Kyu, the storm, the credits) are left alone.
+  AU.add({ songs: { ch10calm: 'm-ch10calm' } });
   const EVERYDAY = ['town', 'gym', 'studio', 'shop', 'cave', 'isles', 'quest', 'guild', 'explore', 'ch7', 'ch8', 'ch9'];
   const atExchange = () => {
     const NR = SD.northRoad, el = document.getElementById('screen-north');
@@ -520,7 +521,7 @@
   const music = AU.music;
   AU.music = function (name) {
     const f = S.save && S.save.flags;
-    if (f && f.garyGone && !f.ch10 && !(S.save.run) && EVERYDAY.includes(name)) name = atExchange() ? 'ch10' : 'kyusad';
+    if (f && f.garyGone && !f.ch10 && !(S.save.run) && EVERYDAY.includes(name)) name = atExchange() ? 'ch10' : 'ch10calm';
     return music.call(this, name);
   };
 
