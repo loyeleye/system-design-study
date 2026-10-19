@@ -8,7 +8,7 @@
 // draw or hand Capacity back. No 4-Capacity cards: you get 3 a turn, so one would sit dead in most hands.
 // Some cards Replay (their effects go again, free, so each go counts as another card that mitigates, which is what
 // Compound Interest and the Rubber Stamp count) or Retain (they stay in your hand at the end of your turn, so a heavy
-// card can wait for a turn with Capacity to spare). Hidden Gem, the rarest, hands Replay 2 to a random card you
+// card can wait for a turn with Capacity to spare). Sleeper Stock, the rarest, hands Replay 2 to a random card you
 // already own, so it is as good as your deck and needs nothing from it.
 //
 // Bought with Memory Shards and kept in S.save.cardLib like Aigerim's cards (js/peddler.js), so they join your
@@ -30,8 +30,8 @@
     xhedge: { name: 'Fully Hedged', cost: 3, kind: 'action', mit: 12, abs: { any: 14 }, draw: 2, tags: ['ops'], text: 'Mitigate {mit}. Absorb {any} load of any kind. Draw 2. Whichever way it goes, you are covered.', art: 'divert', rarity: 'rare', concept: 'wallet' },
     xhalt: { name: 'Market-Wide Halt', cost: 3, kind: 'action', abs: { any: 22 }, clearStale: true, nextCap: 1, tags: ['ops'], text: 'Absorb {any} load of any kind. Remove all Stale. +1 Capacity next turn. Fifteen minutes where nobody trades and everyone breathes.', art: 'hourglass', rarity: 'rare', concept: 'exchange' },
     xiceberg: { name: 'Iceberg Order', cost: 3, kind: 'action', mit: 9, replay: 2, retain: true, tags: ['orderbook'], text: 'Mitigate {mit}. Replay 2. Retain. The book only ever sees the tip; the rest refills behind it.', art: 'stack', rarity: 'rare', concept: 'exchange' },
-    // The trading floor (S-Rank): Ancient. Hidden Gem is the only 1-Capacity card here, and the rarest thing he has.
-    xgem: { name: 'Hidden Gem', cost: 1, kind: 'action', gem: 2, exhaust: true, tags: ['ops'], text: 'A random action in your draw pile gains Replay 2 for the rest of this fight. Exhaust. Somewhere in the DOWN column, one ticker is about to go up.', art: 'key', rarity: 'ancient', concept: 'exchange' },
+    // The trading floor (S-Rank): Ancient. Sleeper Stock is the only 1-Capacity card here, and the rarest thing he has.
+    xgem: { name: 'Sleeper Stock', cost: 1, kind: 'action', gem: 2, exhaust: true, tags: ['ops'], text: 'A random action in your draw pile gains Replay 2 for the rest of this fight. Exhaust. Somewhere in the DOWN column, one ticker is about to go up.', art: 'key', rarity: 'ancient', concept: 'exchange' },
     xbigboard: { name: 'The Big Board', cost: 3, kind: 'infra', each: { any: 5 }, eachMit: 5, tags: ['mdfan'], text: 'Infra. Absorb 5 load and mitigate 5 each turn. Every price in the city, on one wall, at the same moment.', art: 'radio-tower', rarity: 'ancient', concept: 'exchange' },
     xsettle: { name: 'T+0 Settlement', cost: 3, kind: 'action', mit: 20, vuln: 2, draw: 1, tags: ['ledger'], text: 'Mitigate {mit}. Draw 1. For the rest of this turn and the next, all your mitigation is 50% stronger. The money moves the moment the trade does.', art: 'bolt', rarity: 'ancient', concept: 'payment' },
     xdarkpool: { name: 'Dark Pool', cost: 3, kind: 'action', abs: { any: 12 }, doubleSh: true, nextCap: 1, tags: ['ops'], text: 'Absorb {any} load of any kind, then double all your absorb. +1 Capacity next turn. Big orders, out of sight, no splash.', art: 'padlock', rarity: 'ancient', concept: 'exchange' }
@@ -47,6 +47,12 @@
   Object.assign(SD.cast, {
     toro: { name: 'Toro', title: 'Card Broker · Still Bullish', hue: 18, hair: 'short', eye: '#2b2340' }
   });
+  // His painted PixelLab bust (assets/img/portraits/toro-neutral.webp, tools/pixel_portraits.py): one mood for now.
+  const art = { portrait: SD.art.portrait, painted: SD.art.painted, mood: SD.art.mood };
+  SD.art.painted = who => who === 'toro' || art.painted(who);
+  SD.art.mood = (who, text, e) => who === 'toro' ? 'neutral' : art.mood(who, text, e);
+  SD.art.portrait = (who, size, mood) => who !== 'toro' ? art.portrait(who, size, mood)
+    : `<span class="bust b-toro" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/toro-neutral.webp" alt="" draggable="false"></span>`;
   const PITCH = [
     "Everything in this city is DOWN. Cards? Cards are UP. Buy the dip. I am the dip. Buy me.",
     "Heavy cards for heavy days. They cost a whole turn. They are worth a whole turn and change.",

@@ -742,8 +742,8 @@
     if (d.selfDmg) sv.run.sla = Math.max(1, sv.run.sla - d.selfDmg);
     if (d.gain) C.energy += d.gain;
     if (d.nextCap) C.nextCap = (C.nextCap || 0) + d.nextCap;
-    // Hidden Gem: a random action waiting in your draw pile gains Replay for the rest of this fight.
-    if (d.gem) { const pool = (C.draw.length ? C.draw : C.disc).filter(x => SD.cards[x.id].kind !== 'infra'), g = pool[Math.floor(Math.random() * pool.length)]; if (g) { g.replay = (g.replay || 0) + d.gem; msg = `Hidden gem: ${SD.cards[g.id].name} gains Replay ${d.gem}.`; } }
+    // Sleeper Stock: a random action waiting in your draw pile gains Replay for the rest of this fight.
+    if (d.gem) { const pool = (C.draw.length ? C.draw : C.disc).filter(x => SD.cards[x.id].kind !== 'infra'), g = pool[Math.floor(Math.random() * pool.length)]; if (g) { g.replay = (g.replay || 0) + d.gem; msg = `Sleeper stock: ${SD.cards[g.id].name} gains Replay ${d.gem}.`; } }
     if (d.doubleSh) for (const k in C.sh) C.sh[k] *= 2;
     if (d.xcost) { const n = C.energy; C.energy = 0; mitigate(boost((d.xmit + (c.up ? 2 : 0)) * n), n ? '' : 'No Capacity left to spend.', 'hit'); }
     if (d.slam) mitigate(boost(Object.values(C.sh).reduce((a, b) => a + b, 0) + up), '', 'crit');
