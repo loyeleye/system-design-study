@@ -47,6 +47,7 @@
     const p = AU.prefs;
     const b = U.panel(`<div class="opts">
       <button class="opt" id="m-help">How to play</button>
+      ${S.save && SD.folk ? '<button class="opt" id="m-board">The Brújula Board: where is everyone?</button>' : ''}
       ${S.save && S.save.flags.ch1 && SD.guild ? '<button class="opt" id="m-guild">Multiplayer: the Guild Hall</button>' : ''}
       <button class="opt" id="m-music">Music: <b>${p.music ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-sfx">Sound effects: <b>${p.sfx ? 'On' : 'Off'}</b></button>
@@ -58,6 +59,8 @@
       <button class="opt" id="m-debug">Debug start (testing): <b>${SD.debug ? 'On' : 'Off'}</b></button></div>
       <p class="muted small">Progress saves automatically${S.db ? ' to your claude.ai account, so it follows you across devices' : ' in this browser'}.</p>`, { title: 'MENU' });
     b.querySelector('#m-help').onclick = help;
+    // Bru's board of who is where right now (js/folk.js).
+    const mb = b.querySelector('#m-board'); if (mb) mb.onclick = () => SD.folk.board();
     // Multiplayer (js/guild.js), once chapter 1 is cleared.
     const mg = b.querySelector('#m-guild'); if (mg) mg.onclick = () => SD.guild.play();
     b.querySelector('#m-music').onclick = () => { AU.set('music', !p.music); menu(); M.hud(); };
@@ -188,6 +191,7 @@
   // One conversation at a time: a second trigger (a tap landing while a door's walk-in timer runs) would
   // start a second dialogue on top of the first and strand it.
   let atDoor = false;
+  const DOORS_IN = 'ACHWUFPK';
   async function door(c) {
     if (atDoor) return;
     atDoor = true;
@@ -201,6 +205,11 @@
       if (c === 'E') { SD.hub.placeAt(45, 7); if (SD.isles) SD.isles.open(); return; }
       if (c === 'boulder' || c === 'barricade') { await blocker(c); return; }
       if (c === 'bench') { await SD.clock.bench(); return; }
+      // A villager met away from their door, out on their schedule (js/folk.js).
+      if (c.startsWith('away:')) { await SD.folk.chat(c.slice(5)); return; }
+      SD.folk.meet(DOOR_NPC[c] || c);
+      // Chapter 10's storm: everyone is indoors and worried. Knocking gets a word first, then the usual business.
+      if (SD.folk.storm() && DOORS_IN.includes(c)) await SD.folk.indoors(c);
       if (c !== 'G' && c !== 'B' && await SD.quests.talk(DOOR_NPC[c] || c, VISIT[c])) return;
       if (c === 'U') await SD.quests.guild();
       if (c === 'F') await forge();
