@@ -542,7 +542,7 @@
     const dk = dark();
     clouds.forEach(c => {
       c.x += c.v * dt; if (c.x > 1.2) c.x = -0.2;
-      puff(c.x * vw, c.y * vh * 0.5 - cy * 0.1, 26 * c.s, `rgba(${dk ? '110,120,170' : '255,255,255'},${0.75 - 0.5 * dk})`, false);
+      puff(c.x * vw, c.y * vh * 0.5 - cy * 0.1, 26 * c.s, `rgba(${dk > 0.6 ? '110,120,170' : dk ? '255,205,180' : '255,255,255'},${0.75 - 0.5 * dk})`, false);
     });
     drawTheCloud(vw, t, cx, dk);
     // Weather over everything (js/weather.js).

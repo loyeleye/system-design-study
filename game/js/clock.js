@@ -14,6 +14,8 @@
 //   SD.clock.onChange(fn)     fn(block, previous, why) after every change
 //   SD.clock.bench()          the plaza bench: wait for the next block
 //   SD.clock.shade(ctx, vw, vh, lights, opts)  draw the block's tint and lamp light over a map (screen space)
+//   SD.clock.dark()           how dark it looks right now, 0 (day) to 1 (night)
+// When the block changes the tint, the lamps and dark() fade to the new block over FADE_MS rather than switching.
 // Saved as S.save.folk = { block, loop }; a save from an earlier loop reads as morning.
 (function () {
   const C = SD.clock = {};
@@ -45,8 +47,9 @@
   };
   C.set = function (block, why, quiet) {
     if (!BLOCKS.includes(block)) return C.block();
-    const prev = C.block();
+    const prev = C.block(), was = look();
     st().block = block;
+    if (C.block() !== prev && !quiet) fade = { from: was, to: C.block(), t0: performance.now() };
     S.persist();
     const now = C.block();
     if (now !== prev) {
@@ -91,26 +94,72 @@
 
   // ---------- Light ----------
   // Each block's tint: a colour laid over the map, how much lamps cut through it, and how bright they burn.
+  // rays is how strong the sunset light from the top left is (evening only); dark is what C.dark() reports.
+  // Evening stays light and golden so the map is easy on the eyes: a thin amber wash, a little dusk at the bottom
+  // right, and the sunbeams do the rest.
   const TINT = {
-    morning: { rgb: '255,214,170', a: 0.07, lamp: 0 },
-    afternoon: { rgb: '255,236,200', a: 0, lamp: 0 },
-    evening: { rgb: '110,40,90', a: 0.26, warm: 'rgba(255,140,60,.14)', lamp: 0.5 },
-    night: { rgb: '8,12,48', a: 0.68, lamp: 1 }
+    morning: { rgb: [255, 214, 170], a: 0.07, rays: 0, lamp: 0, dark: 0 },
+    afternoon: { rgb: [255, 236, 200], a: 0, rays: 0, lamp: 0, dark: 0 },
+    evening: { rgb: [255, 140, 70], a: 0.14, rays: 1, lamp: 0.35, dark: 0.3 },
+    night: { rgb: [8, 12, 48], a: 0.68, rays: 0, lamp: 1, dark: 1 }
   };
-  C.tint = b => TINT[b || C.block()];
-  // How dark it is (0 by day, 1 at night): maps use it to dim sky layers and decide whether lamps are lit.
-  C.dark = () => ({ evening: 0.4, night: 1 })[C.block()] || 0;
+  // A change of block fades from how things looked to the new block's look, easing in and out.
+  const FADE_MS = 4000;
+  let fade = null;
+  const mix = (A, B, k) => ({ rgb: A.rgb.map((v, i) => Math.round(v + (B.rgb[i] - v) * k)), a: A.a + (B.a - A.a) * k,
+    rays: A.rays + (B.rays - A.rays) * k, lamp: A.lamp + (B.lamp - A.lamp) * k, dark: A.dark + (B.dark - A.dark) * k });
+  function look() {
+    const B = TINT[C.block()];
+    if (!fade) return B;
+    // A jump the clock didn't fade (a new loop, chapter 10's storm starting) shows straight away.
+    if (fade.to !== C.block()) { fade = null; return B; }
+    const k = Math.min(1, (performance.now() - fade.t0) / FADE_MS);
+    if (k >= 1) { fade = null; return B; }
+    return mix(fade.from, B, k * k * (3 - 2 * k));
+  }
+  C.tint = b => b ? TINT[b] : look();
+  // How dark it looks (0 by day, 1 at night): maps use it to dim sky layers and decide whether lamps are lit.
+  C.dark = () => look().dark;
   let off = null;
   // lights: [{ x, y, r, rgb? }] in screen pixels. opts: { block, dimmed } where dimmed (0..1) scales the tint down
   // for maps that are already dark (the North Road's night skies), so lamps still glow but nothing goes black.
+  // The sunset: a golden glow from the top-left corner, a soft dusk in the far corner, and slow beams fanning out
+  // from just off screen, like an RPG Maker sunset parallax. k (0..1) is how strong it is, so it fades with the clock.
+  const BEAMS = [[0.32, 0.05, 0], [0.5, 0.08, 1.7], [0.66, 0.045, 3.1], [0.82, 0.07, 4.4], [1.0, 0.05, 5.6], [1.18, 0.06, 0.9]];
+  function sunset(ctx, vw, vh, k) {
+    const t = performance.now() / 1000, still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const R = Math.hypot(vw, vh), ox = -vw * 0.06, oy = -vh * 0.12;
+    ctx.save();
+    // Dusk gathering in the bottom right, away from the sun.
+    let g = ctx.createLinearGradient(0, 0, vw, vh);
+    g.addColorStop(0.45, 'rgba(90,50,120,0)'); g.addColorStop(1, `rgba(90,50,120,${0.16 * k})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+    ctx.globalCompositeOperation = 'screen';
+    // The sun's glow in the corner.
+    g = ctx.createRadialGradient(ox, oy, 0, ox, oy, R * 0.75);
+    g.addColorStop(0, `rgba(255,196,110,${0.6 * k})`); g.addColorStop(0.35, `rgba(255,168,90,${0.24 * k})`); g.addColorStop(1, 'rgba(255,160,80,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+    // Beams: thin wedges that sway and breathe, each fading out along its length.
+    BEAMS.forEach(([ang, w, ph]) => {
+      const a = ang + (still ? 0 : Math.sin(t * 0.12 + ph) * 0.025), half = w / 2;
+      const alpha = 0.24 * k * (still ? 0.8 : 0.65 + 0.35 * Math.sin(t * 0.4 + ph));
+      const lg = ctx.createLinearGradient(ox, oy, ox + Math.cos(a) * R, oy + Math.sin(a) * R);
+      lg.addColorStop(0, `rgba(255,214,150,${alpha})`); lg.addColorStop(0.7, `rgba(255,190,120,${alpha * 0.35})`); lg.addColorStop(1, 'rgba(255,190,120,0)');
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.moveTo(ox, oy);
+      ctx.lineTo(ox + Math.cos(a - half) * R * 1.2, oy + Math.sin(a - half) * R * 1.2);
+      ctx.lineTo(ox + Math.cos(a + half) * R * 1.2, oy + Math.sin(a + half) * R * 1.2);
+      ctx.closePath(); ctx.fill();
+    });
+    ctx.restore();
+  }
   C.shade = function (ctx, vw, vh, lights, opts) {
     opts = opts || {};
-    const T = TINT[opts.block || C.block()];
+    const T = opts.block ? TINT[opts.block] : look();
     if (!T) return;
     const a = T.a * (1 - (opts.dimmed || 0));
-    if (T.warm) { ctx.fillStyle = T.warm; ctx.fillRect(0, 0, vw, vh); }
     if (a > 0) {
-      if (!T.lamp || !lights || !lights.length) { ctx.fillStyle = `rgba(${T.rgb},${a})`; ctx.fillRect(0, 0, vw, vh); }
+      if (T.lamp < 0.01 || !lights || !lights.length) { ctx.fillStyle = `rgba(${T.rgb.join(',')},${a})`; ctx.fillRect(0, 0, vw, vh); }
       else {
         // The dark on its own layer, with a soft hole cut out around every light.
         off = off || document.createElement('canvas');
@@ -119,7 +168,7 @@
         const o = off.getContext('2d');
         o.globalCompositeOperation = 'source-over';
         o.clearRect(0, 0, w, h);
-        o.fillStyle = `rgba(${T.rgb},${a})`; o.fillRect(0, 0, w, h);
+        o.fillStyle = `rgba(${T.rgb.join(',')},${a})`; o.fillRect(0, 0, w, h);
         o.globalCompositeOperation = 'destination-out';
         lights.forEach(l => {
           if (l.x < -l.r || l.y < -l.r || l.x > w + l.r || l.y > h + l.r) return;
@@ -130,7 +179,8 @@
         ctx.drawImage(off, 0, 0, vw, vh);
       }
     }
-    if (!T.lamp || !lights) return;
+    if (T.rays > 0.01) sunset(ctx, vw, vh, T.rays);
+    if (T.lamp < 0.01 || !lights) return;
     // Then the warm glow itself, added on top.
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     lights.forEach(l => {
