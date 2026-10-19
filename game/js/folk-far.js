@@ -58,6 +58,29 @@
     }
   };
 
+  // The Rollouts, Nari's dance troupe, live together in the Exchange's old quarter and go out across two maps, so
+  // their places name the map (js/nari-home.js turns them into the road's format for each map):
+  //   'home'                      inside the Rollouts' house (its door is on the Exchange)
+  //   [map, x, y, face, emote]    at that tile on that map
+  //   ['in', map, x, y]           into that map's door at (x, y)
+  // lost is where each of them is until Lost and Found (js/rollouts-quests.js) brings them home: no schedules till then.
+  F.rollouts = {
+    lost: {
+      nari: 'home', eunho: 'home',                       // Eun-ho never left. Nobody counted him.
+      neel: ['exchange', 30, 9, 'south', 'dots'],        // outside the hotel, with nine bookings
+      hari: ['road', 17, 20, 'north', 'music'],          // busking for soup by Lyra's stage
+      bitna: ['exchange', 43, 44, 'west', 'alert']       // at the lamp-oil auction, ticket 212
+    },
+    day: {
+      // Afternoons out at work; evenings the show beside the canal bridge, with Eun-ho behind a tree.
+      nari: { morning: 'home', afternoon: ['exchange', 42, 46, 'south', 'music'], evening: ['exchange', 39, 38, 'west', 'music'], night: 'home' },
+      neel: { morning: 'home', afternoon: ['in', 'exchange', 29, 17], evening: ['exchange', 41, 37, 'west', 'dots'], night: 'home' },   // the bank, then the wings
+      hari: { morning: 'home', afternoon: ['road', 17, 20, 'north', 'music'], evening: ['exchange', 40, 39, 'west', 'music'], night: 'home' },
+      bitna: { morning: 'home', afternoon: ['exchange', 31, 34, 'west', 'idea'], evening: ['exchange', 38, 40, 'north', 'star'], night: 'home' },   // the lamps, then the cues
+      eunho: { morning: 'home', afternoon: 'home', evening: ['exchange', 34, 42, 'east', 'dots'], night: 'home' }
+    }
+  };
+
   F.isles = {
     // Ferry Landing
     leilani: { afternoon: [10, 23], night: 'room:office' },

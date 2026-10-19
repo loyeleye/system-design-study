@@ -1,4 +1,5 @@
-// Nari, the Canary, and her dance troupe: their sprites, busts and cast entries (docs/cast-bible-road-isles.md).
+// Nari, the Canary, and her dance troupe, the Rollouts (Neel and Hari, Eun-ho, Bitna): their sprites, busts and cast
+// entries (docs/cast-bible-road-isles.md).
 // Nari is a veiled dancer who is always first onto new ground; the troupe shares her house in the Exchange's old
 // quarter (js/nari-home.js). Art: js/nari-art.js (tools/nari_art.py) and js/troupe-art.js (tools/troupe_art.py).
 // Her sprites are ordinary ones the scenes draw by key: 'nari' walks (walk: 1), and 'nari-dance' dances while she
@@ -27,9 +28,9 @@
 
   Object.assign(SD.cast, {
     nari: { name: 'Nari', title: 'The Canary · Always First on New Ground', hue: 320, hair: 'long', eye: '#5a3b2e' },
-    ao: { name: 'Ao', title: 'Blue · On Stage or in the Wings, Never Both', hue: 210, hair: 'short', eye: '#2b2340' },
-    midori: { name: 'Midori', title: 'Green · In the Wings or on Stage, Never Both', hue: 140, hair: 'short', eye: '#2b2340' },
-    kage: { name: 'Kage', title: 'Shadow · Dances Every Show Where Nobody Sees', hue: 260, hair: 'short', eye: '#2b2340' },
-    lumi: { name: 'Lumi', title: 'Lantern · Nothing Starts Until She Says So', hue: 40, hair: 'bob', eye: '#2f7d4a' }
+    neel: { name: 'Neel', title: 'Blue · Raised by a Banker. Per His Last Message', hue: 210, hair: 'short', eye: '#2b2340' },
+    hari: { name: 'Hari', title: 'Green · Raised by the Old Quarter. All Is Well', hue: 140, hair: 'short', eye: '#2b2340' },
+    eunho: { name: 'Eun-ho', title: 'Shadow · Dances Every Show Where Nobody Sees', hue: 260, hair: 'short', eye: '#2b2340' },
+    bitna: { name: 'Bitna', title: 'Lantern · Nothing Starts Until She Says So', hue: 40, hair: 'bob', eye: '#2f7d4a' }
   });
 })();
