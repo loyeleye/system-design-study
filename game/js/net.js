@@ -1,9 +1,10 @@
 // Guild Hall networking: one small transport for the multiplayer modes (Pair Mock, Whiteboard Showdown).
 // On claude.ai it rides the artifact's `room` capability (live moments and presence, nothing stored).
+// On the Cloudflare build it rides the Worker's rooms (js/cloud.js), which have the same shape.
 // Anywhere else it falls back to a BroadcastChannel, so two tabs of the same browser can play each other,
 // which is also how the tests run.
 //
-//   const hub = await SD.net.open()      -> { mode: 'claude' | 'local', me: { peer, nick }, lobby, join(code), setNick }
+//   const hub = await SD.net.open()      -> { mode: 'claude' | 'cloud' | 'local', me: { peer, nick }, lobby, join(code), setNick }
 //   const r = await hub.join('pm-abcd')   -> a room: emit(topic, data), on(topic, fn), presence(patch), peers(), onPeers(fn), leave()
 //
 // Everything heard from a room is untrusted data from another player: games validate it, render it with
@@ -81,6 +82,11 @@
         try { room = await window.claude.use('room'); } catch (e) { room = null; }
         try { user = await window.claude.use('user'); } catch (e) { user = null; }
       }
+      let mode = room ? 'claude' : 'local';
+      if (!room && SD.cloud) {
+        try { room = await SD.cloud.room(); } catch (e) { room = null; }
+        if (room) mode = 'cloud';
+      }
       if (room) {
         // The platform's own peer label for this tab, so ours matches what others see.
         const self = (room.peers() || []).find(p => p.isMe && p.sameTab);
@@ -93,7 +99,7 @@
       if (room) room.onPeers(() => { const s = room.peers().find(p => p.isMe && p.sameTab); if (s) me.peer = s.peer; });
       const rooms = {};
       return {
-        mode: room ? 'claude' : 'local', me, lobby,
+        mode, me, lobby,
         setNick(n) { me.nick = N.clean(n, 24) || me.nick; store.set(NICK, me.nick); },
         async join(name) {
           if (rooms[name]) return rooms[name];

@@ -14,7 +14,8 @@
     };
   }
 
-  const S = SD.state = { save: fresh(), db: null, uid: null };
+  // cloud: where the save is kept beyond this browser, { where: 'claude' | 'code', get(), set(doc) }, or null.
+  const S = SD.state = { save: fresh(), cloud: null };
 
   // A stored save over the defaults. Shard prices went up about twentyfold (economy 2),
   // so balances from older saves scale with them.
@@ -39,28 +40,41 @@
     S.save.updatedAt = Date.now();
     const json = JSON.stringify(S.save);
     try { localStorage.setItem(KEY, json); } catch (e) { /* ignore */ }
-    if (S.db && S.uid) {
+    if (S.cloud) {
+      const cloud = S.cloud, updatedAt = S.save.updatedAt;
       clearTimeout(cloudTimer);
-      cloudTimer = setTimeout(() => {
-        S.db.doc('data/users/' + S.uid + '/save').set({ json, updatedAt: S.save.updatedAt }).catch(() => {});
-      }, 800);
+      cloudTimer = setTimeout(() => { cloud.set({ json, updatedAt }).catch(() => {}); }, 800);
     }
   };
 
   S.reset = function () { S.save = fresh(); S.persist(); };
 
-  // Cloud save, so a run started on a phone continues on a laptop.
+  // Cloud save, so a run started on a phone continues on a laptop: the claude.ai account's db on claude.ai,
+  // or the Cloudflare Worker's save slot for this browser's save code (js/cloud.js).
+  async function claudeStore() {
+    if (!window.claude || !window.claude.use) return null;
+    const user = await window.claude.use('user');
+    const db = await window.claude.use('db');
+    if (!user || !db) return null;
+    const uid = await user.id();
+    if (!uid) return null;
+    const doc = db.doc('data/users/' + uid + '/save');
+    return {
+      where: 'claude',
+      async get() { const snap = await doc.get(); return snap.exists ? snap.data() : null; },
+      set: d => doc.set(d)
+    };
+  }
+  async function codeStore() {
+    if (!SD.cloud || !(await SD.cloud.available())) return null;
+    return { where: 'code', get: SD.cloud.saves.get, set: SD.cloud.saves.set };
+  }
   async function connectCloud() {
-    if (!window.claude || !window.claude.use) return;
     try {
-      const user = await window.claude.use('user');
-      const db = await window.claude.use('db');
-      if (!user || !db) return;
-      const uid = await user.id();
-      if (!uid) return;
-      S.db = db; S.uid = uid;
-      const snap = await db.doc('data/users/' + uid + '/save').get();
-      const d = snap.exists ? snap.data() : null;
+      const cloud = (await claudeStore().catch(() => null)) || (await codeStore());
+      if (!cloud) return;
+      S.cloud = cloud;
+      const d = await cloud.get();
       if (d && d.json && d.updatedAt > (S.save.updatedAt || 0)) {
         S.save = revive(d.json);
         try { localStorage.setItem(KEY, d.json); } catch (e) { /* ignore */ }
@@ -70,6 +84,22 @@
       }
     } catch (e) { /* cloud unavailable: local save only */ }
   }
+  // The player typed another device's save code (Cloudflare build). That device's save replaces this browser's,
+  // whichever is newer, since this one is usually a fresh start. With no save under the code yet, this browser's
+  // save goes there. Resolves 'loaded', 'moved', or 'bad' for a code that isn't 32 characters.
+  S.useSaveCode = async function (code) {
+    if (!S.cloud || S.cloud.where !== 'code' || !SD.cloud.saves.setCode(code)) return 'bad';
+    const d = await S.cloud.get();
+    if (d && d.json) {
+      S.save = revive(d.json);
+      try { localStorage.setItem(KEY, d.json); } catch (e) { /* ignore */ }
+      S.syncChapter();
+      if (SD.onCloudLoad) SD.onCloudLoad();
+      return 'loaded';
+    }
+    S.persist();
+    return 'moved';
+  };
 
   // ---- Progression ----
   S.xpFor = lvl => 60 + lvl * 50;

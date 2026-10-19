@@ -1,0 +1,4 @@
+# Not served by the Cloudflare Worker (cloudflare/wrangler.jsonc): build tools only.
+tools/
+**/__pycache__/
+.assetsignore

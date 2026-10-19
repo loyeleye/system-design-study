@@ -3,3 +3,7 @@ game/isles.html
 
 # Publish-time base64 copy of the model table (game/assets/model/README.md)
 game/assets/model/*.b64.txt
+
+# Cloudflare Worker (cloudflare/README.md)
+cloudflare/node_modules/
+cloudflare/.wrangler/

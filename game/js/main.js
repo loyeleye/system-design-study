@@ -54,10 +54,11 @@
       <button class="opt" id="m-say">Say it first: <b>${{ boss: 'Boss questions', all: 'Every question', off: 'Off' }[SD.quiz.sayMode()]}</b></button>
       <button class="opt" id="m-typed">Typed answers: <b>${S.save && S.save.typed === false ? 'Off' : 'On'}</b></button>
       <button class="opt" id="m-name">Change name</button>
+      ${S.cloud && S.cloud.where === 'code' ? '<button class="opt" id="m-code">Play on another device: your save code</button>' : ''}
       <button class="opt" id="m-credits">Credits</button>
       <button class="opt" id="m-reset">Erase save and start over</button>
       <button class="opt" id="m-debug">Debug start (testing): <b>${SD.debug ? 'On' : 'Off'}</b></button></div>
-      <p class="muted small">Progress saves automatically${S.db ? ' to your claude.ai account, so it follows you across devices' : ' in this browser'}.</p>`, { title: 'MENU' });
+      <p class="muted small">Progress saves automatically${!S.cloud ? ' in this browser' : S.cloud.where === 'claude' ? ' to your claude.ai account, so it follows you across devices' : ', and your save code brings it to another device'}.</p>`, { title: 'MENU' });
     b.querySelector('#m-help').onclick = help;
     // Bru's board of who is where right now (js/folk.js).
     const mb = b.querySelector('#m-board'); if (mb) mb.onclick = () => SD.folk.board();
@@ -79,10 +80,37 @@
       location.reload();
     };
     b.querySelector('#m-name').onclick = () => askName(() => { U.closePanel(); M.hud(); });
+    const mc = b.querySelector('#m-code'); if (mc) mc.onclick = saveCode;
     b.querySelector('#m-reset').onclick = () => {
       const c = U.panel('<p>Erase everything: levels, cheat sheet pages, Mio\'s drawings? Uptima will pretend she never met you. This cannot be undone.</p><div class="row"><button class="danger" id="r-y">Erase</button><button class="ghost" id="r-n">Cancel</button></div>', { title: 'ARE YOU SURE?' });
       c.querySelector('#r-y').onclick = () => { S.reset(); U.closePanel(); M.title(); };
       c.querySelector('#r-n').onclick = U.closePanel;
+    };
+  }
+  // Cloudflare build (js/cloud.js): the save code that carries this save to another device. Anyone with the code
+  // can load the save, so it's shown only here.
+  function saveCode() {
+    const code = SD.cloud.saves.code(), pretty = code.match(/.{4}/g).join('-');
+    const c = U.panel(`<p class="small">To keep playing on another device, open the game there, go to Menu > Play on another device, and type this code. Keep it to yourself: anyone with it can load your save.</p>
+      <p><b id="sc-code" style="font: 600 17px var(--f-head); letter-spacing: 1px; word-break: break-all;">${pretty}</b></p>
+      <div class="row"><button class="ghost" id="sc-copy">Copy code</button></div>
+      <label class="num">Code from another device <input id="sc-in" maxlength="48" autocomplete="off" spellcheck="false"></label>
+      <div class="row"><button class="primary" id="sc-use">Use that save here</button></div>
+      <p class="muted small" id="sc-msg"></p>`, { title: 'SAVE CODE' });
+    const msg = c.querySelector('#sc-msg');
+    c.querySelector('#sc-copy').onclick = e => {
+      try { navigator.clipboard.writeText(pretty).then(() => { e.target.textContent = 'Copied'; }, () => { e.target.textContent = 'Copy failed'; }); } catch (err) { e.target.textContent = 'Copy failed'; }
+    };
+    c.querySelector('#sc-use').onclick = async () => {
+      const v = c.querySelector('#sc-in').value;
+      if (SD.cloud.cleanCode(v) === code) { msg.textContent = 'That is already this device\'s code.'; return; }
+      msg.textContent = 'Loading…';
+      let r;
+      try { r = await S.useSaveCode(v); } catch (e) { msg.textContent = 'Could not reach the save server. Try again in a moment.'; return; }
+      if (r === 'bad') { msg.textContent = 'A save code is 32 letters and digits.'; return; }
+      U.closePanel();
+      U.system('SAVE CODE', r === 'loaded' ? 'Your save from the other device is loaded.' : 'No save under that code yet, so this device\'s save now lives there.', 'gold');
+      M.hud();
     };
   }
   function credits() {

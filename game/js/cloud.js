@@ -1,0 +1,138 @@
+// The Cloudflare build's backend (cloudflare/src/worker.js), for copies of the game that aren't on claude.ai.
+// It gives js/net.js a room shaped like the claude.ai `room` capability, and js/state.js a save store keyed by
+// a save code. Both are off unless GET api/hello answers, so a local `python3 -m http.server` copy and the
+// claude.ai artifact never use it.
+//
+//   await SD.cloud.available()  -> true when this copy is served by the Worker
+//   await SD.cloud.room()       -> the lobby room: emit, on, presence, peers, onPeers, connected, leave, join(name)
+//   SD.cloud.saves              -> { code(), setCode(c), get(), set({ json, updatedAt }) }
+(function () {
+  const C = SD.cloud = SD.cloud || {};
+  const CODE_KEY = 'sd-save-code';
+  const api = p => new URL('api/' + p, location.href);
+
+  let probe = null;
+  C.available = function () {
+    if (probe) return probe;
+    probe = (async () => {
+      if (!/^https?:$/.test(location.protocol)) return false;
+      try {
+        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
+        const r = await fetch(api('hello'), { cache: 'no-store', signal: ctl.signal });
+        clearTimeout(t);
+        return r.ok && (await r.json()).game === 'isekaid';
+      } catch (e) { return false; }
+    })();
+    return probe;
+  };
+
+  // ---------- Rooms ----------
+  // One WebSocket per room. It reconnects with backoff after a drop, keeps its peer label, and re-sends presence.
+  // This tab's secret: the Worker hashes it into the tab's peer label, the same in every room (cloudflare/src/worker.js).
+  const TAB = (() => { const b = new Uint8Array(32); crypto.getRandomValues(b); return Array.from(b, x => 'abcdefghijklmnopqrstuvwxyz0123456789'[x % 36]).join(''); })();
+  function socketRoom(name) {
+    const handlers = {}, peerFns = new Set();
+    let ws = null, me = null, peers = [], mine = {}, open = false, closed = false, wait = 500;
+    let ready, readyFn;
+    const fresh = () => { ready = new Promise(r => { readyFn = r; }); };
+    fresh();
+    const fire = () => peerFns.forEach(f => { try { f(peers); } catch (e) { /* a listener's own error */ } });
+    const send = o => { if (ws && open) { try { ws.send(JSON.stringify(o)); } catch (e) { /* dropped, as on claude.ai */ } } };
+    function connect() {
+      const u = api('room/' + encodeURIComponent(name));
+      u.searchParams.set('k', TAB);
+      u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(u);
+      ws.onmessage = e => {
+        let m; try { m = JSON.parse(e.data); } catch (err) { return; }
+        if (!m) return;
+        if (m.t === 'hello') {
+          me = m.peer; open = true; wait = 500;
+          if (Object.keys(mine).length) send({ t: 'p', patch: mine });
+          readyFn();
+        } else if (m.t === 'peers' && Array.isArray(m.peers)) {
+          peers = m.peers.map(p => ({ peer: String(p.peer), presence: p.presence || {}, isMe: p.peer === me, sameTab: p.peer === me, kind: 'user' }));
+          fire();
+        } else if (m.t === 'm') {
+          (handlers[m.topic] || []).slice().forEach(f => { try { f({ topic: m.topic, data: m.data, peer: String(m.peer), isMe: m.peer === me, sameTab: m.peer === me }); } catch (err) { /* a handler's own error */ } });
+        }
+      };
+      ws.onclose = () => {
+        open = false;
+        if (closed) return;
+        peers = peers.filter(p => p.isMe); fire();
+        setTimeout(() => { if (!closed) connect(); }, wait);
+        wait = Math.min(wait * 2, 15000);
+      };
+      ws.onerror = () => { try { ws.close(); } catch (e) { /* already closing */ } };
+    }
+    connect();
+    const room = {
+      emit(topic, data) { send({ t: 'm', topic, data }); return Promise.resolve(); },
+      on(topic, fn) { (handlers[topic] = handlers[topic] || []).push(fn); return () => { handlers[topic] = (handlers[topic] || []).filter(f => f !== fn); }; },
+      presence(patch) {
+        mine = Object.assign({}, mine, patch);
+        Object.keys(mine).forEach(k => { if (mine[k] === null) delete mine[k]; });
+        send({ t: 'p', patch });
+        return Promise.resolve();
+      },
+      peers: () => peers,
+      onPeers(fn) { peerFns.add(fn); return () => peerFns.delete(fn); },
+      connected: () => open,
+      leave() { closed = true; open = false; try { ws.close(1000, 'leave'); } catch (e) { /* gone */ } return Promise.resolve(); },
+      ready: () => ready
+    };
+    return room;
+  }
+
+  C.room = async function () {
+    if (!(await C.available())) return null;
+    const lobby = socketRoom('lobby');
+    // Wait briefly for the first hello so peers() already lists this tab, as on claude.ai.
+    await Promise.race([lobby.ready(), new Promise(r => setTimeout(r, 3000))]);
+    lobby.join = async function (name) {
+      const r = socketRoom('t-' + String(name).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40));
+      await Promise.race([r.ready(), new Promise(res => setTimeout(res, 3000))]);
+      return r;
+    };
+    return lobby;
+  };
+
+  // ---------- Saves ----------
+  // A save code is 32 random letters and digits, made once per browser. Typing the same code on another device
+  // loads that save there, so the code is the only key: show it only to the player.
+  const ABC = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
+  };
+  C.cleanCode = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  function newCode() {
+    const b = new Uint8Array(32); crypto.getRandomValues(b);
+    return Array.from(b, x => ABC[x % ABC.length]).join('');
+  }
+  C.saves = {
+    code() {
+      let c = C.cleanCode(store.get(CODE_KEY));
+      if (c.length !== 32) { c = newCode(); store.set(CODE_KEY, c); }
+      return c;
+    },
+    // Switch this browser to another device's save code. Returns false for a code that isn't 32 characters.
+    setCode(c) {
+      c = C.cleanCode(c);
+      if (c.length !== 32) return false;
+      store.set(CODE_KEY, c);
+      return true;
+    },
+    async get() {
+      const r = await fetch(api('save/' + C.saves.code()), { cache: 'no-store' });
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error('save ' + r.status);
+      return r.json();
+    },
+    async set(doc) {
+      const r = await fetch(api('save/' + C.saves.code()), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) });
+      if (!r.ok && r.status !== 409) throw new Error('save ' + r.status);
+    }
+  };
+})();
