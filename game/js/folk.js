@@ -63,8 +63,9 @@
       const e = entry(n.id, block);
       let spot = 'stand', doing = e ? names(e[1]) : '', say = e && e[2], act = D.PEOPLE[n.id].act || null;
       if (storm && D.STORM[n.id]) { spot = D.STORM[n.id]; doing = 'Indoors, out of the storm'; say = null; act = null; }
-      // Quest business beats the clock: a villager with a ! or ? stays where you'd look for them.
-      else if (marks[n.id]) { spot = 'stand'; say = null; }
+      // Quest business beats the clock: a villager with a ! or ? stays where you'd look for them, unless their
+      // work needs a place (Ayo's anvil), where the marker follows them.
+      else if (marks[n.id] && !(e && D.SPOTS[e[0]] && D.SPOTS[e[0]].work)) { spot = 'stand'; say = null; }
       else if (e) { spot = e[0]; act = e[3] || act; }
       if (spot === null) { out[n.id] = null; return; }
       // Rounds: a walk between several spots, a few seconds at each, starting somewhere different each loop.
