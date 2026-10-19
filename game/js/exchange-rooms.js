@@ -227,13 +227,14 @@
   // behind the counter in the middle, and a spiral stair in the back corner up to the dining room.
   R.xdiner = {
     name: 'THE COFFEE DINER', up: ['xupper', 8, 4, 'west'],
-    // You come in at the doorway, the bottom of the picture, and leave by stepping out of it.
+    // No door in the picture: you come in at the bottom of the floor, just inside the doormat, and leave by stepping
+    // onto it.
     map: ['############', '############', '############', '########UU##', '########..##',
       '###......###', '###......###', '###......###', '#####DD#####'],
-    enter: [5, 7, 'north'],
+    enter: [5, 7, 'north'], mat: true,
     clerk: 'xcook', counter: [4.5, 3.65, 'south'], over: [[3, 4], [4, 4], [5, 4], [6, 4]],
-    // The counter in front of Hash, and the doorway's frame in front of you on the way out.
-    front: [[80, 129, 158, 38, 4], [156, 203, 84, 12, 6], [156, 203, 12, 85, 6], [228, 203, 12, 85, 6]],
+    // The counter in front of Hash.
+    front: [[80, 129, 158, 38, 4]],
     // Four at most, storm or not: Hash, the two regulars and Neel.
     people: () => ['xcook', 'xdin0', 'xdin1'].concat(inDiner()),
     // The middle of the floor stays clear: it is the only way from the door to the stairs. Everyone stands where you can
