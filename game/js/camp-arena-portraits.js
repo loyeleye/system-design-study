@@ -1,8 +1,9 @@
-// Faces for the heroes' camp and the arena crowd: simple vector busts drawn from each person's PixelLab sprite
-// (assets/img/arc/c-*.webp), in the same 120x140 slot as the painted busts. The camp's heroes have one each; the
-// arena's people have one per sprite colouring (spec1-7 and their b, c and d recolours), so a fan in a green shirt
-// waving a green flag has a face in a green shirt with a green flag. Crowd members name their sprite in their cast
-// entry's `bust` (js/northroad-arena.js). One mood each for now.
+// Faces for the heroes' camp, the arena crowd and the Exchange's townsfolk: simple vector busts drawn from each
+// person's PixelLab sprite (assets/img/arc/c-*.webp), in the same 120x140 slot as the painted busts. The camp's
+// heroes have one each; the arena's people have one per sprite colouring (spec1-7 and their b, c and d recolours),
+// so a fan in a green shirt waving a green flag has a face in a green shirt with a green flag; the Exchange's
+// townsfolk and guard have one per sprite (folk1-6). People who share a sprite name it in their cast entry's `bust`
+// (js/northroad-arena.js, js/northroad-exchange.js). One mood each for now.
 (function () {
   const INK = '#2b2340';
   const st = (w) => `stroke="${INK}" stroke-width="${w || 2.2}" stroke-linejoin="round" stroke-linecap="round"`;
@@ -49,6 +50,11 @@
     short: c => `<path d="M36 64 Q32 28 60 27 Q88 28 84 64 Q82 50 76 46 Q70 50 64 44 Q58 50 52 45 Q44 50 40 50 Q38 54 36 64Z" fill="${c}" ${st()}/>`,
     messy: c => `<path d="M35 66 Q28 34 44 26 Q52 18 62 22 Q76 18 82 28 Q92 38 85 66 Q83 54 78 48 L74 58 L70 46 L62 56 L58 44 L50 56 L48 46 L42 56 Q38 58 35 66Z" fill="${c}" ${st()}/>`,
     combed: c => `<path d="M36 64 Q32 28 60 28 Q88 28 84 64 Q82 46 72 42 Q60 38 50 42 Q40 46 36 64Z" fill="${c}" ${st()}/><path d="M48 34 Q60 31 74 36" stroke="${tone(c, 1.4)}" stroke-width="1.6" fill="none"/>`,
+    pigtails: c => `<path d="M38 44 Q20 40 18 62 Q16 82 26 98 Q30 84 34 72 Q36 58 40 52Z M82 44 Q100 40 102 62 Q104 82 94 98 Q90 84 86 72 Q84 58 80 52Z" fill="${c}" ${st()}/>
+      <path d="M36 66 Q32 28 60 27 Q88 28 84 66 Q80 46 68 42 Q62 46 58 40 Q48 44 40 50 Q37 56 36 66Z" fill="${c}" ${st()}/><path d="M60 28 V40" stroke="${tone(c, 0.7)}" stroke-width="1.6"/>`,
+    bun: c => `<circle cx="60" cy="24" r="11" fill="${c}" ${st()}/><path d="M36 62 Q33 30 60 30 Q87 30 84 62 Q80 44 68 40 Q60 38 52 40 Q40 44 36 62Z" fill="${c}" ${st()}/>
+      <path d="M46 36 Q56 32 68 36" stroke="${tone(c, 0.82)}" stroke-width="1.6" fill="none"/>`,
+    bald: c => `<path d="M37 60 Q36 66 38 72 M83 60 Q84 66 82 72" stroke="${c}" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M46 40 Q52 36 58 37" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>`,
     sides: c => `<path d="M36 52 Q34 70 38 84 L42 84 Q41 66 44 54Z M84 52 Q86 70 82 84 L78 84 Q79 66 76 54Z" fill="${c}" ${st(2)}/>`
   };
   const BEARD = {
@@ -56,6 +62,7 @@
     stubble: c => `<path d="M52 82 Q60 79 68 82" stroke="${c}" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M46 86 Q60 100 74 86" stroke="${c}" stroke-width="1.2" fill="none" stroke-dasharray="1 3" opacity=".8"/>`,
     full: c => `<path d="M38 66 Q40 92 50 100 Q60 112 70 100 Q80 92 82 66 Q80 80 72 82 Q66 78 60 80 Q54 78 48 82 Q40 80 38 66Z" fill="${c}" ${st()}/>
       <path d="M51 84 Q60 80 69 84" stroke="${tone(c, 0.75)}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M55 88 Q60 90 65 88" stroke="${INK}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`,
+    walrus: c => `<path d="M42 80 Q50 72 60 78 Q70 72 78 80 Q80 90 70 88 Q64 84 60 86 Q56 84 50 88 Q40 90 42 80Z" fill="${c}" ${st(1.8)}/><path d="M42 84 Q44 98 60 100 Q76 98 78 84" stroke="${c}" stroke-width="3" fill="none" stroke-dasharray="2 2.5" opacity=".8"/>`,
     wizard: c => `<path d="M40 70 Q38 96 46 112 Q54 132 60 138 Q66 132 74 112 Q82 96 80 70 Q74 80 60 80 Q46 80 40 70Z" fill="${c}" ${st()}/>
       <path d="M50 84 Q60 78 70 84" stroke="${tone(c, 0.8)}" stroke-width="3" fill="none" stroke-linecap="round"/>
       <path d="M52 96 Q56 112 58 124 M66 96 Q65 110 63 122" stroke="${tone(c, 0.8)}" stroke-width="1.4" fill="none"/>`
@@ -81,6 +88,14 @@
       <path d="M60 25 V54" stroke="#895945" stroke-width="3"/><path d="M42 30 Q36 40 35 56" stroke="#e0ab8c" stroke-width="3" fill="none" stroke-linecap="round"/>
       <path d="M40 56 Q60 50 80 56" stroke="#895945" stroke-width="3" fill="none"/>`,
     hood: o => '',
+    straw: o => `<path d="M38 48 Q38 22 60 20 Q82 22 82 48Z" fill="#d6a674" ${st()}/><path d="M38 40 Q60 34 82 40 L82 48 Q60 42 38 48Z" fill="#872121" ${st(1.8)}/>
+      <path d="M48 26 L72 26" stroke="#efd2a4" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="60" cy="52" rx="44" ry="9" fill="#d6a674" ${st()}/><path d="M22 52 Q60 60 98 52" stroke="#a06e46" stroke-width="2" fill="none"/>`,
+    hoodup: o => `<path d="M30 92 Q26 30 60 22 Q94 30 90 92 Q86 98 82 92 Q84 52 60 46 Q36 52 38 92 Q34 98 30 92Z" fill="${o.cloth}" ${st()}/>
+      <path d="M38 88 Q38 52 60 48 Q82 52 82 88" stroke="${tone(o.cloth, 0.6)}" stroke-width="2" fill="none"/><path d="M48 30 Q38 40 36 56" stroke="${tone(o.cloth, 1.35)}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    nasal: o => `<path d="M32 66 Q30 24 60 22 Q90 24 88 66 L84 66 Q82 54 64 54 L64 74 L56 74 L56 54 Q38 54 36 66Z" fill="#8d7756" ${st()}/>
+      <path d="M60 23 V54" stroke="#aa976d" stroke-width="4"/><path d="M45 30 Q38 40 36 54" stroke="#c9b88e" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M34 56 Q60 50 86 56" stroke="#5e4d36" stroke-width="2.4" fill="none"/>`,
     guard: o => `<path d="M60 14 Q72 4 76 18 L72 22 Q68 12 60 22Z" fill="${o.crest}" ${st(1.8)}/><path d="M48 22 Q56 2 60 4 Q64 2 72 22" fill="${o.crest}" ${st(1.8)}/>
       <path d="M32 66 Q30 22 60 20 Q90 22 88 66 L84 92 Q72 102 66 96 L64 76 L56 76 L54 96 Q48 102 36 92Z" fill="#e3c88e" ${st()}/>
       <path d="M38 64 L56 64 L57 92 M82 64 L64 64 L63 92" stroke="#cba35f" stroke-width="2" fill="none"/>
@@ -113,6 +128,21 @@
     cloak: o => `<path d="${SHOULDERS}" fill="${o.cloth}" ${st()}/><path d="M34 108 Q30 92 44 86 Q60 96 76 86 Q90 92 86 108 Q60 122 34 108Z" fill="${tone(o.cloth, 0.8)}" ${st()}/>
       <path d="M42 100 Q60 112 78 100" stroke="${tone(o.cloth, 0.6)}" stroke-width="1.8" fill="none"/><circle cx="60" cy="112" r="4" fill="#d9a441" ${st(1.6)}/>`,
     kidtee: o => `<path d="${SHOULDERS}" fill="${o.cloth}" ${st()}/><path d="M48 102 Q60 112 72 102 L68 110 Q60 116 52 110Z" fill="${tone(o.cloth, 0.85)}" ${st(1.6)}/>`,
+    overalls: o => `<path d="${SHOULDERS}" fill="#872121" ${st()}/><path d="M24 118 L104 118 M30 108 L90 108" stroke="#5c191f" stroke-width="2" opacity=".6"/>
+      <path d="M40 140 L42 112 L78 112 L80 140Z" fill="#3a5594" ${st()}/><path d="M44 112 L40 102 M76 112 L80 102" stroke="#3a5594" stroke-width="5"/>
+      <circle cx="47" cy="116" r="2.4" fill="#e7c25a" ${st(1)}/><circle cx="73" cy="116" r="2.4" fill="#e7c25a" ${st(1)}/><rect x="52" y="122" width="16" height="10" rx="2" fill="none" stroke="#28407a" stroke-width="1.8"/>`,
+    coat: o => `<path d="${SHOULDERS}" fill="#f1efef" ${st()}/><path d="M44 102 L76 102 L72 140 L48 140Z" fill="#dc2737" ${st()}/>
+      <path d="M44 102 L52 140 M76 102 L68 140" stroke="#f7ca27" stroke-width="3.4"/>${[114, 124, 134].map(y => `<rect x="56" y="${y - 2.5}" width="8" height="5" rx="1.5" fill="#f7ca27" ${st(1.2)}/>`).join('')}
+      <path d="M48 102 L60 110 L72 102" fill="#4f201a" ${st(1.6)}/>`,
+    dress: o => `<path d="${SHOULDERS}" fill="${o.cloth}" ${st()}/><path d="M46 102 Q60 116 74 102 L70 110 Q60 118 50 110Z" fill="#f0eff0" ${st(1.6)}/>
+      <path d="M40 140 Q42 122 46 118 L74 118 Q78 122 80 140Z" fill="#f0eff0" ${st()}/><path d="M46 118 L40 108 M74 118 L80 108" stroke="#f0eff0" stroke-width="4"/>`,
+    hoodrobe: o => `<path d="${SHOULDERS}" fill="${o.cloth}" ${st()}/><path d="M38 104 Q60 122 82 104" stroke="${tone(o.cloth, 0.6)}" stroke-width="2.2" fill="none"/>
+      <path d="M60 112 V140" stroke="${tone(o.cloth, 0.6)}" stroke-width="2.2"/><circle cx="60" cy="114" r="3.4" fill="#743f2c" ${st(1.4)}/>`,
+    vestshirt: o => `<path d="${SHOULDERS}" fill="#eae8e6" ${st()}/><path d="M34 140 Q34 114 44 104 L56 118 L60 140Z M86 140 Q86 114 76 104 L64 118 L60 140Z" fill="${o.cloth}" ${st()}/>
+      <path d="M48 102 L56 110 L60 104 L64 110 L72 102" fill="#eae8e6" ${st(1.6)}/>${[124, 132].map(y => `<circle cx="56" cy="${y}" r="1.6" fill="#c9b9ec"/>`).join('')}`,
+    plate: o => `<path d="${SHOULDERS}" fill="#222635" ${st()}/><path d="M36 140 Q36 112 46 104 L74 104 Q84 112 84 140Z" fill="#8d7756" ${st()}/>
+      <path d="M60 104 V140" stroke="#aa976d" stroke-width="3"/><path d="M46 118 Q60 124 74 118" stroke="#5e4d36" stroke-width="2" fill="none"/>
+      <path d="M10 140 Q8 112 30 104 Q42 104 44 118 Q30 116 22 140Z M110 140 Q112 112 90 104 Q78 104 76 118 Q90 116 98 140Z" fill="#aa976d" ${st()}/>`,
     guard: o => `<path d="${SHOULDERS}" fill="#5d3a39" ${st()}/><path d="M38 140 Q38 112 48 104 L72 104 Q82 112 82 140Z" fill="#e3c88e" ${st()}/>
       <path d="M48 116 Q60 122 72 116 M48 128 Q60 134 72 128" stroke="#cba35f" stroke-width="2" fill="none"/>
       <path d="M10 140 Q8 110 30 102 Q44 102 46 118 Q32 116 22 140Z M110 140 Q112 110 90 102 Q76 102 74 118 Q88 116 98 140Z" fill="#edd9b1" ${st()}/>`
@@ -121,6 +151,7 @@
   // Things they hold, drawn behind or in front of them.
   const BEHIND = {
     flag: o => `<path d="M98 140 V6" stroke="#3b2a24" stroke-width="4"/><path d="M98 8 Q108 4 118 8 V40 Q108 36 98 40Z" fill="${o.flag}" ${st()}/>`,
+    pitchfork: o => `<path d="M12 140 L16 52" stroke="#6b4a2e" stroke-width="5" stroke-linecap="round"/><path d="M4 30 L6 52 Q16 58 26 52 L28 30 M16 30 V54" stroke="#c9c9cf" stroke-width="3.4" fill="none" stroke-linecap="round"/>`,
     staff: o => `<path d="M14 140 L18 30" stroke="#7b4a3c" stroke-width="7" stroke-linecap="round"/><path d="M14 140 L18 30" ${st(1.6)} fill="none"/><path d="M12 34 Q18 20 26 30 Q20 26 18 34" fill="#4f3028" ${st(1.6)}/>`,
     spear: o => `<path d="M14 140 V20" stroke="#5d3a39" stroke-width="4"/><path d="M14 2 Q22 14 18 26 H10 Q6 14 14 2Z" fill="#e8e3da" ${st(1.8)}/>`,
     hood: o => `<path d="M26 112 Q22 70 34 50 Q60 34 86 50 Q98 70 94 112Z" fill="${tone(o.cloth, 0.75)}" ${st()}/>`
@@ -129,6 +160,7 @@
     shield: o => `<ellipse cx="104" cy="128" rx="22" ry="24" fill="#ac5e46" ${st()}/><ellipse cx="104" cy="128" rx="15" ry="17" fill="none" stroke="#7a3e2c" stroke-width="2"/>
       <circle cx="104" cy="128" r="4" fill="#d9a441" ${st(1.4)}/>`,
     skewer: o => `<path d="M90 140 L104 96" stroke="#7b4231" stroke-width="2.6"/>${[104, 112, 120].map((y, i) => `<rect x="${92 + (128 - y) * 0.3}" y="${y - 4}" width="10" height="8" rx="3" transform="rotate(-18 ${97 + (128 - y) * 0.3} ${y})" fill="${['#9b5f4f', '#d97a3a', '#6aa84f'][i]}" ${st(1.4)}/>`).join('')}`,
+    banner: o => `<path d="M86 140 Q94 120 112 116 L116 132 Q100 134 96 140Z" fill="#dc2737" ${st()}/><path d="M92 136 Q100 124 113 122" stroke="#f7ca27" stroke-width="3" fill="none"/>`,
     sword: o => `<path d="M98 140 L106 100" stroke="#c49a6c" stroke-width="6" stroke-linecap="round"/><path d="M98 140 L106 100" ${st(1.4)} fill="none"/><path d="M94 124 H110" stroke="#6c4337" stroke-width="4" stroke-linecap="round"/>`
   };
 
@@ -150,6 +182,17 @@
     hero1023: { skin: '#9a6d56', hair: '#141012', eye: '#3b2418', back: 'braids', front_hair: 'parted', body: 'suit', cloth: '#62636d', mouth: 'flat' },
     hero500: { skin: '#f9c5b5', hair: '#274546', eye: '#2f8a6a', front_hair: 'messy', body: 'cloak', cloth: '#3d7c68', behind: 'hood', front: 'shield', mouth: 'smile' }
   };
+  // The Exchange's townsfolk (folk1-6) and its door guard (folk5).
+  Object.assign(LOOK, {
+    folk1: { skin: '#fcc1ab', hair: '#883d30', eye: '#2b2340', front_hair: 'short', body: 'coat', front: 'banner', mouth: 'flat' },
+    folk2: { skin: '#eeb1a0', hair: '#f0eff0', eye: '#3c8fd6', front_hair: 'bun', body: 'dress', cloth: '#20735e', mouth: 'flat', brow: '#b4b0ba', blush: 0.3 },
+    folk3: { skin: '#f4c4b7', hair: '#1a1416', eye: '#b0306a', front_hair: 'sides', hatType: 'hoodup', body: 'hoodrobe', cloth: '#195dc7', blush: 0.55, mouth: 'smile' },
+    folk4: { skin: '#f9c2ad', hair: '#6c3935', eye: '#2f9a7a', front_hair: 'pigtails', body: 'kidtee', cloth: '#f9c44d', mouth: 'smile', blush: 0.35 },
+    folk5: { skin: '#d7a085', hair: '#2b1d1a', eye: '#3b2a24', hatType: 'nasal', body: 'plate', stern: true, mouth: 'flat' },
+    // Farmer Cron in town (assets/img/village/c-cron.webp): straw hat, grey moustache, red shirt, blue overalls.
+    cron: { skin: '#f0ae97', hair: '#8f9cb8', eye: '#3b2a24', front_hair: 'sides', hatType: 'straw', beard: 'walrus', beardCol: '#d4cec8', body: 'overalls', behind: 'pitchfork', brow: '#d4cec8' },
+    folk6: { skin: '#f3c2ad', hair: '#c9907b', eye: '#2b2340', front_hair: 'bald', body: 'vestshirt', cloth: '#4f3780', mouth: 'smile', brow: '#8a5a48' }
+  });
   // The crowd: each kind, then its four colourings (the same order js/northroad-arena.js gives them: '', b, c, d).
   const KINDS = {
     spec1: { base: { skin: '#eea894', hair: '#2c2524', eye: '#5a3b2e', front_hair: 'short', body: 'tee', behind: 'flag', paint: FANPAINT, mouth: 'open' },
@@ -191,14 +234,32 @@
       <path d="M74 126 q3 -3 5 0 t5 0" stroke="#3b5bd8" stroke-width="1.2" fill="none"/></g>`;
 
   // ---------- Into the portrait slot ----------
-  // Crowd members and door guards (crowd0, doorguard1, ...) look like their sprite.
-  const key = who => DRAWN[who] ? who : (SD.cast[who] && SD.cast[who].bust) || null;
   const art = { portrait: SD.art.portrait, painted: SD.art.painted, mood: SD.art.mood };
+  // Everyone else looks like their sprite: the one their cast entry names (`bust`), or the one they're drawn with on
+  // the North Road's maps or in a room (js/interiors.js looks). A sprite with a painted bust (the villagers v1-v4)
+  // borrows that bust instead.
+  const spriteOf = who => {
+    const c = SD.cast[who];
+    if (c && c.bust) return c.bust;
+    const maps = (SD.northRoad && SD.northRoad.maps) || {}, rooms = (SD.interiors && SD.interiors.ROOMS) || {};
+    for (const m of Object.values(maps)) if (m.actors && m.actors[who] && m.actors[who].sprite) return m.actors[who].sprite;
+    for (const r of Object.values(rooms)) if (r.looks && r.looks[who] && r.looks[who].sprite) return r.looks[who].sprite;
+    return null;
+  };
+  const OWN = {};   // who has a bust of their own, before this file (looked up once per person)
+  const own = who => who in OWN ? OWN[who] : (OWN[who] = art.painted(who));
+  const key = who => {
+    if (DRAWN[who]) return who;
+    if (own(who)) return null;
+    const s = spriteOf(who);
+    return s && (DRAWN[s] || art.painted(s)) ? s : null;
+  };
   SD.art.painted = who => !!key(who) || art.painted(who);
   SD.art.mood = (who, text, e) => key(who) ? 'neutral' : art.mood(who, text, e);
   SD.art.portrait = function (who, size, mood) {
     const k = key(who);
     if (!k) return art.portrait(who, size, mood);
+    if (!DRAWN[k]) return art.portrait(k, size, 'neutral');
     return `<span class="bust b-${k}" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><svg viewBox="0 0 120 140" width="100%" height="100%" aria-hidden="true" style="display:block;overflow:visible">${DRAWN[k]}</svg></span>`;
   };
   SD.campArenaPortraits = { ids: Object.keys(DRAWN) };
