@@ -16,10 +16,10 @@
   const S = SD.state, U = SD.ui;
   const SPRITE = 'nari-dance';
 
-  // Gifts start at 50 shards and grow by 50 at every sighting, to 300 at the Exchange: as much as clearing chapter 10,
+  // Gifts start at 75 shards and grow by 75 at every sighting, to 450 at the Exchange: more than clearing chapter 10,
   // while a daily quest pays 100 and a side quest about 300. The Exchange always pays the top of the ramp: by then
   // she is at 100 percent.
-  N.FIRST = 50; N.STEP = 50;
+  N.FIRST = 75; N.STEP = 75;
   // Every area, in the order they open: the Isles' first waves after chapters 3 and 4, then the waystation after 5,
   // the PR Club after 7, the camp after 8 and the Exchange last.
   N.AREAS = ['isles1', 'isles2', 'waystation', 'club', 'camp', 'exchange'];
