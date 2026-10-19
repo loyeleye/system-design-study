@@ -31,7 +31,7 @@
       page: 'Every note on our board says when it was written now. Hari renews his every hour. It always says "All is well." — Bitna'
     }
   });
-  SD.huh.discovery = 'In game terms: the troupe\'s noticeboard said where everyone was, but nobody had renewed a note since the Cloud went down, so it sent you to the bank for a man standing outside the hotel. Now every note says when it was written, and a note older than one block counts as unknown until its owner writes it again.';
+  SD.huh.discovery = 'In game terms: the troupe\'s noticeboard said where everyone was, but nobody had renewed a note since the Cloud went down, so it sent you to the bank for a man waiting in the diner across from the hotel. Now every note says when it was written, and a note older than one block counts as unknown until its owner writes it again.';
   SD.glossary.push(
     ['Service discovery', /\bservice (discovery|registr(y|ies))\b/i, 'How services find each other\'s live instances: a registry lists them, kept fresh by heartbeats with a TTL.'],
     ['Shadow traffic', /\bshadow (traffic|testing|version)\b|\bmirror(ed|ing)? (traffic|requests)\b/i, 'Copies of real requests sent to a new version, whose answers are compared and thrown away, never shown to users.'],
@@ -47,7 +47,7 @@
   );
 
   // ---------- Lost and Found: the games ----------
-  // Neel, outside the hotel: nine presses of BOOK, nine rooms.
+  // Neel, in the diner across from the hotel: nine presses of BOOK, nine rooms.
   const BOOK = {
     title: 'NINE ROOMS · THE EXCHANGE HOTEL', who: 'neel', win: 'ONE ROOM, ONE BILL!',
     intro: 'Per procedure, let us establish what the booking page should have done. I have nine bills to inform the answer.',
@@ -159,9 +159,9 @@
           ['nari', 'And there\'s no note for Eun-ho at all. There never is. Eun-ho is... wherever Eun-ho is.'],
           ['narr', 'Behind the practice curtain, something holds very still.'],
           ['nari', 'So! A film where the heroine goes out in the rain and finds her whole family, one by one. I\'d watch it. I\'d STAR in it. I\'m my own favourite!', 'happy'],
-          ['nari', 'Start with Neel. With the bank shut, he\'ll be somewhere being polite about it. Try the hotel on the avenue: he books the troupe\'s guests in.']] }] },
-      { at: 'neel', hint: 'Find Neel outside the hotel on the Exchange\'s avenue. The board says the bank. The board is wrong.', do: [
-        { say: [['narr', 'Outside the Exchange\'s hotel, a starched young man in a blue sash stands very straight beside a manager holding a very long bill.'],
+          ['nari', 'Start with Neel. With the bank shut, he\'ll be somewhere being polite about it. Try the avenue by the hotel: he books the troupe\'s guests in, and he always waits somewhere dry.']] }] },
+      { at: 'neel', hint: 'Find Neel in the Coffee Diner, across from the hotel on the Exchange\'s avenue. The board says the bank. The board is wrong.', do: [
+        { say: [['narr', 'In the Coffee Diner, across from the Exchange\'s hotel, a starched young man in a blue sash stands very straight by a booth. The hotel manager has followed him over the street with a very long bill.'],
           ['neel', 'Ah. A visitor. Per my last message, which nobody received, I am currently detained.'],
           ['neel', 'When the Cloud went slow, I booked rooms for the troupe\'s guests. I pressed BOOK. Nothing happened. So I pressed it again, as per procedure.'],
           ['neel', 'Nine times. I now hold nine rooms and owe for all nine, and the manager will not let me leave until they are settled. Per my last nine messages.'],
