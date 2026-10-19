@@ -50,7 +50,7 @@ Sunny's barn wall is the one thing on the North Road that remembers. Heroes resp
 - **Canon.** He's a pit fighter and head judge, "loudly". He judges plans "personally, with my fists" and shouts "SORTED SET!" before every round.
 - **Backstory.** His temper got him thrown out of the old pits. Thea was right to do it, and he will never say so to her. Every morning he slips into the back row of Dawn Flow to practise not shouting, and he is on the sign-up board as "R." At night he does push-ups in the empty ring.
 - **Voice.** He talks in capitals, means every word, and keeps whispering at the wrong volume.
-- **Shop.** Once The Qualifier Gauntlet is done he runs Rico's Corner, a card shop of strikes (`game/js/club-shops.js`), and calls his Strength "Edge".
+- **Shop.** Once The Qualifier Gauntlet is done he runs Rico's Corner, a card shop of strikes (`game/js/club-shops.js`), and calls his Strength "Throughput".
 - **Relationships.** Thea (*Disqualified*), Delphine (*Six A.M.*).
 
 ### Delphine

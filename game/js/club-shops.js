@@ -1,18 +1,19 @@
 // The PR Club's two card shops, both open once The Qualifier Gauntlet (js/club-quests.js) is cleared:
 //   Rico's Corner: strikes. Cards that mitigate hard, Ironclad's Strike family in spirit (Twin Strike, Pommel
-//     Strike, Perfected Strike, Heavy Blade, Uppercut), and Edge, his Strength: every card that mitigates does that
+//     Strike, Perfected Strike, Heavy Blade, Uppercut), and Throughput, his Strength: every card that mitigates does that
 //     much more for the rest of the fight (Inflame, Limit Break, Demon Form).
 //   Thea's Guard Rack: special absorbs. Thorns (an incident that hits you takes some back, absorbed or not), guards
-//     that keep your absorb for a set number of turns (Barricade, but for a while), and Reflect (some of the load you
-//     absorb goes back at the incident that sent it, as mitigation).
-// Every card here pays for itself in an ordinary deck: Edge cards give some straight away, Knockout and Pound for
-// Pound are good with none, and every Thea card absorbs or spikes on its own.
+//     that keep your absorb for a set number of turns (Barricade, but for a while), Warm Pool, which absorbs again at
+//     the start of the next 2 turns (Toric Toughness), and Reflect (some of the load you absorb goes back at the
+//     incident that sent it, as mitigation).
+// Every card here pays for itself in an ordinary deck: Throughput cards give some straight away, Hot Path and
+// Scatter-Gather are good with none, and every Thea card absorbs or spikes on its own.
 //
 // Bought with Memory Shards, like Toro's (js/card-exchange.js): a bought card unlocks for good as a card reward
 // (S.cardPool() in js/state.js), offered as often as any other card, and never goes straight into the deck. Prices
 // (450-1,500) sit between Aigerim's Rare Shelf (500-750) and Toro's heavier cards (600-1,800), and SD.cardPrice
 // knows them, so the black-market dealer can price a pin. The new effects (`edge`, `edgeX`, `edgeDouble`,
-// `edgeEach`, `perMit`, `thorns`, `tthorns`, `hold`, `reflect`) are in js/run.js.
+// `edgeEach`, `perMit`, `thorns`, `tthorns`, `hold`, `reflect`, `absAgain`) are in js/run.js.
 // Talking to Rico or Thea opens their shop once their quest is done, unless a quest step or a club scene
 // (js/club-life.js) is due with them first. Loads after js/club-life.js and js/ch10-folk.js, so it wraps SD.club.talk last.
 (function () {
@@ -21,27 +22,28 @@
 
   Object.assign(SD.cards, {
     // Rico's Corner: the undercard
-    rjab: { name: 'One-Two', cost: 1, kind: 'action', mit: 5, replay: 1, tags: ['ops'], text: 'Mitigate {mit}. Replay 1. Jab. Jab. Rico counts them out loud. Both count.', art: 'fist', rarity: 'uncommon', concept: 'judge' },
+    rjab: { name: 'Hedged Request', cost: 1, kind: 'action', mit: 5, replay: 1, tags: ['ops'], text: 'Mitigate {mit}. Replay 1. Send it twice and take whichever lands first. Both count.', art: 'split-arrows', rarity: 'uncommon', concept: 'judge' },
     rfail: { name: 'Fail Fast', cost: 1, kind: 'action', mit: 9, draw: 1, tags: ['ops'], text: 'Mitigate {mit}. Draw 1. Two seconds, then STOP. No plan gets an hour.', art: 'stopwatch', rarity: 'uncommon', concept: 'judge' },
-    rcombo: { name: 'Three-Punch Combo', cost: 1, kind: 'action', mit: 3, replay: 2, tags: ['ops'], text: 'Mitigate {mit}. Replay 2. Small, fast, and three of them. Edge counts on every one.', art: 'punch-blast', rarity: 'uncommon', concept: 'judge' },
-    rsorted: { name: 'SORTED SET!', cost: 1, kind: 'action', edge: 2, draw: 1, exhaust: true, tags: ['ops'], text: 'Gain 2 Edge: every card that mitigates does 2 more for the rest of this fight. Draw 1. Exhaust. He shouts it before every round. The crowd shouts it back.', art: 'podium-winner', rarity: 'rare', concept: 'judge' },
-    rropes: { name: 'On the Ropes', cost: 2, kind: 'action', mit: 12, vuln: 2, tags: ['ops'], text: 'Mitigate {mit}. For this turn and the next, all your mitigation is 50% stronger. It\'s cornered, and it knows it.', art: 'crossed-swords', rarity: 'rare', concept: 'judge' },
-    rpound: { name: 'Pound for Pound', cost: 2, kind: 'action', mit: 6, perMit: 1, tags: ['ops'], text: 'Mitigate {mit}, plus 1 for every card in your deck that mitigates. The whole gym is in this one.', art: 'scales', rarity: 'rare', concept: 'judge' },
-    rko: { name: 'Knockout', cost: 2, kind: 'action', mit: 14, edgeX: 3, tags: ['ops'], text: 'Mitigate {mit}. Edge counts three times on this card. Rico scores it 10-0. This time he\'s right.', art: 'fist', rarity: 'rare', concept: 'judge' },
+    rcombo: { name: 'Fan-Out', cost: 1, kind: 'action', mit: 3, replay: 2, tags: ['ops'], text: 'Mitigate {mit}. Replay 2. One call, three workers, three answers. Throughput counts on every one.', art: 'family-tree', rarity: 'uncommon', concept: 'judge' },
+    rsorted: { name: 'SORTED SET!', cost: 1, kind: 'action', edge: 2, draw: 1, exhaust: true, tags: ['ops'], text: 'Gain 2 Throughput: every card that mitigates does 2 more for the rest of this fight. Draw 1. Exhaust. Rico shouts it before every round. The crowd shouts it back.', art: 'podium-winner', rarity: 'rare', concept: 'judge' },
+    rropes: { name: 'Fault Injection', cost: 2, kind: 'action', mit: 12, vuln: 2, tags: ['ops'], text: 'Mitigate {mit}. For this turn and the next, all your mitigation is 50% stronger. Break it on purpose, and now you know where it bends.', art: 'lightning-helix', rarity: 'rare', concept: 'judge' },
+    rpound: { name: 'Scatter-Gather', cost: 2, kind: 'action', mit: 6, perMit: 1, tags: ['ops'], text: 'Mitigate {mit}, plus 1 for every card in your deck that mitigates. Ask every node, add up every answer.', art: 'cubes', rarity: 'rare', concept: 'judge' },
+    rko: { name: 'Hot Path', cost: 2, kind: 'action', mit: 14, edgeX: 3, tags: ['ops'], text: 'Mitigate {mit}. Throughput counts three times on this card. Every gain lands where it matters most.', art: 'lightning-frequency', rarity: 'rare', concept: 'judge' },
     // Rico's Corner: the main event
-    rnoholds: { name: 'No Holds Barred', cost: 1, kind: 'action', edge: 3, edgeDouble: true, exhaust: true, tags: ['ops'], text: 'Gain 3 Edge, then double your Edge. Exhaust. Thea is not watching. Thea is always watching.', art: 'fencer', rarity: 'ancient', concept: 'judge' },
-    rcamp: { name: 'Fight Camp', cost: 3, kind: 'action', edgeEach: 2, exhaust: true, tags: ['ops'], text: 'At the start of each of your turns, gain 2 Edge. Exhaust. Push-ups in the empty ring, every night, every loop.', art: 'gavel', rarity: 'ancient', concept: 'judge' },
+    rnoholds: { name: 'Burst Capacity', cost: 1, kind: 'action', edge: 3, edgeDouble: true, exhaust: true, tags: ['ops'], text: 'Gain 3 Throughput, then double your Throughput. Exhaust. Every spare server, all at once.', art: 'lightning-storm', rarity: 'ancient', concept: 'judge' },
+    rcamp: { name: 'Continuous Profiling', cost: 3, kind: 'action', edgeEach: 2, exhaust: true, tags: ['ops'], text: 'At the start of each of your turns, gain 2 Throughput. Exhaust. Find the slowest thing, fix it, and do it again tomorrow.', art: 'histogram', rarity: 'ancient', concept: 'judge' },
 
     // Thea's Guard Rack: the qualifier
-    tshield: { name: 'Shield Up', cost: 1, kind: 'action', abs: { any: 8 }, tthorns: 3, tags: ['ops'], text: 'Absorb {any} load of any kind. This turn, every incident that hits you takes 3. Shield up, eyes on your opponent.', art: 'checked-shield', rarity: 'uncommon', concept: 'judge' },
-    tropes: { name: 'Rope-a-Dope', cost: 1, kind: 'action', abs: { any: 6 }, draw: 1, hold: 1, tags: ['ops'], text: 'Absorb {any} load of any kind. Draw 1. Your absorb is kept through your next turn. Lean back and let it tire itself out.', art: 'wooden-fence', rarity: 'uncommon', concept: 'judge' },
+    tshield: { name: 'Firewall Rules', cost: 1, kind: 'action', abs: { any: 8 }, tthorns: 3, tags: ['ops'], text: 'Absorb {any} load of any kind. This turn, every incident that hits you takes 3. Shield up, eyes on the traffic.', art: 'checked-shield', rarity: 'uncommon', concept: 'judge' },
+    tropes: { name: 'Request Buffer', cost: 1, kind: 'action', abs: { any: 6 }, draw: 1, hold: 1, tags: ['ops'], text: 'Absorb {any} load of any kind. Draw 1. Your absorb is kept through your next turn. Hold the burst now, drain it later.', art: 'full-wood-bucket', rarity: 'uncommon', concept: 'judge' },
     ttarpit: { name: 'Tarpit', cost: 1, kind: 'action', thorns: 3, exhaust: true, tags: ['ops'], text: 'For the rest of this fight, every incident that hits you takes 3. Exhaust. Every bad request gets the slowest, stickiest answer in the realm.', art: 'snail', rarity: 'rare', concept: 'ratelimit' },
-    tpit: { name: 'Sealed Pit', cost: 2, kind: 'action', abs: { any: 13 }, hold: 2, tags: ['ops'], text: 'Absorb {any} load of any kind. Your absorb is kept for your next 2 turns. Nothing gets in, nothing gets out.', art: 'cage', rarity: 'rare', concept: 'judge' },
-    treturn: { name: 'Return to Sender', cost: 2, kind: 'action', abs: { any: 10 }, reflect: 0.5, tags: ['ops'], text: 'Absorb {any} load of any kind. This turn, half of all the load you absorb is mitigated back at the incident that sent it.', art: 'return-arrow', rarity: 'rare', concept: 'backpressure' },
+    tpit: { name: 'Bulkhead', cost: 2, kind: 'action', abs: { any: 13 }, hold: 2, tags: ['ops'], text: 'Absorb {any} load of any kind. Your absorb is kept for your next 2 turns. A sealed compartment: what floods one stays in one.', art: 'cage', rarity: 'rare', concept: 'judge' },
+    treturn: { name: 'Push Back', cost: 2, kind: 'action', abs: { any: 10 }, reflect: 0.5, tags: ['ops'], text: 'Absorb {any} load of any kind. This turn, half of all the load you absorb is mitigated back at the incident that sent it. A 429 with a return address.', art: 'return-arrow', rarity: 'rare', concept: 'backpressure' },
+    twarm: { name: 'Warm Pool', cost: 2, kind: 'action', abs: { any: 7 }, absAgain: 2, tags: ['ops'], text: 'Absorb {any} load of any kind, now and again at the start of your next 2 turns. Spare servers, already running, ready for the next wave.', art: 'server-rack', rarity: 'rare', concept: 'judge' },
     // Thea's Guard Rack: the bracket
-    tgauntlet: { name: 'The Gauntlet', cost: 3, kind: 'action', abs: { any: 18 }, thorns: 4, exhaust: true, tags: ['ops'], text: 'Absorb {any} load of any kind. For the rest of this fight, every incident that hits you takes 4. Exhaust. Three hundred hopefuls went in. You came out.', art: 'medieval-gate', rarity: 'ancient', concept: 'judge' },
-    tmirror: { name: 'Mirror Match', cost: 2, kind: 'action', abs: { any: 10 }, reflect: 1, tags: ['ops'], text: 'Absorb {any} load of any kind. This turn, all the load you absorb is mitigated back at the incident that sent it.', art: 'visored-helm', rarity: 'ancient', concept: 'judge' },
-    tbracket: { name: 'Locked Bracket', cost: 3, kind: 'action', abs: { any: 15 }, hold: 99, exhaust: true, tags: ['ops'], text: 'Absorb {any} load of any kind. For the rest of this fight, your absorb is never cleared. Exhaust. The bracket is set. Nobody rubs anything out.', art: 'stone-tower', rarity: 'ancient', concept: 'judge' }
+    tgauntlet: { name: 'Zero Trust', cost: 3, kind: 'action', abs: { any: 18 }, thorns: 4, exhaust: true, tags: ['ops'], text: 'Absorb {any} load of any kind. For the rest of this fight, every incident that hits you takes 4. Exhaust. Every request is checked, every time, at every door.', art: 'medieval-gate', rarity: 'ancient', concept: 'judge' },
+    tmirror: { name: 'Echo Reply', cost: 2, kind: 'action', abs: { any: 10 }, reflect: 1, tags: ['ops'], text: 'Absorb {any} load of any kind. This turn, all the load you absorb is mitigated back at the incident that sent it. Every packet it sends comes straight home.', art: 'wave-crest', rarity: 'ancient', concept: 'judge' },
+    tbracket: { name: 'Write-Once Storage', cost: 3, kind: 'action', abs: { any: 15 }, hold: 99, exhaust: true, tags: ['ops'], text: 'Absorb {any} load of any kind. For the rest of this fight, your absorb is never cleared. Exhaust. Written once, never rubbed out. Sunny approves.', art: 'stone-tower', rarity: 'ancient', concept: 'judge' }
   });
 
   // Priced by power, as Toro's are: one-turn cards cheapest, cards that pay every turn for the rest of the fight dearest.
@@ -52,7 +54,7 @@
       { id: 'rnoholds', cost: 1300, shelf: 1 }, { id: 'rcamp', cost: 1500, shelf: 1 }
     ],
     thea: [
-      { id: 'tshield', cost: 450, shelf: 0 }, { id: 'tropes', cost: 500, shelf: 0 }, { id: 'ttarpit', cost: 600, shelf: 0 }, { id: 'tpit', cost: 650, shelf: 0 },
+      { id: 'tshield', cost: 450, shelf: 0 }, { id: 'tropes', cost: 500, shelf: 0 }, { id: 'ttarpit', cost: 600, shelf: 0 }, { id: 'tpit', cost: 650, shelf: 0 }, { id: 'twarm', cost: 700, shelf: 0 },
       { id: 'treturn', cost: 750, shelf: 0 },
       { id: 'tgauntlet', cost: 1300, shelf: 1 }, { id: 'tmirror', cost: 1400, shelf: 1 }, { id: 'tbracket', cost: 1500, shelf: 1 }
     ]
@@ -65,12 +67,12 @@
   const SHOPS = {
     rico: {
       title: "RICO'S CORNER · STRIKES", quest: 'gauntlet', shelves: ['The undercard', 'The main event · Ancient'],
-      note: 'Edge: every card that mitigates does that much more for the rest of the fight. Replay: the card goes again, free.',
+      note: 'Throughput: every card that mitigates does that much more for the rest of the fight. Replay: the card goes again, free.',
       intro: [
         { s: 'rico', t: 'YOU! You got through the Gauntlet. Every plan in its own pit, and you never once yelled at a dummy. I respect that. I don\'t understand it, but I respect it.' },
         { s: 'rico', t: 'I teach strikes now. On cards. Thea says it\'s "a safer outlet". Buy one, and it can turn up after any of your fights, every run. FOREVER. Like a good record.' }
       ],
-      pitch: ['Strikes! Hit it once, hit it twice, hit it SORTED SET!', 'Every card here hits. Some hit harder the more you hit. That\'s called Edge. I call it Tuesday.', 'Thea sells shields. Shields are fine. Shields don\'t knock anything OUT.'],
+      pitch: ['Strikes! Hit it once, hit it twice, hit it SORTED SET!', 'Every card here hits. Some hit harder the more you hit. That\'s called Throughput. I call it Tuesday.', 'Thea sells shields. Shields are fine. Shields don\'t knock anything OUT.'],
       buy: ['SOLD! I\'m writing it on the wall! ...Sunny says I can\'t write on the wall.', 'That one hits like me on a good day. Inside a sealed pit. For fairness.', 'GOOD CHOICE! I\'m whispering that. GOOD CHOICE.']
     },
     thea: {
