@@ -10,10 +10,11 @@
 //   'route'              walk the actor's own route along the road (js/northroad.js)
 //   null or missing      stay at their usual spot
 // The Isles: SD.folkFar.isles[islander id][block] is one of
-//   [x, y]               walk to that tile, on the islander's own island
-//   'room:key'           go inside that building (js/interiors.js has its room) and be found in there
+//   [x, y, face]         walk to that tile, on the islander's own island, and face that way (what they're doing there)
+//   'room:key'           go inside that building (js/interiors.js has its room, and where they stand in it) and be
+//                        found in there
 //   'home'               gone home for the day, off the map
-//   null or missing      stay at their usual spot
+//   null or missing      stay at their usual spot, facing the way it says (js/isles/isles-map.js PEOPLE)
 // A room that isn't built yet, or a building on an island that isn't open, falls back to their usual spot.
 (function () {
   const F = SD.folkFar = {};
@@ -86,22 +87,22 @@
 
   F.isles = {
     // Ferry Landing
-    leilani: { afternoon: [10, 23], night: 'room:office' },
+    leilani: { afternoon: [10, 23, 'east'], night: 'room:office' },   // watches for the ferry from the harbour square
     kwame: { evening: 'room:office', night: 'home' },   // files the ferry log, then sleeps aboard
-    saule: { morning: 'room:school', afternoon: [9, 27], night: 'home' },
-    kids: { morning: 'room:school', evening: [10, 24], night: 'home' },
+    saule: { morning: 'room:school', afternoon: [9, 27, 'east'], night: 'home' },   // milk tea, an eye on the class at break
+    kids: { morning: 'room:school', evening: [10, 24, 'east'], night: 'home' },   // watch the ferry come in
     // The Ledger
     farida: { afternoon: 'room:bank', night: 'room:bank' },   // counts the vault, and counts it again by lamplight
-    mutex: { afternoon: [27, 7], night: 'home' },
-    // The Mill
-    tomas: { evening: [23, 33], night: 'room:mill' },
-    bloom: { evening: [24, 33], night: 'room:mill' },
-    // The Tower
-    lucia: { morning: 'room:tower', evening: [35, 21], night: 'room:tower' },
-    // The Fish Market
-    ruth: { afternoon: [50, 6], night: 'home' },
-    // The Map & Tool Shop
-    minh: { morning: 'room:shop', evening: [48, 26], night: 'room:shop' },
+    mutex: { afternoon: [27, 7, 'south'], night: 'home' },   // keeps watch over his harbour from the top of the path
+    // The Mill: the sunset from the shore
+    tomas: { evening: [23, 33, 'west'], night: 'room:mill' },
+    bloom: { evening: [24, 33, 'west'], night: 'room:mill' },
+    // The Tower: down to the pier for the evening ferry, which might bring a map from Minh
+    lucia: { morning: 'room:tower', evening: [35, 21, 'south'], night: 'room:tower' },
+    // The Fish Market: the far end of the market floor, looking back along the stalls
+    ruth: { afternoon: [50, 6, 'west'], night: 'home' },
+    // The Map & Tool Shop: by the pier, looking across the water to the Tower
+    minh: { morning: 'room:shop', evening: [48, 26, 'west'], night: 'room:shop' },
     // The Twins: each mayor works in their own hall, and comes out to argue across the water
     hajin: { afternoon: 'room:hallW', night: 'room:hallW' },
     haeun: { afternoon: 'room:hallE', night: 'room:hallE' },
@@ -110,6 +111,6 @@
     nok: { evening: 'room:club', night: 'home' },
     kai: { evening: 'room:club', night: 'home' },
     arjun: { evening: 'room:club', night: 'home' },
-    meron: { morning: [11, 40], evening: 'room:club', night: 'home' }   // gathers herbs on the mainland path
+    meron: { morning: [11, 40, 'west'], evening: 'room:club', night: 'home' }   // gathers herbs on the mainland path
   };
 })();

@@ -1,15 +1,19 @@
 #!/usr/bin/env node
-// Checks that islanders on the Eventual Isles turn to face you when you talk to them, out on the Isles and inside
-// their buildings (js/isles/isles-map.js, js/interiors.js), and keep facing you for the whole conversation, and that
-// out on the Isles they look at you when you come within three tiles.
+// Checks which way islanders on the Eventual Isles face: whatever they're doing at their spot when you're not about
+// (js/isles/isles-map.js PEOPLE, js/folk-far.js, and their spots in their rooms in js/interiors.js), at you when you
+// talk to them, out on the Isles and inside their buildings, for the whole conversation, and at you when you come
+// within three tiles.
 //
 //   node tools/isles_face_check.js
 //
 // Serves the game and opens the Isles by the Tide Pool Game Club in a debug save (chapter 5, morning). For a few
 // club members it stands you beside them on a side they aren't facing, talks to them, and checks they face you while
 // the conversation is open; stands you two or three tiles from a few islanders and checks they look at you, and back
-// south once you've gone; then talks to someone in the Isles School and checks they face you and turn back after.
-// Needs Playwright (npm i -g playwright).
+// to what they were doing once you've gone; then talks to someone in the Isles School and checks they face you and
+// turn back after. Then, standing well away from everyone each morning, afternoon and evening, it checks everyone
+// out on the Isles faces their spot's way (a scheduled spot's own, from js/folk-far.js) and that they don't all face
+// the same way; and in a few rooms, at different times of day, that each resident stands at their own spot facing
+// what they're doing there, and a storm guest doesn't take anyone's spot. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..');
@@ -91,7 +95,8 @@ const server = http.createServer((req, res) => {
   }
   if (tried < 3) bad(`only ${tried} islanders could be checked out on the Isles`);
 
-  // Coming near: islanders at their spots look at you from up to three tiles away, and back south when you leave.
+  // Coming near: islanders at their spots look at you from up to three tiles away, and back to what they were doing
+  // when you leave.
   let near = 0;
   for (const id of ['kai', 'nok', 'meron', 'arjun', 'ploy', 'saule', 'leilani', 'kwame']) {
     const r = await page.evaluate(id => {
@@ -99,7 +104,8 @@ const server = http.createServer((req, res) => {
       if (!p || p.moving || p.goal) return null;
       for (const [dx, dy, face] of [[3, 0, 'east'], [-3, 0, 'west'], [0, -3, 'north'], [2, -1, 'east'], [-2, -1, 'west'], [0, -2, 'north']]) {
         const x = p.x + dx, y = p.y + dy;
-        if (I.walkable(x, y) && !folk.some(q => q.x === x && q.y === y)) { I.placeAt(x, y); return { face, x, y, at: [p.x, p.y] }; }
+        // From a side they aren't already facing, so looking at you shows.
+        if (face !== p.rest && I.walkable(x, y) && !folk.some(q => q.x === x && q.y === y)) { I.placeAt(x, y); return { face, x, y, at: [p.x, p.y], rest: p.rest }; }
       }
       return null;
     }, id);
@@ -107,7 +113,7 @@ const server = http.createServer((req, res) => {
     await page.waitForTimeout(400);
     const f = await page.evaluate(id => SD.isles.folkNow().find(p => p.id === id).face, id);
     if (f !== r.face) { bad(`${id} faced ${f} with you ${r.x - r.at[0]},${r.y - r.at[1]} tiles away (expected ${r.face})`); continue; }
-    // Walk off out of range: they look back out to the south.
+    // Walk off out of range: they look back to what they were doing.
     const gone = await page.evaluate(([x, y]) => {
       const I = SD.isles;
       for (const [dx, dy] of [[0, 6], [6, 0], [-6, 0], [0, -6], [5, 2], [-5, 2]]) if (I.walkable(x + dx, y + dy)) { I.placeAt(x + dx, y + dy); return true; }
@@ -115,7 +121,7 @@ const server = http.createServer((req, res) => {
     }, r.at);
     await page.waitForTimeout(400);
     const back = await page.evaluate(id => SD.isles.folkNow().find(p => p.id === id).face, id);
-    if (gone && back !== 'south') bad(`${id} still faced ${back} after you walked away`);
+    if (gone && back !== r.rest) bad(`${id} faced ${back} after you walked away, not back ${r.rest}`);
     else { near++; console.log(`${id}: looked ${f} at you from ${Math.abs(r.x - r.at[0]) + Math.abs(r.y - r.at[1])} tiles, then back ${back}`); }
     if (near >= 3) break;
   }
@@ -149,6 +155,64 @@ const server = http.createServer((req, res) => {
     const after = await page.evaluate(id => window.LAST_SC.actors[id] && window.LAST_SC.actors[id].face, room.id);
     if (after !== room.away) bad(`in the school, ${room.id} faced ${after} after the talk, not back to ${room.away}`);
     console.log(`school: ${room.id} turned ${during} to you, then back to ${after}`);
+  }
+  await page.evaluate(() => window.LAST_SC && LAST_SC.onDoor && LAST_SC.onDoor('out'));
+  await page.waitForTimeout(300);
+
+  // At their spots through the day, with you well away from everyone: each faces their spot's way (a scheduled
+  // spot's own), and they don't all face the same way.
+  for (const block of ['morning', 'afternoon', 'evening']) {
+    await page.evaluate(block => { SD.clock.set(block, 'debug', true); SD.isles.close(); SD.isles.st().pos = [5, 12]; SD.isles.open(); }, block);
+    await page.waitForTimeout(800);
+    const r = await page.evaluate(block => {
+      const I = SD.isles, table = SD.folkFar.isles, P = I.where(), out = { faces: {}, bad: [] };
+      I.folkNow().filter(p => !p.hide && I.looks[p.id] && p.id !== 'keeper' && !p.moving && !p.goal).forEach(p => {
+        if (Math.abs(p.x - P.x) + Math.abs(p.y - P.y) <= 3) return;
+        const e = table[p.id] && table[p.id][block];
+        if (p.face !== p.rest) out.bad.push(`${p.id} faced ${p.face} at ${p.x},${p.y}, not ${p.rest}`);
+        if (Array.isArray(e) && e[0] === p.x && e[1] === p.y && e[2] !== p.rest) out.bad.push(`${p.id} faced ${p.rest} at their ${block} spot, which says ${e[2]}`);
+        out.faces[p.id] = p.rest;
+      });
+      return out;
+    }, block);
+    r.bad.forEach(m => bad(`${block}: ${m}`));
+    const faces = Object.values(r.faces), south = faces.filter(f => f === 'south').length;
+    if (faces.length < 8) bad(`${block}: only ${faces.length} islanders out to check`);
+    if (new Set(faces).size < 3 || south * 2 >= faces.length) bad(`${block}: islanders face ${JSON.stringify(r.faces)}, not varied enough`);
+    console.log(`${block}: ` + Object.entries(r.faces).map(([id, f]) => `${id} ${f}`).join(', '));
+  }
+
+  // In their rooms: each resident at their own spot, facing what they're doing there at that time of day, and a
+  // storm guest (the Admiral in the bank) on the open floor, not on anyone's spot.
+  const ROOMS = [
+    ['school', 'morning', ['kids', 'saule'], { saule: [6, 4, 'south'], kid1: [4, 6, 'east'], kid2: [7, 7, 'north'], kid3: [8, 6, 'west'] }],
+    ['bank', 'afternoon', ['farida'], { farida: [5, 4, 'north'] }],
+    ['bank', 'night', ['farida', 'mutex'], { farida: [9, 4, 'east'] }],
+    ['club', 'morning', ['ploy'], { ploy: [8, 4, 'north'] }],
+    ['club', 'evening', ['ploy', 'nok', 'kai', 'arjun', 'meron'], { ploy: [3, 5, 'east'], nok: [5, 4, 'west'], kai: [6, 5, 'west'], meron: [4, 6, 'north'], arjun: [6, 4, 'south'] }]
+  ];
+  for (const [key, block, ids, want] of ROOMS) {
+    const got = await page.evaluate(async ([key, block, ids]) => {
+      const I = SD.isles, real = I.inside;
+      SD.clock.set(block, 'debug', true);
+      I.inside = () => ids.slice();
+      SD.interiors.open(key, 'isles-canvas');
+      I.inside = real;
+      await new Promise(r => setTimeout(r, 400));
+      const out = {};
+      Object.entries(LAST_SC.actors).forEach(([id, a]) => { if (ids.includes(id) || /^kid\d$/.test(id)) out[id] = [a.x, a.y, a.face]; });
+      await LAST_SC.onDoor('out');
+      return out;
+    }, [key, block, ids]);
+    for (const [id, at] of Object.entries(want)) {
+      if (!got[id] || got[id].join() !== at.join()) bad(`${key} (${block}): ${id} at ${got[id] ? got[id].join(',') : 'nowhere'}, not ${at.join(',')}`);
+    }
+    const guests = ids.filter(id => !want[id] && id !== 'kids');
+    guests.forEach(id => {
+      if (!got[id]) bad(`${key} (${block}): ${id} isn't in the room`);
+      else if (Object.values(want).some(w => w[0] === got[id][0] && w[1] === got[id][1])) bad(`${key} (${block}): ${id} is standing on someone's spot`);
+    });
+    console.log(`${key} (${block}): ` + Object.entries(got).map(([id, a]) => `${id} ${a[2]} at ${a[0]},${a[1]}`).join(', '));
   }
 
   if (errors.length) bad('page errors: ' + errors.join(' | '));

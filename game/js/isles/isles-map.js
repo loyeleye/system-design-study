@@ -60,16 +60,25 @@
   const ROOM = { office: 'office', school: 'school', bank: 'bank', mill: 'mill', tower: 'tower', shop: 'carto', hallW: 'hallW', hallE: 'hallE', light: 'light', club: 'club', cave: 'cave' };
   const roomOf = l => l && ROOM[l.id] && SD.interiors && SD.interiors.room && SD.interiors.room(ROOM[l.id]) ? ROOM[l.id] : null;
   const doorOf = l => l.door || [l.x + Math.floor(l.w / 2), l.y + l.h - 1];
-  // Islanders stand by their landmarks. The keeper is a note pinned to the lighthouse door.
+  // Islanders stand by their landmarks, facing whatever they're doing there (docs/cast-bible-road-isles.md); their
+  // other spots through the day are in js/folk-far.js. The keeper is a note pinned to the lighthouse door.
   const PEOPLE = [
-    { id: 'ploy', x: 16, y: 43 }, { id: 'kai', x: 19, y: 44 }, { id: 'nok', x: 21, y: 44 }, { id: 'arjun', x: 26, y: 45 }, { id: 'meron', x: 23, y: 42 },
-    { id: 'leilani', x: 10, y: 19 }, { id: 'kwame', x: 12, y: 22 }, { id: 'kids', x: 10, y: 28 }, { id: 'saule', x: 5, y: 30 },
-    { id: 'farida', x: 24, y: 8 }, { id: 'mutex', x: 26, y: 10 },
-    { id: 'tomas', x: 22, y: 31 }, { id: 'bloom', x: 25, y: 31 },
-    { id: 'lucia', x: 36, y: 19 }, { id: 'ruth', x: 48, y: 7 }, { id: 'minh', x: 47, y: 31 },
-    { id: 'hajin', x: 34, y: 4 }, { id: 'haeun', x: 40, y: 4 },
+    // The club yard: Ploy presides over the game table, Kai and Nok play across it, Meron referees, Arjun naps.
+    { id: 'ploy', x: 16, y: 43, face: 'east' }, { id: 'kai', x: 19, y: 44, face: 'east' }, { id: 'nok', x: 21, y: 44, face: 'west' },
+    { id: 'arjun', x: 26, y: 45, face: 'south' }, { id: 'meron', x: 23, y: 42, face: 'west' },
+    // Leilani at her board, Kwame on the dock looking back up the path for anyone still running, the class out at
+    // break asking Apai why, and Apai locking up the school.
+    { id: 'leilani', x: 10, y: 19, face: 'north' }, { id: 'kwame', x: 12, y: 22, face: 'west' }, { id: 'kids', x: 10, y: 28, face: 'west' }, { id: 'saule', x: 5, y: 30, face: 'north' },
+    // Farida counts the boats in the Admiral's harbour against his receipts; he waves them in one at a time.
+    { id: 'farida', x: 24, y: 8, face: 'east' }, { id: 'mutex', x: 26, y: 10, face: 'east' },
+    // Tomas stacks new planks at the mill door, and Bloom watches Tomas.
+    { id: 'tomas', x: 22, y: 31, face: 'north' }, { id: 'bloom', x: 25, y: 31, face: 'west' },
+    // Lúcia reads the day's letters to the gulls, Ruth counts the catch at her stall, Minh sketches the coast.
+    { id: 'lucia', x: 36, y: 19, face: 'east' }, { id: 'ruth', x: 48, y: 7, face: 'north' }, { id: 'minh', x: 47, y: 31, face: 'east' },
+    // The mayors argue across the water.
+    { id: 'hajin', x: 34, y: 4, face: 'east' }, { id: 'haeun', x: 40, y: 4, face: 'west' },
     { id: 'keeper', x: 58, y: 18, note: true },
-    { id: 'gary', x: 54, y: 9, sunday: true }
+    { id: 'gary', x: 54, y: 9, face: 'east', sunday: true }
   ];
   // Tide posts: one per island. Low tide means a quick review is waiting.
   const TIDE = { landing: [11, 25], ledger: [20, 9], mill: [26, 28], tower: [32, 20], fish: [52, 10], carto: [52, 28], twins: [36, 5], lighthouse: [59, 20] };
@@ -154,7 +163,7 @@
   // Islanders keep to their own island: at work, out and about, inside their building (its room in js/interiors.js),
   // or gone home for the night. Arriving on the Isles puts everyone straight in place; a block that changes while
   // you're here sends them walking. Anyone with a quest marker waits at their usual spot.
-  PEOPLE.forEach(p => { p.stand = [p.x, p.y]; p.px = p.x; p.py = p.y; p.path = []; });
+  PEOPLE.forEach(p => { p.stand = [p.x, p.y, p.face || 'south']; p.rest = p.face = p.stand[2]; p.px = p.x; p.py = p.y; p.path = []; });
   // A visitor from another file (js/nari.js): { id, x, y, here(), draw(ctx, x, y, ts, t), label, speak() }. Visitors
   // stay where they're put, only while here() says so, and their own speak() is their whole conversation.
   I.addPerson = p => { p.stand = [p.x, p.y]; p.px = p.x; p.py = p.y; p.path = []; p.fixed = true; PEOPLE.push(p); };
@@ -173,13 +182,13 @@
       if (p.hide) { p.hide = false; p.alpha = null; }
       if (e === 'home') { p.goal = null; p.hide = true; return; }
       if (l) { const d = doorOf(l); p.goal = { x: d[0], y: d[1] + 1, room: ROOM[l.id] }; }
-      else p.goal = Array.isArray(e) ? { x: e[0], y: e[1] } : { x: p.stand[0], y: p.stand[1] };
+      else p.goal = Array.isArray(e) ? { x: e[0], y: e[1], face: e[2] } : { x: p.stand[0], y: p.stand[1], face: p.stand[2] };
       if (snap) { p.x = p.px = p.goal.x; p.y = p.py = p.goal.y; arrive(p); }
     });
   }
   function arrive(p) {
-    // At their spot they turn back to face you.
-    const g = p.goal; p.goal = null; p.face = 'south';
+    // At their spot they face what they're there to do.
+    const g = p.goal; p.goal = null; p.face = p.rest = (g && g.face) || 'south';
     if (g && g.room) { p.room = g.room; p.hide = true; }
   }
   // A path for an islander over open ground and boardwalks, round everyone else.
@@ -202,7 +211,7 @@
   }
   let planT = 0;
   // Someone standing at their spot looks at you while you're within NEAR tiles (counting across and down), and back
-  // out to the south when you've gone.
+  // to what they were doing when you've gone.
   const NEAR = 3;
   const toward = p => { const dx = P.x - p.x, dy = P.y - p.y; return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north'); };
   function moveFolk(dt) {
@@ -210,7 +219,7 @@
     PEOPLE.forEach(p => {
       if (!p.goal && !p.path.length) {
         const d = Math.abs(P.x - p.x) + Math.abs(P.y - p.y);
-        if (!p.moving && !p.hide) p.face = d && d <= NEAR ? toward(p) : d ? 'south' : p.face;
+        if (!p.moving && !p.hide) p.face = d && d <= NEAR ? toward(p) : d ? p.rest || 'south' : p.face;
         return;
       }
       const sp = dt * 2.4;
@@ -231,7 +240,7 @@
   I.inside = key => PEOPLE.filter(p => p.hide && p.room === key).map(p => p.id);
   I.talkTo = w => talk(w);
   // For playtests: where every islander is, and what they're doing.
-  I.folkNow = () => PEOPLE.map(p => ({ id: p.id, x: p.x, y: p.y, px: p.px, py: p.py, face: p.face || 'south', moving: !!p.moving, hide: !!p.hide, room: p.room, plan: p.plan, goal: p.goal }));
+  I.folkNow = () => PEOPLE.map(p => ({ id: p.id, x: p.x, y: p.y, px: p.px, py: p.py, face: p.face || 'south', rest: p.rest || 'south', moving: !!p.moving, hide: !!p.hide, room: p.room, plan: p.plan, goal: p.goal }));
 
   // ---------- Screen ----------
   let cv, ctx, raf, dpr = 1, ts = 32, t0 = 0, active = false, built = false, busyTalk = false;
@@ -866,9 +875,10 @@
     const X = (p.px + 0.5) * ts, Y = (p.py + 0.95 - (p.moving ? Math.abs(Math.sin(t * 14)) * 0.08 : 0)) * ts, s = ts / 32, bob = Math.sin(t * 2.4 + p.x) * s;
     ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
     if (p.id === 'gary') {
-      // Gary, on his rock, with a rod that never catches anything.
-      const im = pic('c-gary'), c = ART().chars.gary;
-      if (c && ok(im)) ctx.drawImage(im, 0, 0, c.w, c.h, X - c.w * s / 2, Y - c.h * s, c.w * s, c.h * s);
+      // Gary, on his rock, facing the sea with a rod that never catches anything (it stays out over the water when
+      // he looks round at you).
+      const im = pic('c-gary'), c = ART().chars.gary, row = FACE[p.face] || 0;
+      if (c && ok(im)) ctx.drawImage(im, 0, row * c.h, c.w, c.h, X - c.w * s / 2, Y - c.h * s, c.w * s, c.h * s);
       ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X + 6 * s, Y - 20 * s); ctx.quadraticCurveTo(X + 30 * s, Y - 40 * s, X + 44 * s, Y - 10 * s + Math.sin(t) * 2); ctx.stroke();
       return;
     }
