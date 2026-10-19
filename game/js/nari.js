@@ -36,7 +36,7 @@
   // face behind the veil because going first scares her every time. A rollback is never the end to her: if it isn't
   // a happy ending, it isn't the end. Each place gets a line or two about what she found when she danced on it first.
   const AREA = {
-    isles1: [['happy', 'The ferry docks wobble! But they wobble the same way every time, five, six, seven, eight, so I\'m counting that as holding.']],
+    isles1: [['happy', 'The Game Club says a tie means everybody dances! So I danced the tie first, on the grass, five, six, seven, eight, and it held.']],
     isles2: [['smug', 'The Tower of Tongues speaks every format at once. I danced in all of them! I only tripped in the old one. The old one is very old.']],
     waystation: [['happy', 'A whole road, opened all at once! So brave. I danced it end to end first, a few steps at a time, and it held the whole way.'],
       ['neutral', 'The tunnel is slow, but slow isn\'t broken. I danced the whole thing at half speed. Five... six... seven... It took a while.']],
@@ -186,8 +186,9 @@
   });
 
   // ---------- The Eventual Isles ----------
-  // One spot per early wave, on that wave's newest island; the Isles only show her once the island is open.
-  const ISLES = { isles1: [11, 24, 'west'], isles2: [33, 19, 'south'] };
+  // One spot per early wave, on that wave's newest island; the Isles only show her once the island is open. On Ferry
+  // Landing she dances on the empty grass left of the Tide Pool Game Club.
+  const ISLES = { isles1: [11, 39, 'south'], isles2: [33, 19, 'south'] };
   const IS = SD.isles;
   if (IS && IS.addPerson) {
     const im = new Image();
