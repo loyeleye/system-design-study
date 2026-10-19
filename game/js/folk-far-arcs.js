@@ -182,23 +182,23 @@
       ]
     },
     {
-      // Nari's troupe, the Rollouts, in their house in the Exchange's old quarter and on the canal bridge (js/nari-home.js).
+      // Nari's troupe, the Rollouts, in their house in the Exchange's old quarter and at their show (js/nari-home.js).
       // The twins are a Bollywood lost-and-found pair (Judwaa, Seeta aur Geeta); Nari's own story is their side quest.
       id: 'fair', title: 'Separated at the Fair', who: ['neel', 'hari', 'bitna', 'eunho'], concept: 'exchange', far: 'road',
       scenes: [
-        { title: 'Same Spin', at: 'room:rollouts', block: 'any', who: ['neel', 'hari', 'bitna'], when: c => c.done('lostfound'),
-          lines: [['narr', 'Rehearsal in the practice room. Neel and Hari stand facing opposite walls. Neel straightens his cuffs. Across the room, without looking, Hari straightens his.'],
+        { title: 'Same Spin', at: 'room:rolloutsUp', block: 'night', who: ['neel', 'hari', 'bitna'], when: c => c.done('lostfound'),
+          lines: [['narr', 'Bedtime upstairs. Neel and Hari sit on the edges of the bunk bed with their backs to each other. Neel straightens his blanket. Without looking, Hari straightens his.'],
             ['narr', 'Neel sneezes. Hari says "Bless me."'],
             ['pip', 'How do you two DO that?', 'confused'],
             ['hari', 'We were separated at birth. At the market fair. In the rain. There was a song.'],
             ['neel', 'Per the records, there was a pickpocket and a very confused midwife. The song is disputed.'],
             ['pip', 'That only happens in films!'],
-            ['hari', "Look outside. It's been raining since the day we met. We ARE in a film."],
+            ['hari', "Listen to the roof. It's been raining since the day we met. We ARE in a film."],
             ['bitna', 'I was there. I was lighting the bridge lamps. Two boys in the middle of the bridge, the same spin at the same moment, and the whole crowd screaming.'],
             ['neel', 'She remembers it very precisely.'], ['hari', 'She does.']],
           diary: 'The twins sneezed at the same time. You laughed. I sneezed later, alone, to see if you would bless me from wherever you were. You did not. Next time.' },
         { title: 'Which One Is Which', at: 'road:exchange', block: 'evening', who: ['neel', 'hari', 'bitna'], when: c => c.f.ch10 && c.done('lostfound'), gap: true,
-          lines: [['narr', "Before the evening show outside the house, the twins swap sashes behind the tree: Neel in green, Hari in blue. They walk out to Bitna side by side, perfectly straight-faced."],
+          lines: [['narr', "Before the evening show, the twins swap sashes behind the fountain: Neel in green, Hari in blue. They walk out to Bitna side by side, perfectly straight-faced."],
             ['hari', 'Evening, Bitna. Hari here. Totally Hari.'],
             ['bitna', 'Good evening, Neel.'],
             ['neel', 'How? Per my last... how?'],
@@ -206,7 +206,7 @@
             ['narr', 'Neel looks at his sleeves. Neel goes very red. Hari, who can feel exactly how red, says nothing at all for once.'],
             ['bitna', 'And because I look. Lanterns up, both of you. Show in five.']],
           diary: 'Bitna knew which twin was which. She looks. I look too. I would know you in a swapped sash, a fake moustache, or a crowd of a thousand. I have practised.' },
-        { title: 'Feel the Stub', at: 'room:rollouts', block: ['morning', 'night'], when: c => c.f.ch10 && c.done('lostfound'), review: true,
+        { title: 'Feel the Stub', at: 'room:rollouts', block: 'morning', who: ['hari', 'eunho'], when: c => c.f.ch10 && c.done('lostfound'), review: true,
           lines: [['narr', 'Hari spins too close to the barre and stubs his toe on it. Upstairs, a second later, Neel yelps.'],
             ['hari', 'All is well! All is well...', 'sad'],
             ['eunho', '...You two are the Exchange\'s standby engine.'],
