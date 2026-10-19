@@ -178,7 +178,8 @@
     });
   }
   function arrive(p) {
-    const g = p.goal; p.goal = null;
+    // At their spot they turn back to face you.
+    const g = p.goal; p.goal = null; p.face = 'south';
     if (g && g.room) { p.room = g.room; p.hide = true; }
   }
   // A path for an islander over open ground and boardwalks, round everyone else.
@@ -214,6 +215,7 @@
       const [nx, ny] = p.path[0];
       // Someone (or you) stepped into the way: wait a beat and find another way round.
       if ((nx === P.x && ny === P.y) || PEOPLE.some(o => o !== p && !o.hide && o.x === nx && o.y === ny)) { p.path = []; return; }
+      p.face = nx > p.x ? 'east' : nx < p.x ? 'west' : ny < p.y ? 'north' : 'south';
       p.path.shift(); p.wait = 0; p.x = nx; p.y = ny;
     });
   }
@@ -221,7 +223,7 @@
   I.inside = key => PEOPLE.filter(p => p.hide && p.room === key).map(p => p.id);
   I.talkTo = w => talk(w);
   // For playtests: where every islander is, and what they're doing.
-  I.folkNow = () => PEOPLE.map(p => ({ id: p.id, x: p.x, y: p.y, hide: !!p.hide, room: p.room, plan: p.plan, goal: p.goal }));
+  I.folkNow = () => PEOPLE.map(p => ({ id: p.id, x: p.x, y: p.y, px: p.px, py: p.py, face: p.face || 'south', moving: !!p.moving, hide: !!p.hide, room: p.room, plan: p.plan, goal: p.goal }));
 
   // ---------- Screen ----------
   let cv, ctx, raf, dpr = 1, ts = 32, t0 = 0, active = false, built = false, busyTalk = false;
@@ -803,18 +805,24 @@
       ctx.fillStyle = '#ffb3c7'; ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, sy, ts * 0.16, Math.PI, 0); ctx.lineTo(X, sy + ts * 0.12); ctx.closePath(); ctx.fill(); ctx.stroke();
     }
   }
-  // Islanders: PixelLab sheets breathing in place, facing south. Sheets are drawn at 68px characters, so they're
-  // scaled to stand as tall as the villagers; the school is three students side by side.
+  // Islanders: PixelLab sheets facing the way they walk, breathing in place when they stop (rows face south, west,
+  // east and north; SD.art.sheetCol). Sheets are drawn at 68px characters, so they're scaled to stand as tall as the
+  // villagers; the school is three students side by side.
   const TALL = { kid1: 0.5, kid2: 0.5, kid3: 0.5, bloom: 0.62 };
-  function sprite(id, X, Y, t, k) {
+  const FACE = { south: 0, west: 1, east: 2, north: 3 };
+  function sprite(id, X, Y, t, k, face, going) {
     const c = I.ART && I.ART.chars[id], im = ipic('c-' + id);
     if (!c || !ok(im)) return false;
-    const s = ts / 32 * (k || TALL[id] || 0.66), n = c.walk ? 0 : c.n[0], col = n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n : 0;
-    ctx.drawImage(im, col * c.w, 0, c.w, c.h, Math.round(X - c.w * s / 2), Math.round(Y - c.h * s), Math.round(c.w * s), Math.round(c.h * s));
+    const row = FACE[face] || 0, n = c.walk ? 0 : c.n[row] || 0, s = ts / 32 * (k || TALL[id] || 0.66);
+    // Standing islanders breathe out of step with each other (X shifts the phase).
+    const col = going && c.wk && c.wk[row] ? SD.art.sheetCol(c, row, true, t) : n ? 1 + Math.floor(t * (id === 'bloom' ? 8 : 4) + X) % n : 0;
+    ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, Math.round(X - c.w * s / 2), Math.round(Y - c.h * s), Math.round(c.w * s), Math.round(c.h * s));
     return true;
   }
   function islander(p, t) {
-    const X = (p.px + 0.5) * ts, Y = (p.py + 0.95 - (p.moving ? Math.abs(Math.sin(t * 14)) * 0.08 : 0)) * ts, s = ts / 32;
+    // Islanders without walk frames hop along instead.
+    const c = I.ART && I.ART.chars[p.id], hop = p.moving && !(c && SD.art.walks(c, FACE[p.face] || 0));
+    const X = (p.px + 0.5) * ts, Y = (p.py + 0.95 - (hop ? Math.abs(Math.sin(t * 14)) * 0.08 : 0)) * ts, s = ts / 32;
     if (p.note) {
       // The keeper: a folded note on the lighthouse door, lifting in the wind.
       if (!ok(ipic('note'))) return false;
@@ -824,12 +832,12 @@
     if (p.id === 'kids') {
       if (!['kid1', 'kid2', 'kid3'].every(k => ok(ipic('c-' + k)))) return false;
       ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.42, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-      sprite('kid1', X - 10 * s, Y, t); sprite('kid2', X + 10 * s, Y, t); sprite('kid3', X, Y + 2 * s, t);
+      sprite('kid1', X - 10 * s, Y, t, 0, p.face, p.moving); sprite('kid2', X + 10 * s, Y, t, 0, p.face, p.moving); sprite('kid3', X, Y + 2 * s, t, 0, p.face, p.moving);
       return true;
     }
     if (!I.ART || !I.ART.chars[p.id] || !ok(ipic('c-' + p.id))) return false;
     ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.3, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-    return sprite(p.id, X, Y, t);
+    return sprite(p.id, X, Y, t, 0, p.face, p.moving);
   }
   // The code-drawn chibis from I.looks, for Gary's rod and anyone whose sheet hasn't loaded.
   function chibi(p, t) {

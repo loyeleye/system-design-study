@@ -726,11 +726,11 @@
     ctx.fillStyle = 'rgba(43,35,64,0.22)';
     if (!noShadow) { ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
     if (!c || !ok(im)) return;
-    const row = ROW[face] || 0, n = c.n[row];
-    // Sheets marked walk only animate while walking; the rest walk or breathe in place.
-    const col = n && (moving || !c.walk) ? 1 + Math.floor(t * (moving ? 8 * (pace || 1) : 5)) % n : 0;
+    const row = ROW[face] || 0;
+    // Sheets marked walk only animate while walking; the rest walk or breathe in place (SD.art.sheetCol).
+    const col = SD.art.sheetCol(c, row, moving, t, pace);
     // Villagers without walk frames hop along instead.
-    const bob = moving && !n ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
+    const bob = moving && !SD.art.walks(c, row) ? -Math.abs(Math.sin(t * 14)) * ts * 0.08 : 0;
     const w = c.w * ts / 32, h = c.h * ts / 32, y = yawn >= 0 && pic('y-' + id);
     // Mid-yawn (yawn is 0 or 1): the hand-pixelled yawn frames stand in for the usual sheet.
     if (y && ok(y)) return ctx.drawImage(y, yawn * c.w, 0, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h, w, h);

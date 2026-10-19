@@ -12,6 +12,15 @@
     kaito: ['neutral'], doug: ['neutral', 'smug', 'happy', 'angry'], aigerim: ['neutral', 'happy', 'blush', 'yandere', 'sad']
   };
   A.painted = who => !!PAINTED[who];
+  // PixelLab sheets: rows face south, west, east and north; column 0 stands, then c.n[row] frames (walk frames when
+  // the sheet is marked walk, otherwise idle frames). Sheets with c.wk keep both: c.n[row] idle frames, then
+  // c.wk[row] walk frames after them. sheetCol picks the column for one frame; walks() says whether a row has steps.
+  A.walks = (c, row) => !!(c.n[row] || (c.wk && c.wk[row]));
+  A.sheetCol = (c, row, going, t, pace) => {
+    const n = c.n[row] || 0, k = c.wk ? c.wk[row] || 0 : 0;
+    if (going && k) return 1 + n + Math.floor(t * 8 * (pace || 1)) % k;
+    return n && (going || !c.walk) ? 1 + Math.floor(t * (going ? 8 * (pace || 1) : 5)) % n : 0;
+  };
   // Guess a mood from the line when the script doesn't give one.
   A.mood = function (who, text, e) {
     const m = PAINTED[who]; if (!m) return 'neutral';
