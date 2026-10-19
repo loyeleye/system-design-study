@@ -282,7 +282,7 @@
       home: ['I learn every show from behind the curtain. Every step, every count. Nobody sees me dance it.', '(He closes a notebook.) It\'s notes. About the show. Mostly about the show.'],
       night: ['...She\'s asleep upstairs. I\'ll write tomorrow\'s counts down here, by lamplight. Quietly.'],
       lostStorm: ['...You can see me? Don\'t tell them yet. Everyone is out in that storm looking for everyone else. Nobody checked the curtain.'],
-      storm: ['The storm doesn\'t bother me. I\'m used to standing where it\'s dark.', 'My parents checked Kyu\'s ledgers line by line every night for twenty years. Kyu never missed a night. Kyu has missed four.'],
+      storm: ['The storm doesn\'t bother me. I\'m used to standing where it\'s dark.', 'My parents checked Kyu\'s ledgers line by line every night for twenty years. Kyu never missed a night. Kyu has missed four.', 'There\'s a man in a hood at the market, laughing at the rain. Nobody else looks at him. I know that trick. ...He doesn\'t stand in the dark. He brought it with him.'],
       evening: ['Shh. I\'m not here. I\'m doing tonight\'s show from back here, step for step, to see if the new move works. If I trip, nobody gets hurt.', '(His notebook is open. One line is underlined: "She smiled at bar 12.") ...That\'s a note about timing.']
     }
   };
