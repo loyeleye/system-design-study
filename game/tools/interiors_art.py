@@ -19,8 +19,8 @@ ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat'
          'carto': 'i-carto', 'hallW': 'i-hallW', 'hallE': 'i-hallE', 'light': 'i-light2', 'club': 'i-club2', 'cards': 'i-cards',
          # The town's buildings (js/hub.js doors A, U, F, P and K).
          'temple': 'i-temple3', 'guild': 'i-guild', 'forge': 'i-forge', 'post': 'i-post', 'library': 'i-library',
-         # The Rollouts' house in the Exchange's old quarter (js/nari-home.js).
-         'rollouts': 'i-rollouts2'}
+         # The Rollouts' house in the Exchange's old quarter (js/nari-home.js): the practice room and the loft upstairs.
+         'rollouts': 'i-rollouts3', 'rolloutsUp': 'i-rollouts-up'}
 # Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo. Each house faces the middle of the
 # cul-de-sac, so it uses the direction pointing there from where it stands ('south' faces the camera). The two on the
 # sides turn three-quarters, like their neighbours, since a house seen straight side-on hides its door.
