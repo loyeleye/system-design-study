@@ -683,7 +683,7 @@
     if (!C.infra.some(c => SD.cards[c.id].keepSh) && !(C.hold > 0)) C.sh = zero();
     if (C.hold > 0) C.hold--;
     // This-turn Thorns and Reflect wear off; Continuous Profiling adds Throughput every turn.
-    C.tthorns = 0; C.reflect = 0;
+    C.tthorns = 0; C.reflect = 0; C.ghost = false;
     // Warm Pool (js/club-shops.js) absorbs again at the start of the next few turns.
     if (C.regen) { C.regen.forEach(r => { C.sh.any += r.n; r.left--; }); C.regen = C.regen.filter(r => r.left > 0); }
     if (C.edgeEach) C.edge = (C.edge || 0) + C.edgeEach;
@@ -774,6 +774,7 @@
     if (d.tthorns) C.tthorns = (C.tthorns || 0) + d.tthorns + (c.up ? 1 : 0);
     if (d.hold) C.hold = Math.max(C.hold || 0, d.hold);
     if (d.reflect) C.reflect = Math.max(C.reflect || 0, d.reflect);
+    if (d.ghost) C.ghost = true;
     if (d.absAgain) (C.regen = C.regen || []).push({ n: d.abs.any + up, left: d.absAgain });
     // Sleeper Stock: a random action waiting in your draw pile gains Replay for the rest of this fight.
     if (d.gem) { const pool = (C.draw.length ? C.draw : C.disc).filter(x => SD.cards[x.id].kind !== 'infra'), g = pool[Math.floor(Math.random() * pool.length)]; if (g) { g.replay = (g.replay || 0) + d.gem; msg = `Sleeper stock: ${SD.cards[g.id].name} gains Replay ${d.gem}.`; } }
@@ -1163,6 +1164,8 @@
       if (dmg > 0 && rel('breaker') && !C.breakerUsed) { C.breakerUsed = true; dmg = 0; note += 'The circuit breaker tripped: nothing got through. '; }
       if (dmg > 1 && dmg <= 5 && rel('torii')) { dmg = 1; note += 'The torii charm made it a scratch. '; }
       if (dmg > 0 && rel('bluechip')) dmg--;
+      // Static Fallback (js/club-shops.js): until your next turn, every hit does at most 1.
+      if (dmg > 1 && C.ghost) { dmg = 1; note += 'The static fallback page answered: 1. '; }
       total += dmg;
       notes += group ? `${foeName(C.foes[C.fi])}: ${note}${dmg ? `-${dmg}. ` : ''}` : note;
       if (!(held && held.hold)) C.ii++;
@@ -1307,6 +1310,7 @@
     if (C.thorns || C.tthorns) chips.push(`<span class="chip" title="Every incident that hits you takes this much">Thorns ${(C.thorns || 0) + (C.tthorns || 0)}</span>`);
     if (C.hold) chips.push(`<span class="chip">Guard held${C.hold > 20 ? '' : `: ${C.hold} turn${C.hold > 1 ? 's' : ''}`}</span>`);
     if (C.regen && C.regen.length) chips.push(`<span class="chip">Warm Pool: +${C.regen.reduce((a, r) => a + r.n, 0)} next turn</span>`);
+    if (C.ghost) chips.push('<span class="chip">Static fallback: every hit does 1</span>');
     if (C.reflect) chips.push(`<span class="chip">Reflect ${Math.round(C.reflect * 100)}%</span>`);
     if (C.throttle) chips.push('<span class="chip">Throttled</span>');
     if (C.backoff) chips.push('<span class="chip">Backing off</span>');

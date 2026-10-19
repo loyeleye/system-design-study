@@ -4,8 +4,8 @@
 //     much more for the rest of the fight (Inflame, Limit Break, Demon Form).
 //   Thea's Guard Rack: special absorbs. Thorns (an incident that hits you takes some back, absorbed or not), guards
 //     that keep your absorb for a set number of turns (Barricade, but for a while), Warm Pool, which absorbs again at
-//     the start of the next 2 turns (Toric Toughness), and Reflect (some of the load you absorb goes back at the
-//     incident that sent it, as mitigation).
+//     the start of the next 2 turns (Toric Toughness), Static Fallback, a turn where every hit does 1 (Intangible),
+//     and Reflect (some of the load you absorb goes back at the incident that sent it, as mitigation).
 // Every card here pays for itself in an ordinary deck: Throughput cards give some straight away, Hot Path and
 // Scatter-Gather are good with none, and every Thea card absorbs or spikes on its own.
 //
@@ -13,7 +13,7 @@
 // (S.cardPool() in js/state.js), offered as often as any other card, and never goes straight into the deck. Prices
 // (450-1,500) sit between Aigerim's Rare Shelf (500-750) and Toro's heavier cards (600-1,800), and SD.cardPrice
 // knows them, so the black-market dealer can price a pin. The new effects (`edge`, `edgeX`, `edgeDouble`,
-// `edgeEach`, `perMit`, `thorns`, `tthorns`, `hold`, `reflect`, `absAgain`) are in js/run.js.
+// `edgeEach`, `perMit`, `thorns`, `tthorns`, `hold`, `reflect`, `absAgain`, `ghost`) are in js/run.js.
 // Talking to Rico or Thea opens their shop once their quest is done, unless a quest step or a club scene
 // (js/club-life.js) is due with them first. Loads after js/club-life.js and js/ch10-folk.js, so it wraps SD.club.talk last.
 (function () {
@@ -43,6 +43,7 @@
     // Thea's Guard Rack: the bracket
     tgauntlet: { name: 'Zero Trust', cost: 3, kind: 'action', abs: { any: 18 }, thorns: 4, exhaust: true, tags: ['ops'], text: 'Absorb {any} load of any kind. For the rest of this fight, every incident that hits you takes 4. Exhaust. Every request is checked, every time, at every door.', art: 'medieval-gate', rarity: 'ancient', concept: 'judge' },
     tmirror: { name: 'Echo Reply', cost: 2, kind: 'action', abs: { any: 10 }, reflect: 1, tags: ['ops'], text: 'Absorb {any} load of any kind. This turn, all the load you absorb is mitigated back at the incident that sent it. Every packet it sends comes straight home.', art: 'wave-crest', rarity: 'ancient', concept: 'judge' },
+    tstatic: { name: 'Static Fallback', cost: 2, kind: 'action', ghost: true, exhaust: true, tags: ['ops'], text: 'Until your next turn, every hit does at most 1 damage. Exhaust. Everything is down, so everyone gets the same static page. It loads instantly.', art: 'files', rarity: 'ancient', concept: 'judge' },
     tbracket: { name: 'Write-Once Storage', cost: 3, kind: 'action', abs: { any: 15 }, hold: 99, exhaust: true, tags: ['ops'], text: 'Absorb {any} load of any kind. For the rest of this fight, your absorb is never cleared. Exhaust. Written once, never rubbed out. Sunny approves.', art: 'stone-tower', rarity: 'ancient', concept: 'judge' }
   });
 
@@ -56,7 +57,7 @@
     thea: [
       { id: 'tshield', cost: 450, shelf: 0 }, { id: 'tropes', cost: 500, shelf: 0 }, { id: 'ttarpit', cost: 600, shelf: 0 }, { id: 'tpit', cost: 650, shelf: 0 }, { id: 'twarm', cost: 700, shelf: 0 },
       { id: 'treturn', cost: 750, shelf: 0 },
-      { id: 'tgauntlet', cost: 1300, shelf: 1 }, { id: 'tmirror', cost: 1400, shelf: 1 }, { id: 'tbracket', cost: 1500, shelf: 1 }
+      { id: 'tgauntlet', cost: 1300, shelf: 1 }, { id: 'tmirror', cost: 1400, shelf: 1 }, { id: 'tbracket', cost: 1500, shelf: 1 }, { id: 'tstatic', cost: 1600, shelf: 1 }
     ]
   };
   // SD.cardPrice (js/card-exchange.js) covers these too.
