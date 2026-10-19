@@ -136,7 +136,7 @@
   const dockAt = (x, y) => Object.keys(DOCK).find(k => DOCK[k].at[0] === x && DOCK[k].at[1] === y);
   // Who's out today: Gary fishes on Sundays, until he goes missing in chapter 9.
   const sunday = () => new Date().getDay() === 0 || (I.dev && I.dev.sunday);
-  const people = () => PEOPLE.filter(p => !p.hide && (!p.sunday || (sunday() && !S.save.flags.ch9)) && I.islandOpen(isleOf(p)));
+  const people = () => PEOPLE.filter(p => !p.hide && (!p.here || p.here()) && (!p.sunday || (sunday() && !S.save.flags.ch9)) && I.islandOpen(isleOf(p)));
   const isleOf = p => Object.keys(ISLE).find(id => (ISLE[id].parts || [ISLE[id].box]).some(([x0, y0, x1, y1]) => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1)) || 'landing';
   function walkable(x, y) {
     const c = get(x, y);
@@ -152,11 +152,14 @@
   // or gone home for the night. Arriving on the Isles puts everyone straight in place; a block that changes while
   // you're here sends them walking. Anyone with a quest marker waits at their usual spot.
   PEOPLE.forEach(p => { p.stand = [p.x, p.y]; p.px = p.x; p.py = p.y; p.path = []; });
+  // A visitor from another file (js/nari.js): { id, x, y, here(), draw(ctx, x, y, ts, t), label, speak() }. Visitors
+  // stay where they're put, only while here() says so, and their own speak() is their whole conversation.
+  I.addPerson = p => { p.stand = [p.x, p.y]; p.px = p.x; p.py = p.y; p.path = []; p.fixed = true; PEOPLE.push(p); };
   const isleBlock = () => SD.clock ? SD.clock.block() : 'morning';
   function plan(snap) {
     const marks = Object.assign({}, I.marks(), SD.quests ? SD.quests.marks() : {}), table = (SD.folkFar && SD.folkFar.isles) || {};
     PEOPLE.forEach(p => {
-      if (p.note || p.sunday) return;
+      if (p.note || p.sunday || p.fixed) return;
       let e = marks[p.id] || (p.id === 'ploy' && !I.st().ployMet) ? null : table[p.id] && table[p.id][isleBlock()];
       let l = typeof e === 'string' && e.startsWith('room:') ? LAND.find(m => m.id === e.slice(5)) : null;
       if (l && (!roomOf(l) || !I.islandOpen(l.isle))) { e = null; l = null; }
@@ -304,6 +307,8 @@
   I.placeAt = (x, y) => { place(x, y); hud(); };
   // Where a tile's centre is on screen (for the playtest scripts).
   I.tileToScreen = (x, y) => { const r = cv.getBoundingClientRect(), { cx, cy } = cam(); return [r.left + x * ts + ts / 2 - cx, r.top + y * ts + ts / 2 - cy]; };
+  // And whether you could stand on a tile (also for the playtests).
+  I.walkable = (x, y) => walkable(x, y);
   I.where = () => ({ x: P.x, y: P.y, isle: isleAt(P.x, P.y) });
 
   function hud() {
@@ -417,6 +422,7 @@
     ploy: 'Welcome to the Tide Pool Game Club! Today\'s game is... interviews! Alone or with friends?'
   };
   async function talk(w) {
+    const v = PEOPLE.find(p => p.id === w && p.speak); if (v) return v.speak();
     if (w === 'gary') { const l = I.pick('gary', [['gary', '...'], ['gary', 'The fish here are eventually consistent.']]); await U.dialog([l]); return; }
     if (w === 'ploy' && !I.st().ployMet) {
       I.st().ployMet = true; S.persist();
@@ -818,6 +824,7 @@
   }
   // The code-drawn chibis from I.looks, for Gary's rod and anyone whose sheet hasn't loaded.
   function chibi(p, t) {
+    if (p.draw) return p.draw(ctx, (p.px + 0.5) * ts, (p.py + 0.95) * ts, ts, t);
     if (p.id !== 'gary' && islander(p, t)) return;
     const L = I.looks[p.id]; if (!L && p.id !== 'gary') return;
     const X = (p.px + 0.5) * ts, Y = (p.py + 0.95 - (p.moving ? Math.abs(Math.sin(t * 14)) * 0.08 : 0)) * ts, s = ts / 32, bob = Math.sin(t * 2.4 + p.x) * s;
@@ -926,7 +933,7 @@
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     LAND.forEach(l => { if (I.islandOpen(l.isle) && l.name && l.id !== 'board') label(l.lab ? l.lab[0] : l.x + l.w / 2 - 0.5, l.lab ? l.lab[1] : l.y + l.h + 0.7, l.name, null, false, t); });
     if (I.islandOpen('landing')) label(10, 16.6, 'BOARD', I.commissions.some(c => I.commissionStatus(c.id) === 'open') ? '!' : null, true, t);
-    ppl.forEach(p => label(p.px, p.py + 1.45, p.note ? 'NOTE' : (I.who(p.id).split(' ').slice(-1)[0] || '').toUpperCase(), marks[p.id], true, t));
+    ppl.forEach(p => label(p.px, p.py + 1.45, p.note ? 'NOTE' : p.label || (I.who(p.id).split(' ').slice(-1)[0] || '').toUpperCase(), marks[p.id], true, t));
     label(EXIT[0] + 0.6, EXIT[1] - 0.2, '← PINGSBY', null, true, t);
     Object.keys(ISLE).forEach(id => { if (id !== 'landing' && !I.islandOpen(id)) fog(id, t); });
     ctx.restore();
