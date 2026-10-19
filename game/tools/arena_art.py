@@ -2,10 +2,11 @@
 
 usage: arena_art.py SRC_DIR   (SRC_DIR: /mnt/project-files/arena-exchange-raw)
 SRC_DIR holds the raw PixelLab files: ar-*.png map objects, ar-door.png (the great door in its stretch of wall),
+ar-royalbox2.png (the emperor's box),
 ar-ring2.png (the ring, on a grey backdrop), kit/ (a sandstone building kit; its sand floor is used) and
 chars/spec1-7/ and chars/folk1-6/ (characters, each unzipped from its download).
 Writes assets/img/arc/<name>.webp, ar-floor.webp (walls, door and ring, painted under the arena by
-js/northroad-arena.js), the crowd's people c-spec1-7.webp
+js/northroad-arena.js), the crowd's people c-spec1-7.webp and their recoloured variants (c-spec1b...)
 (and c-folk1-6.webp, townsfolk the Exchange uses), and js/arena-art.js (their sizes).
 """
 import colorsys, json, os, sys
@@ -15,7 +16,8 @@ from PIL import Image
 SRC = sys.argv[1]
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'assets/img/arc')
-OBJECTS = ['ar-pillar', 'ar-gong', 'ar-brazier', 'ar-banner', 'ar-weapons', 'ar-crates', 'ar-foodcart']
+OBJECTS = ['ar-pillar', 'ar-gong', 'ar-brazier', 'ar-banner', 'ar-weapons', 'ar-crates', 'ar-foodcart',
+           'ar-tumbleweed', 'ar-tumbleweed2', 'ar-dust', 'ar-dust2']   # the last four blow about (js/northroad-arena.js)
 
 def save(im, name):
     im.save(os.path.join(OUT, name + '.webp'), lossless=True, quality=100, method=6)
@@ -84,6 +86,12 @@ DOOR_X = 22 * TS - X0 * TS - DOOR_MID                     # where the door sits 
 for x in range((DOOR_X + 100) % 36 - 36, face.width, 36):   # merlons in step with the door's own
     face.alpha_composite(parapet, (x, 0))
 face.alpha_composite(door, (DOOR_X, 0))
+# The emperor's box (ar-royalbox2): a canopied balcony on brackets, set into the wall east of the door.
+box = load('ar-royalbox2'); box = box.crop(box.getbbox())
+BOX_MID = 31.5 * TS                                       # keep in step with the box's light in js/northroad-arena.js
+bx = int(BOX_MID - X0 * TS - box.width / 2)
+shadow = Image.new('RGBA', box.size, (40, 26, 18, 0)); shadow.putalpha(box.getchannel('A').point(lambda a: 70 if a > 0 else 0))
+face.alpha_composite(shadow, (bx + 5, 16)); face.alpha_composite(box, (bx, 10))   # it stands out from the wall a little
 floor.alpha_composite(Image.new('RGBA', (W * TS, FACE_TOP + 20), (92, 74, 70, 255)), (0, 0))   # the walkway behind
 floor.alpha_composite(face, (X0 * TS, FACE_TOP))
 for i in range(10):                                       # shade along the foot of the wall
@@ -126,6 +134,56 @@ save(floor, 'ar-floor'); sizes['ar-floor'] = [W * TS, H * TS]
 # seller, an old gladiator, a noble, a kid with a wooden sword, and the arena guard) and townsfolk (folk1-6; the
 # Exchange uses them). One sheet each, as tools/village_art.py makes them: rows south, west, east, north; column 0
 # standing, then the four walking frames.
+# Variants, so the crowd isn't forty copies of seven people: each recipe recolours some of a sheet's colours and
+# leaves the rest (skin, outlines, wood, steel) alone. A rule picks colours by hue window (degrees, wrapping round 0),
+# saturation and brightness ranges, and how much of that colour sits in the top third of the frame (hair, hats,
+# plumes); then turns the hue, scales the saturation, or tints by brightness towards a colour.
+def rule(h=(0, 360), s=(0, 1), v=(0, 1), top=(0, 1), turn=0, sat=1, tint=None):
+    return dict(h=h, s=s, v=v, top=top, turn=turn, sat=sat, tint=tint)
+REDS, PURPLES = (330, 15), (262, 300)
+VARIANTS = {
+    'spec1': [[rule(REDS, (0.55, 1), turn=125)], [rule(REDS, (0.55, 1), turn=215)], [rule(REDS, (0.55, 1), turn=42)]],    # team colours
+    'spec2': [[rule(REDS, (0.55, 1), turn=220)], [rule(REDS, (0.55, 1), turn=130), rule((25, 52), (0.55, 1), sat=0.15)],
+              [rule(REDS, (0.55, 1), turn=275), rule((25, 52), (0.55, 1), turn=150)]],
+    'spec3': [[rule(REDS, (0.6, 1), (0, 0.74), turn=210)], [rule(REDS, (0.6, 1), (0, 0.74), turn=120)],
+              [rule(REDS, (0.6, 1), (0, 0.74), turn=30, sat=0.8)]],                                        # aprons and caps, not the meat
+    'spec4': [[rule(s=(0, 0.13), v=(0.45, 1), top=(0.75, 1), tint=(236, 236, 240)), rule((215, 260), (0.15, 0.7), turn=130, sat=1.8)],
+              [rule(s=(0, 0.13), v=(0.45, 1), top=(0.75, 1), tint=(92, 60, 44)), rule((215, 260), (0.15, 0.7), turn=250, sat=1.8)],
+              [rule(s=(0, 0.13), v=(0.45, 1), top=(0.75, 1), tint=(206, 112, 58))]],                                     # hair, trousers
+    'spec5': [[rule(PURPLES, (0.5, 1), turn=78)], [rule(PURPLES, (0.5, 1), turn=-62)], [rule(PURPLES, (0.5, 1), turn=-150)]],  # robes
+    'spec6': [[rule((215, 245), (0.3, 1), turn=140), rule(s=(0, 0.06), v=(0.75, 1), top=(0, 0.25), tint=(200, 222, 246))],
+              [rule((215, 245), (0.3, 1), turn=-100), rule(s=(0, 0.06), v=(0.75, 1), top=(0, 0.25), tint=(246, 226, 160))],
+              [rule((215, 245), (0.3, 1), turn=60), rule(s=(0, 0.06), v=(0.75, 1), top=(0, 0.25), tint=(216, 240, 196))]],   # trousers, shirt
+    'spec7': [[rule((350, 15), (0.68, 1), top=(0.8, 1), turn=215)]],                                                    # a blue plume
+}
+def recolor(sheet, fh, recipe):
+    px = sheet.load(); W_, H_ = sheet.size
+    seen, up = {}, {}                                     # how often each colour appears, and how often in a frame's top third
+    for y in range(H_):
+        for x in range(W_):
+            c = px[x, y]
+            if c[3] < 200: continue
+            seen[c[:3]] = seen.get(c[:3], 0) + 1
+            if y % fh < fh / 3: up[c[:3]] = up.get(c[:3], 0) + 1
+    remap = {}
+    for c, n in seen.items():
+        h, sa, va = colorsys.rgb_to_hsv(*(k / 255 for k in c)); hd = h * 360; tp = up.get(c, 0) / n
+        for r in recipe:
+            lo, hi = r['h']
+            inh = lo <= hd <= hi if lo <= hi else (hd >= lo or hd <= hi)
+            if not (inh and r['s'][0] <= sa <= r['s'][1] and r['v'][0] <= va <= r['v'][1] and r['top'][0] <= tp <= r['top'][1]): continue
+            if r['tint']:
+                k = va / 0.85; remap[c] = tuple(min(255, int(t * k)) for t in r['tint'])
+            else:
+                remap[c] = tuple(int(k * 255) for k in colorsys.hsv_to_rgb(((hd + r['turn']) % 360) / 360, min(1, sa * r['sat']), va))
+            break
+    out = sheet.copy(); po = out.load()
+    for y in range(H_):
+        for x in range(W_):
+            c = po[x, y]
+            if c[:3] in remap: po[x, y] = remap[c[:3]] + (c[3],)
+    return out
+
 chars = {}
 for name in ['spec%d' % n for n in range(1, 8)] + ['folk%d' % n for n in range(1, 7)]:
     d = os.path.join(SRC, 'chars', name)
@@ -145,6 +203,8 @@ for name in ['spec%d' % n for n in range(1, 8)] + ['folk%d' % n for n in range(1
     for ri, r in enumerate(rows):
         for ci, im in enumerate(r): out.alpha_composite(im.crop((x0, box[1], x1, box[3])), (ci * fw, ri * fh))
     save(out, 'c-' + name); chars[name] = {'w': fw, 'h': fh, 'n': [len(r) - 1 for r in rows], 'walk': 1}
+    for v, recipe in enumerate(VARIANTS.get(name, [])):           # the same person in other colours: spec1b, spec1c...
+        save(recolor(out, fh, recipe), 'c-%s%s' % (name, 'bcd'[v])); chars[name + 'bcd'[v]] = chars[name]
 
 open(os.path.join(HERE, 'js/arena-art.js'), 'w').write(
     '// Made by tools/arena_art.py: sizes of its art and its people (added to js/arc-art.js\'s tables).\n'
