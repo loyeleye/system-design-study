@@ -228,7 +228,7 @@
   // Whiteboard session: n questions, due and weak concepts first, interleaved.
   Q.session = async function (n, opts) {
     opts = opts || {};
-    const pool = opts.pool || Object.keys(SD.concepts).filter(id => SD.concepts[id].zone <= (SD.state.save.chapter || 1));
+    const pool = opts.pool || Object.keys(SD.concepts).filter(SD.state.reviewable);
     const picks = SD.state.pickConcepts(n, pool);
     const results = [];
     const used = [];
