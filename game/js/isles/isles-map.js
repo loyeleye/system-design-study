@@ -51,7 +51,9 @@
     { id: 'light', isle: 'lighthouse', x: 57, y: 16, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [57.5, 12.4], door: [57, 17] },
     { id: 'club', isle: 'landing', x: 16, y: 39, w: 4, h: 3, name: 'TIDE POOL GAME CLUB' },
     { id: 'gtable', isle: 'landing', x: 20, y: 44, w: 1, h: 1, name: '' },
-    { id: 'umbrella', isle: 'landing', x: 26, y: 44, w: 1, h: 1, name: '' }
+    { id: 'umbrella', isle: 'landing', x: 26, y: 44, w: 1, h: 1, name: '' },
+    // A small cave in the mainland's northern hills, where Kagemaru deals cards off the books (js/card-dealer.js).
+    { id: 'cave', isle: 'landing', x: 3, y: 1, w: 4, h: 2, name: '' }
   ];
   // Buildings with a room inside (js/interiors.js): walk into the door, the middle of the bottom row unless the
   // landmark says otherwise (the Keeper's note stands in front of the lighthouse), to go in.
@@ -94,6 +96,7 @@
   const path = pts => { for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i]; for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++) if (get(x, y) === '.') set(x, y, 'p'); } };
   path([[0, 20], [9, 20], [9, 7], [12, 7]]); path([[9, 20], [9, 30], [12, 30]]); path([[9, 30], [9, 42], [28, 42]]); path([[9, 18], [12, 18]]); path([[9, 23], [12, 23]]);
   path([[9, 17], [9, 17]]);
+  path([[9, 7], [9, 4], [5, 4], [5, 3]]);   // up into the hills, to the cave
   path([[18, 7], [23, 7], [23, 12]]); path([[23, 7], [28, 7], [28, 8]]); path([[23, 4], [28, 4]]);
   path([[18, 30], [23, 30], [23, 25]]); path([[23, 30], [28, 30]]);
   path([[31, 18], [35, 18], [35, 23]]); path([[35, 18], [40, 16]]); path([[35, 16], [40, 16]]);
@@ -614,6 +617,7 @@
     club: l => iobj('club', ...foot(l), 1.3),
     gtable: l => iobj('gtable', ...foot(l)),
     umbrella: l => iobj('umbrella', ...foot(l)),
+    cave: l => iobj('cave', ...foot(l)),
     harbour(l, t) {
       // Admiral Mutex's harbour: one ship at a time. The queue of little boats reaches the horizon.
       if (!ok(ipic('boat')) || !ok(ipic('pilings'))) return false;
@@ -650,6 +654,11 @@
   const DRAW = {
     club(l, t) { roofHouse(l, '#ffc8dc', '#e86fa0', t); },
     gtable(l) { box(l.x * ts + ts * 0.1, l.y * ts + ts * 0.3, ts * 0.8, ts * 0.5, '#c98b5a', 6); },
+    cave(l) {
+      const X = l.x * ts, Y = l.y * ts, w = l.w * ts, h = l.h * ts;
+      poly([[X, Y + h], [X + w * 0.15, Y + ts * 0.1], [X + w * 0.5, Y - ts * 0.5], [X + w * 0.85, Y + ts * 0.1], [X + w, Y + h]], '#8d8d9e');
+      ctx.fillStyle = '#1d1828'; ctx.beginPath(); ctx.ellipse(X + w / 2, Y + h, ts * 0.6, ts * 0.9, 0, Math.PI, 0); ctx.fill();
+    },
     umbrella(l) { poly([[l.x * ts - ts * 0.2, (l.y + 0.4) * ts], [(l.x + 0.5) * ts, (l.y - 0.4) * ts], [(l.x + 1.2) * ts, (l.y + 0.4) * ts]], '#ff9ac0'); },
     office(l, t) {
       roofHouse(l, '#fff3dc', '#2f7fb8', t);
