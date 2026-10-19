@@ -45,10 +45,13 @@ def remap(c, in_head):
     if s < 0.13 and v >= 130: return step(SUIT_RAMP, v + 40)                                 # shirt sleeves
     return None
 
+NAVY = {hexc(c) for _, c in SUIT_RAMP} | set(REMAP[hexc(h)] for h in ('#eae8e6', '#ada7a5', '#b9b1ae', '#9d9491'))
 PALE = {hexc(h) for h in ('#f3c2ad', '#dda790', '#c9907b', '#b58579', '#9d7364')}
 EYE = hexc('#eae8e6')
 SKIN = {hexc(c) for _, c in SKIN_RAMP} | {hexc(h) for h in ('#b47148', '#a0603c', '#8a4f30', '#7f4630', '#6e3c24')}
 SUIT = {hexc('#2c3a6e'), hexc('#34437c'), hexc('#26315f'), hexc('#2e3c72')}
+PUPIL, BROW, MOUTH = hexc('#1a0f0a'), hexc('#2b1b14'), hexc('#4a1a12')
+BASE, SHADE, DARK = hexc('#b47148'), hexc('#a0603c'), hexc('#7f4630')
 INK, HAIR, CURL = hexc('#050302'), hexc('#2b1b14'), hexc('#4a3024')
 HORN, TIP, WHITE, TIE, KNOT = hexc('#d08a4a'), hexc('#f0d098'), hexc('#f1efef'), hexc('#c4262f'), hexc('#8e1a22')
 
@@ -90,6 +93,58 @@ for r in range(ROWS):
             on = y <= top + 3 or (face == 'back' and y <= chin - 3) or \
                 (face == 'west' and x >= cx + 1 and y <= top + 8) or (face == 'east' and x <= cx - 1 and y <= top + 8)
             if on: px[x, y] = CURL if (x * 2 + y) % 5 == 0 else HAIR
+        # His face from the front, drawn the same on every south frame from where folk6's eyes are: folk6's pupils sit
+        # on the inner edge of each eye, which reads as cross-eyed, and the idle frames light the edges of his head with
+        # stray whites. So the face is cleared to skin and drawn again after his bust: heavy brows, eyes with the pupil
+        # in the middle, a broad nose, cheeks, and his big grin with its teeth.
+        if face == 'south':
+            whites = [(x, y) for x, y in eyes if px[x, y] == EYE and abs(x - cx - 0.5) <= 5]
+            left, right = [p for p in whites if p[0] <= cx], [p for p in whites if p[0] > cx]
+            if left and right:
+                lx, rx, ey = min(x for x, _ in left), min(x for x, _ in right), min(y for _, y in whites)
+                for y in range(ey - 2, ey + 6):
+                    for x in range(lx - 1, rx + 3): px[x, y] = BASE
+                for y in range(top, chin + 1):
+                    for x in range(max(0, hl - 1), min(W, hr + 2)):
+                        if px[x, y] == EYE: px[x, y] = SHADE
+                face_px = {
+                    BROW: [(lx - 1, ey - 1), (lx, ey - 2), (lx + 1, ey - 2), (lx + 2, ey - 2),
+                           (rx + 2, ey - 1), (rx + 1, ey - 2), (rx, ey - 2), (rx - 1, ey - 2)],
+                    EYE: [(lx, ey), (lx + 2, ey), (rx - 1, ey), (rx + 1, ey)],
+                    PUPIL: [(lx + 1, ey), (lx + 1, ey + 1), (rx, ey), (rx, ey + 1)],
+                    SHADE: [(lx, ey + 1), (lx + 2, ey + 1), (rx - 1, ey + 1), (rx + 1, ey + 1),
+                            (lx + 3, ey + 2), (lx - 1, ey + 2), (rx + 2, ey + 2)],
+                    DARK: [(lx + 3, ey + 3), (rx - 2, ey + 3)],
+                    MOUTH: [(lx, ey + 3), (rx + 1, ey + 3), (lx + 1, ey + 4), (rx, ey + 4)] + [(x, ey + 5) for x in range(lx + 2, rx)],
+                    WHITE: [(x, ey + 4) for x in range(lx + 2, rx)],
+                }
+                for c, pts in face_px.items():
+                    for x, y in pts: px[x, y] = c
+        # From the side: the same brow, a dark eye set back from his profile with its white behind it, and the front of
+        # his grin, a tooth and a mouth corner.
+        if face in ('west', 'east'):
+            whites = [(x, y) for x, y in eyes if px[x, y] == EYE]
+            i = 1 if face == 'west' else -1
+            def edge(y):
+                xs = range(W) if i == 1 else range(W - 1, -1, -1)
+                return next((x for x in xs if px[x, y] in SKIN or px[x, y] == EYE), None)
+            ey = min((y for _, y in whites), default=None)
+            if ey is not None and edge(ey) is not None:
+                for x, y in whites: px[x, y] = BASE
+                for y in range(top, chin + 1):     # folk6's own eye, where it sat on the outline
+                    for x in range(W):
+                        if px[x, y] == hexc('#2b2340') or px[x, y] in NAVY:
+                            out_ = any(not (0 <= x + dx < W) or not px[x + dx, y][3] for dx in (-1, 1))
+                            px[x, y] = INK if out_ else BASE
+                e = edge(ey)
+                for y in range(ey - 2, ey + 2):
+                    for k in range(1, 5): px[e + i * k, y] = BASE
+                for k in (1, 2, 3): px[e + i * k, ey - 2] = BROW
+                px[e + i * 2, ey] = PUPIL; px[e + i * 2, ey + 1] = PUPIL; px[e + i * 3, ey] = EYE
+                px[e + i * 3, ey + 1] = SHADE; px[e + i, ey + 2] = SHADE
+                m = edge(ey + 4)
+                if m is not None:
+                    px[m, ey + 4] = MOUTH; px[m + i, ey + 4] = WHITE; px[m + i * 2, ey + 4] = MOUTH; px[m + i * 3, ey + 3] = MOUTH
         # Collar and tie when he faces you.
         if face == 'south':
             for dx in (-1, 0, 1): px[cx + dx, chin + 1] = WHITE
