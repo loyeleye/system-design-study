@@ -8,7 +8,7 @@
 //
 // His manner is Ladi's mix of Kabuto (Naruto), soft-spoken, endlessly helpful and quietly sinister, and Envy
 // (Fullmetal Alchemist), who sneers at humans and laughs at their misery. He is completely hooded: under the hood is a
-// shadow and a grin, nothing else (PixelLab art, tools/dealer_art.py), and he stands smaller than everyone else.
+// shadow and a grin, nothing else (PixelLab art, tools/dealer_art.py), white gloves, about as tall as the PR Club.
 // During chapter 10 he leaves the cave for the Exchange (js/northroad-exchange.js's map), laughs at the end of the
 // world while everyone else worries (js/ch10-folk.js), and takes 25% off his pins for the occasion.
 //
@@ -50,8 +50,18 @@
   SD.art.mood = (who, text, e) => who === 'kagemaru' ? 'neutral' : art.mood(who, text, e);
   SD.art.portrait = (who, size, mood) => who !== 'kagemaru' ? art.portrait(who, size, mood)
     : `<span class="bust b-kagemaru" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/kagemaru-neutral.webp" alt="" draggable="false"></span>`;
-  // His map sprite (one standing frame a direction), the cave on the Isles and the room inside it.
-  if (SD.arcArt) SD.arcArt.chars.kagemaru = { w: 23, h: 44, n: [0, 0, 0, 0], walk: 1 };
+  // His map sprite, the cave on the Isles and the room inside it. Standing about, he switches every few seconds between
+  // three idle sheets: shifting his weight (70% of the time), rubbing his gloved hands (15%) and giggling (15%).
+  const MOODS = { idle: [9, 9, 9, 0], rub: [9, 9, 9, 0], giggle: [16, 16, 16, 0] };
+  const mood = () => {
+    const seg = Math.floor(performance.now() / 3600), r = ((seg * 2654435761) >>> 0) % 100;
+    return r < 70 ? 'idle' : r < 85 ? 'rub' : 'giggle';
+  };
+  ['-rub', '-giggle'].forEach(m => { new Image().src = 'assets/img/arc/c-kagemaru' + m + '.webp'; });   // no blink on a switch
+  if (SD.arcArt) Object.defineProperty(SD.arcArt.chars, 'kagemaru', { configurable: true, enumerable: true, get() {
+    const m = mood();
+    return { src: 'assets/img/arc/c-kagemaru' + (m === 'idle' ? '' : '-' + m) + '.webp', w: 33, h: 59, n: MOODS[m] };
+  } });
   if (SD.isles && SD.isles.ART) SD.isles.ART.objects.cave = [124, 88];
   if (SD.interiorsArt) SD.interiorsArt.rooms.cave = [384, 288];
 
