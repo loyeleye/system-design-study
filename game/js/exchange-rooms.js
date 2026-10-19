@@ -277,12 +277,13 @@
   R.xlounge = {
     name: 'THE DINER LOUNGE', down: ['xupper', 3, 4, 'east'],
     // The stairs climb toward the back, like the ones below: you step off at the top, by the cabinet, and go down toward the front.
+    // The strip in front of the stairwell's front railing is too narrow to stand on without standing in the railing.
     map: ['############', '############', '############', '############', '##...#..####',
-      '##SS...#.###', '####.....###', '#......#####', '############'],
+      '##SS...#.###', '####.....###', '####...#####', '############'],
     enter: [2, 4, 'east'],
     // Clear of the ways from the stairs to the urn and round the table to the sofa.
     people: () => shelter('xlounge'),
-    spots: { _: [[5, 5, 'north'], [5, 7, 'east'], [6, 7, 'west'], [1, 7, 'east']] },
+    spots: { _: [[5, 5, 'north'], [4, 7, 'east'], [5, 7, 'east'], [6, 7, 'west']] },
     names: FOLK_NAMES, looks: FOLK_LOOKS,
     lights: [{ x: 5, y: 2.1, r: 2.4 }, { x: 7.3, y: 2.1, r: 2.4 }, { x: 1.8, y: 3.4, r: 2 }, { x: 10.4, y: 3.4, r: 2 }],
     props: [
