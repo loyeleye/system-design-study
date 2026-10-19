@@ -29,10 +29,10 @@
     const sv = SD.state && SD.state.save, ch = Math.max(1, (sv && sv.chapter) || 1);
     return Object.keys(SD.enemies).filter(k => SD.enemies[k].boss && !SD.enemies[k].tutorial && (SD.enemies[k].ch || 1) <= ch);
   };
-  // This player's deck: the starter deck plus the cards they've bought and kept on, as for a dungeon run.
+  // This player's deck: the starter deck plus their quest prizes kept on and Kagemaru's pins, as for a dungeon run.
   RD.myDeck = () => {
     const sv = SD.state && SD.state.save;
-    return (SD.starterDeck || []).concat(((sv && sv.cardLib) || []).filter(x => x.on).map(x => x.id)).filter(id => card(id)).slice(0, 40);
+    return (SD.starterDeck || []).concat(((sv && sv.cardLib) || []).filter(x => x.on).map(x => x.id), SD.dealer ? SD.dealer.pins() : []).filter(id => card(id)).slice(0, 40);
   };
 
   function css() {

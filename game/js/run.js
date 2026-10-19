@@ -16,7 +16,8 @@
     sv.run = {
       ch: ch || 1,
       // Cards bought at Ayo's Card Forge join the starter deck unless benched.
-      deck: SD.starterDeck.concat((sv.cardLib || []).filter(x => x.on).map(x => x.id)).map(id => ({ id, up: false })),
+      // Kagemaru's pins (js/card-dealer.js) go on top, until a run is lost.
+      deck: SD.starterDeck.concat((sv.cardLib || []).filter(x => x.on).map(x => x.id), SD.dealer ? SD.dealer.arm() : []).map(id => ({ id, up: false })),
       sla: 0, bits: 20, floor: -1, pos: null, pending: null,
       map: genMap(), mercy: false, startedAt: Date.now(), firstFight: !sv.stats.fights,
       log: { fights: 0, concepts: {}, misses: 0, right: 0, xp: 0 }, boss: {}
@@ -1501,6 +1502,8 @@
     const sv = S.save, run = sv.run;
     if (!run) return;
     if (hook('end', won, incident, quit)) return;
+    // Kagemaru's pins last one run: however it ends, the ones that were in it go.
+    const pinsUsed = SD.dealer ? SD.dealer.spend() : 0;
     const mins = Math.round((Date.now() - run.startedAt) / 60000);
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
@@ -1522,6 +1525,7 @@
     const b = U.panel(`<div class="verdict ${won ? 'ok' : 'bad'}">${won ? 'DUNGEON CLEARED!' : 'YOU DIED (AGAIN)'}</div>
       <div class="loot"><span>${run.log.fights} incidents resolved</span><span>${run.log.right} right · ${run.log.misses} missed</span><span>+${run.log.xp} XP</span></div>
       ${rows ? `<p class="muted small">Concepts you worked with</p><ul class="links">${rows}</ul>` : ''}
+      ${pinsUsed ? `<p class="muted small">Kagemaru's ${pinsUsed === 1 ? 'pinned card goes' : pinsUsed + ' pinned cards go'} back to his coat. ${won ? '"Heh. Worth every shard."' : '"Heh. Better luck next loop."'}</p>` : ''}
       <p class="muted small">You spent about ${mins} minute${mins === 1 ? '' : 's'} in focused mode. Take five away from the screen before the next run; your brain keeps working on it in diffuse mode.</p>
       <button class="primary" id="pm-ok">Continue</button>`, { title: 'POSTMORTEM', noClose: true });
     b.querySelector('#pm-ok').onclick = async () => {
