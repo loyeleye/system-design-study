@@ -2,7 +2,8 @@
 
 usage: interiors_art.py SRC_DIR assets/img/interiors js/interiors-art.js
 SRC_DIR holds the raw PixelLab files (/mnt/project-files/living-npcs/interiors-raw): one opaque 384x288 room backdrop
-per room, drawn at 32px per tile, and one transparent house per new home on the residential row.
+per room, drawn at 32px per tile, and each residential row house as a PixelLab 8-direction object (h3-<name>-<dir>.png,
+one picture per direction it can face).
 """
 import json, os, sys
 from PIL import Image
@@ -10,8 +11,11 @@ from PIL import Image
 SRC, OUT, JS = sys.argv[1], sys.argv[2], sys.argv[3]
 os.makedirs(OUT, exist_ok=True)
 ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat': 'flat1', 'lexi': 'lexi1'}
-# Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo.
-HOUSES = {'b-X': 'h2-lexi', 'b-Y': 'h2-kaito', 'b-D': 'h2-doug', 'b-Q': 'h2-coo', 'b-M': 'h2-bru', 'b-O': 'h2-ayo'}
+# Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo. Each house faces the middle of the
+# cul-de-sac, so it uses the direction pointing there from where it stands ('south' faces the camera). The two on the
+# sides turn three-quarters, like their neighbours, since a house seen straight side-on hides its door.
+HOUSES = {'b-X': 'h3-lexi-south-east', 'b-Y': 'h3-kaito-south-east', 'b-D': 'h3-doug-north-east',
+          'b-Q': 'h3-coo-south-west', 'b-M': 'h3-bru-south-west', 'b-O': 'h3-ayo-north-west'}
 
 def save(im, name):
     im.save(os.path.join(OUT, name + '.webp'), lossless=True, quality=100, method=6)

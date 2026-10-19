@@ -24,13 +24,28 @@
     'T.............#####...............fffffffff....T',
     'T.......L.....##G##.......L.......fffffffff....T',
     'T..............................................T',
-    'T....T.........................................T',
-    'T.................###..###..###..###..###..###.T',
-    'T.........T.......#X#.L#Y#..#D#.L#Q#..#M#.L#O#.T',
-    'T..T....T.......pppppppppppppppppppppppppppppp.T',
-    'T.T...T....T..T.pppppppppppppppppppppppp,,,,,,,T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTL.,,,,,.T',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...TTT',
+    'T...T....T...........T....T...pp....T....T.....T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTppTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTpplTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTppTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTppTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTppTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTT...pp...TTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTT....pp....TTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTT.....pp.....TTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTT.###l.pp.l###.TTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT..##X.pppp.Q##..TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT.....pppppp.....TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT...lppppppppl...TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT###.pppppppp.###TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT##Y.pppppppp.M##TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT....pppppppp....TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT...l.pppppp.l...TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTT..##D.pppp.O##..TTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTT.###.l..l.###.TTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTT............TTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTT..........TTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
   ];
   const W = MAP[0].length, HT = MAP.length;
@@ -41,8 +56,9 @@
     G: { name: 'DUNGEON (PROD)' }, B: { name: 'QUEST BOARD' },
     U: { name: "ADVENTURERS' GUILD" }, F: { name: 'FORGE' }, P: { name: 'PIGEON POST' }, K: { name: 'GRAND LIBRARY' },
     N: { name: 'NORTH ROAD' }, E: { name: 'TO THE ISLES' },
-    // The residential row, south of the gate on a little cul-de-sac in the trees: homes for villagers who work in
-    // town (js/interiors.js).
+    // The residential row: homes for villagers who work in town (js/interiors.js), round a cul-de-sac in the woods
+    // at the end of the lane between the Bunker and the Pigeon Post. Each house's picture is turned to face the circle
+    // (tools/interiors_art.py), with its door on that side. The dungeon's path stops at the dungeon.
     X: { name: "LEXI'S HOUSE" }, Y: { name: "KAITO'S HOUSE" }, D: { name: "DOUG'S HOUSE" }, Q: { name: "COO'S HOUSE" },
     M: { name: "BRU'S HOUSE" }, O: { name: "AYO'S HOUSE" }
   };
@@ -52,7 +68,7 @@
     ...[10, 11, 12, 13].map(y => [15, y]), ...[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(x => [x, 14]),
     ...[15, 16, 17].map(y => [12, y]), [12, 18], [13, 18], [14, 18], [15, 18], [16, 18], [15, 14],
     ...Array.from({ length: 20 }, (_, i) => [27 + i, 7]), [38, 6], [45, 5], [45, 6], ...[1, 2, 3, 4, 5, 6].map(y => [20, y]), ...[10, 11, 12, 13].map(y => [40, y]), ...Array.from({ length: 18 }, (_, i) => [27 + i, 14]),
-    ...[19, 20, 21, 22].map(y => [16, y]), ...Array.from({ length: 30 }, (_, i) => [16 + i, 22])];
+    ...[15, 16, 17, 18].map(y => [30, y]), ...[15, 16, 17, 18].map(y => [31, y])];
   PATHS.forEach(([x, y]) => { if (MAP[y][x] === '.') MAP[y] = MAP[y].slice(0, x) + 'p' + MAP[y].slice(x + 1); });
   // Villagers' usual spots, by their doors; talking to one there is the same as walking in. Through the day they
   // walk to wherever their schedule says (js/folk-data.js). Sprites are in assets/img/village.
@@ -193,7 +209,10 @@
     return [r.left + x * ts + ts / 2 - cx, r.top + y * ts + ts / 2 - cy];
   };
   H.stepOffDoor = function () {
-    if (DOORS.includes(tile(P.x, P.y))) H.placeAt(P.x, P.y + 1);
+    if (!DOORS.includes(tile(P.x, P.y))) return;
+    // Out the front: below the door, or beside or above it for the houses turned round to face the cul-de-sac.
+    const d = [[0, 1], [1, 0], [-1, 0], [0, -1]].find(([dx, dy]) => walkable(P.x + dx, P.y + dy) && !DOORS.includes(tile(P.x + dx, P.y + dy)));
+    if (d) H.placeAt(P.x + d[0], P.y + d[1]);
   };
 
   // Things you talk to by standing next to them: the quest board and villagers.
@@ -539,7 +558,7 @@
     const out = [], at = (x, y, r, rgb) => out.push({ x: x * ts - cx, y: y * ts - cy, r: r * ts, rgb });
     for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
       const c = tile(x, y);
-      if (c === 'L' && !down && DECO[hash(x, y) % DECO.length] === 'lamp') at(x + 0.5, y - 0.7, 2.6);
+      if ((c === 'l' || c === 'L' && DECO[hash(x, y) % DECO.length] === 'lamp') && !down) at(x + 0.5, y - 0.7, 2.6);
       if (BUILD[c] && !'BNE'.includes(c) && (!down || 'FG'.includes(c))) {
         const b = bbox(c);
         if (!b) continue;
@@ -667,10 +686,12 @@
   }
 
   // Each building is one picture standing on the bottom row of its footprint, fitted to the footprint's width.
+  // 'L' is a bit of street clutter picked by position; 'l' is always a street lamp (round the cul-de-sac).
   const DECO = ['bush', 'lamp', 'bush', 'barrel', 'sign'];
   function drawObject(x, y, c, t) {
     if (c === 'T') { obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2); return; }
     if (c === 'L') { obj(DECO[hash(x, y) % DECO.length], (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
+    if (c === 'l') { obj('lamp', (x + 0.5) * ts, (y + 0.95) * ts, 1); return; }
     if (c === 'f' && (x + y) % 2 === 0) { obj('crops', (x + 0.5) * ts, (y + 0.9) * ts, 0.8); return; }
     if (c !== '#' && !DOORS.includes(c)) return;
     if (c === 'N') return;   // no gate: a plain path leads north (Ladi, 2026-10-18)
