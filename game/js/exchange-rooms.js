@@ -276,12 +276,13 @@
   // railing. A sofa, armchairs, a coffee urn, and Hash's armchair by the window that looks out at the tower.
   R.xlounge = {
     name: 'THE DINER LOUNGE', down: ['xupper', 3, 4, 'east'],
-    map: ['############', '############', '############', '############', '####.#..####',
-      '####...#.###', '##SS.....###', '#......#####', '############'],
-    enter: [2, 7, 'east'],
+    // The stairs climb toward the back, like the ones below: you step off at the top, by the cabinet, and go down toward the front.
+    map: ['############', '############', '############', '############', '##...#..####',
+      '##SS...#.###', '####.....###', '#......#####', '############'],
+    enter: [2, 4, 'east'],
     // Clear of the ways from the stairs to the urn and round the table to the sofa.
     people: () => shelter('xlounge'),
-    spots: { _: [[4, 4, 'east'], [5, 5, 'north'], [6, 7, 'north'], [1, 7, 'east']] },
+    spots: { _: [[5, 5, 'north'], [5, 7, 'east'], [6, 7, 'west'], [1, 7, 'east']] },
     names: FOLK_NAMES, looks: FOLK_LOOKS,
     lights: [{ x: 5, y: 2.1, r: 2.4 }, { x: 7.3, y: 2.1, r: 2.4 }, { x: 1.8, y: 3.4, r: 2 }, { x: 10.4, y: 3.4, r: 2 }],
     props: [
