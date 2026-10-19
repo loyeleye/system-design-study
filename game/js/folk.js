@@ -60,15 +60,23 @@
     list.forEach(n => { taken[n.stand[0] + ',' + n.stand[1]] = 1; });
     list.forEach(n => {
       const e = entry(n.id, block);
-      let spot = 'stand', doing = e ? e[1] : '', say = e && e[2];
-      if (storm && D.STORM[n.id]) { spot = D.STORM[n.id]; doing = 'Indoors, out of the storm'; say = null; }
+      let spot = 'stand', doing = e ? names(e[1]) : '', say = e && e[2], act = D.PEOPLE[n.id].act || null;
+      if (storm && D.STORM[n.id]) { spot = D.STORM[n.id]; doing = 'Indoors, out of the storm'; say = null; act = null; }
       // Quest business beats the clock: a villager with a ! or ? stays where you'd look for them.
       else if (marks[n.id]) { spot = 'stand'; say = null; }
-      else if (e) spot = e[0];
+      else if (e) { spot = e[0]; act = e[3] || act; }
       if (spot === null) { out[n.id] = null; return; }
+      // Rounds: a walk between several spots, a few seconds at each, starting somewhere different each loop.
+      if (Array.isArray(spot)) {
+        const route = spot.map(k => { const ts = D.SPOTS[k].tiles; return ts[hash(n.id + k) % ts.length]; });
+        const i = ctx(block).loop % route.length;
+        out[n.id] = { spot: 'rounds', doing, say, act, label: 'making the rounds', hide: false, door: null,
+          route: route.slice(i).concat(route.slice(0, i)), x: route[i][0], y: route[i][1] };
+        return;
+      }
       let s = D.SPOTS[spot];
       if (s && s.road && !roadOpen(s.road)) { spot = home(n.id); s = D.SPOTS[spot]; doing = 'At home'; say = null; }
-      const at = { spot, doing, say, label: s ? s.label : null, hide: false, door: null };
+      const at = { spot, doing, say, act, label: s ? s.label : null, hide: false, door: null };
       if (spot === 'stand' || !s) { at.x = n.stand[0]; at.y = n.stand[1]; }
       else if (s.door || s.road) {
         const d = SD.hub.doorTile(s.door || s.road);
@@ -86,6 +94,9 @@
     last = out;
     return out;
   };
+  const hash = str => { let h = 7; for (const ch of str) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
+  // "{valentin}" in a line becomes whatever the map calls her today.
+  const names = t => t.replace(/\{(\w+)\}/g, (m, id) => { const nm = SD.hub.npcName(id); return nm ? cap(nm) : m; });
   // Who is behind a door right now (from the last plan).
   F.residents = door => Object.keys(last).filter(id => last[id] && last[id].hide && last[id].door === door);
 

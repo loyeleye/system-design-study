@@ -1,9 +1,10 @@
 // Where Pingsby's villagers go in each time block, and what Bru's Brújula Board says about them.
 // Written from the cast bible (docs/cast-bible.md, "Schedules"); js/folk.js reads it and js/hub.js walks people there.
 //
-// Each schedule entry is [spot, doing, say?]: a spot from SPOTS (or 'stand', the villager's usual tile by their door,
-// or null for "not in town"), what they're doing (shown on the board), and an optional line they say when you find
-// them away from their door. An entry can be a function of { f: flags, loop, done(questId) } for chapter variants.
+// Each schedule entry is [spot, doing, say?, act?]: a spot from SPOTS (or 'stand', the villager's usual tile by their
+// door, or null for "not in town", or a list of spots to walk between), what they're doing (shown on the board), an
+// optional line they say when you find them away from their door, and what they act out while standing there.
+// An entry can be a function of { f: flags, loop, done(questId) } for chapter variants.
 // Relationship scenes (a later thread) will live here too.
 (function () {
   const D = SD.folkData = {};
@@ -22,7 +23,7 @@
     'cafe:in': { label: 'inside the Cache Café', door: 'C' },
     guild: { label: "the Adventurers' Guild", tiles: [[36, 6], [40, 6]] },
     'guild:in': { label: "inside the Adventurers' Guild", door: 'U' },
-    forge: { label: 'the Forge', tiles: [[44, 6], [46, 6], [43, 6]] },
+    forge: { label: 'the Forge', tiles: [[44, 5], [44, 6], [46, 6]] },
     'forge:in': { label: 'inside the Forge', door: 'F' },
     'west-bridge': { label: 'the west footbridge', tiles: [[15, 9], [16, 8]] },
     'east-bridge': { label: 'the east footbridge', tiles: [[40, 9], [41, 8]] },
@@ -53,106 +54,126 @@
   const ROUNDS = ['cafe', 'post', 'library', 'temple', 'treehouse', 'forge', 'bunker'];
   const ROOFS = ['the café', 'the library', 'the temple', 'the Forge', 'the treehouse', 'the bunker'];
 
+  // Rounds: a list of spots instead of one means walking between them, stopping a few seconds at each.
+  // Acts (the 4th field, or `act` for the villager's usual spot) are what they're doing while standing; js/hub.js
+  // draws them: smith, talk:<who>, read, write, laptop, sweep, sleep, sell, pray, drill, stream, train, eat, sip,
+  // serve, stamp, tend, watch, guard, play, walkie, browse, pose.
   D.PEOPLE = {
     gary: {
-      morning: ['cafe', 'Buying the whole tray of croissants'],
-      afternoon: ['bench', 'Eating them, one by one'],
-      evening: ['stand', 'Standing with a coffee. Leaves at nine.'],
+      act: 'sip',
+      morning: ['cafe', 'Buying the whole tray of croissants', null, 'talk:wen'],
+      afternoon: ['bench', 'Eating them, one by one', null, 'eat'],
+      evening: ['stand', 'Standing with a coffee. Leaves at nine.', null, 'sip'],
       night: [null, 'Asleep by nine'],
       board: c => c.f.garyGone && !c.f.ch10 ? 'GARY: last seen at the temple. Heartbeat missed: all of them.' : c.block === 'night' ? 'GARY: no heartbeat. Not down. Just asleep.' : 'GARY: {spot}. Heartbeat: one "OK" an hour.'
     },
     uptima: {
-      morning: ['stand', 'Writing Cheat Sheet pages'],
+      act: 'write',
+      morning: ['stand', 'Writing Cheat Sheet pages', null, 'write'],
       afternoon: ['cafe:in', 'Her café shift, in the maid outfit'],
-      evening: c => ['stand', c.f.ch10 ? 'Reading her logs on the temple steps' : 'Reading prayers on the temple steps'],
+      evening: c => ['stand', c.f.ch10 ? 'Reading her logs on the temple steps' : 'Reading prayers on the temple steps', null, c.f.ch10 ? 'read' : 'pray'],
       night: ['temple:in', 'Asleep on a cloud'],
       board: 'UPTIMA: {spot}. Says she is "omnipresent". She is not.'
     },
     wen: {
-      morning: ['stand', 'Serving the breakfast rush'],
-      afternoon: ['stand', 'Restocking. The stale scones go first: LRU.'],
-      evening: c => c.done('recipe') ? ['bench', 'Feeding the pigeons with Coo', 'Sit down, dear. Coo and I are feeding the pigeons. Coo is also eating the seed.']
-        : ['stand', 'Behind the counter, still'],
+      act: 'serve',
+      morning: ['stand', 'Serving the breakfast rush', null, 'serve'],
+      afternoon: ['stand', 'Restocking, and sweeping the step. The stale scones go first: LRU.', null, 'sweep'],
+      evening: c => c.done('recipe') ? ['bench', 'Feeding the pigeons with Coo', 'Sit down, dear. Coo and I are feeding the pigeons. Coo is also eating the seed.', 'talk:coo']
+        : ['stand', 'Behind the counter, still', null, 'serve'],
       night: ['cafe:in', "Baking from Hiro's letters, in her flat upstairs"],
       board: 'WEN: {spot}. Heartbeat every 5 minutes, exactly. Hiro set it up.'
     },
     mio: {
-      morning: ['forge', "At school: Ayo's class trains at the Forge", "Shh! I'm at SCHOOL. Ayo says today we learn to hit things on purpose."],
-      afternoon: c => c.f.ch7 && c.loop % 2 === 0 ? ['north-gate', 'Watching the North Road for her mum', "Mum carries letters up and down that road. If I watch hard enough, she'll come round the corner."]
-        : c.loop % 2 ? ['cafe:in', 'Helping Wen in the café'] : ['stand', 'Playing at the treehouse'],
-      evening: ['stand', 'Walkie-talkie club, on the treehouse ladder'],
+      act: 'play',
+      morning: ['forge', "At school: Ayo's class hammers at the Forge", "Shh! I'm at SCHOOL. Ayo says today we learn to hit things on purpose.", 'smith'],
+      afternoon: c => c.f.ch7 && c.loop % 2 === 0 ? ['north-gate', 'Watching the North Road for her mum', "Mum carries letters up and down that road. If I watch hard enough, she'll come round the corner.", 'watch']
+        : c.loop % 2 ? ['cafe:in', 'Helping Wen in the café']
+        : [['treehouse', 'west-bridge', 'plaza', 'bench'], 'Running about town on an adventure', "I'm on a QUEST. It's secret. It's to find the best stick.", 'play'],
+      evening: ['stand', 'Walkie-talkie club, on the treehouse ladder', null, 'walkie'],
       night: ['treehouse:in', 'Asleep'],
       board: 'MIO: {spot}. Reports her own location as "adventure".'
     },
     seymour: {
-      morning: ['stand', 'The backup of the morning'],
-      afternoon: ['plaza', 'Drilling squires', 'SQUIRES! Again! A drill you have only done once is not a drill. It is a story.'],
-      evening: c => ['bunker:in', c.f.ch10 ? 'Running a restore drill' : 'Labelling tapes. Three times.'],
-      night: ['stand', 'Standing guard at the bunker door, then asleep in his armour'],
+      act: 'guard',
+      morning: ['stand', 'The backup of the morning', null, 'write'],
+      afternoon: ['plaza', 'Drilling squires', 'SQUIRES! Again! A drill you have only done once is not a drill. It is a story.', 'drill'],
+      evening: c => ['bunker:in', c.f.ch10 ? 'Running a restore drill' : 'Labelling tapes. Three times.', null, 'write'],
+      night: ['stand', 'Standing guard at the bunker door, then asleep in his armour', null, 'guard'],
       board: 'SEYMOUR: {spot}. {spot}. {spot}. (He sends three.)'
     },
     bru: {
-      morning: ['stand', 'At the Guild desk'],
-      afternoon: ['stand', 'At the Guild desk'],
-      evening: ['stand', 'At the Guild desk, still'],
-      night: c => [ROUNDS[c.loop % ROUNDS.length], 'Walking her rounds', 'Oh! Rounds. Every door, every night. Somebody has to check the checkers.'],
+      act: 'stamp',
+      morning: ['stand', 'At the Guild desk, stamping forms', null, 'stamp'],
+      afternoon: ['stand', 'At the Guild desk, stamping forms', null, 'stamp'],
+      evening: ['stand', 'At the Guild desk, still', null, 'stamp'],
+      night: c => [ROUNDS.slice(c.loop % ROUNDS.length).concat(ROUNDS.slice(0, c.loop % ROUNDS.length)), 'Walking her rounds', 'Oh! Rounds. Every door, every night. Somebody has to check the checkers.', 'browse'],
       board: c => c.block === 'night' ? 'BRU: ???' : 'BRU: {spot}. Where else would I be?'
     },
     ayo: {
-      morning: ['stand', "Teaching Mio's class"],
-      afternoon: c => c.f.ch7 ? ['road', 'Selling at the North Road market'] : ['stand', 'Apprentices at the anvils'],
-      evening: ['stand', "Writing the day's post-mortem"],
+      act: 'smith',
+      morning: ['stand', "Teaching Mio's class at the anvil", null, 'smith'],
+      afternoon: c => c.f.ch7 ? ['road', 'Selling at the North Road market'] : ['stand', 'Apprentices at the anvils', null, 'smith'],
+      evening: ['stand', "Writing the day's post-mortem", null, 'write'],
       night: ['row:ayo', 'Asleep at home. The Forge stays lit.'],
       board: 'AYO: {spot}. On-prem. Does not use the board, but tells Bru in person.'
     },
     coo: {
-      morning: c => c.f.ch7 && c.loop % 2 ? ['road', 'At the North Road courier post'] : ['stand', 'Sorting the post'],
+      act: 'read',
+      morning: c => c.f.ch7 && c.loop % 2 ? ['road', 'At the North Road courier post'] : ['stand', 'Sorting the post', null, 'read'],
       afternoon: c => ['sky', 'Flying rounds, over ' + ROOFS[c.loop % ROOFS.length]],
-      evening: ['bench', 'On the plaza bench with Wen', 'Coo. Wen brings the seed, Coo brings the company. Fair trade.'],
+      evening: ['bench', 'On the plaza bench with Wen', 'Coo. Wen brings the seed, Coo brings the company. Fair trade.', 'talk:wen'],
       night: ['row:coo', 'Roosting at home'],
       board: 'COO: {spot}. Delivered at least once. Possibly twice.'
     },
     lexi: {
-      morning: ['stand', 'The opening ritual (incantations)'],
-      afternoon: c => c.f.ch7 && c.loop % 2 ? ['road', 'Cataloguing books at the waystation'] : ['stand', 'In the Forbidden Index'],
-      evening: ['stand', 'Editing something, in secret'],
+      act: 'read',
+      morning: ['stand', 'The opening ritual (incantations)', null, 'pray'],
+      afternoon: c => c.f.ch7 && c.loop % 2 ? ['road', 'Cataloguing books at the waystation']
+        : [['library', 'post', 'guild', 'board', 'cafe'], 'Collecting overdue books, door to door', 'Overdue. OVERDUE. Kaito has had his own memoir for three loops.', 'browse'],
+      evening: ['stand', 'Editing something, in secret', null, 'write'],
       night: ['row:lexi', 'Reading in her nook at home'],
       board: 'LEXI: {spot}. Location: [SEALED].'
     },
     cron: {
-      morning: ['stand', 'Asleep in the hayloft. Do not wake.'],
-      afternoon: ['farm', 'Mending fences'],
-      evening: ['plaza', 'Buying seed'],
-      night: c => ['farm', c.done('sprinkler') ? 'Midnight, give or take: the herd goes out a few at a time' : 'Midnight chores: the whole herd goes out at once'],
+      act: 'sleep',
+      morning: ['stand', 'Asleep in the hayloft. Do not wake.', null, 'sleep'],
+      afternoon: ['farm', 'Mending fences', null, 'tend'],
+      evening: [['plaza', 'cafe', 'post', 'board'], 'Buying seed, and haggling about it', "Seed's gone up again. Everything's gone up. Except my turnips. They've gone sideways.", 'browse'],
+      night: c => ['farm', c.done('sprinkler') ? 'Midnight, give or take: the herd goes out a few at a time' : 'Midnight chores: the whole herd goes out at once', null, 'tend'],
       board: 'CRON: {spot}. Heartbeat at midnight. Give or take.'
     },
     kaito: {
-      morning: c => c.f.ch5 ? ['garyspot', "Standing in Gary's spot in the mornings"] : ['stand', 'Posing by the quest board (not posing)'],
-      afternoon: ['library', 'Borrowing his own memoir'],
-      evening: c => c.f.ch8 && c.loop % 2 ? ['road', 'At the arena'] : ['plaza', "Livestreaming to Mio's class"],
-      night: ['west-bridge', 'Training alone'],
+      act: 'pose',
+      morning: [['board', 'guild', 'cafe', 'forge', 'temple'], 'Visiting every building to pitch his new design', 'Each building gets its own microservice. The temple gets two. For redundancy.', 'pose'],
+      afternoon: [['library', 'post', 'plaza', 'gate'], 'Borrowing his own memoir, then reading it to strangers', 'I\'ve read my memoir eleven times. It gets better. I get better.', 'read'],
+      evening: c => c.f.ch8 && c.loop % 2 ? ['road', 'At the arena'] : ['plaza', "Livestreaming to Mio's class", null, 'stream'],
+      night: ['west-bridge', 'Training alone', null, 'train'],
       board: 'KAITO: {spot}. Also {spot}. Running 46 instances.'
     },
     doug: {
-      morning: ['stand', 'Laptop out, by the Post'],
-      afternoon: ['board', 'Refreshing the quest board, by hand this time'],
-      evening: ['terrace', 'On the café terrace, laptop out'],
+      act: 'laptop',
+      morning: ['stand', 'Laptop out, by the Post', null, 'laptop'],
+      afternoon: [['board', 'post', 'cafe', 'plaza'], 'Refreshing the quest board, by hand this time, then checking it again', 'Rate limited. By myself. I set a timer. Five refreshes a walk.', 'laptop'],
+      evening: c => c.f.ch5 ? ['terrace', 'On the café terrace, talking shop with {valentin}', null, 'talk:valentin'] : ['terrace', 'On the café terrace, laptop out', null, 'laptop'],
       night: ['row:doug', "Asleep at home. Kevin isn't."],
       board: 'DOUG: bakery. (He is not in the bakery. That is Kevin.)'
     },
     // Aigerim's "stand" is wherever js/peddler.js put her shop this loop.
     aigerim: {
-      morning: ['stand', 'Selling'],
-      afternoon: ['stand', 'Selling'],
-      evening: ['stand', 'Writing in her diary'],
+      act: 'sell',
+      morning: ['stand', 'Selling', null, 'sell'],
+      afternoon: ['stand', 'Selling', null, 'sell'],
+      evening: ['stand', 'Writing in her diary', null, 'write'],
       night: ['yurt', 'In her yurt behind the farm'],
       board: 'AIGERIM: {spot}. Also knows where YOU are. Better than I do.'
     },
     // Dieynaba (id 'valentin', js/ploy-quest.js), outside the café from chapter 5.
     valentin: {
-      morning: ['stand', 'Attaya on the café terrace, after the seven o\'clock post'],
-      afternoon: ['stand', 'Attaya on the café terrace'],
-      evening: c => c.loop % 2 ? ['bench', 'Reading on the plaza bench'] : ['stand', 'Attaya on the café terrace'],
+      act: 'sip',
+      morning: [['post', 'terrace', 'bench', 'cafe'], 'The seven o\'clock post, then a walk with her attaya', 'Seven o\'clock post, then the long way round. A city is only yours if you walk it.', 'sip'],
+      afternoon: [['terrace', 'plaza', 'library', 'east-bridge'], 'Taking her attaya for a stroll', 'The second glass of attaya is the sweet one. You have to earn it by finishing the first.', 'sip'],
+      evening: c => c.loop % 2 ? ['bench', 'Reading on the plaza bench', null, 'read'] : ['stand', 'On the café terrace, talking with Doug', null, 'talk:doug'],
       night: ['post:in', 'In the room over the Post, the light on late'],
       board: '{name}: {spot}. Arrived exactly on time.'
     }
