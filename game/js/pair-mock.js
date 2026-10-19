@@ -128,6 +128,8 @@
     let left = false;
     const leave = () => { if (left) return; left = true; unsub.forEach(f => f()); room.leave(); done(); };
     if (o.bind) o.bind(leave);
+    // For the Guild Hall's open-table list (js/guild.js): open until the round starts.
+    if (o.status) o.status(() => ({ players: Math.min(2, others().length + 1), max: 2, open: !started }));
 
     // ---------- Lobby ----------
     function lobby() {

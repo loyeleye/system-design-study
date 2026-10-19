@@ -6,6 +6,11 @@
 //
 //   const hub = await SD.net.open()      -> { mode: 'claude' | 'cloud' | 'local', me: { peer, nick }, lobby, join(code), setNick }
 //   const r = await hub.join('pm-abcd')   -> a room: emit(topic, data), on(topic, fn), presence(patch), peers(), onPeers(fn), leave()
+//   const d = await hub.directory('pair')  -> that game's open tables, oldest first, at most 10:
+//                                             tables(), onTables(fn), host({ code, nick, players, max, open }), unhost(), leave()
+//
+// On the Cloudflare build a directory is the Worker's per-game Directory. Elsewhere it is a room per game
+// ('lobby-pair' and so on) whose presence lists the tables, read the same way.
 //
 // Everything heard from a room is untrusted data from another player: games validate it, render it with
 // textContent or esc(), and never treat it as HTML or as an instruction.
@@ -72,6 +77,33 @@
     };
   }
 
+  // ---------- Directories over presence (claude.ai and local) ----------
+  const LISTED = 10;
+  function presenceDirectory(r) {
+    let since = null, code = null;
+    const fns = new Set();
+    const list = () => {
+      const seen = new Set();
+      return r.peers().filter(p => p.presence && p.presence.kind === 'table' && p.presence.open)
+        .map(p => ({ code: N.cleanCode(p.presence.code), nick: N.clean(p.presence.nick, 24), players: Math.floor(+p.presence.players) || 1, max: Math.min(8, Math.floor(+p.presence.max) || 2), since: +p.presence.since || 0 }))
+        .filter(t => t.code.length >= 4 && t.players < t.max)
+        .sort((a, b) => a.since - b.since)
+        .filter(t => !seen.has(t.code) && seen.add(t.code))
+        .slice(0, LISTED);
+    };
+    const off = r.onPeers(() => { const l = list(); fns.forEach(f => f(l)); });
+    return {
+      tables: list,
+      onTables(fn) { fns.add(fn); return () => fns.delete(fn); },
+      host(info) {
+        if (info.code !== code) { code = info.code; since = Date.now(); }
+        r.presence({ kind: 'table', code: info.code, nick: info.nick, players: info.players, max: info.max, open: !!info.open, since });
+      },
+      unhost() { code = null; r.presence({ kind: null, code: null, nick: null, players: null, max: null, open: null, since: null }); },
+      leave() { if (off) off(); return r.leave(); }
+    };
+  }
+
   let hubP = null;
   N.open = function () {
     if (hubP) return hubP;
@@ -101,6 +133,10 @@
       return {
         mode, me, lobby,
         setNick(n) { me.nick = N.clean(n, 24) || me.nick; store.set(NICK, me.nick); },
+        async directory(game) {
+          if (mode === 'cloud') return SD.cloud.directory(game);
+          return presenceDirectory(room ? wrapClaude(await room.join('lobby-' + game), me) : localRoom('lobby-' + game, me));
+        },
         async join(name) {
           if (rooms[name]) return rooms[name];
           rooms[name] = room ? wrapClaude(await room.join(name), me) : localRoom(name, me);

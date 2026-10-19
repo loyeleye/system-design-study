@@ -15,11 +15,12 @@
   "durable_objects": {
     "bindings": [
       { "name": "ROOMS", "class_name": "Room" },
-      { "name": "SAVES", "class_name": "SaveSlot" }
+      { "name": "SAVES", "class_name": "SaveSlot" },
+      { "name": "LOBBIES", "class_name": "Directory" }
     ]
   },
   // SQLite-backed Durable Objects are the kind the Workers Free plan allows.
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["Room", "SaveSlot"] }
+    { "tag": "v1", "new_sqlite_classes": ["Room", "SaveSlot", "Directory"] }
   ]
 }

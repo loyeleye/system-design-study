@@ -12,11 +12,12 @@ Showdown and Incident Raid pay no shards or XP, and nothing is kept between sess
 
 ## Files
 
-- `game/js/net.js`: the transport. On claude.ai it uses the artifact's `room` capability: `join(name)` gives each table its own room, and the shared lobby room lists open tables through presence. Anywhere else it falls back to a `BroadcastChannel`, so two tabs of one browser can play each other. The tests run this way.
+- `game/js/net.js`: the transport. On claude.ai it uses the artifact's `room` capability: `join(name)` gives each table its own room. On the Cloudflare build it uses the Worker's rooms (`game/js/cloud.js`, `cloudflare/`). Anywhere else it falls back to a `BroadcastChannel`, so two tabs of one browser can play each other. The tests run this way.
+- Open lobbies (Ladi, 2026-10-19): each mode has its own list of open tables, the first 10, oldest first. `hub.directory(game)` gives that list. On Cloudflare it is the Worker's per-game `Directory` Durable Object, which pushes the list to everyone on the Guild Hall screen; elsewhere it is a room per mode (`lobby-pair`, `lobby-show`, `lobby-raid`) whose presence lists the tables. A host picks **Open** (listed) or **Private** (join by code only) before hosting. Each mode reports its own status through `o.status(() => ({ players, max, open }))`: Pair Mock is open until the round starts, Showdown and the Raid while their table is in its lobby, and any table drops off once full.
 - `game/js/pair-mock.js`: Pair Mock. It has no host, because each role owns its own data. The candidate owns the event log and replays it to an interviewer who joins late or reloads. The interviewer owns their scores. A message is accepted only from the peer whose presence holds the matching role.
 - `game/js/showdown.js`: Whiteboard Showdown. The host's page is the authority. It holds everyone's answers and sends the whole table state on every change and every 3 seconds. Players send only their own answers. If the host leaves, the present player with the lowest peer label takes over from the last state, and everyone resends their answers.
 - `game/js/raid.js`: Incident Raid. It has its own small battle engine, ported from the boss intents and card effects in `run.js`, without curses, keepsakes or rewards, so `run.js` is unchanged. The host's page is the authority, the same way as the Showdown: it holds every player's deck and hand and sends the whole state on every change and every 3 seconds. Players send only `hello` (their deck) and `pick` (play card i, or Ready). Incoming state is checked against the card data. The boss scales with the players: its severity is the base severity × (0.4 + 0.6 × players). If the host leaves, the next player takes over from the last state.
-- `game/js/guild.js`: the lobby. A mode with an `ok()` check (the Raid) shows only where it passes, so the standalone page lists two modes. It has a name field, buttons to open a table or join one by code, and a list of the tables open now.
+- `game/js/guild.js`: the lobby. A mode with an `ok()` check (the Raid) shows only where it passes, so the standalone page lists two modes. It has a name field and, for each mode, a Host button with Open or Private, a join-by-code field, and that mode's open tables.
 - `game/guild-hall.html`: the standalone page.
 
 Everything heard from a room is untrusted. Nicknames and notes are cleaned (`SD.net.clean`), rendered with `esc()` or `textContent`, and checked against the problem and blueprint data before use. Every message stays far under the room's 4 KiB limit. Mock events refer to the problem data by index.
@@ -38,6 +39,10 @@ Everything heard from a room is untrusted. Nicknames and notes are cleaned (`SD.
 - `game/js/run.js`: no changes.
 
 ## Publishing
+
+**Cloudflare:** `cloudflare/README.md`. Multiplayer, open lobbies and save codes work for anyone with the link, with no claude.ai account.
+
+**claude.ai:**
 
 The Guild Hall is its own artifact. The main game link stays as it is. To publish, inline the scripts into the page fragment, the same way `tools/artifact_page.py --inline` does. Then declare:
 

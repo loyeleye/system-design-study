@@ -82,6 +82,8 @@
     let left = false;
     const leave = () => { if (left) return; left = true; unsub.forEach(f => f()); clearInterval(iv); room.leave(); done(); };
     if (o.bind) o.bind(leave);
+    // For the Guild Hall's open-table list (js/guild.js): open while the table is in its lobby.
+    if (o.status) o.status(() => ({ players: Math.max(1, players().length), max: 8, open: S.ph === 'lobby' }));
 
     // ---------- Host ----------
     function push() { S.v++; S.host = me.peer; room.emit('state', S); render(); }

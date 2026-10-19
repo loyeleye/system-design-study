@@ -4,7 +4,8 @@
 // claude.ai artifact never use it.
 //
 //   await SD.cloud.available()  -> true when this copy is served by the Worker
-//   await SD.cloud.room()       -> the lobby room: emit, on, presence, peers, onPeers, connected, leave, join(name)
+//   await SD.cloud.room()       -> the hub's lobby, shaped like a room; join(name) opens a table's room
+//   SD.cloud.directory(game)    -> that game's open tables: tables(), onTables(fn), host(info), unhost(), leave()
 //   SD.cloud.saves              -> { code(), setCode(c), get(), set({ json, updatedAt }) }
 (function () {
   const C = SD.cloud = SD.cloud || {};
@@ -85,17 +86,66 @@
     return room;
   }
 
+  // This tab's peer label, worked out the same way the Worker does, so no socket is needed to learn it.
+  async function label() {
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('peer:' + TAB)));
+    return Array.from(h.slice(0, 6), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // The hub's lobby. Open tables are listed by the per-game directories below, so the lobby itself opens no
+  // socket: it only carries this tab's label, and join(name) opens a table's room.
   C.room = async function () {
-    if (!(await C.available())) return null;
-    const lobby = socketRoom('lobby');
-    // Wait briefly for the first hello so peers() already lists this tab, as on claude.ai.
-    await Promise.race([lobby.ready(), new Promise(r => setTimeout(r, 3000))]);
-    lobby.join = async function (name) {
-      const r = socketRoom('t-' + String(name).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40));
-      await Promise.race([r.ready(), new Promise(res => setTimeout(res, 3000))]);
-      return r;
+    if (!(await C.available()) || !(window.crypto && crypto.subtle)) return null;
+    const self = { peer: await label(), presence: {}, isMe: true, sameTab: true, kind: 'user' };
+    return {
+      emit: () => Promise.resolve(),
+      on: () => () => {},
+      presence(patch) { Object.assign(self.presence, patch); return Promise.resolve(); },
+      peers: () => [self],
+      onPeers: () => () => {},
+      connected: () => true,
+      leave: () => Promise.resolve(),
+      async join(name) {
+        const r = socketRoom('t-' + String(name).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40));
+        await Promise.race([r.ready(), new Promise(res => setTimeout(res, 3000))]);
+        return r;
+      }
     };
-    return lobby;
+  };
+
+  // ---------- Lobby directories ----------
+  // One socket per game's directory (cloudflare/src/worker.js, Directory). The list is pushed whenever it changes.
+  // A host's table rides on the socket, so it is re-sent after a reconnect and gone when the socket closes.
+  C.directory = function (game) {
+    const fns = new Set();
+    let ws = null, list = [], mine = null, closed = false, wait = 500;
+    const fire = () => fns.forEach(f => { try { f(list); } catch (e) { /* a listener's own error */ } });
+    const send = o => { if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify(o)); } catch (e) { /* resent on reconnect */ } } };
+    function connect() {
+      const u = api('lobby/' + encodeURIComponent(game));
+      u.searchParams.set('k', TAB);
+      u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(u);
+      ws.onopen = () => { wait = 500; if (mine) send(Object.assign({ t: 'host' }, mine)); };
+      ws.onmessage = e => {
+        let m; try { m = JSON.parse(e.data); } catch (err) { return; }
+        if (m && m.t === 'tables' && Array.isArray(m.tables)) { list = m.tables; fire(); }
+      };
+      ws.onclose = () => {
+        if (closed) return;
+        setTimeout(() => { if (!closed) connect(); }, wait);
+        wait = Math.min(wait * 2, 15000);
+      };
+      ws.onerror = () => { try { ws.close(); } catch (e) { /* already closing */ } };
+    }
+    connect();
+    return {
+      tables: () => list,
+      onTables(fn) { fns.add(fn); return () => fns.delete(fn); },
+      host(info) { mine = info; send(Object.assign({ t: 'host' }, info)); },
+      unhost() { mine = null; send({ t: 'unhost' }); },
+      leave() { closed = true; try { ws.close(1000, 'leave'); } catch (e) { /* gone */ } }
+    };
   };
 
   // ---------- Saves ----------

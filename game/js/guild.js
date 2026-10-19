@@ -1,5 +1,6 @@
-// The Guild Hall: the lobby for the multiplayer modes. Pick a name, open a table or join one by its code.
-// Tables being played right now are listed from the lobby room's presence, so friends can tap straight in.
+// The Guild Hall: the lobby for the multiplayer modes. Pick a name, host a table or join one.
+// Each mode has its own open-table list (hub.directory, js/net.js): the first 10 open tables, oldest first.
+// A host picks Open (listed until the game starts or fills) or Private (join by code only).
 //   SD.guild.open(root, { inGame })  -> { close() }   the hall inside any element
 //   await SD.guild.play()                              the hall in a game panel (Menu, or an NPC)
 (function () {
@@ -27,6 +28,11 @@
 .gh-nick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .gh-nick input { max-width: 16em; }
 .gh-tables { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 .gh-tables li { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fff; border: 2.5px solid var(--mi-ink); border-radius: 10px; padding: 6px 10px; font-size: 14px; }
+.gh-host { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gh-vis { display: inline-flex; border: 2.5px solid var(--mi-ink); border-radius: 10px; overflow: hidden; }
+.gh-vis button { font: inherit; font-size: 13px; font-weight: 700; padding: 4px 10px; border: 0; background: #fff; color: var(--mi-ink); cursor: pointer; }
+.gh-vis button.on { background: var(--mi-ink); color: #fff; }
+.gh-open h4 { margin: 10px 0 6px; font-size: 14px; }
 .gh-note { font-size: 13px; background: var(--mi-paper); border-radius: 10px; padding: 8px 12px; margin: 0 0 12px; }
 `;
     document.head.appendChild(st);
@@ -38,56 +44,79 @@
   G.open = function (root, opts) {
     opts = opts || {};
     let stop = null, closed = false;
-    const ready = run(root, opts, f => { stop = f; }, () => closed);
-    return { ready, close() { closed = true; if (stop) stop(); } };
+    const ends = [];
+    const ready = run(root, opts, f => { stop = f; }, () => closed, f => ends.push(f));
+    return { ready, close() { closed = true; if (stop) stop(); ends.forEach(f => f()); } };
   };
 
-  async function run(root, opts, bind, isClosed) {
+  async function run(root, opts, bind, isClosed, onEnd) {
     if (SD.mock && SD.mock.css) SD.mock.css();
     css();
     root.innerHTML = '<div class="mi"><div class="mi-card"><p>Opening the Guild Hall…</p></div></div>';
     const hub = await net.open();
     // In the game, the player's own name is the default.
     if (opts.inGame && /^Hero /.test(hub.me.nick) && SD.state && SD.state.save && SD.state.save.name) hub.setNick(SD.state.save.name);
-    const lobby = hub.lobby;
+    const games = Object.keys(GAMES).filter(on);
+    // Each mode's open tables, kept live while the hall is open.
+    const dirs = {};
+    await Promise.all(games.map(async k => { dirs[k] = await hub.directory(k); }));
+    let q = 0;
+    const redraw = () => { if (!q) q = setTimeout(() => { q = 0; hall(); }, 150); };
+    games.forEach(k => dirs[k].onTables(redraw));
+    onEnd(() => games.forEach(k => dirs[k].leave()));
+    if (isClosed()) { games.forEach(k => dirs[k].leave()); return; }
+    // Open (listed) or Private (code only), per mode, for the next table this player hosts.
+    const listed = {};
+    games.forEach(k => { listed[k] = true; });
     let at = null;
-    const tables = () => lobby.peers().filter(p => !p.isMe && p.presence && p.presence.kind === 'table' && GAMES[p.presence.game] && on(p.presence.game) && net.cleanCode(p.presence.code).length >= 4);
-    lobby.presence({ kind: 'idle', nick: hub.me.nick });
 
     async function sit(game, code, create) {
       if (isClosed()) return;
       at = { game, code };
-      lobby.presence({ kind: 'table', game, code, nick: hub.me.nick, host: !!create });
-      try { await GAMES[game].play(root, hub, code, { create, bind, onResult: opts.onMock }); } finally {
+      // A host keeps its table in the mode's directory, refreshed from the mode's own status (players, open)
+      // every second; a private table is sent as not open, so it's never listed.
+      let poll = null, last = '', status = null;
+      const beat = () => {
+        const st = status ? status() : { players: 1, max: 2, open: true };
+        const info = { code, nick: hub.me.nick, players: st.players, max: st.max, open: !!(listed[game] && st.open) };
+        const j = JSON.stringify(info);
+        if (j !== last) { last = j; dirs[game].host(info); }
+      };
+      if (create) { beat(); poll = setInterval(beat, 1000); }
+      try {
+        await GAMES[game].play(root, hub, code, { create, bind, onResult: opts.onMock, status: create ? f => { status = f; beat(); } : null });
+      } finally {
+        clearInterval(poll);
+        if (create) dirs[game].unhost();
         at = null; bind(null);
-        if (isClosed()) return;
-        lobby.presence({ kind: 'idle', nick: hub.me.nick, game: null, code: null, host: null });
-        hall();
+        if (!isClosed()) hall();
       }
     }
 
     function hall() {
       if (at || isClosed()) return;
-      const list = tables();
-      // One row per table: the creator's row wins, so a table with two players shows once.
-      const seen = new Map();
-      list.forEach(p => { const k = p.presence.game + ':' + net.cleanCode(p.presence.code); if (!seen.has(k) || p.presence.host) seen.set(k, p); });
       const a = document.activeElement, keep = a && a.id ? [a.id, a.value] : null;
       const vals = {}; root.querySelectorAll('input').forEach(i => { vals[i.id] = i.value; });
+      const openList = k => {
+        const list = dirs[k].tables().filter(t => GAMES[k] && net.cleanCode(t.code).length >= 4);
+        return list.length ? `<ul class="gh-tables">${list.map(t => `<li><span><b>${esc(net.clean(t.nick, 24) || 'A hero')}</b> · ${Math.floor(+t.players) || 1}/${Math.floor(+t.max) || 2} players · ${esc(net.cleanCode(t.code).toUpperCase())}</span><button class="mi-btn sm" type="button" data-sit="${k}" data-code="${esc(net.cleanCode(t.code))}">Join</button></li>`).join('')}</ul>`
+          : '<p class="mi-small mi-muted">No open tables right now. Host one, or join a friend\'s by its code.</p>';
+      };
       root.innerHTML = `<div class="mi"><div class="mi-card"><span class="mi-tag">Isekai'd Into Prod</span><h2>The Guild Hall</h2>
-          <p class="mi-small">Practise with friends. Talk on your own call, and use these tables as the shared whiteboard. Nothing here is saved: close the page and the table is gone.</p>
-          ${hub.mode === 'local' ? (opts.inGame ? `<p class="gh-note"><b>Only this browser for now.</b> This copy of the game can't reach other players yet, so tables only reach your other tabs. To play a friend, use the <a href="${G.URL}" target="_blank" rel="noopener">Guild Hall page</a>.</p>` : '<p class="gh-note"><b>Practice mode.</b> This copy isn\'t on claude.ai, so tables only reach other tabs of this browser. Open the page in a second tab to try both seats.</p>') : hub.mode === 'cloud' ? '<p class="gh-note">Anyone playing this copy of the game can join your table with its code.</p>' : '<p class="gh-note">Friends need <b>Contributor</b> access to this page (Share menu) to play. Viewers can open it but can\'t take a seat.</p>'}
+          <p class="mi-small">Practise with friends or strangers. Talk on your own call, and use these tables as the shared whiteboard. Nothing here is saved: close the page and the table is gone.</p>
+          ${hub.mode === 'local' ? (opts.inGame ? `<p class="gh-note"><b>Only this browser for now.</b> This copy of the game can't reach other players yet, so tables only reach your other tabs. To play a friend, use the <a href="${G.URL}" target="_blank" rel="noopener">Guild Hall page</a>.</p>` : '<p class="gh-note"><b>Practice mode.</b> This copy isn\'t on claude.ai, so tables only reach other tabs of this browser. Open the page in a second tab to try both seats.</p>') : hub.mode === 'cloud' ? '<p class="gh-note">Open tables are listed for everyone playing this copy of the game. Private tables can only be joined with their code.</p>' : '<p class="gh-note">Friends need <b>Contributor</b> access to this page (Share menu) to play. Viewers can open it but can\'t take a seat.</p>'}
           <div class="gh-nick"><label for="gh-nick"><b>Your name at the table</b></label><input id="gh-nick" maxlength="24" autocomplete="off" value="${esc(hub.me.nick)}"><button class="mi-btn sm" type="button" id="gh-save">Save</button></div></div>
-        <div class="gh-games">${Object.keys(GAMES).filter(on).map(k => `<div class="mi-card gh-game"><span class="mi-tag">${esc(GAMES[k].players)}</span><h3>${esc(GAMES[k].name)}</h3><p class="mi-small">${esc(GAMES[k].blurb)}</p>
-          <div class="mi-row"><button class="mi-btn go" type="button" data-new="${k}">Open a table</button></div>
-          <div class="mi-row gh-join"><input id="gh-code-${k}" maxlength="8" placeholder="CODE" autocomplete="off" aria-label="${esc(GAMES[k].name)} table code"><button class="mi-btn" type="button" data-join="${k}">Join</button></div></div>`).join('')}</div>
-        <div class="mi-card"><h3>Tables open now</h3>${seen.size ? `<ul class="gh-tables">${[...seen.values()].map(p => `<li><span><b>${esc(GAMES[p.presence.game].name)}</b> · ${esc(net.clean(p.presence.nick, 24) || 'A hero')} · ${esc(net.cleanCode(p.presence.code).toUpperCase())}</span><button class="mi-btn sm" type="button" data-sit="${esc(p.presence.game)}" data-code="${esc(net.cleanCode(p.presence.code))}">Join</button></li>`).join('')}</ul>` : '<p class="mi-small mi-muted">No one is playing right now. Open a table and send a friend the code.</p>'}</div></div>`;
+        <div class="gh-games">${games.map(k => `<div class="mi-card gh-game"><span class="mi-tag">${esc(GAMES[k].players)}</span><h3>${esc(GAMES[k].name)}</h3><p class="mi-small">${esc(GAMES[k].blurb)}</p>
+          <div class="mi-row gh-host"><button class="mi-btn go" type="button" data-new="${k}">Host a table</button><span class="gh-vis" role="group" aria-label="Who can find your table"><button type="button" data-vis="${k}" data-open="1" class="${listed[k] ? 'on' : ''}">Open</button><button type="button" data-vis="${k}" data-open="" class="${listed[k] ? '' : 'on'}">Private</button></span></div>
+          <div class="mi-row gh-join"><input id="gh-code-${k}" maxlength="8" placeholder="CODE" autocomplete="off" aria-label="${esc(GAMES[k].name)} table code"><button class="mi-btn" type="button" data-join="${k}">Join</button></div>
+          <div class="gh-open"><h4>Open tables</h4>${openList(k)}</div></div>`).join('')}</div></div>`;
       Object.keys(vals).forEach(id => { const el = root.querySelector('#' + id); if (el && id !== 'gh-nick') el.value = vals[id]; });
       if (keep) { const el = root.querySelector('#' + keep[0]); if (el) { el.focus(); el.value = keep[1]; } }
       const nick = root.querySelector('#gh-nick');
-      const save = () => { hub.setNick(nick.value); nick.value = hub.me.nick; lobby.presence({ nick: hub.me.nick }); };
+      const save = () => { hub.setNick(nick.value); nick.value = hub.me.nick; };
       root.querySelector('#gh-save').onclick = save;
       nick.onchange = save;
+      root.querySelectorAll('[data-vis]').forEach(b => b.onclick = () => { listed[b.dataset.vis] = !!b.dataset.open; hall(); });
       root.querySelectorAll('[data-new]').forEach(b => b.onclick = () => sit(b.dataset.new, net.code(), true));
       root.querySelectorAll('[data-join]').forEach(b => {
         const inp = root.querySelector('#gh-code-' + b.dataset.join);
@@ -97,8 +126,6 @@
       });
       root.querySelectorAll('[data-sit]').forEach(b => b.onclick = () => sit(b.dataset.sit, b.dataset.code, false));
     }
-    let q = 0;
-    lobby.onPeers(() => { if (!q) q = setTimeout(() => { q = 0; hall(); }, 150); });
     hall();
   }
 
