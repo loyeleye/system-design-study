@@ -473,7 +473,7 @@
     }
     // Lamps, fires and windows that glow after dark: [art height fraction above the base, radius in tiles, colour].
     const LIGHT = { lamp: [0.88, 2.6], 'ex-firepit': [0.3, 3.6, '255,140,60'], 'cp-fire': [0.3, 4.6, '255,140,60'], camp: [0.3, 3.6, '255,140,60'],
-      'ws-inn': [0.4, 3], 'ex-townhouse': [0.45, 2.4], 'ex-townhouse2': [0.45, 2.4], 'nr-roofs': [0.4, 2.2], 'nr-shop': [0.4, 2.4],
+      'ws-inn': [0.4, 3], 'ex-townhouse': [0.45, 2.4], 'ex-townhouse2': [0.45, 2.4], 'nr-roofs': [0.4, 2.2], 'nr-cardshop': [0.35, 2.4], 'nr-theatre': [0.3, 2.6],
       'ex-stall': [0.4, 1.8], 'cp-tent1': [0.4, 1.6], 'cp-tent2': [0.4, 1.6], 'ex-tower': [0.5, 3.6], 'nr-citygate': [0.4, 2.6], 'ws-stable': [0.4, 2], 'b-C': [0.4, 3],
       'o-shrine': [0.45, 1.8, '255,170,80'] };
     // Fires that glow all day: a faint warm halo in daylight that grows brighter after dark, on top of the lamp light
