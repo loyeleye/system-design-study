@@ -10,9 +10,9 @@ Writes assets/img/village/c-uptima.webp (rows south, west, east, north: column 0
 the walk frames, as SD.art.sheetCol reads them), assets/img/village/g-uptima.webp (one row per gag; the halo row starts
 with her standing frame with the halo out, for its flicker) and js/uptima-art.js, which replaces her entry in
 SD.villageArt so tools/village_art.py never has to know about her. Every cell shares one box, centred on the canvas,
-so she never shifts between her sheet and a gag.
+so she never shifts between her sheet and a gag. Every frame is shaded here (shade() below) before it is cut out.
 """
-import glob, json, os, sys
+import colorsys, glob, json, os, sys
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -21,7 +21,65 @@ SRC = sys.argv[1]
 DIRS = ['south', 'west', 'east', 'north']
 GAGS = [('halo', None), ('croissant', 'heart'), ('pager', 'bang'), ('dust', 'music')]
 
-load = lambda f: Image.open(f).convert('RGBA')
+# Light from the upper left. Each frame is shaded from its own shapes, so every frame of every animation gets the
+# same treatment and nothing flickers between them.
+HAIR_HI, HAIR_MID, HAIR_LO = (255, 222, 186), (246, 170, 120), (226, 132, 98)
+APRON_SH, APRON_LO = (232, 224, 240), (206, 194, 220)
+DRESS_HI = (70, 50, 86)
+SKIN_SH = (240, 178, 160)
+def kind(p):
+    if not p[3]: return None
+    r, g, b = p[:3]; h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255); H = h * 360
+    if l > 0.95 and s < 0.5 or (l > 0.97): return 'apron'
+    if l < 0.16: return 'dark'
+    if 18 <= H <= 36 and 0.72 <= l <= 0.84 and s > 0.8: return 'hair'
+    if 8 <= H <= 20 and 0.84 <= l <= 0.9 and s > 0.6: return 'skin'
+    return 'other'
+def shade(im):
+    im = im.copy(); px = im.load(); w, h = im.size
+    K = [[kind(px[x, y]) for y in range(h)] for x in range(w)]
+    k = lambda x, y: K[x][y] if 0 <= x < w and 0 <= y < h else None
+    # Only big patches of white are cloth (apron, collar, sleeves); eye glints and the headband's frills stay bright.
+    seen = set()
+    for x in range(w):
+        for y in range(h):
+            if K[x][y] == 'apron' and (x, y) not in seen:
+                part, st = [], [(x, y)]; seen.add((x, y))
+                while st:
+                    a, b = st.pop(); part.append((a, b))
+                    for c, d in ((a + 1, b), (a - 1, b), (a, b + 1), (a, b - 1)):
+                        if k(c, d) == 'apron' and (c, d) not in seen: seen.add((c, d)); st.append((c, d))
+                if len(part) < 14:
+                    for a, b in part: K[a][b] = 'glint'
+    out = {}
+    # the top of the hair in each column, for the sheen band across the crown
+    top = {}
+    for x in range(w):
+        for y in range(h):
+            if K[x][y] == 'hair': top[x] = y; break
+    for x in range(w):
+        for y in range(h):
+            c = K[x][y]
+            if c == 'hair':
+                d = y - top[x]
+                if (k(x + 1, y) != 'hair' or k(x, y + 1) != 'hair') and k(x - 1, y) == 'hair': out[x, y] = HAIR_LO
+                elif k(x + 2, y) != 'hair' and k(x + 1, y) == 'hair': out[x, y] = HAIR_MID
+                elif 2 <= d <= 3 and k(x - 1, y) == 'hair' and k(x + 1, y) == 'hair': out[x, y] = HAIR_HI
+                elif x % 4 == 1 and d > 8 and k(x, y - 1) == 'hair' and k(x, y + 1) == 'hair' and (y + x) % 7 > 1: out[x, y] = HAIR_MID
+            elif c == 'apron':
+                if k(x + 1, y) not in ('apron', None, 'glint') or k(x, y + 1) not in ('apron', None, 'glint'): out[x, y] = APRON_LO
+                elif k(x, y - 1) == 'dark' or k(x + 2, y) not in ('apron', None): out[x, y] = APRON_SH
+            elif c == 'dark':
+                if all(k(a, b) not in (None,) for a, b in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))) \
+                   and all(k(a, b) == 'dark' for a, b in ((x + 1, y), (x, y + 1))) and (k(x - 1, y) == 'dark') and (k(x, y - 1) == 'dark') \
+                   and k(x - 2, y) not in ('dark', None) and k(x - 2, y) != 'hair':
+                    out[x, y] = DRESS_HI
+            elif c == 'skin':
+                if k(x, y - 1) == 'hair' or k(x, y - 1) == 'dark' and k(x, y - 2) == 'hair': out[x, y] = SKIN_SH
+    for (x, y), v in out.items(): px[x, y] = v + (px[x, y][3],)
+    return im
+
+load = lambda f: shade(Image.open(f).convert('RGBA'))
 frames = lambda d: [load(f) for f in sorted(glob.glob(os.path.join(SRC, d, '*.png')))]
 
 def halo_out(im):
