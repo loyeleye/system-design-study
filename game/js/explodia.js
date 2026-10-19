@@ -1061,7 +1061,61 @@
     });
   }
 
+  // ---------- On the map: scorched ground and smoke ----------
+  // She always looks like she just walked out of a blast. Drawn in chunky pixels to match the sprites.
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const hash = (i, j) => { const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return v - Math.floor(v); };
+  // A ragged scorch mark: cells in a squashed circle, darker towards the middle, with a few embers.
+  const SCORCH = [];
+  for (let j = -7; j <= 7; j++) for (let i = -18; i <= 18; i++) {
+    const d = Math.hypot(i / 18, j / 7), n = hash(i, j);
+    if (d + (n - 0.5) * 0.5 < 1) SCORCH.push({ i, j, a: Math.min(0.85, (1.25 - d) * 0.75 + n * 0.1), ember: n > 0.92 && d < 0.85 });
+  }
+  // Centred a little behind her feet, so it shows around her legs and past both ends of her name tag.
+  function scorch(ctx, x, y, ts, t) {
+    const px = Math.max(1, ts / 18), cy = y - ts * 0.15;
+    ctx.save();
+    SCORCH.forEach(c => {
+      const X = Math.floor(x + c.i * px), Y = Math.floor(cy + c.j * px);
+      const w = Math.ceil(px) + 1;
+      ctx.fillStyle = `rgba(26,18,14,${c.a.toFixed(2)})`;
+      ctx.fillRect(X, Y, w, w);
+      if (c.ember) {
+        const glow = calm ? 0.6 : 0.3 + 0.7 * Math.max(0, Math.sin(t * 3 + c.i * 1.7 + c.j));
+        ctx.fillStyle = `rgba(255,${110 + Math.round(70 * glow)},40,${glow.toFixed(2)})`;
+        ctx.fillRect(X, Y, w, w);
+      }
+    });
+    ctx.restore();
+  }
+  // Puffs of smoke curl off her hat brim and her singed hem, rise, swell and fade, on a loop.
+  const PUFFS = Array.from({ length: 8 }, (_, k) => ({ off: k / 8, side: k % 2 ? 1 : -1, hat: k % 4 < 2, sway: 0.6 + hash(k, 3), jit: hash(k, 9) }));
+  function smoke(ctx, x, feet, ts, t, h) {
+    const px = Math.max(1, Math.round(ts / 16)), life = 3.2;
+    ctx.save();
+    PUFFS.forEach((p, k) => {
+      const u = calm ? 0.3 + p.off * 0.5 : (t / life + p.off) % 1;
+      const sx = x + p.side * ts * (p.hat ? 0.42 : 0.4 + p.jit * 0.15);
+      const sy = feet - h * (p.hat ? 0.78 : 0.2 + p.jit * 0.15);
+      const cx = sx + p.side * u * ts * 0.3 + Math.sin(t * p.sway + k) * ts * 0.1;
+      const cy = sy - u * ts * (p.hat ? 1.2 : 0.9);
+      const r = Math.max(2, Math.round((0.1 + 0.2 * u) * ts / px)) * px;
+      const a = (u < 0.12 ? u / 0.12 : 1 - (u - 0.12) / 0.88) * 0.62;
+      const g = k % 3 ? [138, 132, 126] : [96, 90, 86];
+      ctx.fillStyle = `rgba(${g[0]},${g[1]},${g[2]},${a.toFixed(2)})`;
+      // A blocky puff: a plus-shaped stack of rectangles reads as round at this size.
+      const X = Math.round(cx / px) * px, Y = Math.round(cy / px) * px;
+      ctx.fillRect(X - r, Y - r * 0.6, r * 2, r * 1.2);
+      ctx.fillRect(X - r * 0.6, Y - r, r * 1.2, r * 2);
+      ctx.fillStyle = `rgba(210,205,200,${(a * 0.5).toFixed(2)})`;
+      ctx.fillRect(X - r * 0.6, Y - r * 0.8, r * 0.8, r * 0.6);
+    });
+    ctx.restore();
+  }
+
   SD.explodia = {
+    under: scorch,
+    over: smoke,
     async talk() {
       if (!st().met) { st().met = { at: Date.now() }; S.persist(); await intro(); }
       // Her story quest (fan-out for her followers) runs straight away the first time it's waiting on her; after

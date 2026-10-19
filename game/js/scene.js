@@ -224,6 +224,8 @@
       if (a.pip) { obj('pip', a.px * ts + ts / 2, a.py * ts + ts * 0.55 + Math.sin(t * 3) * 3, 0.8, (sc.P && sc.P.face === 'west')); return; }
       if (a.draw) return a.draw(ctx, a.px * ts + ts / 2, a.py * ts + ts * 0.95, ts, t);
       const c = charArt(a.sprite);
+      // Optional per-actor extras: under() paints the ground beneath them, over() paints on top of the sprite.
+      if (a.under) a.under(ctx, a.px * ts + ts / 2, a.py * ts + ts * 0.9, ts, t);
       ctx.fillStyle = 'rgba(43,35,64,0.22)';
       ctx.beginPath(); ctx.ellipse(a.px * ts + ts / 2, a.py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
       if (!c) return;
@@ -239,6 +241,7 @@
       if (a.glow) { ctx.shadowColor = a.glow; ctx.shadowBlur = 14 + 6 * Math.sin(t * 4); }
       ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, a.px * ts + ts / 2 - w / 2, a.py * ts + ts * 0.95 - h + bob, w, h);
       ctx.restore();
+      if (a.over) a.over(ctx, a.px * ts + ts / 2, a.py * ts + ts * 0.95, ts, t, h);
     }
     function label(x, y, text, marker, small) {
       const X = x * ts + ts / 2, Y = y * ts - ts * 0.35;
