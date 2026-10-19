@@ -301,7 +301,9 @@
     } finally { busyTalk = false; }
     hud();
   };
+  // Back to Pingsby along the landing's road (walking off its end, or the HUD button).
   I.close = function () {
+    AU.sfx && AU.sfx('steps');
     active = false; cancelAnimationFrame(raf);
     const st = I.st(); st.pos = [P.x, P.y]; S.persist();
     document.getElementById('screen-isles').hidden = true;

@@ -189,7 +189,7 @@
   const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65, studio: 0.8, shop: 0.85, cave: 0.8 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
   const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door',
-    doorclose: 's-doorclose', shopbell: 's-shopbell' };
+    doorclose: 's-doorclose', shopbell: 's-shopbell', steps: 's-steps' };
   const SONG_GAIN = 1.5;  // recorded tracks are mastered quieter than the synth
   const bufs = {}, failed = new Set();
   function loadBuf(file) {
@@ -294,6 +294,8 @@
     right: t => ['E5', 'G5', 'C6'].forEach((n, i) => tone({ wave: 'square', f: freq(n), t: t + i * 0.07, dur: 0.1, vol: 0.07 })),
     wrong: t => { tone({ wave: 'square', f: 150, t, dur: 0.12, vol: 0.09 }); tone({ wave: 'square', f: 140, t: t + 0.15, dur: 0.2, vol: 0.09 }); },
     door: t => { hiss({ t, dur: 0.12, vol: 0.25, type: 'lowpass', f: 500 }); tone({ wave: 'triangle', f: 110, f2: 70, t, dur: 0.15, vol: 0.3 }); },
+    // Walking a path to the next place (doors keep the door): four soft footfalls.
+    steps: t => [0, 0.3, 0.6, 0.9].forEach((d, i) => hiss({ t: t + d, dur: 0.07, vol: 0.2 - i * 0.03, type: 'lowpass', f: 700, f2: 250 })),
     gate: t => { tone({ wave: 'sawtooth', f: 110, f2: 880, t, dur: 0.9, vol: 0.08, lp: 2000, r: 0.3 }); hiss({ t, dur: 1, vol: 0.16, type: 'bandpass', f: 400, f2: 4000 }); },
     punch: t => {
       drum('k', t, sfxBus); drum('k', t + 0.06, sfxBus);

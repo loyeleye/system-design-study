@@ -198,7 +198,8 @@
     atDoor = true;
     SD.hub.stop();
     const dc = c.replace(/^in:/, '');
-    AU.sfx(DOOR_NPC[dc] || dc === 'G' || (SD.interiors && SD.interiors.row(dc)) ? 'door' : 'blip');
+    // Doors creak; the two roads out of town (N, E) are walked.
+    AU.sfx(DOOR_NPC[dc] || dc === 'G' || (SD.interiors && SD.interiors.row(dc)) ? 'door' : c === 'N' || c === 'E' ? 'steps' : 'blip');
     try {
       // Quest business comes first; villagers with a building offer to carry on inside instead.
       // The two roads out of town (js/hub.js): the North Road and the ferry to the Eventual Isles. Each takes over the
