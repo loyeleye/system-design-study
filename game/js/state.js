@@ -172,11 +172,25 @@
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, n).map(x => x.id);
   };
+  // A concept's review questions: the bank, plus, for side quests' concepts (zone 98), the questions their quests ask.
+  S.questionsFor = function (id) {
+    const bank = SD.questions.filter(q => q.c === id);
+    if (!SD.concepts[id] || SD.concepts[id].zone !== 98 || !SD.quests) return bank;
+    const asks = SD.quests.list.flatMap(q => q.steps.flatMap(s => s.do)).map(a => a.ask)
+      .filter(q => q && q.c === id && q.id && (q.type !== 'explain' || S.save.typed !== false));
+    return bank.concat(asks.filter(q => !bank.some(b => b.id === q.id)));
+  };
+  // Concepts the town's reviews can ask: every chapter reached so far, and side quests' concepts (zone 98) once
+  // you've met them. The Isles (zone 99) review theirs at their own tide posts.
+  S.reviewable = function (id) {
+    const c = SD.concepts[id], st = S.save.concepts[id];
+    if (!c) return false;
+    if (c.zone <= (S.save.chapter || 1)) return true;
+    return c.zone === 98 && !!st && st.seen && S.questionsFor(id).length > 0;
+  };
   S.dueCount = function () {
     const now = Date.now();
-    // Only concepts the town's reviews can ask: the Isles (zone 99) review theirs at their own tide posts.
-    const ch = S.save.chapter || 1;
-    return Object.keys(S.save.concepts).filter(id => SD.concepts[id] && SD.concepts[id].zone <= ch && S.save.concepts[id].seen && S.save.concepts[id].due <= now).length;
+    return Object.keys(S.save.concepts).filter(id => S.reviewable(id) && S.save.concepts[id].seen && S.save.concepts[id].due <= now).length;
   };
   S.pickQuestion = function (conceptId, avoid) {
     // Typed answers (js/explain-data.js): about one time in three, once you've answered the concept right before,
@@ -186,8 +200,8 @@
     if (typed.length && S.save.typed !== false && c && c.hist.some(h => h.ok) && Math.random() < 1 / 3) {
       return typed[Math.floor(Math.random() * typed.length)];
     }
-    const qs = SD.questions.filter(q => q.c === conceptId && !(avoid || []).includes(q.id));
-    const list = qs.length ? qs : SD.questions.filter(q => q.c === conceptId);
+    const all = S.questionsFor(conceptId), qs = all.filter(q => !(avoid || []).includes(q.id));
+    const list = qs.length ? qs : all;
     return list[Math.floor(Math.random() * list.length)];
   };
 })();
