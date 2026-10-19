@@ -9,8 +9,8 @@
 // His manner is Ladi's mix of Kabuto (Naruto), soft-spoken, endlessly helpful and quietly sinister, and Envy
 // (Fullmetal Alchemist), who sneers at humans and laughs at their misery. He is completely hooded: under the hood is a
 // shadow and a grin, nothing else (PixelLab art, tools/dealer_art.py), white gloves, about as tall as the PR Club.
-// During chapter 10 he leaves the cave for the Exchange (js/northroad-exchange.js's map), laughs at the end of the
-// world while everyone else worries (js/ch10-folk.js), and takes 25% off his pins for the occasion.
+// During chapter 10 he leaves the cave for a warehouse's back room at the Exchange (js/exchange-rooms.js), laughs at
+// the end of the world while everyone else worries (js/ch10-folk.js), and takes 25% off his pins for the occasion.
 //
 //   S.save.pins            [{ id, live }]: live once a run has started with it; only live pins can be lost
 //   SD.dealer.pins()       the pinned card ids, for building a deck (js/run.js, js/raid.js)
@@ -66,9 +66,9 @@
   if (SD.isles && SD.isles.ART) SD.isles.ART.objects.cave = [124, 88];
   if (SD.interiorsArt) SD.interiorsArt.rooms.cave = [384, 288];
 
-  // Most people find him in the cave; anyone who first meets him at the Exchange gets the street-corner version.
+  // Most people find him in the cave; anyone who first meets him at the Exchange gets the warehouse version.
   const MEET = where => [
-    where === 'exchange' ? { s: 'kagemaru', t: 'Oh, a visitor. Here, under the lamp, please. You could catch something out in this rain. Like hope. Ah ha ha.' }
+    where === 'exchange' ? { s: 'kagemaru', t: 'Oh, a visitor. Shut the door, please. You could catch something out in that rain. Like hope. Ah ha ha.' }
       : { s: 'kagemaru', t: 'Oh, a visitor. Please, come in. Mind your head on the rock. I\'d hate for anything to happen to you. Before you\'ve paid.' },
     { s: 'you', t: 'Who... are you?' },
     { s: 'kagemaru', t: 'Just a humble helper. Call me Kagemaru. I help people get what they want. It\'s what I\'m for.' },
@@ -167,20 +167,5 @@
     talk: async () => { if (!(await D.open('cave'))) await U.dialog([{ s: 'kagemaru', t: pick(D.lines()) }]); }
   };
 
-  // ---------- At the Exchange, in chapter 10 ----------
-  // In the market's east corner, out of the way of the troupe's show, Nari's door, Toro and the relic trader.
-  const NR = SD.northRoad, M = NR && NR.maps && NR.maps.exchange;
-  if (M && M.actors) M.actors.kagemaru = { x: 47, y: 40, face: 'west', sprite: 'kagemaru', name: 'KAGEMARU', home: [47, 40], nextStroll: Infinity, hidden: true };
-  if (SD.roadTalk) {
-    SD.roadTalk.lines.kagemaru = D.lines;
-    const cast = SD.roadTalk.cast;
-    SD.roadTalk.cast = function (sc, map) {
-      if (cast) cast.apply(this, arguments);
-      if (map === 'exchange' && sc.actors.kagemaru) sc.hide('kagemaru', !D.sale());
-    };
-  }
-  if (NR && NR.onTalk) NR.onTalk.push(async (key, id) => {
-    if (key !== 'exchange' || id !== 'kagemaru') return false;
-    return !!(await D.open('exchange'));
-  });
+  // At the Exchange in chapter 10 he waits in the back room of the warehouse by the tower (js/exchange-rooms.js).
 })();

@@ -22,7 +22,10 @@ ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat'
          # The Rollouts' house in the Exchange's old quarter (js/nari-home.js): the practice room and the loft upstairs.
          'rollouts': 'i-rollouts3', 'rolloutsUp': 'i-rollouts-up',
          # Lord Latency's inn at the waystation, off the North Road (js/northroad.js door I).
-         'inn': 'i-inn'}
+         'inn': 'i-inn',
+         # The Exchange's shops and back rooms (js/exchange-rooms.js): Toro's cards, the pawn shop, the warehouse's back
+         # room, the diner and the bakery.
+         'xtoro': 'i-xtoro', 'xpawn': 'i-xpawn', 'xback': 'i-xback', 'xdiner': 'i-xdiner', 'xbakery': 'i-xbakery'}
 # Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo. Each house faces the middle of the
 # cul-de-sac, so it uses the direction pointing there from where it stands ('south' faces the camera). The two on the
 # sides turn three-quarters, like their neighbours, since a house seen straight side-on hides its door.

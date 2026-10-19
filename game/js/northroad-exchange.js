@@ -88,7 +88,7 @@
     bld('narrowhouse', 22, 29, 4, true); bld('shop', 22, 33, 4, true); bld('timberhouse', 22, 38, 4, true);
     bld('narrowhouse', 22, 43, 4, true); bld('shop', 23, 47, 3, true); bld('shop', 31, 22, 4, true);
     bld('chapel', 39, 22, 6); bld('shop', 45, 23, 4); bld('narrowhouse', 38, 30, 5); bld('timberhouse', 43, 30, 5);
-    bld('timberhouse', 27, 43, 4); bld('shop', 30, 46, 4);
+    bld('timberhouse', 27, 43, 4); bld('pawn', 30, 46, 4);
 
     // The crossroads: the dry fountain in the middle. The bear over the market stands where the bull used to.
     prop('fountain', 19.5, 19.5, 2.3, { f: 2.8, solid: [18, 18, 20, 20] });
@@ -317,7 +317,6 @@
       backdrop, under, overlay, objects,
       labels: [{ x: 13, y: 13, text: 'THE EXCHANGE' }, { x: 48, y: 48, text: 'ROAD ↓' }],
       actors: Object.assign({
-        v3: { x: 40, y: 45, face: 'east', name: 'TRADER' },
         exguard: { x: 14, y: 6, face: 'south', sprite: 'folk5', name: 'GUARD', home: [14, 6], nextStroll: Infinity }
       }, signs, bridge, people),
       back: { D: [13, 7, 'east'], E: [7, 13, 'south'], S: [47, 47, 'north'] }, enter: [47, 47, 'north'], ch: 10, music: 'ch10',

@@ -1,7 +1,8 @@
 // Toro, the Exchange's card broker. There used to be a bull in the market; then the market fell over, and so did
 // the bull. Toro is what's left of him: the last bull in a city where every board says DOWN, still buying the dip.
-// He stands behind the second market stall, across from the relic trader (js/relic-exchange.js), and sells the
-// heaviest cards in the game: 2 and 3 Capacity, where every other shop tops out at 1 or 2.
+// He keeps shop in the timber-framed house by the market (js/exchange-rooms.js), near the relic trader's pawn shop
+// (js/relic-exchange.js), and sells the heaviest cards in the game: 2 and 3 Capacity, where every other shop tops out
+// at 1 or 2.
 //
 // Every card here pays for itself in an ordinary deck: no card needs other cards, a tag or a keepsake to be good.
 // A 3-Capacity card is your whole turn, so each one does more than three starter cards would (about 18), and most
@@ -105,9 +106,9 @@
   }
   SD.cardExchangeOpen = open;
 
-  // His spot: behind the second market stall, facing it, across from the relic trader behind the first.
-  const NR = SD.northRoad, M = NR && NR.maps && NR.maps.exchange;
-  if (M && M.actors) M.actors.toro = { x: 45, y: 43, face: 'west', sprite: 'folk3', name: 'TORO', home: [45, 43], nextStroll: Infinity };
+  // He keeps shop in the timber-framed house by the market (js/exchange-rooms.js has his room); talking to him there
+  // comes through NR.onTalk below, as it did when he stood outside.
+  const NR = SD.northRoad;
   if (SD.roadTalk) SD.roadTalk.lines.toro = () => [
     'The bear on the billboard? Never met him. Don\'t want to. Very negative energy.',
     'I sell cards that cost three. You get three a turn. Do the maths. I did. It says BUY.'

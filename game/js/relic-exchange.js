@@ -1,5 +1,6 @@
-// The Exchange's relic dealer. Once the Exchange is open, the trader at its market sells keepsakes as well as
-// panicking: four A-rank and three S-rank ones Grandma Wen doesn't stock, and four Ancient ones nobody else has.
+// The Exchange's relic dealer. Once the Exchange is open, the trader in the pawn shop across the canal from the market
+// (js/exchange-rooms.js) sells keepsakes as well as panicking: four A-rank and three S-rank ones Grandma Wen doesn't
+// stock, and four Ancient ones nobody else has.
 // Six borrow an idea from a Slay the Spire relic the café doesn't use (named in the comment).
 // They are bought with Memory Shards and kept in S.save.relics like Wen's, so they last through every loop; their
 // effects are in js/run.js (and the Genesis Ledger's in js/state.js). Shelves open with your Guild rank; the Ancient
