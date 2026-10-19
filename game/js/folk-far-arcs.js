@@ -217,6 +217,42 @@
             ['neel', '(from the stairs) It was a load-bearing wall.']],
           diary: 'Hari stubbed his toe and Neel felt it. I stub my toe sometimes, on purpose, in case you feel it. Did you? Write back.' }
       ]
+    },
+    {
+      // Toro, the Exchange's card broker (js/card-exchange.js), and Barnaby, the trader who sells its relics
+      // (js/relic-exchange.js). Their scenes play 'talk:<id>', wherever their shops stand (js/npc-arcs.js).
+      id: 'halt', title: 'Fifteen Minutes', who: ['toro', 'trader'], concept: 'resilience', far: 'road',
+      scenes: [
+        { title: 'Buy the Dip', at: 'talk:trader', block: ['morning', 'afternoon', 'evening'], when: c => c.f.ch9 && !(c.reached(10) && !c.f.ch10),
+          lines: [['narr', 'The big board flickers. One price dips by a single shard. Barnaby goes white and starts flinging relics onto the counter.'],
+            ['trader', 'SELL! Sell it all! It\'s happening again! The market is falling over!', 'sad'],
+            ['toro', '(from across the street) BUYING! I\'ll take the lot! Is that a discount? That\'s a discount!', 'happy'],
+            ['narr', 'Toro buys everything. The board sees someone buying and flickers back up. Barnaby sees it go up, panics that he sold, and buys it all back from Toro. At a higher price.'],
+            ['pip', 'Did anything actually happen?', 'confused'],
+            ['trader', 'Every time the board flickers, I sell. Every time I sell, he buys. Every time he buys, the board flickers. I\'ve been doing this since breakfast.'],
+            ['toro', 'Best morning of my life!']],
+          diary: 'Barnaby sold everything and bought it back. I would never sell anything of yours. I have your old bootlaces. They are not for sale. They are not for anything.' },
+        { title: 'The Bull', at: 'talk:toro', block: ['morning', 'afternoon'], when: c => c.f.ch9 && !(c.reached(10) && !c.f.ch10),
+          lines: [['narr', 'Toro is polishing his counter in long, slow circles, the way you\'d polish something much bigger.'],
+            ['pip', 'Why do they call you the last bull?'],
+            ['toro', 'There was a bronze bull in the square. Biggest in the realm. Every morning for twenty years, I polished it. Horns, nose, the lucky bit. Everybody rubbed the lucky bit.'],
+            ['toro', 'The morning the Cloud went down, the market fell over, and the bull fell over with it. On its side. Everyone ran. I stayed and polished the side that was facing up.'],
+            ['toro', 'Then they put up a bear. On a billboard. A bear doesn\'t need polishing. It just looms.', 'sad'],
+            ['toro', 'Bitna mended this stall for me. She said a bull needs somewhere to stand. Nicest thing anyone\'s said to me in this city.'],
+            ['pip', 'Have you ever sold anything? Not cards. Like, a stock.'],
+            ['toro', '...I wouldn\'t know how. Nobody ever showed me the button.']],
+          diary: 'Toro polished a bull for twenty years. I polish my diary\'s clasp every night. Then I write about you. Then I polish it again.' },
+        { title: 'Fifteen Minutes', at: 'talk:toro', block: ['morning', 'afternoon', 'evening'], when: c => c.f.ch10, gap: true, review: true,
+          lines: [['narr', 'The board drops ten shards at once. Barnaby sells. Toro buys. Barnaby sells harder. Toro buys louder. Orders pour in faster than the clerks can stamp them, and the whole market starts to shake.'],
+            ['narr', 'Then the Exchange bell rings three times. Every board goes dark at once: TRADING HALTED. 15:00.'],
+            ['trader', 'What... what do I do now?', 'sad'],
+            ['toro', 'Nothing. Nobody can. Sit down, Barnaby.'],
+            ['narr', 'They sit on the kerb, side by side. For fifteen minutes nobody buys or sells anything. Then the bell lets through a few orders, just a few, to see what happens. Prices hold. The boards come back on.'],
+            ['pip', "That's a circuit breaker! When calls to something keep failing, you stop sending them, so a struggling service isn't buried while it recovers. After a wait, you let a few test calls through, and you only open fully if those work."],
+            ['trader', 'Without it, I\'d still be selling.'],
+            ['toro', 'Without it, I\'d still be buying. ...I\'d have won, though.', 'happy']],
+          diary: 'Barnaby and Toro sat still for fifteen minutes. I can sit still for longer than that. Outside your window. I have timed it. Four hours. Then the owls came.' }
+      ]
     }
 ,
     // ---------- The Eventual Isles ----------
@@ -452,6 +488,41 @@
             ['narr', 'Ploy does the victory dance. Kai\'s eyes go very slightly wide. There is a fourth spin now.']],
           diary: 'You joined a club. I have been in your club for a long time. Unofficially. I have paid my dues. In shells. They are in your bag too.' }
       ]
+    },
+    {
+      // Kagemaru, the card fixer in the cave above the Ledger bridge (js/card-dealer.js), and Admiral Mutex. His
+      // scenes play 'talk:kagemaru' in the cave (js/npc-arcs.js), and never while he's away at the end of the world.
+      id: 'padlock', title: 'A Padlock That Forgets', who: ['kagemaru', 'mutex'], concept: 'locks', far: 'isles',
+      scenes: [
+        { title: 'Midnight Customer', at: 'talk:kagemaru', block: 'any', who: ['kagemaru'], when: c => kage(c),
+          lines: [['kagemaru', 'Ah, it\'s you. You just missed the Admiral. Full uniform, at midnight, ducking under my rock. He saluted the stalactite.'],
+            ['kagemaru', 'Captain Kwame locked berth one and went for breakfast. Three days ago. Nobody else can dock, because the Admiral\'s rule is that only the holder unlocks a berth. And the holder is... eating.'],
+            ['pip', 'So he wanted a crowbar?'],
+            ['kagemaru', 'He wanted a crowbar. I sold him something better: a padlock that forgets. It unlocks itself at sunset, unless the one who locked it comes back and turns the key again.'],
+            ['kagemaru', 'He asked me whether it was legal. I asked him whether it was Tuesday. Ah ha ha.'],
+            ['kagemaru', 'He would rather wait forever than break his own rule. Humans. They build the cage, and then they queue to get in.']],
+          diary: 'A hooded man in a cave smiled at you. I wrote him down. He did not like that. He is in my diary now, forever. Entry 5,212. Nobody leaves my diary.' },
+        { title: 'Sunset', at: 'isles', block: ['afternoon', 'evening'], who: ['mutex'], when: c => kage(c),
+          lines: [['narr', 'A small black padlock hangs on berth one. Admiral Mutex watches it with his hands behind his back, the way other men watch a kettle.'],
+            ['mutex', 'Kwame locked it this morning. Then he remembered a passenger he had left in the fog, and sailed off to fetch them. He has not come back to turn the key.'],
+            ['narr', 'The sun touches the sea. The padlock goes click, all by itself, and falls open. A fishing boat that has been circling all day slides into the berth, and its crew cheer.'],
+            ['mutex', 'It let go. Without asking me. And nobody waited.', 'confused'],
+            ['narr', 'Much later, Kwame\'s ferry chugs into the harbour.'],
+            ['kwame', 'Admiral! Did I miss anything?', 'happy'],
+            ['mutex', 'Your berth, Captain. Turn the key next time.']],
+          diary: 'A padlock opened at sunset because nobody came back for it. I always come back for you. I am back now. Turn around. No, the other way.' },
+        { title: 'Turn the Key', at: 'talk:kagemaru', block: 'any', who: ['kagemaru'], when: c => kage(c), review: true,
+          lines: [['narr', 'Admiral Mutex is in the cave, in full uniform, holding out a purse. Kagemaru does not take it.'],
+            ['mutex', 'I have come to pay for another month of the forgetful padlock.'],
+            ['kagemaru', 'No need, Admiral. Whoever holds a berth turns the key before sunset, and keeps it for another day. Stop turning it, sink, sail off, fall asleep, and it lets go by itself. I never have to chase anyone.'],
+            ['pip', "That's a lease! A lock with an expiry. The holder keeps renewing it while it's working, and if it crashes or vanishes, the lease runs out and someone else can take the lock. Nobody waits forever."],
+            ['kagemaru', 'Like my pins. Keep winning and they stay with you. Lose, and they come home to me. Everything I lend comes home. Ah ha ha.'],
+            ['narr', 'The Admiral leaves a ma\'amoul on the card table, wrapped in a napkin. The napkin says "For Mr Kagemaro".'],
+            ['kagemaru', '...He spelled it wrong. Nobody has written my name on anything in a very long time. And he spelled it wrong. Ah ha ha.'],
+            ['narr', 'He doesn\'t eat it. He doesn\'t throw it away, either.']],
+          diary: 'The hooded man kept a biscuit with his name on it. I have kept every biscuit you ever dropped. They all have your name on them. I wrote it.' }
+      ]
     }
   );
+  function kage(c) { return !!c.f.kageMet && !(SD.dealer && SD.dealer.sale && SD.dealer.sale()); }
 })();
