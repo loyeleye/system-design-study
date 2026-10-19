@@ -448,6 +448,7 @@
         ctx.restore();
         ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
       }
+      glows(objs, t);
       (def.labels || []).forEach(l => { if (!l.hidden) label(l.x, l.y, l.text, l.marker); });
       Object.values(sc.actors).forEach(a => {
         if (!a.name || a.hidden) return;
@@ -463,10 +464,28 @@
       if (def.overlay) def.overlay(ctx, t, vw, vh);
     }
     // Lamps, fires and windows that glow after dark: [art height fraction above the base, radius in tiles, colour].
-    const LIGHT = { lamp: [0.88, 2.6], 'ex-firepit': [0.3, 3.6, '255,140,60'], 'cp-fire': [0.3, 3.6, '255,140,60'], camp: [0.3, 3.6, '255,140,60'],
+    const LIGHT = { lamp: [0.88, 2.6], 'ex-firepit': [0.3, 3.6, '255,140,60'], 'cp-fire': [0.3, 4.6, '255,140,60'], camp: [0.3, 3.6, '255,140,60'],
       'ws-inn': [0.4, 3], 'ex-townhouse': [0.45, 2.4], 'ex-townhouse2': [0.45, 2.4], 'nr-roofs': [0.4, 2.2], 'nr-shop': [0.4, 2.4],
       'ex-stall': [0.4, 1.8], 'cp-tent1': [0.4, 1.6], 'cp-tent2': [0.4, 1.6], 'ex-tower': [0.5, 3.6], 'nr-citygate': [0.4, 2.6], 'ws-stable': [0.4, 2], 'b-C': [0.4, 3],
       'o-shrine': [0.45, 1.8, '255,170,80'] };
+    // Fires that glow all day: a faint warm halo in daylight that grows brighter after dark, on top of the lamp light
+    // above. [art height fraction above the base, radius in tiles, colour, day strength, night strength].
+    const GLOW = { 'cp-fire': [0.3, 2.6, '255,150,60', 0.26, 0.42] };
+    function glows(objs, t) {
+      const dk = SD.clock ? SD.clock.dark() : 0;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      objs.forEach(o => {
+        const G = !ISO && GLOW[o.name], a = G && objArt(o.name); if (!a) return;
+        const [f, r0, rgb, day, night] = G;
+        const flick = 1 + 0.06 * Math.sin(t * 11) + 0.03 * Math.sin(t * 23 + 1.7);
+        const x = (o.x + 0.5) * ts, y = (o.y + 1) * ts - a.h * ts / 32 * (o.k || 1) * f;
+        const r = r0 * ts * (1 + 0.3 * dk) * flick, k = (day + (night - day) * dk) * flick;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(${rgb},${k})`); g.addColorStop(0.45, `rgba(${rgb},${k * 0.4})`); g.addColorStop(1, `rgba(${rgb},0)`);
+        ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      });
+      ctx.restore();
+    }
     function lights(objs, cx, cy) {
       if (!SD.clock.dark()) return [];
       return objs.filter(o => !ISO && LIGHT[o.name] && objArt(o.name)).map(o => {
