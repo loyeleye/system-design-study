@@ -37,7 +37,8 @@
   // the floor), where the "Zz" floats (in tiles), and what you see. mat: the picture has no door, so a doormat is
   // drawn over the way out. Rooms keep the music and sounds from outside unless they have a theme of their own:
   // music (a song in js/audio.js, or a function that picks one or null), ambience (its PLACE sound, or null for quiet),
-  // bell: a shop bell over the door. calm: nobody in it looks worried in the storm.
+  // bell: a shop bell over the door. calm: nobody in it looks worried in the storm. front: [[x, y, w, h, row]], pieces
+  // of the picture (in its pixels) drawn again over whoever stands behind them, as standing on that row: counters, tables.
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -719,6 +720,12 @@
       if (free.length) actor('v3', free.pop(), { name: null, customer: true });
     }
     r.props.forEach((p, i) => sc.addActor('prop' + i, { x: p.x, y: p.y, draw() {}, prop: p }));
+    // Furniture people stand behind: that part of the picture again, drawn with the row it stands on, so anyone
+    // further back is hidden behind it and anyone in front is drawn over it.
+    (r.front || []).forEach(([x, y, w, h, row], i) => sc.addActor('front' + i, { x: 0, y: row, solid: false, talk: false, draw(ctx, fx, fy, ts) {
+      const im = pic(key), k = ts / 32;
+      if (ok(im)) ctx.drawImage(im, x, y, w, h, x * k, y * k, w * k, h * k);
+    } }));
   }
   // Open floor to stand on in a room with no spots of its own, from the back wall forward, clear of the way in.
   function floor(r) {

@@ -99,6 +99,12 @@
     xdin2: { name: 'Townsfolk', title: 'Sheltering from the storm', hue: 120, hair: 'short', eye: '#2b2340' },
     xdin3: { name: 'Townsfolk', title: 'Sheltering from the storm', hue: 60, hair: 'long', eye: '#2b2340' }
   });
+  // Hash's painted PixelLab bust (assets/img/portraits/xcook-neutral.webp, tools/pixel_portraits.py): one mood for now.
+  const art = { portrait: SD.art.portrait, painted: SD.art.painted, mood: SD.art.mood };
+  SD.art.painted = who => who === 'xcook' || art.painted(who);
+  SD.art.mood = (who, text, e) => who === 'xcook' ? 'neutral' : art.mood(who, text, e);
+  SD.art.portrait = (who, size, mood) => who !== 'xcook' ? art.portrait(who, size, mood)
+    : `<span class="bust b-xcook" style="width:${size}px;height:${Math.round(size * 140 / 120)}px"><img src="assets/img/portraits/xcook-neutral.webp" alt="" draggable="false"></span>`;
   // [usual, storm (chapter 10), after the storm]
   const SAY = {
     xcook: [
@@ -124,6 +130,7 @@
     const w = SD.nariHome.where(id);
     return Array.isArray(w) && w[0] === 'in' && w[1] === 'exchange' && w[2] === DINER[0] && w[3] === DINER[1];
   }) : [];
+  const barnaby = () => !!(SD.arcArt && SD.arcArt.chars.barnaby);
   async function folk(id) {
     if (QS() && QS().pending(id).length) return QS().talk(id);
     const ls = SAY[id][era()];
@@ -135,9 +142,9 @@
   R.xtoro = {
     name: "TORO'S CARDS", bell: true, music: () => storm() ? null : 'shop',
     map: ['############', '############', '############', '############', '####.....###',
-      '####.....###', '####.....###', '#####..#####', '#####DD#####'],
-    enter: [5, 7, 'north'],
-    clerk: 'toro', counter: [6, 2.5, 'south'], over: [[5, 3], [6, 3]],
+      '####.....###', '#####DD#####', '############', '############'],
+    enter: [5, 5, 'north'],
+    clerk: 'toro', counter: [6, 2.4, 'south'], over: [[5, 3], [6, 3]], front: [[85, 90, 198, 47, 3]],
     people: () => ['toro'], spots: {}, names: { toro: 'TORO' }, looks: { toro: { sprite: 'folk3' } },
     lights: [{ x: 7.6, y: 1.8, r: 2.6 }, { x: 8.2, y: 2.9, r: 1.6, rgb: '140,255,170' }],
     props: [
@@ -151,29 +158,31 @@
   };
   R.xpawn = {
     name: 'THE PAWN SHOP', bell: true, music: () => storm() ? null : 'shop',
-    map: ['############', '############', '############', '############', '####.....###',
-      '####.....###', '#####..#####', '#####..#####', '#####DD#####'],
-    enter: [5, 7, 'north'],
-    clerk: 'v3', counter: [6, 2.4, 'south'], over: [[5, 3], [6, 3], [7, 3]],
-    people: () => ['v3'], spots: {}, names: { v3: 'TRADER' },
+    map: ['############', '############', '############', '####...#####', '####.....###',
+      '####.....###', '#####DD#####', '############', '############'],
+    enter: [5, 5, 'north'],
+    clerk: 'v3', counter: [5.5, 2.1, 'south'], over: [[5, 2], [6, 2]], front: [[153, 77, 84, 40, 2]],
+    // Barnaby's own sprite (js/npc-arcs.js) once it is in the game; until then, the trader from the market.
+    people: () => ['v3'], spots: {},
+    get names() { return { v3: barnaby() ? 'BARNABY' : 'TRADER' }; }, get looks() { return barnaby() ? { v3: { sprite: 'barnaby' } } : null; },
     windows: [{ r: [181, 26, 32, 34] }],
     lights: [{ x: 5.2, y: 2.2, r: 2.2 }, { x: 6.1, y: 0.8, r: 2 }],
     props: [
-      { x: 4, y: 3, t: () => ['Shelves of jars and trinkets, each with a pawn ticket tied on. Most of the tickets are from before the Cloud. Nobody came back for them.'] },
-      { x: 8, y: 3, t: () => ['A little chest of drawers. Each drawer is labelled with a year. The oldest one is locked, and something inside it ticks.'] },
+      { x: 4, y: 2, t: () => ['Shelves of jars and trinkets, each with a pawn ticket tied on. Most of the tickets are from before the Cloud. Nobody came back for them.'] },
+      { x: 7, y: 3, t: () => ['A little chest of drawers. Each drawer is labelled with a year. The oldest one is locked, and something inside it ticks.'] },
       { x: 3, y: 4, t: () => ['A gold-bound ledger, open on the side table. Every line is a thing somebody needed money for. The first line just says "Hope. 1 shard."'] },
       { x: 9, y: 4, t: () => ['An iron safe with three dials. A note taped to it: "Relics only. The good ones are under the counter."'] },
       { x: 9, y: 5, t: () => ['An iron safe with three dials. A note taped to it: "Relics only. The good ones are under the counter."'] },
-      { x: 4, y: 6, t: () => ['A tall green bottle with a ship inside. The ship is very small and looks very worried.'] }
+      { x: 3, y: 5, t: () => ['A tall green bottle with a ship inside. The ship is very small and looks very worried.'] }
     ],
     talk: id => outside(id)
   };
   R.xback = {
     name: 'THE BACK ROOM', ambience: null, calm: true,
-    map: ['############', '############', '############', '############', '####......##',
-      '###........#', '#####..#####', '#####..#####', '#####DD#####'],
-    enter: [5, 7, 'north'],
-    clerk: 'kagemaru', counter: [6, 2.5, 'south'], over: [[5, 3], [6, 3]],
+    map: ['############', '############', '############', '############', '###........#',
+      '####......##', '#####DD#####', '############', '############'],
+    enter: [5, 5, 'north'],
+    clerk: 'kagemaru', counter: [5, 2.45, 'south'], over: [[5, 3], [6, 3]], front: [[165, 96, 72, 56, 3]],
     people: () => sale() ? ['kagemaru'] : [], spots: {}, names: { kagemaru: 'KAGEMARU' },
     windows: [{ r: [178, 23, 42, 37] }],
     lights: [{ x: 6.7, y: 3, r: 3, rgb: '255,190,110' }],
@@ -181,8 +190,8 @@
       { x: 7, y: 3, t: () => ['A lantern on the card table, turned down low. It lights his gloves and nothing above them.'] },
       { x: 4, y: 3, t: () => ['A crate stencilled EMPTY. It is heavy, and it rattles like a deck being shuffled.'] },
       { x: 8, y: 3, t: () => ['A crate stencilled FRAGILE: HOPE. The lid has been prised open. It is empty.'] },
-      { x: 3, y: 4, t: () => ['A barrel of rainwater. Something in the dark of it grins back at you, then stops.'] },
-      { x: 10, y: 6, t: () => ['A barrel with a tap. The label says VINTAGE: THE END OF THE WORLD. It is nearly full. He is saving it.'] }
+      { x: 3, y: 3, t: () => ['A barrel of rainwater. Something in the dark of it grins back at you, then stops.'] },
+      { x: 10, y: 5, t: () => ['A barrel with a tap. The label says VINTAGE: THE END OF THE WORLD. It is nearly full. He is saving it.'] }
     ],
     // His relationship scenes come first when one is due (SD.folkScenes.talkTo, js/npc-arcs.js), as on the Isles.
     talk: async () => {
@@ -192,14 +201,14 @@
   };
   R.xdiner = {
     name: 'THE COFFEE DINER',
-    map: ['############', '############', '############', '############', '############',
-      '####......##', '#####..#####', '#####..#####', '#####DD#####'],
-    enter: [5, 7, 'north'],
-    clerk: 'xcook', counter: [4, 2.5, 'south'], over: [[4, 4], [5, 4], [6, 4]],
+    map: ['############', '############', '############', '############', '####.....###',
+      '####......##', '#####DD#####', '############', '############'],
+    enter: [5, 5, 'north'],
+    clerk: 'xcook', counter: [4.5, 2.4, 'south'], over: [[4, 3], [5, 3], [6, 3]], front: [[80, 95, 150, 48, 3]],
     people: () => ['xcook', 'xdin0', 'xdin1'].concat(storm() ? ['xdin2', 'xdin3'] : [], inDiner()),
-    spots: { xdin0: [8, 4, 'south'], xdin1: [3, 5, 'east'], xdin2: [9, 5, 'west'], xdin3: [4, 5, 'north'], neel: [7, 4, 'south'] },
+    spots: { xdin0: [9, 5, 'west'], xdin1: [6, 4, 'north'], xdin2: [4, 4, 'north'], xdin3: [4, 5, 'east'], neel: [8, 4, 'west'] },
     names: { xcook: 'HASH', xdin0: '', xdin1: '', xdin2: '', xdin3: '', neel: 'NEEL' },
-    looks: { xcook: { sprite: 'folk5' }, xdin0: { sprite: 'folk1' }, xdin1: { sprite: 'folk2' }, xdin2: { sprite: 'folk4' }, xdin3: { sprite: 'folk6' } },
+    looks: { xcook: { sprite: 'spec3' }, xdin0: { sprite: 'folk1' }, xdin1: { sprite: 'folk4' }, xdin2: { sprite: 'folk6' }, xdin3: { sprite: 'spec2' } },
     lights: [{ x: 3.4, y: 2, r: 2.4 }, { x: 6.1, y: 2, r: 2.4 }, { x: 8.6, y: 2.4, r: 2.4 }, { x: 10.6, y: 2.6, r: 2, rgb: '255,90,190' }],
     props: [
       { x: 10, y: 5, t: () => ['A jukebox with one song on it, playing on repeat since loop one. Nobody remembers putting a coin in.'] },
@@ -209,17 +218,17 @@
   };
   R.xbakery = {
     name: "MABEL'S BAKERY", ambience: 'fire',
-    map: ['############', '############', '############', '############', '############',
-      '###.....####', '#####..#####', '#####..#####', '#####DD#####'],
-    enter: [5, 7, 'north'],
-    clerk: 'xbaker', counter: [5, 3.1, 'south'], over: [[4, 4], [5, 4]],
-    people: () => ['xbaker'], spots: {}, names: { xbaker: 'MABEL' }, looks: { xbaker: { sprite: 'folk6' } },
+    map: ['############', '############', '############', '############', '###.....####',
+      '####....####', '#####DD#####', '############', '############'],
+    enter: [5, 5, 'north'],
+    clerk: 'xbaker', counter: [4, 2.4, 'south'], over: [[4, 3], [5, 3]], front: [[92, 89, 90, 58, 3]],
+    people: () => ['xbaker'], spots: {}, names: { xbaker: 'MABEL' }, looks: { xbaker: { sprite: 'folk2' } },
     windows: [{ r: [105, 68, 55, 27] }],
     lights: [{ x: 8.2, y: 3.3, r: 3, rgb: '255,140,60' }, { x: 5.3, y: 2.8, r: 2 }, { x: 9, y: 5.1, r: 1.6 }],
     props: [
-      { x: 2, y: 5, t: () => ['Shelves of loaves, oldest at the bottom. The bottom shelf goes to the line outside the tower, for free. First baked, first given.'] },
-      { x: 6, y: 4, t: () => ['Sacks of flour, stacked by the oven. One has a smiley face drawn in the flour on top. Payment, probably.'] },
-      { x: 3, y: 4, t: () => ['The pastry case. A card in it says TODAY: CROISSANTS. TOMORROW: ALSO CROISSANTS. WE DON\'T DO SURPRISES.'] },
+      { x: 2, y: 4, t: () => ['Shelves of loaves, oldest at the bottom. The bottom shelf goes to the line outside the tower, for free. First baked, first given.'] },
+      { x: 6, y: 3, t: () => ['Sacks of flour, stacked by the oven. One has a smiley face drawn in the flour on top. Payment, probably.'] },
+      { x: 3, y: 3, t: () => ['The pastry case. A card in it says TODAY: CROISSANTS. TOMORROW: ALSO CROISSANTS. WE DON\'T DO SURPRISES.'] },
       { x: 8, y: 5, t: () => ['A little round table with a lamp on it, and a jar labelled SMILES. It is empty, which is how smiles are kept.'] }
     ],
     talk: id => folk(id)
