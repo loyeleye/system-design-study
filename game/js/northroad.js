@@ -207,15 +207,16 @@
         hero1023: { x: 13, y: 13, face: 'east', name: 'HERO #1023', hidden: true },
         hero500: { x: 17, y: 13, face: 'west', name: 'HERO #500', hidden: true }
       },
-      // It always rains at the camp, so it has the animals that like rain: frogs, snails and ducks in the puddles.
+      // The camp is damp and gloomy, so it has the animals that like the wet: frogs, snails and ducks in the puddles.
       critters: [
         { kind: 'frog', x: 5, y: 13 }, { kind: 'frog', x: 24, y: 21 }, { kind: 'frog', x: 18, y: 8 }, { kind: 'frog', x: 11, y: 20 },
         { kind: 'snail', x: 3, y: 18, range: 2 }, { kind: 'snail', x: 13, y: 19, range: 2 }, { kind: 'snail', x: 27, y: 9, range: 2 }, { kind: 'snail', x: 1, y: 13, range: 2 },
         { kind: 'duck', x: 19, y: 21 }, { kind: 'duck', x: 6, y: 21 }
       ],
-      back: { D: [8, 8, 'south'], E: [28, 10, 'west'] }, enter: [28, 10, 'west'], ch: 9, music: 'ch9', weather: 'rain',
-      // Rain on the tents, under grey clouds, and the campfire crackling when it's dry enough to burn.
-      clouds: true, ambience: 'fire'
+      back: { D: [8, 8, 'south'], E: [28, 10, 'west'] }, enter: [28, 10, 'west'], ch: 9, music: 'ch9', weather: 'wind',
+      // Gloomy and windy, under grey clouds, with the campfire crackling (chapter 10's storm puts it out). The sky
+      // is a dim blue-grey wash over the whole map.
+      sky: 'rgba(45,55,80,.32)', clouds: true, ambience: 'fire'
     };
   })();
 

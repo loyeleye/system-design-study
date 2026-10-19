@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Checks the heroes' camp campfire flickers (js/scene.js ANIM): serves the game, opens the camp in debug mode
 // (dry weather, afternoon then night), and screenshots the fire ten times. Fails if the frame strip doesn't load, a file 404s,
-// the page throws, or the fire looks the same in most shots. Then checks rain puts it out.
+// the page throws, or the fire looks the same in most shots. Then checks the camp's
+// own weather leaves it burning and rain puts it out.
 //
 //   node tools/campfire_check.js [OUT_DIR]    screenshots go in OUT_DIR (default: a temp folder)
 //
@@ -46,17 +47,20 @@ const server = http.createServer((req, res) => {
     failed = failed || !ok;
     await p.close();
   }
-  // Rain puts it out (chapter 9's camp rain, chapter 10's storm): charred logs instead of flames, and no crackle.
-  for (const [name, q] of [['chapter 9 rain', 'ch=9'], ['chapter 10 storm', 'ch=10']]) {
+  // The camp's own weather: grey and windy in chapter 9, so the fire burns. Rain puts it out (chapter 10's storm, or
+  // rain forced in debug): charred logs instead of flames, and no crackle.
+  for (const [name, q, lit] of [['chapter 9 wind', 'ch=9', true], ['chapter 9 forced rain', 'ch=9&weather=rain', false], ['chapter 10 storm', 'ch=10', false]]) {
     const p = await b.newPage({ viewport: { width: 900, height: 640 } });
     const errs = [];
     p.on('pageerror', e => errs.push(e.message));
     p.on('response', r => { if (r.status() >= 400) errs.push(r.status() + ' ' + r.url()); });
     await p.goto(base + '/index.html?debug&rank=S&at=camp&' + q);
     await p.waitForTimeout(4000);
-    const st = await p.evaluate(() => ({ weather: SD.weather.now('rain'), fire: SD.northRoad.maps.camp.objects.find(o => /^cp-fire/.test(o.name)).name, sound: SD.northRoad.maps.camp.ambience() }));
-    await p.screenshot({ path: path.join(OUT, `camp-${q}-rain.png`) });
-    const ok = st.fire === 'cp-fire-out' && st.sound === null && !errs.length;
+    // Windy, the fire streams east: its wind strip has to load too.
+    const wind = await p.evaluate(() => new Promise(r => { const im = new Image(); im.onload = () => r(im.naturalWidth === 512 && im.naturalHeight === 72); im.onerror = () => r(false); im.src = 'assets/img/arc/cp-fire-wind.webp'; }));
+    const st = await p.evaluate(() => ({ weather: SD.weather.now(SD.northRoad.maps.camp.weather), fire: SD.northRoad.maps.camp.objects.find(o => /^cp-fire/.test(o.name)).name, sound: SD.northRoad.maps.camp.ambience() }));
+    await p.screenshot({ path: path.join(OUT, `camp-${name.replace(/ /g, '-')}.png`) });
+    const ok = wind && (lit ? st.fire === 'cp-fire' && st.sound === 'fire' : st.fire === 'cp-fire-out' && st.sound === null) && !errs.length;
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}: ${JSON.stringify(st)}${errs.length ? ', errors ' + JSON.stringify(errs) : ''}`);
     failed = failed || !ok;
     await p.close();

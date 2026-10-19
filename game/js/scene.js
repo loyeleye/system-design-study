@@ -27,8 +27,9 @@
     return null;
   }
   // Objects that move: a strip of frames, each w x h (the still's art padded, standing on the same bottom edge), n of
-  // them at fps. The heroes' camp campfire flickers (tools/campfire_anim.py).
-  const ANIM = { 'cp-fire': { src: 'assets/img/arc/cp-fire-anim.webp', w: 64, h: 72, n: 8, fps: 9 } };
+  // them at fps, and optionally a wind strip of the same shape played instead in windy weather (the wind blows east,
+  // js/weather.js). The heroes' camp campfire flickers, and streams east in the wind (tools/campfire_anim.py).
+  const ANIM = { 'cp-fire': { src: 'assets/img/arc/cp-fire-anim.webp', wind: 'assets/img/arc/cp-fire-wind.webp', w: 64, h: 72, n: 8, fps: 9 } };
   function charArt(id) {
     const a = SD.arcArt && SD.arcArt.chars[id];
     if (a) return Object.assign({ src: 'assets/img/arc/c-' + id + '.webp' }, a);
@@ -58,7 +59,7 @@
     const ctx = canvas.getContext('2d');
     const MAP = def.map, W = MAP[0].length, HT = MAP.length;
     let dpr = 1, ts = 32, raf = 0, t0 = 0;
-    let clockT = 0;                      // seconds, for animated objects
+    let clockT = 0, windy = false;       // seconds, and whether it's windy, for animated objects
 
     const keys = {};
     const tile = (x, y) => (y < 0 || y >= HT || x < 0 || x >= W) ? 'T' : MAP[y][x];
@@ -249,7 +250,7 @@
       const n = ANIM[name];
       if (n) {
         // An animated object: its frames side by side in one strip, played in a loop (falls back to the still).
-        const im = pic(n.src);
+        const im = pic(n.wind && windy ? n.wind : n.src);
         if (ok(im)) {
           const w = n.w * ts / 32 * (k || 1), h = n.h * ts / 32 * (k || 1), f = Math.floor(clockT * n.fps) % n.n;
           if (flip) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(im, f * n.w, 0, n.w, n.h, -w / 2, y - h, w, h); ctx.restore(); }
@@ -412,6 +413,7 @@
     const SKY = { dusk: 'rgba(255,120,60,.16)', dark: 'rgba(14,10,40,.45)', grey: 'rgba(120,120,130,.0)', night: 'rgba(20,24,70,.35)' };
     function draw(t) {
       clockT = t;
+      windy = !!SD.weather && ['wind', 'gusty'].includes(SD.weather.now(def.weather));
       const vw = canvas.width / dpr, vh = canvas.height / dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
