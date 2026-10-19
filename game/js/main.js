@@ -453,12 +453,19 @@
     await U.dialog(SD.story.gary[i % SD.story.gary.length].map(t => ({ s: 'gary', t })));
   }
 
-  // Which weeks of the real 10-week plan each later chapter covers (job-hunt-agent/interview/study_plan_dsa_system_design.md).
-  const PLAN = [
-    [6, 'Chapter 6 is the Applied AI add-on from your plan: retrieval-augmented generation, evaluation, latency and cost, and guardrails. Pick it up only once an applied-AI company moves you to a screen.'],
-    [5, 'Chapter 5 covers weeks 7 and 8 of your Hello Interview track: the notification service, then YouTube and the web crawler, with DNS, CDNs, deployments and monitoring along the way.'],
-    [4, 'Chapter 4 covers weeks 6 and 7 of your Hello Interview track: Uber and WhatsApp, then the key-value store and distributed cache, with consensus, clocks, locks and sagas from quests 11 to 15.']
-  ];
+  // What each chapter covers, shown on the quest board for the furthest chapter reached.
+  const TOPICS = {
+    1: 'Chapter 1 covers the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener.',
+    2: 'Chapter 2 covers the rate limiter and Dropbox-style file sync, plus queues, retries and idempotency.',
+    3: 'Chapter 3 covers Ticketmaster and the news feed, then top-K and the ad click aggregator, with indexes, consistency models, search and backpressure along the way.',
+    4: 'Chapter 4 covers Uber and WhatsApp, then the key-value store and distributed cache, with consensus, clocks, locks and sagas from quests 11 to 15.',
+    5: 'Chapter 5 covers the notification service, YouTube and the web crawler, with DNS, CDNs, deployments and monitoring along the way.',
+    6: 'Chapter 6 (optional) covers AI-era systems: LLM serving, retrieval-augmented generation, evaluation, latency and cost, and guardrails.',
+    7: 'Chapter 7 covers proximity search, nearby friends and Google Maps-style routing.',
+    8: 'Chapter 8 covers a distributed message queue, metrics monitoring and alerting, and ad click event aggregation.',
+    9: 'Chapter 9 covers a distributed email service, S3-style object storage and a real-time leaderboard.',
+    10: 'Chapter 10 covers hotel reservations, payments, a digital wallet and a stock exchange.'
+  };
   async function board() {
     const sv = S.save;
     const done = sv.flags.dailyDate === today();
@@ -466,8 +473,8 @@
     const b = U.panel(`<div class="quest"><div class="q-ctx">[DAILY QUEST] Keep the Cloud happy</div>
       <ul class="qlist"><li>Answer 5 review questions <span class="muted">${due ? `(${due} concept${due > 1 ? 's' : ''} due)` : ''}</span></li></ul>
       <p class="small">Reward: 40 XP and 100 Memory Shards, once a day. ${done ? '<b>Completed today.</b> You can still practise for XP.' : 'Skipping the daily quest has no penalty. Uptima says the penalty is forgetting. She also forgets things, so.'}</p></div>
-      <div class="plan"><div class="q-ctx">Your real study plan</div>
-      <p class="small">${PLAN.find(([c]) => (sv.chapter || 1) >= c) ? PLAN.find(([c]) => (sv.chapter || 1) >= c)[1] : (sv.chapter || 1) >= 3 ? 'Chapter 3 covers weeks 4 and 5 of your Hello Interview track: Ticketmaster and the news feed, then top-K and the ad click aggregator, with indexes, consistency models, search and backpressure along the way.' : (sv.chapter || 1) >= 2 ? 'Chapter 2 covers week 3 of your Hello Interview track: the rate limiter and Dropbox-style file sync, plus queues and retries from week 2\'s key technologies.' : 'Chapter 1 covers weeks 1 and 2 of your Hello Interview track: the delivery framework, scaling, caching, consistency and partitioning, SQL vs NoSQL, and the URL shortener.'} Do the week's problem on paper first; use runs here to keep it fresh.</p></div>
+      <div class="plan"><div class="q-ctx">This chapter's topics</div>
+      <p class="small">${TOPICS[Math.min(10, Math.max(1, sv.chapter || 1))] || TOPICS[1]} Try each problem on paper first; use runs here to keep it fresh.</p></div>
       <div class="row"><button class="primary" id="dq-go">Start</button><button class="ghost" id="dq-x">Later</button></div>`, { title: 'QUEST BOARD', onClose: () => resolveBoard() });
     let resolveBoard;
     await new Promise(res => {

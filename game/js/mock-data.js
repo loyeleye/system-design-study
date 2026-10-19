@@ -59,7 +59,10 @@ SD.mock.nudges = {
   search: 'Someone types "tayl swft". Which part finds that?',
   hold: 'A fan picks a seat and starts paying. What stops someone else taking it for the next ten minutes?',
   waitroom: 'Ten million fans arrive at 10:00 exactly. What happens before they reach booking?',
-  stream: 'Millions of events a minute need counting. Do you write each one to the database?'
+  stream: 'Millions of events a minute need counting. Do you write each one to the database?',
+  geo: 'You need everything near one point on a map. Which part answers that in one lookup?',
+  lock: 'Two servers grab the same thing in the same millisecond. What lets only one of them win?',
+  dns: 'A user in Lagos and one in Seoul type the same address. Who sends each to the nearest region?'
 };
 
 // "Any questions for me?" Shared by every problem.
@@ -1012,6 +1015,527 @@ SD.mock.problems = [
         }
       },
       { id: 'bike', title: 'The shape of the favourite button', kind: 'bikeshed', reply: 'Heart-shaped. It\'s a backend round.', note: 'Chose to spend deep-dive time on a button.' }
+    ]
+  },
+  {
+    id: 'adclicks', ch: 3, name: 'Ad Click Aggregator', like: 'an ad network\'s click dashboard',
+    prompt: 'Design an ad click aggregator: record every ad click, and show advertisers clicks per ad per minute, accurate enough to bill on. The Click Goblin is mashing the button.',
+    concepts: ['adclick', 'streams', 'windows', 'hotkey', 'estimation'],
+    clarify: [
+      { q: 'How many clicks, and how many ads?', good: true, a: 'About a billion clicks a day across 2 million active ads, with peaks five times the average.' },
+      { q: 'How fresh must the dashboard be?', good: true, a: 'Within a minute. Billing can wait for a final count the next day.' },
+      { q: 'What do advertisers query?', good: true, a: 'Clicks for one ad over a time range, by minute, hour or day, for the last 90 days.' },
+      { q: 'Do we drop duplicate clicks?', good: true, a: 'Yes: the same impression clicked twice counts once. Full fraud detection is another team\'s job.' },
+      { q: 'Should we write our own stream engine?', good: false, a: 'Let\'s use one that exists.', note: 'Planned to build a stream processor from scratch.' },
+      { q: 'What colour should the dashboard charts be?', good: false, a: 'Any colour.', note: 'Asked about chart colours in a backend round.' }
+    ],
+    req: [
+      { t: 'Clicking an ad takes the user to the advertiser\'s site', k: 'f' },
+      { t: 'Advertisers query clicks per ad over a time range', k: 'f' },
+      { t: 'Counts roll up by minute, hour and day', k: 'f' },
+      { t: 'Counts are accurate enough to bill on', k: 'nf' },
+      { t: 'New clicks show on the dashboard within a minute', k: 'nf' },
+      { t: 'The redirect stays fast at peak', k: 'nf' },
+      { t: 'Run the ad auction that picks which ad to show', k: 'out' },
+      { t: 'Detect click fraud with machine learning', k: 'out' }
+    ],
+    entities: [
+      { t: 'Click (click ID, ad, impression, time)', ok: true },
+      { t: 'Click count (ad, minute, clicks)', ok: true },
+      { t: 'Ad (advertiser, target URL)', ok: true },
+      { t: 'Advertiser', ok: 'opt' },
+      { t: 'Seat hold', ok: false, why: 'Wrong problem. Nothing is reserved here.' },
+      { t: 'Load balancer', ok: false, why: 'Infrastructure, not data the product stores.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'adclick',
+      opts: ['GET /click/{adId}?imp={impressionId} returns a 302; GET /ads/{id}/clicks?from=…&to=…&by=minute', 'The page sends POST /clicks {adId}, then the browser opens the advertiser\'s URL by itself', 'GET /ads/{id}/clicks returns every raw click ever, and the dashboard counts them in the browser', 'A WebSocket per advertiser that streams each raw click to the dashboard as it happens'],
+      a: 0, no: [null, 'A closed tab or an ad blocker drops the POST but not the visit, so clicks go uncounted. A redirect through your server records the click on the way.', 'A popular ad has millions of clicks, sent on every refresh. Count them on the server, by minute, and return the counts.', 'Advertisers want counts, not a firehose, and a minute of freshness doesn\'t need a socket. A query API over counts is enough.'],
+      why: 'The click goes through your server, which records it and redirects, with the impression ID to drop doubles. Advertisers query counts already summed per ad and time bucket.'
+    },
+    est: {
+      pick: [
+        { t: 'Clicks per second.', k: 'best' },
+        { t: 'The bytes in every field of a click event, added up by hand.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: 'A billion clicks a day. Average clicks a second?', unit: 'clicks/s', lo: 9000, hi: 14000,
+      ans: '~11,600 (10^9 ÷ 86,400), and about 60,000 at peak', why: 'Tens of thousands of writes a second rules out a row update per click. Write each click to a log, and count them in memory a minute at a time.'
+    },
+    hld: {
+      palette: ['lb', 'gateway', 'app', 'queue', 'stream', 'worker', 'sql', 'nosql', 'cache', 'counter', 'blob', 'socket'],
+      flows: [
+        { name: 'A user clicks an ad', need: [['lb', 'gateway'], ['app'], ['queue']], ok: ['lb', 'gateway', 'cache'], nudge: { queue: 'Sixty thousand clicks a second at peak. Where do they land before anything counts them?' } },
+        { name: 'Clicks are counted per ad per minute', need: [['queue'], ['stream'], ['nosql', 'sql']], ok: ['blob', 'worker'] },
+        { name: 'An advertiser opens the dashboard', need: [['lb', 'gateway'], ['app'], ['nosql', 'sql']], ok: ['cache', 'lb', 'gateway'] }
+      ],
+      why: {
+        c: 'streams', q: '"Why count in a stream processor instead of updating a row per click?"',
+        opts: ['It sums each ad\'s clicks in memory and writes one row per minute, not thousands', 'A stream processor keeps clicks more durably than a replicated database can', 'A database can\'t keep clicks sorted by time, and a stream processor does it for free', 'It lets the dashboard read raw clicks directly, so no counting step is needed'],
+        a: 0, no: [null, 'Durability comes from the log (Kafka) and the database. The processor checkpoints its state, but it isn\'t the store of record.', 'Any database sorts by time with an index. The problem is write volume, not ordering.', 'It is the reverse: the processor is the counting step, so the dashboard reads small counts instead of raw clicks.'],
+        why: 'Sixty thousand clicks a second become one write per ad per minute. Flink or Spark Streaming keep a running count per (ad, minute) window, checkpoint it, and write it when the window closes.'
+      }
+    },
+    dives: [
+      {
+        id: 'once', title: 'Counting each click exactly once', kind: 'bottleneck', c: 'adclick',
+        q: 'A stream worker crashes after counting some clicks but before saving. On restart, how do you avoid counting them twice or losing them?',
+        opts: ['Checkpoint the counts and the log offsets together, then replay from there', 'Write each click to the database before adding it to the in-memory count', 'Restart from the newest log offset, so no click is ever read a second time', 'Have the click service resend each click until a worker confirms the count'],
+        a: 0, no: [null, 'That is a database write per click again, the load the stream was meant to remove, and a crash between the two steps still double counts.', 'Skipping to the newest offset loses every click since the last save. That undercounts, and underbills.', 'Resending makes delivery at least once, which is what causes double counts. The fix belongs on the counting side.'],
+        nudge: 'The counts and the place in the log are saved at different moments. What if they were saved together?',
+        why: 'Flink-style checkpoints save each window\'s counts with the Kafka offsets they cover, in one step. After a crash the job restores both and replays from there, so each click lands in the count once. Deduplicating by impression ID handles users who click twice.',
+        f: {
+          q: 'Billing needs counts you can defend. How do you check the streaming numbers?',
+          opts: ['Recount the raw clicks in a nightly batch job, and let it correct the counts', 'Trust the stream, since its exactly-once checkpoints already make every count correct', 'Ask advertisers for their own counts, and bill on the lower of the two', 'Check a sample of one click in a thousand against the dashboard each day'],
+          a: 0, no: [null, 'Checkpoints protect against crashes, not against bugs or late clicks. Money needs an independent check.', 'Advertisers count page landings, not clicks, and the numbers differ for good reasons. You need your own source of truth.', 'A sample can find a pattern but can\'t prove a total. A full recount can.'],
+          why: 'Keep the raw clicks in object storage and recount them with Spark each night. Where the batch total differs, it wins and corrects the stored counts: a fast path for dashboards and a slow, exact path for money.'
+        }
+      },
+      {
+        id: 'hot', title: 'One ad gets half the clicks', kind: 'real', c: 'hotkey',
+        q: 'A big-game ad gets half of all clicks for an hour. The stream partition for its ad ID falls far behind. What do you do?',
+        opts: ['Split that ad into N sub-keys, count each one, then add them up', 'Move the hot partition to a bigger machine until the ad cools off', 'Count a random 10% of that ad\'s clicks and multiply the result by ten', 'Partition clicks by user ID, so no single ad ever lands on one node'],
+        a: 0, no: [null, 'A bigger machine buys some headroom, but one partition still has a ceiling, and the next big ad passes it.', 'Sampling suits a trending chart, not billing, where every click is money.', 'Then every partition holds partial counts for all 2 million ads, which must be merged every minute. It works, but costs far more than splitting the few hot ads.'],
+        nudge: 'One key gets all the traffic, so one partition does all the work. Could one ad be more than one key?',
+        why: 'Add a suffix 0 to N-1 to a hot ad\'s ID, so its clicks spread over N partitions, then add the N partial counts in a second, much smaller step. Only split ads you know are hot, so the rest stay simple.',
+        f: {
+          q: 'What does splitting a hot ad cost you?',
+          opts: ['An extra step that adds the partial counts before a total is final', 'Clicks for that ad arrive out of order, so they can no longer be counted', 'Each sub-key partition must store a full copy of every ad\'s count', 'Advertisers must query every sub-key themselves and add up the totals'],
+          a: 0, no: [null, 'Order inside a minute doesn\'t change a count, and windows handle late clicks either way.', 'Each partition holds only its share of the hot ad. Nothing is copied.', 'The merge step hides the sub-keys. Advertisers query one ad ID as before.'],
+          why: 'A second stage (or a sum at query time) merges the parts, which adds a little delay and code. Worth it for a handful of hot ads, not for every ad.'
+        }
+      },
+      {
+        id: 'late', title: 'Clicks that arrive late', kind: 'real', c: 'windows',
+        q: 'Phones on a train with no signal send their clicks ten minutes late. The 14:00 minute has already closed. What happens to those clicks?',
+        opts: ['Window by click time with a watermark, allow some lateness, and update the count', 'Window by the time the server received each click, so that no click can ever be late', 'Drop clicks that miss their window, since a few late ones never matter', 'Keep every window open for a whole day, so even the latest clicks fit in'],
+        a: 0, no: [null, 'Then a 14:00 click is counted at 14:10, in the wrong minute, and hourly billing shifts too.', 'Late clicks are still paid clicks. Dropping them undercounts, and a whole train is a lot of phones.', 'A day of open windows for 2 million ads is a lot of state, and no minute looks final for a day.'],
+        nudge: 'The click happened at 14:00 but arrived at 14:10. Which of those times decides its window?',
+        why: 'Count by event time. A watermark says "we have probably seen everything up to 14:05"; windows close then but still accept late clicks for a set time and send a correction. Anything later is caught by the nightly recount.',
+        f: {
+          q: 'What does allowing more lateness cost?',
+          opts: ['More window state in memory, and dashboard numbers that change later', 'Clicks counted twice, since a late click updates two different windows', 'A slower redirect, since the user waits while the window takes the click', 'Lost clicks, since a long lateness pushes the watermark past new ones'],
+          a: 0, no: [null, 'A late click updates only its own event-time window, once.', 'The redirect never waits for counting. The click goes to the log and the user moves on.', 'Lateness keeps windows open longer. It never makes the watermark skip clicks.'],
+          why: 'Each open window holds state, so more lateness means more memory and bigger checkpoints, and numbers shown as final can still move. Most designs allow minutes, not hours, and leave the rest to the batch recount.'
+        }
+      },
+      { id: 'bike', title: 'Bar chart or line chart on the dashboard', kind: 'bikeshed', reply: 'Bar. Settled. It\'s a backend round.', note: 'Chose to spend deep-dive time on the chart type.' }
+    ]
+  },
+  {
+    id: 'rides', ch: 4, name: 'Ride Hailing', like: 'Uber',
+    prompt: 'Design a ride hailing app like Uber: a rider asks for a ride and a nearby free driver picks them up. The Wandering Cab Spirit is lost again.',
+    concepts: ['geo', 'locks', 'realtime', 'cache', 'estimation'],
+    clarify: [
+      { q: 'How many riders and drivers?', good: true, a: 'About 2 million drivers online at peak, and 20 million rides a day.' },
+      { q: 'How often do drivers send their location?', good: true, a: 'Every 5 seconds while they are online.' },
+      { q: 'Can one driver be offered two rides at once?', good: true, a: 'No. A driver gets one offer at a time and has 10 seconds to accept.' },
+      { q: 'Is pricing in scope?', good: true, a: 'Show a fare estimate before the rider confirms. How surge prices are set is out of scope.' },
+      { q: 'Should drivers get a weekly leaderboard?', good: false, a: 'Not today.', note: 'Added a feature nobody asked for.' },
+      { q: 'Which map app do drivers prefer?', good: false, a: 'Whichever they like.', note: 'Asked about a front-end vendor in a backend round.' }
+    ],
+    req: [
+      { t: 'A rider sees a fare estimate for a trip', k: 'f' },
+      { t: 'A rider requests a ride and is matched to a nearby driver', k: 'f' },
+      { t: 'A driver accepts or declines a ride', k: 'f' },
+      { t: 'A rider sees their driver approach on the map', k: 'f' },
+      { t: 'A driver is never offered two rides at once', k: 'nf' },
+      { t: 'Most matches happen within a minute', k: 'nf' },
+      { t: 'Ratings and tips', k: 'out' },
+      { t: 'Scheduled rides booked days ahead', k: 'out' }
+    ],
+    entities: [
+      { t: 'Ride (rider, driver, pickup, drop-off, status)', ok: true },
+      { t: 'Driver (status, current location)', ok: true },
+      { t: 'Fare (ride estimate, price, expiry)', ok: true },
+      { t: 'Rider', ok: 'opt' },
+      { t: 'Video rendition', ok: false, why: 'Wrong problem. Nothing is streamed here.' },
+      { t: 'Load balancer', ok: false, why: 'Infrastructure, not data the product stores.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'geo',
+      opts: ['POST /fares {pickup, dropoff}; POST /rides {fareId}; POST /drivers/location; PATCH /rides/{id}', 'GET /drivers?near=… returns all the free drivers, and the rider\'s app picks the one it likes', 'POST /rides {riderId, pickup, price}, with the price the rider\'s app was shown', 'One WebSocket per rider for everything: fares, booking, payment and driver locations'],
+      a: 0, no: [null, 'Two riders would pick the same driver, and the client can\'t be trusted to match. The server matches and claims the driver.', 'The server knows the rider from the auth token, and a price sent by the client can be edited. Send the ID of a fare the server issued.', 'A socket suits pushing the driver\'s position to the rider, but booking needs a clear answer and safe retries. Keep plain requests for actions.'],
+      why: 'The fare is a quote from the server that the ride refers to, so the price can\'t be tampered with. Drivers post locations on a cheap endpoint, and accepting a ride is a change to its status.'
+    },
+    est: {
+      pick: [
+        { t: 'Driver location updates per second.', k: 'best' },
+        { t: 'Kilometres driven by every driver this year.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '2 million drivers online, each sending a location every 5 seconds. Updates per second?', unit: 'updates/s', lo: 300000, hi: 500000,
+      ans: '~400,000 a second (2 × 10^6 ÷ 5)', why: 'Far too many writes for a database row update each. Keep live positions in memory, in a geo index like Redis geo sets, and let old ones expire; only rides go to the database.'
+    },
+    hld: {
+      palette: ['lb', 'gateway', 'app', 'sql', 'nosql', 'cache', 'geo', 'lock', 'queue', 'socket', 'notify', 'stream'],
+      flows: [
+        { name: 'A driver sends a location', need: [['lb', 'gateway'], ['app'], ['geo']], ok: ['lb', 'gateway', 'stream', 'queue'] },
+        { name: 'A rider requests a ride', need: [['lb', 'gateway'], ['app'], ['geo'], ['lock'], ['notify', 'socket'], ['sql', 'nosql']], ok: ['queue', 'lb', 'gateway', 'socket', 'notify', 'cache'] }
+      ],
+      why: {
+        c: 'geo', q: '"Why keep live driver locations in a geo index rather than in the rides database?"',
+        opts: ['400,000 updates a second fit in memory, and "drivers near me" is one cell lookup', 'The rides database can\'t store latitude and longitude as columns at all, only as text', 'A geo index keeps every past location forever, which billing will need', 'An in-memory index is the source of truth, so rides need no database'],
+        a: 0, no: [null, 'Any database stores two numbers. The problem is 400,000 writes a second and searching by area, not the data type.', 'It does the opposite: live positions expire after seconds. Trip history comes from the rides themselves.', 'Rides, fares and payments still need a durable database. The geo index holds only data that is fine to lose.'],
+        why: 'Positions change every 5 seconds and are worthless a minute later, so they belong in memory, bucketed by geohash cell. Losing a node loses a few seconds of positions, which the next update replaces.'
+      }
+    },
+    dives: [
+      {
+        id: 'double', title: 'Two riders get the same driver', kind: 'bottleneck', c: 'locks',
+        q: 'Two riders on the same corner request at once, and the matcher picks the same nearest driver for both. How does only one get her?',
+        opts: ['Claim the driver with a short lease, such as SET NX with a 10 s expiry', 'Send both offers and let the driver choose whichever rider she prefers', 'Send each request to the matcher on a different server, so they never meet', 'Let both rides go through, then cancel the one that was created second'],
+        a: 0, no: [null, 'The rule is one offer at a time, and the losing rider waits on a driver who never accepts. Claim first, then offer.', 'Two servers are exactly how both pick the same driver. Spreading requests causes the race; it doesn\'t prevent it.', 'The second rider sees a match, then a cancel, and the driver may already be driving to them.'],
+        nudge: 'Both matchers read "free" before either writes. What can only one of them win?',
+        why: 'Before offering, the matcher claims the driver with a lease that expires (Redis SET NX with a TTL, or a status update with a version check). The other matcher fails and tries the next driver. If she doesn\'t accept in 10 seconds, the lease lapses and she is free again.',
+        f: {
+          q: 'Why should the claim expire on its own instead of waiting for the driver to answer?',
+          opts: ['A driver whose phone dies would stay claimed, and never get another ride', 'An expiring claim is cheaper to store in Redis than one that never expires', 'Drivers must accept within 10 seconds by law, so the claim must match it', 'Without an expiry, the same driver could be offered two rides at once'],
+          a: 0, no: [null, 'Storage cost is the same either way. It\'s about what happens when no answer comes.', 'The 10 seconds is a product choice, not a law. The expiry is about failure, not rules.', 'The claim is what prevents two offers. Its expiry is about releasing it when nobody answers.'],
+          why: 'Leases make failure clean up after itself: a crashed matcher or a driver in a tunnel can\'t hold the claim forever. The cost is a race when an answer arrives just after expiry, so accepting checks the lease is still hers.'
+        }
+      },
+      {
+        id: 'near', title: 'Finding nearby drivers fast', kind: 'real', c: 'geo',
+        q: 'A rider in a busy city taps Request. How do you find the free drivers within 2 km in a few milliseconds?',
+        opts: ['Look up the rider\'s geohash cell and its neighbours in the geo index', 'Query the drivers table with a B-tree index on latitude, then on longitude', 'Compute the distance to every online driver and keep the nearest ones', 'Ask every driver\'s phone if it is close, and match whichever answers first'],
+        a: 0, no: [null, 'A B-tree sorts one column, so a latitude range is a stripe round the planet, mostly full of far-away drivers.', 'That is 2 million distance checks per request, at thousands of requests a second.', 'Millions of messages per request, and phones answer slowly. The server already knows where drivers are.'],
+        nudge: 'Drivers near each other share most of a geohash. How could that make "nearby" one lookup?',
+        why: 'Each driver is filed under a geohash cell. Nearby means the rider\'s cell plus its eight neighbours, a handful of small sets, then a precise distance check on the few drivers inside. Redis GEOSEARCH does exactly this.',
+        f: {
+          q: 'Downtown at rush hour, one cell holds thousands of drivers, and the countryside cells are empty. What helps?',
+          opts: ['Use smaller cells where it\'s dense, like a quadtree that splits busy cells', 'Make every cell bigger, so the countryside cells hold more drivers each', 'Shard the geo index by driver ID, so dense cells spread over many nodes', 'Limit how many drivers may be online in each cell at the same time'],
+          a: 0, no: [null, 'Bigger cells make downtown worse: each lookup returns even more drivers to sort.', 'Then a "nearby" search must ask every shard. Sharding by region keeps a lookup on one node.', 'Turning drivers away when riders need them is the opposite of the goal.'],
+          why: 'A quadtree (or picking the geohash length by density) splits busy areas into small cells and keeps empty areas as one big cell, so every lookup scans a similar number of drivers. The cost is rebalancing cells as rush hour moves.'
+        }
+      },
+      {
+        id: 'track', title: 'Showing the driver on the rider\'s map', kind: 'real', c: 'realtime',
+        q: 'Once matched, the rider watches the driver\'s car move toward her. How does each new position reach her phone?',
+        opts: ['Push each update over a WebSocket the rider\'s app holds open during the trip', 'Have the rider\'s app ask the server for the driver\'s location once every second', 'Send each new position as a push notification through APNs or FCM', 'Email the rider a link to a page that shows the driver\'s live location'],
+        a: 0, no: [null, 'Polling every second from millions of riders is millions of requests, most returning nothing new, and adds up to a second of delay.', 'Push services are for waking a sleeping phone, not for a position every few seconds, and they throttle senders who try.', 'The rider is standing on a curb with the app open. A link is a slower path to the same need.'],
+        nudge: 'The rider\'s app is open and on screen. Can the server send to it without being asked?',
+        why: 'An open WebSocket (or server-sent events) lets the server push the driver\'s position the moment it arrives. The location service publishes each update for that ride, and the socket server holding the rider\'s connection forwards it.',
+        f: {
+          q: 'The rider goes through a tunnel and her socket drops for 30 seconds. What should happen?',
+          opts: ['She reconnects and gets the latest position; the missed ones are skipped', 'The server queues all 6 missed positions and replays them in order', 'The ride is cancelled, since the rider might no longer be at the pickup', 'The driver is told to stop and wait until the rider is back online'],
+          a: 0, no: [null, 'Old positions are useless once a newer one exists. Replaying them only animates the past.', 'A dropped connection is normal on a phone. The trip doesn\'t depend on her signal.', 'The driver needs no signal from the rider to keep driving to the pickup.'],
+          why: 'Location is state, not a message history: only the newest one matters. On reconnect the app fetches the current position, then resumes the stream. This is why rides can use cheap, lossy pushes for positions.'
+        }
+      },
+      { id: 'bike', title: 'The little car icon on the map', kind: 'bikeshed', reply: 'A sedan, facing the way it drives. Fine. Moving on.', note: 'Chose to spend deep-dive time on the car icon.' }
+    ]
+  },
+  {
+    id: 'dcache', ch: 4, name: 'Distributed Cache', like: 'Memcached or Redis Cluster',
+    prompt: 'Design a distributed cache that sits in front of a product database, like Memcached or Redis Cluster. The Forgetful Golem keeps dropping things.',
+    concepts: ['dcache', 'chash', 'hotkey', 'herd', 'estimation'],
+    clarify: [
+      { q: 'How much data, and how big are the values?', good: true, a: 'About a billion keys, around 1 KB each.' },
+      { q: 'How busy is it, and what latency do callers expect?', good: true, a: 'A few million reads a second at peak, each answered in about a millisecond.' },
+      { q: 'Can a read see a slightly old value?', good: true, a: 'Yes, for a few seconds. The database is the source of truth.' },
+      { q: 'If a cache node dies, is its data lost?', good: true, a: 'Losing some is fine; the data is in the database. Losing a third of the cache at once is not.' },
+      { q: 'Should we write it in Rust for speed?', good: false, a: 'Pick the design first.', note: 'Chose a language before the design.' },
+      { q: 'Can the cache also run SQL joins?', good: false, a: 'No. It\'s a cache.', note: 'Turned the cache into a database.' }
+    ],
+    req: [
+      { t: 'Get a value by key', k: 'f' },
+      { t: 'Set a value with an expiry', k: 'f' },
+      { t: 'Delete a key when the data changes', k: 'f' },
+      { t: 'Reads answer in about a millisecond', k: 'nf' },
+      { t: 'Adding a node moves only a small share of keys', k: 'nf' },
+      { t: 'One node dying doesn\'t flood the database', k: 'nf' },
+      { t: 'Queries over many keys, like "all products under £10"', k: 'out' },
+      { t: 'Keeping every value forever', k: 'out' }
+    ],
+    entities: [
+      { t: 'Cache entry (key, value, expiry)', ok: true },
+      { t: 'Cache node (address, position on the hash ring)', ok: true },
+      { t: 'Hash ring (which node owns which keys)', ok: true },
+      { t: 'Replica of a node', ok: 'opt' },
+      { t: 'Seat hold', ok: false, why: 'Wrong problem. Nothing is reserved here.' },
+      { t: 'Product search index', ok: false, why: 'The cache looks values up by key. Search is a different system.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'dcache',
+      opts: ['get(key); set(key, value, ttl); delete(key)', 'get(key); set(key, value), keeping each value until memory runs out', 'query(filter) returning every cached product that matches the filter', 'set(key, value) returning only once the database has the value too'],
+      a: 0, no: [null, 'Without an expiry, a missed delete leaves a stale value forever. A TTL caps how wrong the cache can be.', 'A cache looks things up by key. Filters across many keys belong in the database or a search index.', 'That turns the cache into the write path, so every write waits on both. Callers write the database and delete the key.'],
+      why: 'Three calls cover it. The TTL bounds staleness, and delete lets callers drop a key when the data changes. Callers use cache-aside: read the cache, and on a miss read the database and set the key.'
+    },
+    est: {
+      pick: [
+        { t: 'Total memory needed.', k: 'best' },
+        { t: 'The number of CPU cycles per get.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: 'A billion keys of 1 KB each, every key kept on 2 nodes. Total memory, in TB?', unit: 'TB', lo: 1.5, hi: 2.6,
+      ans: '~2 TB (10^9 × 1 KB × 2)', why: 'Two terabytes is far past one machine: about 30 nodes of 64 GB with some headroom. So keys must be split across nodes by a rule every client agrees on.'
+    },
+    hld: {
+      palette: ['lb', 'gateway', 'app', 'cache', 'sql', 'nosql', 'queue', 'worker', 'stream', 'lock', 'cdn', 'counter'],
+      flows: [
+        { name: 'A product page reads a product', need: [['app'], ['cache'], ['sql', 'nosql']], ok: ['lb', 'gateway'] },
+        { name: 'A price changes', need: [['app'], ['sql', 'nosql'], ['cache']], ok: ['lb', 'gateway', 'queue', 'worker', 'stream'] }
+      ],
+      why: {
+        c: 'chash', q: '"How does an app server know which cache node holds a key?"',
+        opts: ['It hashes the key onto a ring of nodes and picks the next node clockwise', 'It computes hash(key) mod N, where N is the number of cache nodes', 'It asks a central directory service where each key lives before every read', 'It sends the read to every node at once and takes the first answer back'],
+        a: 0, no: [null, 'That works until N changes. Going from 30 to 31 nodes moves almost every key, and the database takes all those misses at once.', 'One extra network hop on every read doubles latency, and the directory becomes a single point of failure.', 'Thirty requests for every read wastes the whole cluster\'s capacity.'],
+        why: 'Consistent hashing puts nodes and keys on one ring; a key belongs to the next node clockwise. Adding a node moves only the keys between it and its neighbour, about 1/N of them. Virtual nodes (each node at many points) keep the shares even.'
+      }
+    },
+    dives: [
+      {
+        id: 'herd', title: 'A popular key expires', kind: 'bottleneck', c: 'herd',
+        q: 'The home page\'s product list expires, and 50,000 requests a second miss at the same instant. What stops them all hitting the database?',
+        opts: ['One request rebuilds it under a short lock; the rest wait or get the old value', 'Never expire popular keys at all, and rebuild the whole cache once every night instead', 'Add read replicas so the database can absorb a burst of 50,000 queries', 'Retry the cache read with backoff until another request fills the key'],
+        a: 0, no: [null, 'Then prices stay wrong until night. Popular keys are exactly the ones users notice when stale.', 'Replicas help with steady load, but 50,000 identical slow queries at once still swamp them, all for one answer.', 'Nobody fills the key if everyone is waiting for someone else. One request has to be chosen to rebuild it.'],
+        nudge: 'Fifty thousand requests are about to run the same query for the same answer. How many need to?',
+        why: 'Request coalescing: the first miss takes a short lock (SET NX) and rebuilds the key; the others wait a few milliseconds or serve the slightly stale value. Refreshing popular keys a little before they expire, with a random jitter on TTLs, avoids the cliff entirely.',
+        f: {
+          q: 'What does serving the stale value during the rebuild cost?',
+          opts: ['Some users see the old value for a moment longer', 'Twice the memory, since both values must be kept', 'Writes are blocked until the rebuild has finished', 'The key can never expire on its own after that'],
+          a: 0, no: [null, 'The old value is only kept until the new one replaces it. That is one extra value per rebuilding key, not double the cache.', 'Writes go to the database as usual. The lock only covers rebuilding one cache key.', 'The rebuilt key gets a fresh TTL like any other.'],
+          why: 'A moment more staleness, which the requirements already allow. In return the database sees one query instead of 50,000.'
+        }
+      },
+      {
+        id: 'hot', title: 'One key gets a third of all reads', kind: 'real', c: 'hotkey',
+        q: 'A celebrity\'s product goes viral, and its key gets a million reads a second, all on one cache node. What do you do?',
+        opts: ['Cache that key in each app server\'s memory for a second or two', 'Move the hot key to whichever node has the most free memory left', 'Give that one node a faster CPU and a bigger network card', 'Shorten the key\'s TTL so it gets refreshed more often'],
+        a: 0, no: [null, 'Memory isn\'t the problem; one node answering a million reads is. Moving it moves the overload.', 'One machine still has a ceiling, and a viral key can pass any of them.', 'More refreshes means more database load and the same million reads on one node.'],
+        nudge: 'Every app server asks one node for the same value. Could they stop asking so often?',
+        why: 'A tiny local cache on each app server (a second or two) turns a million network reads into one per server per second. Another option is replicating the hot key under several names (key#1 to key#8) and reading a random one.',
+        f: {
+          q: 'What does the local cache cost?',
+          opts: ['A change can take a second or two to show everywhere', 'Every app server must hold a full copy of the cache', 'Writes must now go to every app server one at a time', 'Each app server needs its own lock service to read'],
+          a: 0, no: [null, 'Only the few hottest keys are kept locally, a few megabytes at most.', 'Writes still go to the database and the shared cache. Local copies just expire.', 'Reading a local map needs no locks at all.'],
+          why: 'Staleness: each server keeps its copy until it expires, so different users may briefly see different values. Keep the local TTL short and use it only for keys that are known to be hot.'
+        }
+      },
+      {
+        id: 'node', title: 'A cache node dies', kind: 'real', c: 'dcache',
+        q: 'One of 30 cache nodes dies at peak. Its keys now miss. How do you keep the database from being flooded?',
+        opts: ['Keep each key on a replica node too, and read from the replica on failure', 'Write every cache value to disk first, so the node can be rebuilt on restart', 'Move all 30 nodes onto one large machine, so there is just one to watch', 'Let the misses hit the database; it can easily take a thirtieth of the load'],
+        a: 0, no: [null, 'A restart from disk takes minutes, and its keys miss the whole time. A replica answers right away.', 'Then one failure takes out the whole cache, which is far worse than losing one node.', 'A thirtieth of a few million reads a second is a hundred thousand queries a second, likely more than the database can take.'],
+        nudge: 'The node is gone, but does it have to be the only place its keys live?',
+        why: 'Replicate each node\'s keys to the next node on the ring (or run primary and replica pairs, as Redis Cluster does). On failure, reads go to the replica while a new node warms up. The ring moves only the dead node\'s keys.',
+        f: {
+          q: 'What do replicas cost?',
+          opts: ['Twice the memory, and a little extra work on every write', 'Reads get slower, since each read now waits for both copies', 'Keys can no longer expire, since replicas would disagree', 'The hash ring stops working once each key has two homes'],
+          a: 0, no: [null, 'A read goes to one copy. Only writes touch both.', 'Each copy keeps the key\'s expiry, so both expire at the same time.', 'The ring decides the primary; the replica is simply the next node along.'],
+          why: 'Double the RAM and write traffic, plus a window where the replica may be a moment behind. For a cache in front of a database, many teams accept that cost only for the hottest data.'
+        }
+      },
+      { id: 'bike', title: 'Calling it a "cache" or a "store"', kind: 'bikeshed', reply: 'Cache. It forgets things. Next.', note: 'Chose to spend deep-dive time on the name.' }
+    ]
+  },
+  {
+    id: 'notify', ch: 5, name: 'Notification Service', like: 'a push and email notification platform',
+    prompt: 'Design a notification service: other teams call it to send push, SMS and email to users, who choose what they get. The Pager Banshee is screaming again.',
+    concepts: ['notify', 'queue', 'backoff', 'ratelimit', 'estimation'],
+    clarify: [
+      { q: 'How many notifications, and how bursty?', good: true, a: 'About 100 million a day, with peaks ten times the average when a big announcement goes out.' },
+      { q: 'Which channels?', good: true, a: 'Mobile push through APNs and FCM, SMS through a provider like Twilio, and email.' },
+      { q: 'Must every notification arrive?', good: true, a: 'Transactional ones, like a password reset, must. Marketing can be dropped under load.' },
+      { q: 'Can users opt out?', good: true, a: 'Yes, per channel and per type, and quiet hours at night.' },
+      { q: 'Should we build our own SMS network?', good: false, a: 'No, use a provider.', note: 'Planned to build a phone network.' },
+      { q: 'Which emoji go in the subject lines?', good: false, a: 'Marketing decides that.', note: 'Asked about copy in a backend round.' }
+    ],
+    req: [
+      { t: 'Other services send a notification to a user', k: 'f' },
+      { t: 'Send by push, SMS or email', k: 'f' },
+      { t: 'Users set which types and channels they get', k: 'f' },
+      { t: 'A notification is sent at most once per user', k: 'nf' },
+      { t: 'Transactional messages go out within seconds', k: 'nf' },
+      { t: 'A slow provider never blocks the callers', k: 'nf' },
+      { t: 'Write the text of each marketing campaign', k: 'out' },
+      { t: 'Chat between users', k: 'out' }
+    ],
+    entities: [
+      { t: 'Notification (ID, user, type, channel, status)', ok: true },
+      { t: 'User preferences (channels, types, quiet hours)', ok: true },
+      { t: 'Device token (user, platform, token)', ok: true },
+      { t: 'Template', ok: 'opt' },
+      { t: 'Video rendition', ok: false, why: 'Wrong problem. Nothing is streamed here.' },
+      { t: 'Geohash cell', ok: false, why: 'Nothing here is searched by location.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'notify',
+      opts: ['POST /notifications {idempotencyKey, userId, type, data} → 202 Accepted', 'POST /notifications {userId, text}, answering only once the user has it', 'POST /push, POST /sms and POST /email, so callers choose each channel', 'GET /notifications?since=…, which each user\'s phone polls every second'],
+      a: 0, no: [null, 'Phones can be off for days, so the caller would wait days. Accept the request, then deliver in the background.', 'Callers would need to know each user\'s preferences and devices. The service owns that choice.', 'Millions of phones polling every second is a huge load for mostly empty answers. Push services exist to wake phones.'],
+      why: 'Callers say who and what, not how. 202 means "accepted, we will deliver". The idempotency key lets a caller retry without the user getting two password reset emails.'
+    },
+    est: {
+      pick: [
+        { t: 'Peak notifications per second.', k: 'best' },
+        { t: 'Exactly how many bytes each email template uses.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '100 million notifications a day, peaking at ten times the average. Peak per second?', unit: 'per second', lo: 9000, hi: 14000,
+      ans: '~11,600 a second (10^8 ÷ 86,400 × 10)', why: 'Over ten thousand sends a second at peak, through providers that each have rate limits. Put a queue in front of the senders, so bursts wait instead of failing.'
+    },
+    hld: {
+      palette: ['lb', 'gateway', 'app', 'sql', 'nosql', 'cache', 'queue', 'worker', 'notify', 'limiter', 'socket', 'stream'],
+      flows: [
+        { name: 'A service sends a password reset', need: [['lb', 'gateway'], ['app'], ['queue'], ['worker'], ['notify']], ok: ['sql', 'nosql', 'cache', 'limiter', 'lb', 'gateway'] },
+        { name: 'A user turns off marketing emails', need: [['lb', 'gateway'], ['app'], ['sql', 'nosql']], ok: ['cache', 'lb', 'gateway'] }
+      ],
+      why: {
+        c: 'queue', q: '"Why put a queue between the API and the senders?"',
+        opts: ['Callers get an answer at once, and bursts wait their turn instead of failing', 'A queue delivers each message exactly once, so duplicates can\'t happen', 'Providers like APNs and Twilio only accept messages that come from a message queue', 'A queue stores user preferences, so the senders don\'t need a database'],
+        a: 0, no: [null, 'Most queues deliver at least once, so a worker can see a message twice. Idempotency handles that; the queue doesn\'t.', 'Providers take HTTP calls from anything. The queue is for your side of the system.', 'Preferences live in a database the workers read. A queue holds work, not settings.'],
+        why: 'The queue soaks up a burst of a million sends and lets workers drain it at the rate providers allow. One queue per channel (and per priority) means slow email never holds up password resets.'
+      }
+    },
+    dives: [
+      {
+        id: 'retry', title: 'A provider fails mid-send', kind: 'bottleneck', c: 'backoff',
+        q: 'A worker sends an SMS, the provider times out, and the worker crashes before marking it sent. How do you avoid both losing it and sending it twice?',
+        opts: ['Retry with backoff, with the notification ID as an idempotency key', 'Mark it sent before calling the provider, so a crash can\'t resend it', 'Never retry SMS; if a send fails, the user just has to ask again', 'Send it through all three channels at once, so one is sure to work'],
+        a: 0, no: [null, 'Then a crash right after marking means it is never sent. That is at most once, and resets get lost.', 'A password reset that silently fails is a support ticket and a locked-out user.', 'Users get three copies of everything, and quiet hours mean nothing.'],
+        nudge: 'The message is redelivered from the queue. How can the provider, or you, tell it is a repeat?',
+        why: 'The queue redelivers, which is at least once. Each send carries the notification ID; the worker checks a sent log (or the provider dedupes by key) before sending. Retries back off with jitter, and after a few failures the message goes to a dead letter queue to look at.',
+        f: {
+          q: 'Why add jitter to the backoff?',
+          opts: ['So thousands of retries don\'t hit the provider at the same moment', 'So each retry is sent with a fresh idempotency key of its own', 'So the provider can tell a retry apart from a brand new send', 'So messages are spread evenly over all the channels'],
+          a: 0, no: [null, 'The key must stay the same for every retry, or dedupe can\'t work.', 'The key does that. Jitter only changes when the retry happens.', 'Jitter is about timing, not channel choice.'],
+          why: 'When a provider blips, thousands of sends fail at once. Without jitter they all retry at 1 s, 2 s, 4 s together and knock it over again. Random jitter spreads them out.'
+        }
+      },
+      {
+        id: 'blast', title: 'Sending to 50 million users at once', kind: 'real', c: 'notify',
+        q: 'Marketing sends an announcement to 50 million users. How do you keep it from delaying password resets?',
+        opts: ['Separate queues by priority, with transactional ones served first', 'Make the 50 million sends one big batch on the main queue', 'Raise every provider\'s rate limit until the whole blast fits through', 'Send the blast at 3 a.m., when no one needs a password reset'],
+        a: 0, no: [null, 'Then every reset waits behind 50 million marketing messages, possibly for hours.', 'You don\'t set APNs\' or Twilio\'s limits, and paying for more doesn\'t make it instant.', 'Somewhere in the world it is daytime, and resets happen at all hours.'],
+        nudge: 'One queue means first in, first out. Should a reset wait behind an announcement?',
+        why: 'Put transactional and marketing work on separate queues (or topics), with dedicated workers or strict priority for transactional. The blast is also fanned out in chunks: one job becomes many batches of user IDs, which workers expand and send at a steady rate.',
+        f: {
+          q: 'What does a steady send rate cost the marketing team?',
+          opts: ['The last users get it hours after the first ones', 'Some users get the same announcement more than once', 'Users\' quiet hours can no longer be respected', 'Each message has to be written to disk twice'],
+          a: 0, no: [null, 'Rate has nothing to do with duplicates; idempotency handles those.', 'Workers still check quiet hours per user, so they can hold or skip.', 'The rate changes when sends happen, not how they are stored.'],
+          why: 'At a few thousand a second, 50 million sends take hours. That is usually fine for marketing, and much better than a burst that gets you rate limited by the providers.'
+        }
+      },
+      {
+        id: 'prefs', title: 'Not spamming users', kind: 'real', c: 'ratelimit',
+        q: 'A bug in another team\'s service calls you 40 times for the same user in a minute. What protects the user?',
+        opts: ['A per-user limit by type, for example at most 3 a minute, plus dedupe', 'Trust callers, since each team is responsible for its own code', 'Turn off that team\'s access until their bug has been fixed and reviewed', 'Block that user from getting any more notifications for a day'],
+        a: 0, no: [null, 'One bad deploy anywhere and millions of phones buzz 40 times. The service is the last line of defence.', 'That stops their real messages too, including resets, and it is a manual fix after the damage.', 'The user did nothing wrong, and now misses a real alert.'],
+        nudge: 'The user gets 40 copies. Which part could count them before they go out?',
+        why: 'The service checks preferences, quiet hours and a per-user, per-type rate limit (a counter in Redis with a TTL) before each send, and drops repeats with the same idempotency key. Callers get told when they are throttled.',
+        f: {
+          q: 'Where should preferences be read, so 11,000 sends a second stay fast?',
+          opts: ['From a cache in front of the preferences database', 'From each caller, sent along with every request', 'From the provider, which stores each user\'s choices', 'From the queue, with preferences copied into each job'],
+          a: 0, no: [null, 'Callers would need to know and keep every user\'s settings in sync.', 'APNs and Twilio don\'t know about your notification types.', 'A copy in the job goes stale if the user changes their mind before it is sent.'],
+          why: 'Preferences are read on every send but change rarely, so a cache keeps the database out of the hot path. Changes delete the cached copy, so an opt-out takes effect within seconds.'
+        }
+      },
+      { id: 'bike', title: 'The notification sound', kind: 'bikeshed', reply: 'A gentle ding. Settled. Next topic.', note: 'Chose to spend deep-dive time on the sound.' }
+    ]
+  },
+  {
+    id: 'crawler', ch: 5, name: 'Web Crawler', like: 'a search engine\'s crawler',
+    prompt: 'Design a web crawler that downloads a billion pages a month for a search engine, politely. The Impolite Spiders are out again.',
+    concepts: ['crawler', 'queue', 'bloom', 'blob', 'estimation'],
+    clarify: [
+      { q: 'How many pages, and how often?', good: true, a: 'About a billion pages a month, revisiting pages that change often.' },
+      { q: 'What do we keep from each page?', good: true, a: 'The HTML and its outgoing links. Images and video are out of scope.' },
+      { q: 'Do we respect robots.txt?', good: true, a: 'Always, and never more than one request every few seconds to a site.' },
+      { q: 'What about duplicate pages at different URLs?', good: true, a: 'Store the content once if it is identical.' },
+      { q: 'Should the crawler log in to sites?', good: false, a: 'No. Public pages only.', note: 'Proposed crawling behind logins.' },
+      { q: 'Should we build our own browser engine?', good: false, a: 'Let\'s not.', note: 'Jumped to rendering engines before any design.' }
+    ],
+    req: [
+      { t: 'Start from seed URLs and follow links', k: 'f' },
+      { t: 'Store each page\'s HTML for the indexer', k: 'f' },
+      { t: 'Revisit pages that change', k: 'f' },
+      { t: 'Never hit one site faster than its limit', k: 'nf' },
+      { t: 'Don\'t fetch the same URL twice per cycle', k: 'nf' },
+      { t: 'Keep going when single fetchers die', k: 'nf' },
+      { t: 'Rank pages for search results', k: 'out' },
+      { t: 'Download images and video', k: 'out' }
+    ],
+    entities: [
+      { t: 'URL (address, last fetched, next fetch)', ok: true },
+      { t: 'Page (URL, content hash, HTML location)', ok: true },
+      { t: 'Site (host, robots.txt rules, crawl delay)', ok: true },
+      { t: 'Link (from page, to URL)', ok: 'opt' },
+      { t: 'Seat hold', ok: false, why: 'Wrong problem. Nothing is reserved here.' },
+      { t: 'User session', ok: false, why: 'The crawler has no users logging in.' }
+    ],
+    api: {
+      q: 'There is no public API. Which interface between parts would you write down?', c: 'crawler',
+      opts: ['frontier.next() → URL for a site that is due; frontier.add(urls); store.put(url, html)', 'Each fetcher keeps its own list of URLs to visit and adds links to it as it goes', 'One fetch(url) call that fetches the page and then recursively fetches every link on it', 'A GET /crawl?url=… endpoint that the indexer calls whenever it wants a page'],
+      a: 0, no: [null, 'Then nothing stops two fetchers crawling the same site at once, or the same URL twice, and a dead fetcher loses its list.', 'Recursion has no politeness, no limit and no way to share work. One page with a million links would never return.', 'The indexer doesn\'t know which URLs exist yet. The crawler discovers them by following links.'],
+      why: 'The frontier is the heart of a crawler: a shared queue that hands out only URLs whose site is due for a visit. Fetchers are stateless, so any of them can die and the work just goes back.'
+    },
+    est: {
+      pick: [
+        { t: 'Pages per second, and storage per month.', k: 'best' },
+        { t: 'The exact number of links on an average page.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: 'A billion pages a month. Pages per second?', unit: 'pages/s', lo: 300, hi: 500,
+      ans: '~400 a second (10^9 ÷ 2.6 million seconds)', why: 'Four hundred fetches a second is modest for a cluster of fetchers; politeness, not raw speed, is what limits you. At about 100 KB a page that is 100 TB a month, so pages go to object storage, compressed.'
+    },
+    hld: {
+      palette: ['app', 'queue', 'worker', 'blob', 'nosql', 'sql', 'cache', 'dns', 'stream', 'search', 'cdn', 'lb'],
+      flows: [
+        { name: 'A fetcher downloads a page', need: [['queue'], ['worker'], ['blob'], ['nosql', 'sql']], ok: ['cache', 'dns', 'stream'], nudge: { worker: 'Thousands of URLs are waiting. Who actually downloads them?' } },
+        { name: 'New links on a page join the crawl', need: [['worker'], ['nosql', 'cache'], ['queue']], ok: ['sql', 'stream', 'blob'] }
+      ],
+      why: {
+        c: 'blob', q: '"Why store page HTML in object storage, and URL records in a database?"',
+        opts: ['HTML is 100 TB of big write-once blobs; URL records are small and updated often', 'A database can\'t hold HTML at all, since it isn\'t valid structured data', 'Object storage is faster to query by URL than any database would be', 'The indexer can only read files from object storage, never rows from a database'],
+        a: 0, no: [null, 'Databases store text happily. The issue is 100 TB a month of blobs, which is far cheaper in object storage.', 'Object storage looks things up by key, and can\'t answer "which URLs are due for a visit?". The database can.', 'An indexer can read from anywhere. The split is about cost and access patterns.'],
+        why: 'Blobs go where storage is cheap and durable (S3), keyed by content hash so identical pages are stored once. URL records, which change after every fetch and are searched by next fetch time, go in a database.'
+      }
+    },
+    dives: [
+      {
+        id: 'polite', title: 'Being polite to each site', kind: 'bottleneck', c: 'crawler',
+        q: 'A news site has a million URLs in the frontier, and 500 idle fetchers grab them. How do you keep to one request every few seconds for that site?',
+        opts: ['One frontier queue per host, each handed out only when its delay has passed', 'Tell each fetcher to sleep a few seconds between every pair of fetches', 'Pick URLs at random from the frontier, so one site rarely comes up twice', 'Ask each site to raise its limit, since we are a well-known search engine'],
+        a: 0, no: [null, '500 fetchers each sleeping between fetches still hit the site 500 times every few seconds. The limit is per site, not per fetcher.', 'A site with a million URLs out of a billion still gets many fetches a second at our scale. Chance isn\'t a guarantee.', 'Most sites never answer, and robots.txt already says what they allow.'],
+        nudge: 'The delay belongs to the site, not to the fetcher. Where could a per-site clock live?',
+        why: 'The frontier keeps a queue per host and a heap of hosts ordered by "next allowed time". A fetcher takes the host at the top, fetches one URL, and pushes the host back with its delay. Thousands of sites are crawled at once, each at its own pace.',
+        f: {
+          q: 'What does strict politeness cost a big site\'s crawl?',
+          opts: ['A big site takes weeks to crawl in full', 'Fetchers sit idle most of the time', 'Robots.txt has to be fetched before every page', 'Small sites get crawled much less often'],
+          a: 0, no: [null, 'Fetchers move to other sites while one waits. Idle only if few sites are due.', 'Robots.txt is cached per host, refreshed daily or so.', 'Small sites finish fast; the delay only slows sites with many pages.'],
+          why: 'At one fetch every few seconds, a million pages take weeks. So crawlers prioritise: the home page and pages that change often come first, and the long tail waits.'
+        }
+      },
+      {
+        id: 'seen', title: 'Have we seen this URL?', kind: 'real', c: 'bloom',
+        q: 'Each page has about 50 links. Before adding a link to the frontier, how do you check it isn\'t already known, across billions of URLs?',
+        opts: ['A Bloom filter in memory, with the URL database for the few "maybe" answers', 'A SELECT on the URL table for every link, before every insert', 'Keep every URL seen so far in a big hash set in each fetcher\'s own memory', 'Skip the check and let the database reject any duplicate inserts'],
+        a: 0, no: [null, 'Twenty thousand links a second, each a database read, mostly to learn "yes, already known".', 'Billions of URLs at about 100 bytes each is hundreds of GB, per fetcher, and each one sees a different set.', 'Then every link is a write attempt, and the database does a uniqueness check under twenty thousand writes a second.'],
+        nudge: 'Most links you see are already known. Is there a cheap way to say "definitely new"?',
+        why: 'A Bloom filter answers "definitely not seen" or "maybe seen" in a few bits per URL: about 1.2 GB for a billion URLs at a 1% false-positive rate. New URLs go straight to the frontier; only "maybe" goes to the database. Normalise URLs first so trivial differences don\'t count as new.',
+        f: {
+          q: 'A Bloom filter has false positives. What does one cost here?',
+          opts: ['A new URL is wrongly taken as seen, unless the database is asked', 'A known URL gets crawled a second time, wasting a fetch', 'The filter must be rebuilt from scratch each time it happens', 'Two different URLs end up sharing the same stored page'],
+          a: 0, no: [null, 'That would be a false negative, which Bloom filters never give.', 'Filters aren\'t rebuilt per mistake; they are sized up front for the rate.', 'Pages are stored by content hash, not by the filter.'],
+          why: 'A false positive says "maybe seen" for a new URL. Checking the database for those keeps the crawl complete; at a 1% rate that is a small extra load. Some crawlers just accept missing 1% of new links.'
+        }
+      },
+      {
+        id: 'trap', title: 'A crawler trap', kind: 'real', c: 'crawler',
+        q: 'A calendar page links to the next day, forever, out to the year 9000. The crawler has fetched 40 million of them. What stops this?',
+        opts: ['Cap pages and URL depth per site, and flag sites whose pages all look alike', 'Fetch pages in random order, so the trap is unlikely to be followed far', 'Give each fetcher a short timeout, so very slow pages are skipped automatically', 'Raise the per-site delay, so the trap pages arrive more slowly instead'],
+        a: 0, no: [null, 'Random order slows the trap but never ends it; the frontier still fills with infinite dates.', 'The pages are fast. A trap is about too many pages, not slow ones.', 'Slower still means forever. It only takes longer to fill the frontier.'],
+        nudge: 'The site has more pages than any real site could. Which numbers would look strange?',
+        why: 'Limit pages per site per cycle (scaled by the site\'s importance), cap URL length and depth, and spot near-identical content with hashes like SimHash. Anything that trips them goes to a review list instead of the frontier.',
+        f: {
+          q: 'What does a per-site page cap risk?',
+          opts: ['Missing real pages on a huge, honest site', 'Fetching the same page twice in one cycle', 'Breaking robots.txt rules for that site', 'Storing duplicate HTML in object storage'],
+          a: 0, no: [null, 'The cap limits how many URLs are fetched, not which ones repeat.', 'A cap only fetches less, which robots.txt always allows.', 'Content hashes still dedupe what is stored.'],
+          why: 'A big real site, like an encyclopedia, can have millions of honest pages. Caps scaled by importance (links in, traffic) let those through while traps hit the ceiling fast.'
+        }
+      },
+      { id: 'bike', title: 'The crawler\'s user agent name', kind: 'bikeshed', reply: 'PoliteSpider/1.0. Done. Moving on.', note: 'Chose to spend deep-dive time on the user agent string.' }
     ]
   }
 ];

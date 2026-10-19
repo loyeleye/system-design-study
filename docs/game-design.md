@@ -179,7 +179,7 @@ In `game/js/ch5.js`, which also holds quests 16–20 and their Plot Devices.
 
 ### Chapter 6: the Oracle Spire (built, optional)
 
-In `game/js/ch6.js`. It maps to the study plan's Applied AI add-on (Ema, Gradial).
+In `game/js/ch6.js`.
 
 - **Gate**: opens when chapter 5 is cleared and sits beside the main path; it closes the first time you enter chapter 10 (`optional`, `after: 5`, `until: 10` in `SD.chapters[6]`). Main chapters skip it: chapter 7 opens from chapter 5. The gate helpers are `SD.state.chapterReached`, `chapterOpen` and `syncChapter`. Rank shows as EX. No curses.
 - **Reward**: clearing it unlocks a rare card, **The Oracle's Answer** (cost 2, always EFFECTIVE against the incident's first weakness, draw 1, exhaust). It has no `ch`, so it turns up in rewards and shops in every dungeon (`rareCard` in the chapter).
@@ -381,16 +381,14 @@ The art refresh (Ladi asked for art and sound closer to top games and anime) fol
 
 ## Curriculum map
 
-Chapters 1 and 2 match weeks 1 to 3 of the 10-week plan in `job-hunt-agent/interview/study_plan_dsa_system_design.md`.
-
-| Chapter | Dungeon | Concepts | Boss | Plan weeks |
-| --- | --- | --- | --- | --- |
-| 1 (built) | Prod (E-Rank) | Delivery framework, estimation, vertical vs horizontal scaling, stateless services, load balancing, availability and nines, caching, CDN, stampedes, hot keys, replication, sharding, CAP/PACELC, SQL vs NoSQL, unique IDs, 301 vs 302 | The Goblin King of Links (URL shortener) | 1–2 |
-| 2 (built) | Tidewater Archives (D-Rank) | Rate limiting algorithms, where the limiter lives (gateway, 429, fail open), race conditions and atomic counters, message queues, retries with backoff and idempotency, object storage and presigned URLs, chunking and delta sync | Lord Latency, Demon King of Lag (rate limiter); the Sync Hydra elite (Dropbox) | 3 |
-| 3 (built) | Clockwork Spire | Indexes (B-tree, LSM), quorums and the consistency spectrum (linearizable, causal, read-your-writes, eventual), pub-sub, fan-out on write vs read, distributed search and inverted indexes, sharded counters, queue ordering, backpressure, top-K, stream aggregation | News feed and Ticketmaster bosses; Typeahead and Quora elites; ad click aggregator | 4–5 |
-| 4 (built) | Sky Harbour | Geospatial indexes, WebSockets and presence, failure models, consensus and leader election, Lamport and vector clocks, gossip and hinted handoff, distributed locks, task scheduling, sagas, distributed caches (Memcached vs Redis) | Uber, WhatsApp and key-value store bosses; Yelp, Google Docs (OT vs CRDT) and payment system elites | 6–7 |
-| 5 (built) | Lord Latency's Castle | DNS and GeoDNS, global load balancing, CDN deep dive (push vs pull, invalidation), monitoring and logging, deployment systems (canaries, rollouts), video pipelines, crawlers, notifications, multi-region | YouTube and web crawler bosses; real-outage postmortem events | 8–9 |
-| 6 (built, optional) | The Oracle Spire (EX) | AI-era systems: LLM serving, retrieval (RAG), evals, guardrails, cost and caching, agents | ChatGPT-style chat service; RAG support bot | Applied AI add-on |
+| Chapter | Dungeon | Concepts | Boss |
+| --- | --- | --- | --- |
+| 1 (built) | Prod (E-Rank) | Delivery framework, estimation, vertical vs horizontal scaling, stateless services, load balancing, availability and nines, caching, CDN, stampedes, hot keys, replication, sharding, CAP/PACELC, SQL vs NoSQL, unique IDs, 301 vs 302 | The Goblin King of Links (URL shortener) |
+| 2 (built) | Tidewater Archives (D-Rank) | Rate limiting algorithms, where the limiter lives (gateway, 429, fail open), race conditions and atomic counters, message queues, retries with backoff and idempotency, object storage and presigned URLs, chunking and delta sync | Lord Latency, Demon King of Lag (rate limiter); the Sync Hydra elite (Dropbox) |
+| 3 (built) | Clockwork Spire | Indexes (B-tree, LSM), quorums and the consistency spectrum (linearizable, causal, read-your-writes, eventual), pub-sub, fan-out on write vs read, distributed search and inverted indexes, sharded counters, queue ordering, backpressure, top-K, stream aggregation | News feed and Ticketmaster bosses; Typeahead and Quora elites; ad click aggregator |
+| 4 (built) | Sky Harbour | Geospatial indexes, WebSockets and presence, failure models, consensus and leader election, Lamport and vector clocks, gossip and hinted handoff, distributed locks, task scheduling, sagas, distributed caches (Memcached vs Redis) | Uber, WhatsApp and key-value store bosses; Yelp, Google Docs (OT vs CRDT) and payment system elites |
+| 5 (built) | Lord Latency's Castle | DNS and GeoDNS, global load balancing, CDN deep dive (push vs pull, invalidation), monitoring and logging, deployment systems (canaries, rollouts), video pipelines, crawlers, notifications, multi-region | YouTube and web crawler bosses; real-outage postmortem events |
+| 6 (built, optional) | The Oracle Spire (EX) | AI-era systems: LLM serving, retrieval (RAG), evals, guardrails, cost and caching, agents | ChatGPT-style chat service; RAG support bot |
 
 Topic coverage is cross-checked against the public outline of Educative's *Grokking the Modern System Design Interview* (titles only; see `/mnt/project-files/curriculum/educative_grokking_mapping.md` in the project). The game repo is public, so every explanation is written fresh; nothing from the course is copied. Built refreshers from that check: availability and nines math (Uptima's temple lesson), and DNS in Mio's request walkthrough.
 

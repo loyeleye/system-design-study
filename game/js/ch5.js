@@ -1,4 +1,4 @@
-// Chapter 5: Lord Latency's Castle. Video streaming, web crawling and going global (Hello Interview weeks 7-8):
+// Chapter 5: Lord Latency's Castle. Video streaming, web crawling and going global:
 // DNS and GeoDNS, multi-region failover, observability and SLO alerts, safe deploys, video pipelines and adaptive
 // bitrate, web crawlers, and notification fan-out. Town quests 16-20 teach this chapter and lift its curses.
 // Loaded after quests.js and ch4.js, so it can add to every table the earlier chapters fill.

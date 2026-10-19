@@ -295,7 +295,12 @@
         video: 'Red. Red red red. Okay, next topic!',
         files: 'Spinning! Clockwise! With a little bounce! ...That\'s not backend, is it. Next!',
         topk: 'One point two M! Shorter is cuter. Okay, backend time!',
-        stays: 'A heart, with sparkles when you tap it! ...Okay, okay. Backend. Next!'
+        stays: 'A heart, with sparkles when you tap it! ...Okay, okay. Backend. Next!',
+        adclicks: 'Bar chart! With confetti when it goes up! ...Not backend. Next!',
+        rides: 'A tiny race car! Vroom! ...Okay, okay. Back to the servers!',
+        dcache: 'Cache! Like a squirrel\'s cache of nuts! ...That\'s not the point. Next!',
+        notify: 'A little trumpet! Ta-da! ...Fine, a ding. Moving on!',
+        crawler: 'SpiderPal! No, Webby! ...We can vote later. Backend time!'
       }
     },
     gary: {

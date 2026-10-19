@@ -34,9 +34,9 @@ Five lines, each scored 1 (strong no) to 4 (strong hire): Problem navigation, So
 | Hire at mid level (down-levelled) | Average 2.4 or more and solution design 3 or more |
 | No hire | Anything else |
 
-The mid-level line mirrors Ladi's study plan: mid level is a sound high-level design with depth on one or two parts, while senior adds driving the conversation and naming trade-offs.
+The mid-level line follows the usual leveling bar: mid level is a sound high-level design with depth on one or two parts, while senior adds driving the conversation and naming trade-offs.
 
-The debrief shows the verdict, the rubric with notes, where the time went against each budget, "what a senior answer covers" for every miss, and the concepts going into spaced review. **Copy debrief** puts a plain-text version on the clipboard for a study log. The menu keeps the best verdict per problem and the last five mocks, with a count of hire-level verdicts (the study plan's goal is hire-level feedback on 2 or more mocks).
+The debrief shows the verdict, the rubric with notes, where the time went against each budget, "what a senior answer covers" for every miss, and the concepts going into spaced review. **Copy debrief** puts a plain-text version on the clipboard for a study log. The menu keeps the best verdict per problem and the last five mocks, with a count of hire-level verdicts.
 
 ## Problems
 
@@ -47,12 +47,17 @@ The debrief shows the verdict, the rubric with notes, where the time went agains
 | File Sync (Dropbox) | Chapter 2 | Re-uploading 2 GB for one change | Telling other devices; a 50 GB upload on hotel Wi-Fi | Sync icon spin |
 | News Feed | Chapter 3 | Celebrity posts | Feed cache size; pagination | Emoji reactions |
 | Ticket Booking | Chapter 3 | Two fans, one seat | The 10:00 surge; search | SVG or canvas |
+| Ad Click Aggregator | Chapter 3 | Counting each click exactly once | One ad gets half the clicks; late clicks | Bar or line chart |
 | Top-K Videos (YouTube) | Chapter 3 | One video gets half the views | Sliding windows; the top 100 of a billion | 1.2M or 1,234,567 |
 | Chat App | Chapter 4 | Finding Bob's server | Duplicates and ordering; storing 50 billion messages | The blue ticks |
+| Ride Hailing (Uber) | Chapter 4 | Two riders, one driver | Finding nearby drivers; the driver on the rider's map | Car icon |
+| Distributed Cache | Chapter 4 | A popular key expires | One hot key; a node dies | "Cache" or "store" |
 | Home Rentals (Airbnb) | Chapter 4 | Two guests, overlapping nights | Searching by map area; the payment times out | Favourite button |
 | Video Platform | Chapter 5 | Smooth playback | A viral trailer; resumable uploads | Subscribe-button red |
+| Notification Service | Chapter 5 | A provider fails mid-send | A 50 million user blast; not spamming users | The notification sound |
+| Web Crawler | Chapter 5 | Politeness per site | Have we seen this URL?; a crawler trap | User agent name |
 
-They match the Hello Interview problems in weeks 1 to 8 of the study plan; File Sync, Top-K Videos and Home Rentals were added after the Learning content depth review. Every multiple choice question follows `docs/question-style.md` and passes `node tools/question_lint.js`. Every prompt and explanation is written fresh.
+They are common problems from Hello Interview's problem list; File Sync, Top-K Videos and Home Rentals were added after the Learning content depth review, and Ad Click Aggregator, Ride Hailing, Distributed Cache, Notification Service and Web Crawler after the completeness review. Every multiple choice question follows `docs/question-style.md` and passes `node tools/question_lint.js`. Every prompt and explanation is written fresh.
 
 ## Rewards (main game)
 
