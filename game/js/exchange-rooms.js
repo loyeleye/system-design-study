@@ -228,9 +228,7 @@
       '###.#SS#.###', '##..####.###', '###.####.###', '############'],
     enter: [5, 4, 'north'],
     people: () => [], spots: {},
-    // Out under the sky: the rain falls on all of it.
-    windows: [{ r: [0, 0, 384, 288] }],
-    lights: [{ x: 6, y: 1.2, r: 4, rgb: '255,110,200' }, { x: 8.3, y: 3.2, r: 2 }],
+    lights: [{ x: 6, y: 1.2, r: 5, rgb: '255,110,200' }, { x: 8.3, y: 3.2, r: 2.4 }, { x: 5.5, y: 6.5, r: 2.4 }],
     props: [
       { x: 5, y: 1, t: () => ['The neon sign, close up. COFFEE DINER, in letters as tall as you. The second F flickers. It has flickered since loop one.'] },
       { x: 7, y: 2, t: () => ['A skylight. Below it, the top of Hash\'s head, and a griddle that has never once been switched off.'] },
@@ -251,7 +249,6 @@
     // The counter in front of Mabel, and the front wall and door frame in front of you on the way out.
     front: [[97, 117, 210, 56, 4], [0, 238, 167, 50, 7], [230, 238, 154, 50, 7], [160, 236, 77, 14, 7]],
     people: () => ['xbaker'], spots: {}, names: { xbaker: 'MABEL' }, looks: { xbaker: { sprite: 'folk2' } },
-    windows: [{ r: [305, 65, 22, 45] }, { r: [312, 120, 20, 68] }],
     lights: [{ x: 4.1, y: 1.5, r: 3 }, { x: 8.2, y: 3.1, r: 3, rgb: '255,140,60' }, { x: 9.3, y: 5.9, r: 1.6 }],
     props: [
       { x: 3, y: 4, t: () => ['The pastry case. A card in it says TODAY: CROISSANTS. TOMORROW: ALSO CROISSANTS. WE DON\'T DO SURPRISES.'] },
