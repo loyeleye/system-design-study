@@ -4,9 +4,12 @@
 // expected answers, the nudges, the real bottleneck. They can type a line to the candidate, send a nudge, and
 // score the rubric themselves. The debrief shows Ploy's scores and the human interviewer's side by side.
 //
-// No host: each role owns its own data. The candidate owns the event log (and replays it to an interviewer who
-// joins late or reloads); the interviewer owns their scores. Presence carries each player's role and nickname.
-//   SD.pair.play(root, hub, code, { create, role, pid, pace }) -> Promise (resolves when the player leaves)
+// Before the round, the party room (js/party.js): the leader picks the problem and pace, who is the candidate
+// (Swap roles), and starts once the other player is ready. If the leader leaves, the other player leads.
+// During the round each role owns its own data. The candidate owns the event log (and replays it to an
+// interviewer who joins late or reloads); the interviewer owns their scores. Presence carries each player's role.
+//   SD.pair.play(root, hub, code, { create, settings: { pid, pace }, status, vis, bind })
+//     -> Promise of how the player left: undefined, 'full' or 'kicked'
 (function () {
   const PM = SD.pair = {};
   const M = SD.mock, net = SD.net;
@@ -115,41 +118,77 @@
     o = o || {};
     const room = await hub.join('pm-' + code);
     const me = hub.me;
-    let role = o.role || null;
-    const settings = { pid: valid(o.pid) ? o.pid : 'url', pace: M.pace(o.pace) };
-    let started = false, done = null;
+    const os = o.settings || {};
+    const settings = { pid: valid(os.pid) ? os.pid : 'url', pace: M.pace(os.pace) };
+    let started = false, done = null, hosting = !!o.create, cand = o.create ? me.peer : null, role = null;
     const finished = new Promise(res => { done = res; });
-    const pres = () => room.presence({ kind: 'pair', nick: me.nick, role, host: !!o.create, pid: o.create ? settings.pid : null, pace: o.create ? settings.pace : null, started });
-    const others = () => room.peers().filter(p => !p.isMe && p.presence && p.presence.kind === 'pair');
-    const partner = () => others().find(p => p.presence.role && p.presence.role !== role) || others()[0];
+    const pairs = () => room.peers().filter(p => p.presence && p.presence.kind === 'pair');
+    const others = () => pairs().filter(p => !p.isMe);
+    const partner = () => others()[0];
     const nickOf = p => net.clean(p && p.presence && p.presence.nick, 24) || 'Your partner';
-    const hostP = () => o.create ? null : others().find(p => p.presence.host);
+    // The leader: the player marked host (null until the room says who that is).
+    let sawLeader = !!o.create;
+    const leaderPeer = () => { const h = pairs().filter(p => p.isMe ? hosting : p.presence.host).map(p => p.peer).sort()[0]; return h || (hosting ? me.peer : null); };
+    const iLead = () => leaderPeer() === me.peer;
+    const lead = () => pairs().find(p => p.peer === leaderPeer() && !p.isMe);
     const unsub = [];
     let left = false;
-    const leave = () => { if (left) return; left = true; unsub.forEach(f => f()); room.leave(); done(); };
+    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); room.leave(); done(typeof why === 'string' ? why : undefined); };
     if (o.bind) o.bind(leave);
+    let party = null;
+    // Presence goes out only when it changes (a room's own presence change calls onPeers, which redraws).
+    let sentP = '';
+    const pres = () => {
+      const v = Object.assign({ kind: 'pair', role, host: hosting, pid: hosting ? settings.pid : null, pace: hosting ? settings.pace : null, cand: hosting ? cand : null, started }, party ? party.fields() : { nick: me.nick });
+      const j = JSON.stringify(v);
+      if (j !== sentP) { sentP = j; room.presence(v); }
+    };
+    // For the Guild Hall's Quest Board (js/guild.js): open until the round starts.
+    if (o.status) o.status(() => ({ players: Math.min(2, pairs().length || 1), max: 2, open: !started, lead: iLead(), champ: party && party.champ(), info: `${(prob(settings.pid) || {}).name || ''} · ${M.paces[settings.pace].label}` }));
 
-    // ---------- Lobby ----------
-    function lobby() {
+    // ---------- The party room ----------
+    // Settings and roles come from the leader. The leader's own copy decides; a new leader keeps what was there.
+    function sync() {
       if (started) return;
-      const h = hostP();
-      if (h && valid(h.presence.pid)) { settings.pid = h.presence.pid; settings.pace = M.pace(h.presence.pace); }
-      const p = partner(), taken = p && p.presence.role;
-      if (!role && taken) { role = taken === 'candidate' ? 'interviewer' : 'candidate'; pres(); }
-      const P = prob(settings.pid);
-      root.innerHTML = `<div class="mi"><div class="mi-card"><span class="mi-tag">Pair Mock · table ${esc(code.toUpperCase())}</span><h2>Mock interview with a friend</h2>
-        <p class="mi-small">One of you is the candidate and plays ${esc(AI())}'s round. The other is the interviewer, with ${esc(AI())}'s packet: what to answer, what to expect, and when to nudge. Talk on your own call; this page is the shared whiteboard.</p>
-        <div class="mi-row"><span class="mi-small"><b>Your role</b></span><div class="mi-pick" role="group" aria-label="Your role">${['candidate', 'interviewer'].map(r => `<button type="button" data-role="${r}" class="${role === r ? 'on' : ''}" ${taken === r ? 'disabled' : ''}>${r === 'candidate' ? 'Candidate' : 'Interviewer'}<small>${r === 'candidate' ? 'you answer' : 'you ask and score'}</small></button>`).join('')}</div></div>
-        <div class="mi-row"><span class="mi-small"><b>Problem</b></span>${o.create ? `<select id="pm-pid" class="pm-say">${M.problems.map(x => `<option value="${x.id}" ${x.id === settings.pid ? 'selected' : ''}>${esc(x.name)} (like ${esc(x.like)})</option>`).join('')}</select>` : `<b>${esc(P.name)}</b>`}</div>
-        <div class="mi-row"><span class="mi-small"><b>Pace</b></span>${o.create ? `<div class="mi-pick" role="group" aria-label="Pace">${Object.keys(PACES).map(k => `<button type="button" data-pace="${k}" class="${settings.pace === k ? 'on' : ''}">${PACES[k]}</button>`).join('')}</div>` : `<b>${PACES[settings.pace]}</b>`}</div>
-        <p class="mi-small">${p ? `<b>${esc(nickOf(p))}</b> is here${taken ? ` as the ${esc(taken)}` : ''}.` : `Waiting for your partner. Send them the table code <b>${esc(code.toUpperCase())}</b>.`}</p>
-        <div class="mi-row mi-end"><button class="mi-btn" type="button" id="pm-leave">Leave</button>${role === 'candidate' ? `<button class="mi-btn go" type="button" id="pm-start" ${p && taken === 'interviewer' ? '' : 'disabled'}>Start the round</button>` : role === 'interviewer' ? '<span class="mi-small mi-muted">The candidate starts the round.</span>' : ''}</div></div></div>`;
-      root.querySelectorAll('[data-role]').forEach(b => b.onclick = () => { role = b.dataset.role; pres(); lobby(); });
-      root.querySelectorAll('[data-pace]').forEach(b => b.onclick = () => { settings.pace = b.dataset.pace; pres(); lobby(); });
-      const sel = root.querySelector('#pm-pid'); if (sel) sel.onchange = () => { settings.pid = sel.value; pres(); lobby(); };
-      root.querySelector('#pm-leave').onclick = leave;
-      const st = root.querySelector('#pm-start'); if (st) st.onclick = () => { room.emit('go', { pid: settings.pid, pace: settings.pace }); candidate(); };
+      // Two hosts settle on the lower label; if the leader left, the present player with the lowest label leads.
+      const l = leaderPeer();
+      if (l && l !== me.peer) { sawLeader = true; if (hosting) hosting = false; }
+      if (!l && sawLeader && pairs().map(p => p.peer).concat(me.peer).sort()[0] === me.peer) hosting = true;
+      const lp = lead();
+      if (!hosting && lp) {
+        if (valid(lp.presence.pid)) settings.pid = lp.presence.pid;
+        settings.pace = M.pace(lp.presence.pace);
+        cand = typeof lp.presence.cand === 'string' ? lp.presence.cand : cand;
+      }
+      const here = pairs().map(p => p.peer).concat(me.peer);
+      if (hosting && !here.includes(cand)) cand = me.peer;
+      const r = cand === me.peer ? 'candidate' : cand ? 'interviewer' : null;
+      if (r !== role) role = r;
     }
+    function lobby() {
+      if (started || left) return;
+      sync(); pres();
+      const P = prob(settings.pid), mine = iLead();
+      const settingsHtml = mine
+        ? `<label class="pt-lbl" for="pm-pid">Problem<select id="pm-pid">${M.problems.map(x => `<option value="${x.id}" ${x.id === settings.pid ? 'selected' : ''}>${esc(x.name)} (like ${esc(x.like)})</option>`).join('')}</select></label>
+          <div class="mi-pick" role="group" aria-label="Pace">${Object.keys(PACES).map(k => `<button type="button" data-pace="${k}" class="${settings.pace === k ? 'on' : ''}">${esc(M.paces[k].label)}</button>`).join('')}</div>
+          <button class="mi-btn sm" type="button" id="pm-swap" ${partner() ? '' : 'disabled'}>Swap roles</button>`
+        : `<span class="mi-tag">Problem · pace</span><b>${esc(P.name)} · ${esc(PACES[settings.pace])}</b><small class="mi-muted">${esc(nickOf(lead()))} picks these and who is the candidate.</small>`;
+      party.render(root, {
+        mode: 'Pair Mock', code, leader: leaderPeer(), max: 2, listed: o.vis && o.vis.get(), vis: o.vis, leave,
+        settings: settingsHtml, what: 'the round', startLabel: 'Start the round',
+        note: `The candidate plays ${esc(AI())}'s round. The interviewer gets ${esc(AI())}'s packet: what to answer, what to expect, when to nudge, and a rubric to score. Talk on your own call.`,
+        chip: m => m.peer === cand ? '<span class="pt-chip" style="background:#dff4ea">Candidate</span>' : '<span class="pt-chip" style="background:#e6edff">Interviewer</span>',
+        startWhy: () => (partner() ? null : 'Waiting for a partner. Share the code.'),
+        start: () => { room.emit('go', { pid: settings.pid, pace: settings.pace, cand }); begin(); },
+        bind: r => {
+          const sel = r.querySelector('#pm-pid'); if (sel) sel.onchange = () => { settings.pid = sel.value; lobby(); };
+          r.querySelectorAll('[data-pace]').forEach(b => b.onclick = () => { settings.pace = b.dataset.pace; lobby(); });
+          const sw = r.querySelector('#pm-swap'); if (sw) sw.onclick = () => { const p = partner(); if (!p) return; cand = cand === me.peer ? p.peer : me.peer; lobby(); };
+        }
+      });
+    }
+    function begin() { if (party) party.setReady(false); if (role === 'candidate') candidate(); else interviewer(); }
 
     // ---------- Candidate ----------
     const log = [];
@@ -170,7 +209,7 @@
       const host = document.createElement('div');
       M.debrief(root, myRes, [
         { label: 'Copy debrief', fn: b => { try { navigator.clipboard.writeText(M.debriefText(myRes) + (scores ? '\n\nInterviewer: ' + M.rubric.map(r => `${r.name} ${scores.grades[r.id] || '-'}/4`).join(', ') + (scores.note ? '\n' + scores.note : '') : '')).then(() => { b.textContent = 'Copied'; }, () => { b.textContent = 'Copy failed'; }); } catch (e) { b.textContent = 'Copy failed'; } } },
-        { label: 'Leave the table', fn: leave }
+        { label: 'Leave the party', fn: leave }
       ]);
       host.className = 'mi pm-partner-box';
       host.innerHTML = cmp(myRes.grades, scores, nickOf(partner()));
@@ -202,7 +241,7 @@
       const nudges = [];
       if (last && last.id === 'hld' && curFlow && P.hld.flows[curFlow.fi]) P.hld.flows[curFlow.fi].need.forEach(g => { const t = (P.hld.flows[curFlow.fi].nudge || {})[g[0]] || M.nudges[g[0]]; if (t) nudges.push(t); });
       if (last && last.id === 'dive' && curDive) { const d = P.dives.find(x => x.id === curDive.id); if (d && d.nudge) nudges.push(d.nudge); }
-      root.innerHTML = `<div class="mi"><div class="mi-card"><div class="mi-row" style="justify-content:space-between;margin:0"><div><span class="mi-tag">Pair Mock · you're the interviewer · table ${esc(code.toUpperCase())}</span><h2>${esc(P.name)}</h2></div>
+      root.innerHTML = `<div class="mi"><div class="mi-card"><div class="mi-row" style="justify-content:space-between;margin:0"><div><span class="mi-tag">Pair Mock · you're the interviewer · party ${esc(code.toUpperCase())}</span><h2>${esc(P.name)}</h2></div>
           <div class="mi-clock"><span>${c && c.presence.clock != null ? fmt(c.presence.clock) : '0:00'}</span><small>${esc(nickOf(c))}'s clock · ${esc(PACES[settings.pace])}</small></div></div>
         <div class="pm-say" style="margin-top:8px"><input id="pm-line" maxlength="200" placeholder="Say something to ${esc(nickOf(c))} (it shows under ${esc(AI())}'s bubble)" autocomplete="off"><button class="mi-btn sm go" type="button" id="pm-send">Send</button></div>
         ${nudges.length ? `<div class="mi-row"><span class="mi-small"><b>Nudge:</b></span>${nudges.slice(0, 4).map((t, i) => `<button class="mi-btn sm" type="button" data-nudge="${i}" title="${esc(t)}">${esc(t.length > 48 ? t.slice(0, 46) + '…' : t)}</button>`).join('')}</div>` : ''}
@@ -243,12 +282,15 @@
 
     // ---------- Messages: each accepted only from the player in the matching role ----------
     const from = (msg, r) => { const p = room.peers().find(x => x.peer === msg.peer); return p && !p.isMe && p.presence && p.presence.role === r; };
+    // The leader's Start: everyone takes the role it names.
     unsub.push(room.on('go', msg => {
-      if (!from(msg, 'candidate') || role !== 'interviewer' || started) return;
+      if (msg.isMe || started || msg.peer !== leaderPeer()) return;
       const d = msg.data || {};
       if (valid(d.pid)) settings.pid = d.pid;
       if (PACES[d.pace]) settings.pace = d.pace;
-      interviewer();
+      if (typeof d.cand === 'string') cand = d.cand;
+      role = cand === me.peer ? 'candidate' : 'interviewer';
+      begin();
     }));
     unsub.push(room.on('ev', msg => {
       if (!from(msg, 'candidate') || role !== 'interviewer') return;
@@ -287,6 +329,7 @@
       else if (role === 'interviewer') refreshI();
     }));
 
+    party = SD.party.join(hub, room, 'pair', { leader: leaderPeer, max: 2, onKick: () => leave('kicked'), onFull: () => { if (!started) leave('full'); }, onChange: () => lobby() });
     pres();
     lobby();
     return finished;

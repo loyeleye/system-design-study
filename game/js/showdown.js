@@ -7,7 +7,10 @@
 // `state` topic after every change and every few seconds, so a dropped message or a late joiner catches up.
 // Players send only their own answers (`sub`, `pick`). If the host leaves, the present player with the lowest
 // peer label takes over from the last state, and everyone resends their answers to them.
-//   SD.show.play(root, hub, code, { create }) -> Promise (resolves when the player leaves)
+// Before each round the table waits in the party room (js/party.js): the leader (the host) picks the blueprint
+// and starts once everyone is ready.
+//   SD.show.play(root, hub, code, { create, settings: { bp }, status, vis, bind })
+//     -> Promise of how the player left: undefined, 'full' or 'kicked'
 (function () {
   const SH = SD.show = {};
   const W = SD.wb, net = SD.net;
@@ -69,7 +72,8 @@
     let done = null;
     const finished = new Promise(r => { done = r; });
     // The table state, as the host last sent it (or as this page holds it while hosting).
-    let S = { v: 0, host: o.create ? me.peer : null, ph: 'lobby', bp: (W.blueprints[0] || {}).id, open: [], tray: [], si: 0, subs: {}, picks: {}, scores: {}, gain: {}, dist: {}, sdist: {}, shown: false };
+    const bp0 = bpOf(o.settings && o.settings.bp) ? o.settings.bp : (W.blueprints[0] || {}).id;
+    let S = { v: 0, host: o.create ? me.peer : null, ph: 'lobby', bp: bp0, open: [], tray: [], si: 0, subs: {}, picks: {}, scores: {}, gain: {}, dist: {}, sdist: {}, shown: false };
     let hosting = !!o.create;
     // Host-only: everyone's answers this round.
     let fills = {}, votes = {};
@@ -78,10 +82,18 @@
     const unsub = [];
     const players = () => room.peers().filter(p => p.presence && p.presence.kind === 'show');
     const nick = peer => { const p = players().find(x => x.peer === peer); return net.clean(p ? p.presence.nick : (S.scores[peer] || [])[0], 24) || 'A hero'; };
-    const pres = () => room.presence({ kind: 'show', nick: me.nick, host: hosting });
+    let party = null, sentP = '';
+    // Presence goes out only when it changes (a room's own presence change calls onPeers, which redraws).
+    const pres = () => {
+      const v = Object.assign({ kind: 'show', host: hosting }, party ? party.fields() : { nick: me.nick });
+      const j = JSON.stringify(v);
+      if (j !== sentP) { sentP = j; room.presence(v); }
+    };
     let left = false;
-    const leave = () => { if (left) return; left = true; unsub.forEach(f => f()); clearInterval(iv); room.leave(); done(); };
+    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); clearInterval(iv); room.leave(); done(typeof why === 'string' ? why : undefined); };
     if (o.bind) o.bind(leave);
+    // For the Guild Hall's Quest Board (js/guild.js): open while the table is in its party room.
+    if (o.status) o.status(() => ({ players: Math.max(1, players().length), max: 8, open: S.ph === 'lobby', lead: hosting, champ: party && party.champ(), info: (bpOf(S.bp) || {}).name || '' }));
 
     // ---------- Host ----------
     function push() { S.v++; S.host = me.peer; room.emit('state', S); render(); }
@@ -192,25 +204,26 @@
     function paint(html) {
       // Keep the board's sideways scroll across repaints (phones scroll it).
       const sc = root.querySelector('.wb-scroll'), left = sc ? sc.scrollLeft : 0;
-      root.innerHTML = `<div class="wb sh">${html}<div class="wb-row" style="justify-content:flex-end;margin-top:8px"><button class="wb-btn" type="button" id="sh-leave">Leave the table</button></div></div>`;
+      root.innerHTML = `<div class="wb sh">${html}<div class="wb-row" style="justify-content:flex-end;margin-top:8px"><button class="wb-btn" type="button" id="sh-leave">Leave the party</button></div></div>`;
       root.querySelector('#sh-leave').onclick = leave;
       const sc2 = root.querySelector('.wb-scroll'); if (sc2 && left) sc2.scrollLeft = left;
     }
-    const head = (title, sub) => `<span class="sh-tag">Whiteboard Showdown · table ${esc(code.toUpperCase())}</span><h2>${esc(title)}</h2>${sub ? `<p class="wb-small">${sub}</p>` : ''}`;
+    const head = (title, sub) => `<span class="sh-tag">Whiteboard Showdown · party ${esc(code.toUpperCase())}</span><h2>${esc(title)}</h2>${sub ? `<p class="wb-small">${sub}</p>` : ''}`;
     function render() {
       const bp = bpOf(S.bp) || W.blueprints[0];
       if (!S.host) return paint(`<div class="wb-card">${head('Finding the host…', 'Waiting for the table to answer.')}${playerList()}</div>`);
       if (S.ph === 'lobby') {
-        paint(`<div class="wb-card">${head('Rebuild the board together', `Smudge erases about half the parts of a design. Everyone fills the gaps at once and bets on it: <b>Guess</b> scores 1 a right slot, <b>Think so</b> 2 and <b>Sure</b> 3, but every wrong slot on <b>Sure</b> costs 1. Then a vote on each stress test, 2 points a right answer. Talk on your own call.`)}
-          ${playerList()}
-          ${hosting ? `<div class="wb-row"><label for="sh-bp"><b>Blueprint</b></label><select id="sh-bp">${W.blueprints.map(b => `<option value="${esc(b.id)}" ${b.id === S.bp ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select><button class="wb-btn go" type="button" id="sh-start">Start the round</button></div>
-            <p class="wb-small wb-muted">Send your friends the table code <b>${esc(code.toUpperCase())}</b>. Anyone who joins late can still answer.</p>` : `<p class="wb-small wb-muted">${esc(nick(S.host))} is picking the blueprint.</p>`}
-          ${Object.keys(S.scores).length ? `<h3>Table so far</h3>${ranking()}` : ''}</div>`);
-        if (hosting) {
-          const s = root.querySelector('#sh-bp');
-          s.onchange = () => { S.bp = s.value; push(); };
-          root.querySelector('#sh-start').onclick = () => H.start(s.value);
-        }
+        pres();
+        party.render(root, {
+          mode: 'Whiteboard Showdown', code, leader: S.host, max: 8, listed: o.vis && o.vis.get(), vis: o.vis, leave,
+          what: 'the round', startLabel: 'Start the round',
+          settings: hosting ? `<label class="pt-lbl" for="sh-bp">Blueprint<select id="sh-bp">${W.blueprints.map(b => `<option value="${esc(b.id)}" ${b.id === S.bp ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></label>`
+            : `<span class="mi-tag">Blueprint</span><b>${esc(bp.name)}</b><small class="mi-muted">${esc(nick(S.host))} picks the blueprint.</small>`,
+          note: `Smudge erases about half the parts. Everyone fills the gaps at once and bets on it: <b>Guess</b> scores 1 a right slot, <b>Think so</b> 2 and <b>Sure</b> 3, but every wrong slot on <b>Sure</b> costs 1. Then a vote on each stress test, 2 points a right answer.${Object.keys(S.scores).length ? ' Scores so far: ' + Object.keys(S.scores).sort((a, b) => S.scores[b][1] - S.scores[a][1]).map(k => `${esc(net.clean(S.scores[k][0], 24))} ${S.scores[k][1]}`).join(', ') + '.' : ''}`,
+          startWhy: () => (players().length < 2 ? 'Waiting for at least one more player. Share the code.' : null),
+          start: () => H.start(S.bp),
+          bind: r => { const sl = r.querySelector('#sh-bp'); if (sl) sl.onchange = () => { S.bp = sl.value; push(); }; }
+        });
         return;
       }
       if (S.ph === 'build') {
@@ -277,6 +290,7 @@
       const newHost = d.host !== S.host;
       S = Object.assign({}, d, { host: msg.peer, scores: d.scores || {}, subs: d.subs || {}, picks: d.picks || {}, gain: d.gain || {}, dist: d.dist || {}, sdist: d.sdist || {}, open: (d.open || []).filter(id => bpOf(d.bp).nodes.some(n => n.id === id)), tray: (d.tray || []).filter(p => W.parts[p]) });
       if (newRound) { myFills = {}; mySub = null; myPick = {}; sel = null; }
+      if (S.ph !== 'lobby' && party.ready()) party.setReady(false);
       // A new host doesn't have our answers yet.
       if (newHost || (mySub && S.ph === 'build' && !S.subs[me.peer])) sendSub();
       if (S.ph === 'stress' && !S.shown && myPick[S.si] && (newHost || !S.picks[me.peer])) sendPick();
@@ -295,6 +309,7 @@
     }));
     const iv = setInterval(() => { if (hosting) { room.emit('state', S); } }, BEAT);
 
+    party = SD.party.join(hub, room, 'show', { leader: () => S.host, max: 8, onKick: () => leave('kicked'), onFull: () => { if (S.ph === 'lobby') leave('full'); }, onChange: () => { pres(); render(); } });
     pres();
     if (hosting) push(); else room.emit('hello', {});
     render();

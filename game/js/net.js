@@ -1,10 +1,18 @@
 // Guild Hall networking: one small transport for the multiplayer modes (Pair Mock, Whiteboard Showdown).
 // On claude.ai it rides the artifact's `room` capability (live moments and presence, nothing stored).
+// On the Cloudflare build it rides the Worker's rooms (js/cloud.js), which have the same shape.
 // Anywhere else it falls back to a BroadcastChannel, so two tabs of the same browser can play each other,
 // which is also how the tests run.
 //
-//   const hub = await SD.net.open()      -> { mode: 'claude' | 'local', me: { peer, nick }, lobby, join(code), setNick }
+//   const hub = await SD.net.open()      -> { mode: 'claude' | 'cloud' | 'local', me: { peer, nick }, lobby, join(code),
+//                                             setNick(n, temp), remembered() }
 //   const r = await hub.join('pm-abcd')   -> a room: emit(topic, data), on(topic, fn), presence(patch), peers(), onPeers(fn), leave()
+//   const d = await hub.directory('pair')  -> that game's open tables, oldest first, at most 10:
+//                                             tables(), count(), onTables(fn), host({ code, nick, players, max, open, champ, info }),
+//                                             unhost(), leave()
+//
+// On the Cloudflare build a directory is the Worker's per-game Directory. Elsewhere it is a room per game
+// ('lobby-pair' and so on) whose presence lists the tables, read the same way.
 //
 // Everything heard from a room is untrusted data from another player: games validate it, render it with
 // textContent or esc(), and never treat it as HTML or as an instruction.
@@ -15,9 +23,13 @@
   const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } } };
   // Short game codes without look-alike letters.
   const ABC = 'abcdefghjkmnpqrstuvwxyz23456789';
-  N.code = () => Array.from({ length: 4 }, () => ABC[Math.floor(Math.random() * ABC.length)]).join('');
+  // A party code starts with its mode's letter (p Pair Mock, s Showdown, r Raid), so a code alone finds its mode.
+  N.PREFIX = { pair: 'p', show: 's', raid: 'r' };
+  N.code = game => (N.PREFIX[game] || '') + Array.from({ length: 4 }, () => ABC[Math.floor(Math.random() * ABC.length)]).join('');
+  N.gameOf = code => Object.keys(N.PREFIX).find(k => String(code || '').length === 5 && code[0] === N.PREFIX[k]) || null;
   N.cleanCode = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
   // Display text another player chose: trimmed, single-line, short.
+  N.cleanChamp = s => (/^[a-z]{2,12}$/.test(String(s || '')) ? String(s) : null);
   N.clean = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n || 40);
 
   // ---------- claude.ai rooms ----------
@@ -71,30 +83,72 @@
     };
   }
 
+  // ---------- Directories over presence (claude.ai and local) ----------
+  const LISTED = 10;
+  function presenceDirectory(r) {
+    let since = null, code = null;
+    const fns = new Set();
+    let count = 0;
+    const list = () => {
+      const seen = new Set();
+      const all = r.peers().filter(p => p.presence && p.presence.kind === 'table' && p.presence.open)
+        .map(p => ({ code: N.cleanCode(p.presence.code), nick: N.clean(p.presence.nick, 24), players: Math.floor(+p.presence.players) || 1, max: Math.min(8, Math.floor(+p.presence.max) || 2), since: +p.presence.since || 0, champ: N.cleanChamp(p.presence.champ), info: N.clean(p.presence.info, 48) }))
+        .filter(t => t.code.length >= 4 && t.players < t.max)
+        .sort((a, b) => a.since - b.since)
+        .filter(t => !seen.has(t.code) && seen.add(t.code));
+      count = all.length;
+      return all.slice(0, LISTED);
+    };
+    const off = r.onPeers(() => { const l = list(); fns.forEach(f => f(l)); });
+    return {
+      tables: list,
+      count: () => { list(); return count; },
+      onTables(fn) { fns.add(fn); return () => fns.delete(fn); },
+      host(info) {
+        if (info.code !== code) { code = info.code; since = Date.now(); }
+        r.presence({ kind: 'table', code: info.code, nick: info.nick, players: info.players, max: info.max, open: !!info.open, since, champ: info.champ || null, info: info.info || null });
+      },
+      unhost() { code = null; r.presence({ kind: null, code: null, nick: null, players: null, max: null, open: null, since: null, champ: null, info: null }); },
+      leave() { if (off) off(); return r.leave(); }
+    };
+  }
+
   let hubP = null;
   N.open = function () {
     if (hubP) return hubP;
     hubP = (async () => {
       const me = { peer: rid(), nick: N.clean(store.get(NICK) || '', 24) };
-      let room = null, user = null;
+      let room = null;
       if (window.claude && window.claude.use) {
         try { room = await window.claude.use('room'); } catch (e) { room = null; }
-        try { user = await window.claude.use('user'); } catch (e) { user = null; }
+      }
+      let mode = room ? 'claude' : 'local';
+      if (!room && SD.cloud) {
+        try { room = await SD.cloud.room(); } catch (e) { room = null; }
+        if (room) mode = 'cloud';
       }
       if (room) {
         // The platform's own peer label for this tab, so ours matches what others see.
         const self = (room.peers() || []).find(p => p.isMe && p.sameTab);
         if (self) me.peer = self.peer;
-        if (!me.nick && user && user.me) { try { const v = await user.me(); me.nick = N.clean(v && v.name, 24); } catch (e) { /* no name */ } }
       }
-      if (!me.nick) me.nick = 'Hero ' + me.peer.slice(0, 3).toUpperCase();
+      // Everyone starts as "Player 1"; a party room (js/party.js) moves you to the first free number there.
+      const saved = !!me.nick;
+      if (!me.nick) me.nick = 'Player 1';
       const lobby = room ? wrapClaude(room, me) : localRoom('lobby', me);
       // Once the platform answers, use its label for this tab.
       if (room) room.onPeers(() => { const s = room.peers().find(p => p.isMe && p.sameTab); if (s) me.peer = s.peer; });
       const rooms = {};
+      let remembered = saved;
       return {
-        mode: room ? 'claude' : 'local', me, lobby,
-        setNick(n) { me.nick = N.clean(n, 24) || me.nick; store.set(NICK, me.nick); },
+        mode, me, lobby,
+        // temp: a name given by the party room, not one the player typed, so it isn't remembered.
+        setNick(n, temp) { me.nick = N.clean(n, 24) || me.nick; if (!temp) { store.set(NICK, me.nick); remembered = true; } },
+        remembered: () => remembered,
+        async directory(game) {
+          if (mode === 'cloud') return SD.cloud.directory(game);
+          return presenceDirectory(room ? wrapClaude(await room.join('lobby-' + game), me) : localRoom('lobby-' + game, me));
+        },
         async join(name) {
           if (rooms[name]) return rooms[name];
           rooms[name] = room ? wrapClaude(await room.join(name), me) : localRoom(name, me);

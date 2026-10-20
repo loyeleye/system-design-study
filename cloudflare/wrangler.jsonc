@@ -1,0 +1,26 @@
+// Cloudflare Worker for the game: static files from ../game, plus rooms and saves (src/worker.js).
+// Setup and deploy steps: README.md in this folder.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "isekaid-into-prod",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "../game",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // Only the API runs the script; every other request is a free static-asset hit.
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "Room" },
+      { "name": "SAVES", "class_name": "SaveSlot" },
+      { "name": "LOBBIES", "class_name": "Directory" }
+    ]
+  },
+  // SQLite-backed Durable Objects are the kind the Workers Free plan allows.
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room", "SaveSlot", "Directory"] }
+  ]
+}
