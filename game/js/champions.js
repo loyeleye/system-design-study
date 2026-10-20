@@ -78,7 +78,7 @@
     uptima: [
       ['divine', { name: 'Divine Intervention', cost: 2, kind: 'action', mit: 30, selfDmg: 6, stale: 3, exhaust: true, art: 'sun', text: 'Mitigate {mit}. The team loses 6 SLA. +3 Stale. Exhaust. "I fixed it. I also deleted the logs. You\'re welcome."' }],
       ['ninesfive', { name: 'Five Nines (Self-Titled)', cost: 2, kind: 'infra', pow: 6, each: { any: 9 }, eachStale: 2, tags: ['ops'], art: 'crown', text: 'Infra. Absorb 9 load each turn. +2 Stale each turn. Uptime is 99.999%. The other 0.001% is her café shift.' }],
-      ['paperwork', { name: 'Paperwork Every Time You Die', cost: 0, kind: 'action', draw: 3, selfDmg: 4, art: 'scroll-quill', text: 'Draw 3. The team loses 4 SLA. Form 27-B, in triplicate. She sighs the entire time.' }]],
+      ['paperwork', { name: 'Paperwork Every Time You Die', cost: 0, kind: 'action', draw: 3, selfDmg: 4, exhaust: true, art: 'scroll-quill', text: 'Draw 3. The team loses 4 SLA. Exhaust. Form 27-B, in triplicate. She sighs the entire time.' }]],
     seymour: [
       ['backup', { name: 'Backup of the Backup', cost: 1, kind: 'infra', pow: 5, keepSh: true, each: { any: 2 }, tags: ['replica'], art: 'stack', text: 'Infra. Your absorb is kept between turns. Absorb 2 each turn. He keeps backups of his own sentences. He keeps backups of his own sentences.' }],
       ['prepare', { name: 'Prepare to Prepare', cost: 0, kind: 'action', abs: { any: 3 }, draw: 1, art: 'checklist', text: 'Absorb {any} load. Draw 1. Step one: a checklist for the checklist.' }],
