@@ -51,8 +51,15 @@ Smudge's rebuild-the-diagram loop is inspired by InterviewReady's [The Joy of Sy
 | "Bossa" (shop theme, HD) | SpringySpringo, https://opengameart.org/content/bossa-shop-theme-in-low-fi-and-hd | CC0 (dual-licensed CC0 / CC BY 3.0; used under CC0) | Aigerim's card shop |
 | "Witch's Dancing Doll" | Spencer Y.K. (spenceryk99), https://opengameart.org/content/witchs-dancing-doll | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Kagemaru's cave on the Eventual Isles |
 | "Achaidh Cheide" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | The Guild Hall (multiplayer lobbies and party rooms) |
+| "Teller of the Tales" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Expedition Raid's dungeon maps |
+| "Volatile Reaction" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Expedition Raid's Incidents |
+| "Crossing the Chasm" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Expedition Raid's Elites |
+| "Final Battle of the Dark Wizards" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Expedition Raid's floor bosses |
+| "Local Forecast - Elevator" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Expedition Raid's Break Room and Café |
+| "Investigations" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Expedition Raid's Whiteboard |
+| "Hidden Agenda" | Kevin MacLeod (incompetech.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Expedition Raid's "?" events |
 
-Kevin MacLeod credit lines: "Fluffing a Duck" and "Achaidh Cheide" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/. "Achaidh Cheide" has the silence at its end trimmed.
+Kevin MacLeod credit lines: "Fluffing a Duck", "Achaidh Cheide", "Teller of the Tales", "Volatile Reaction", "Crossing the Chasm", "Final Battle of the Dark Wizards", "Local Forecast - Elevator", "Investigations", "Hidden Agenda" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/. "Achaidh Cheide" has the silence at its end trimmed. The seven Expedition Raid tracks (m-raidmap, m-raidfight, m-raidelite, m-raidboss, m-raidrest, m-raidboard, m-raidevent) have their end silence trimmed and are loudness-normalised and re-encoded to 64 kbps MP3.
 
 Techspired Minds credit line: "Orchestral: Our Journey Awaits" by Techspired Minds (joschjava), licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/, via https://opengameart.org/content/orchestral-our-journey-awaits
 

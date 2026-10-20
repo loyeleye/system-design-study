@@ -1163,7 +1163,7 @@
       if (j !== sentP) { sentP = j; room.presence(v); }
     };
     let left = false;
-    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); clearInterval(iv); clearInterval(bt); clearTimeout(lone); room.leave(); done(typeof why === 'string' ? why : undefined); };
+    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); clearInterval(iv); clearInterval(bt); clearTimeout(lone); room.leave(); if (SD.audio && SD.audio.music) SD.audio.music('hall'); done(typeof why === 'string' ? why : undefined); };
     if (o.bind) o.bind(leave);
     const X = () => xpOf(G.xp), FL = () => floorsOf(X())[G.fl] || null;
     // Kyu can't fight her own raid boss (js/champions.js bossConflict).
@@ -1989,9 +1989,25 @@
       const mine = G.players[me.peer];
       return `<p class="muted small">${esc(title)}</p><div class="cardgrid pick">${mine.deck.map((id, i) => (ok(id) ? `<div ${sendAttr({ k: act, i })} class="rd-pickc">${chtml(id, { i })}</div>` : '')).join('')}</div>${cancel ? `<button class="ghost" type="button" ${cancel}>Cancel</button>` : ''}`;
     }
+    // The raid's music follows the room: the Guild Hall's tune in the party room and at the end, then the raid's own
+    // map, fight (Incident, Elite or boss), Break Room and Café, Whiteboard and event tracks (js/audio.js). A won fight
+    // plays the victory jingle into the map music; the end plays victory or defeat, then the hall's tune.
+    let tuned = null;
+    function tune() {
+      const AU = SD.audio, r = G.room;
+      if (!AU || !AU.music) return;
+      const t = !G.host || mismatch || G.ph === 'lobby' ? 'hall' : G.ph === 'done' || G.ph === 'over' ? G.ph : G.ph === 'map' ? 'raidmap'
+        : G.ph === 'fight' ? (G.tier === 'boss' ? 'raidboss' : G.tier === 'elite' ? 'raidelite' : 'raidfight')
+        : !r ? tuned : r.t === 'reward' ? 'won' : r.t === 'cafe' || r.t === 'camp' ? 'raidrest' : r.t === 'board' ? 'raidboard' : r.t === 'event' ? 'raidevent' : tuned;
+      if (t === tuned) return;
+      const was = tuned; tuned = t;
+      if (t === 'won') { if (was && was !== 'hall') AU.jingle('victory', 'raidmap'); else AU.music('raidmap'); }
+      else if (t === 'done' || t === 'over') { if (was && was !== 'hall') AU.jingle(t === 'done' ? 'victory' : 'defeat', 'hall'); else AU.music('hall'); }
+      else if (t) AU.music(t);
+    }
     function render() {
       if (left) return;
-      scenes(); owed(); owedQ(); offer();
+      scenes(); owed(); owedQ(); offer(); tune();
       if (mismatch) return paint(`<div class="mi-card">${head('A different version')}<p>This party is running a different version of the game. Reload both pages, then join again.</p></div>`);
       if (!G.host) return paint(`<div class="mi-card">${head('Finding the host…')}</div>`);
       const mine = G.players[me.peer], x = X();

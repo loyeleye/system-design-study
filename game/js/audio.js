@@ -183,10 +183,14 @@
     // yoga studio, Aigerim's card shop, and Kagemaru's cave (a music box). Rooms otherwise keep the music from outside.
     isles: 'm-isles', gym: 'm-gym', studio: 'm-studio', shop: 'm-shop', cave: 'm-cave',
     // The Guild Hall's lobbies and party rooms (an upbeat Celtic folk tune, js/guild.js).
-    hall: 'm-hall' };
+    hall: 'm-hall',
+    // Expedition Raid's own music (js/raid.js), Kevin MacLeod tracks: its dungeon maps, Incidents, Elites, floor
+    // bosses, the Break Room and Café, the Whiteboard, and "?" events.
+    raidmap: 'm-raidmap', raidfight: 'm-raidfight', raidelite: 'm-raidelite', raidboss: 'm-raidboss', raidrest: 'm-raidrest', raidboard: 'm-raidboard', raidevent: 'm-raidevent' };
   // Songs without a synth version fall back to this one if the file fails to load.
   const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore',
-    isles: 'explore', gym: 'explore', studio: 'heaven', shop: 'town', cave: 'isles', hall: 'town' };
+    isles: 'explore', gym: 'explore', studio: 'heaven', shop: 'town', cave: 'isles', hall: 'town',
+    raidmap: 'explore', raidfight: 'battle', raidelite: 'battle', raidboss: 'boss', raidrest: 'town', raidboard: 'town', raidevent: 'explore' };
   // Per-song loudness: the piano is gentle on purpose, and the chapter maps are mastered hotter than explore.
   const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65, studio: 0.8, shop: 0.85, cave: 0.8 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
