@@ -150,7 +150,7 @@ def entry(ids, sev=None, dmg=None):
 # Each raid enemy's hit-flash colour and idle motion (the sprite README's suggested motions).
 SPRITE_LOOK = {
     'cronjob': ('#c98b4a', 'squish'), 'knownissue': ('#e8e8f0', 'squish'), 'archivedking': ('#b98fff', 'float'),
-    'flapper': ('#ff4d4d', 'float'), 'escalation': ('#8fa0c0', 'float'), 'rota': ('#e8d8a0', 'shake'),
+    'flapper': ('#ff4d4d', 'float'), 'escalation': ('#8fa0c0', 'float'), 'rota': ('#d8b040', 'shake'),
     'todo': ('#ffe066', 'squish'), 'logspam': ('#f0f0f0', 'squish'), 'staleflag': ('#ff8a8a', 'shake'),
     'snoozed': ('#8fd0ff', 'squish'), 'dupepage': ('#7ed957', 'shake'),
 }
