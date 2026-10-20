@@ -3,7 +3,8 @@
 // for its walkway and trapdoor, walking onto the trapdoor opens the cellar, and every spot down there is open floor
 // you can walk to from the ladder. In the afternoon the cellar is empty; at night the bookie is down there; in chapter
 // 10's storm the three fans and the bookie walk in through the trapdoor and are all in the cellar, each with a worried
-// line. Walking back onto the ladder climbs out, onto the walkway in front of the trapdoor.
+// line. At night, talking to the bookie at his ledger says he is hard at work, and he gets up to pace the room before
+// long. Walking back onto the ladder climbs out, onto the walkway in front of the trapdoor.
 //
 //   node tools/arena_booth_check.js [screenshot dir]     serves the game itself on port 8767; needs Playwright installed
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -81,6 +82,18 @@ const server = http.createServer((req, res) => {
       await shot('cellar-talk');
       await closeDialog();
       await key('ArrowDown', 1); await key('ArrowRight', 1);
+    }
+    if (when === 'night') {
+      // Over to the desk and up to him: at the ledger he's hard at work. Then, before long, he gets up and paces.
+      await key('ArrowRight', 3); await key('ArrowUp', 2); await p.waitForTimeout(400);
+      const said = (await dialogOpen()) ? await p.evaluate(() => document.getElementById('dialog').innerText) : '';
+      ok(/hard at work/.test(said), 'night: talking to the bookie at his ledger should say he is hard at work: ' + JSON.stringify(said.slice(0, 80)));
+      await closeDialog();
+      await key('ArrowDown', 1); await key('ArrowLeft', 3);
+      const up = await p.evaluate(() => new Promise(res => { const t0 = Date.now(), b = SD.interiors.ROOMS.arenaCellar.bookie;
+        const tick = () => (b.x !== 8 || b.y !== 4) ? res(true) : Date.now() - t0 > 20000 ? res(false) : setTimeout(tick, 250); tick(); }));
+      ok(up, 'night: the bookie never left his desk to walk about');
+      await shot('cellar-pacing');
     }
     await key('ArrowDown', 1); await p.waitForTimeout(700);
     ok(!(await roomOpen()), when + ': walking onto the ladder did not leave the cellar');
