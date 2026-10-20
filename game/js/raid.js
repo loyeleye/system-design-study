@@ -1260,6 +1260,8 @@
           p.bits += gain[k];
         });
         G.infra = [];
+        // The last floor's boss ends the expedition: no card to pick, since nothing carries over.
+        if (tier === 'boss' && lastFloor(G)) return cleared();
         newRoom('reward', { tier, gain });
         // What the floor's events promised for beating its boss (an event choice's onWin: SLA, bits, tapes).
         if (tier === 'boss') { G.onWin.forEach(fx => applyFx(G, fx, all(), true)); G.onWin = []; }
