@@ -65,6 +65,31 @@
       step();
     });
   }
+  // Two chevrons on the lower steps pointing up them, so you can tell the stairs go somewhere: they fade in as you come
+  // near the foot of the stairs, drift up the steps on a loop, and fade out once you're standing there (or on the way up).
+  const clamp01 = v => Math.min(1, Math.max(0, v));
+  const UP = Math.atan2(143 - 171, 63 - 28);   // the stairs' slope on the picture, bottom step to top
+  function stairsCue(ctx, t, ts) {
+    const sc = NR.scene(), P = sc && sc.P;
+    if (!P || P.front || NR.where() !== 'club' || !I.room('prloft')) return;
+    const [bx, by] = yard.back.L, d = Math.hypot(P.px - bx, P.py - by), a = clamp01((5 - d) / 2) * clamp01((d - 0.25) / 0.5);
+    if (!a) return;
+    const k = ts / 32, X = px => (studio.x + 0.5) * ts + (px - 84) * k, Y = py => (studio.y + 1) * ts + (py - 182) * k;
+    const w = 9 * k, h = 5.5 * k;
+    for (let i = 0; i < 2; i++) {
+      // Each chevron climbs from the bottom step halfway up, fading in and out, half a beat apart.
+      const f = (t * 0.7 + i / 2) % 1, along = (6 + f * 22) * k;
+      ctx.save();
+      ctx.translate(X(28) + Math.cos(UP) * along, Y(166) + Math.sin(UP) * along); ctx.rotate(UP + Math.PI / 2);
+      ctx.globalAlpha = a * Math.sin(f * Math.PI); ctx.lineCap = ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(-w, h); ctx.lineTo(0, -h); ctx.lineTo(w, h);
+      ctx.strokeStyle = 'rgba(40,24,10,.75)'; ctx.lineWidth = 6 * k; ctx.stroke();
+      ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 3 * k; ctx.stroke();
+      ctx.restore();
+    }
+  }
+  yard.fx = (yard.fx || []).concat([stairsCue]);
+
   L.climb = async function () {
     const sc = NR.scene(), P = sc && sc.P;
     if (!P || !I.room('prloft')) return true;

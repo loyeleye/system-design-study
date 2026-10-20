@@ -414,6 +414,8 @@
       scenes[key].onDoor = door; scenes[key].onTalk = talk;
       if (key === 'road') scenes[key].fx.push(candle);
       if (key === 'camp') scenes[key].fx.push(campfire);
+      // A map's own effects drawn over everything, after the lighting (def.fx: [f(ctx, t, ts)]).
+      (def.fx || []).forEach(f => scenes[key].fx.push(f));
       if (def.critters && SD.critters) SD.critters.add(scenes[key], def.critters);
       const [x, y, f] = def.enter || def.back.S;
       scenes[key].player(x, y, f);

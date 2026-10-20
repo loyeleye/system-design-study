@@ -80,7 +80,7 @@
   const SPRINTS = [[6, 20, null, 2], [6, 21, null, 2], [25, 21, null, 6], [25, 20, null, 2]];
   const ROUTES = { laps: LAPS, intervals: INTERVALS, sprints: SPRINTS };
   // Room spots for visitors; the rooms' own people stand where js/club.js has them.
-  const VISIT = { prgym: { imani: [5, 5, 'south'], magnus: [1, 4, 'south'], delphine: [7, 5, 'east'] }, prstudio: { rico: [3, 4, 'east'] } };
+  const VISIT = { prgym: { imani: [5, 5, 'south'], magnus: [5, 4, 'west'], delphine: [7, 5, 'east'] }, prstudio: { rico: [3, 4, 'east'] } };
 
   // ---------- Scenes ----------
   // Eight arcs of three scenes, played at a place and a block. The last of each lands one system design idea and

@@ -899,6 +899,9 @@
     return new Promise(res => { done = res; });
   };
   I.room = key => !!ROOMS[key] && !!SD.interiorsArt && !!SD.interiorsArt.rooms[key];
+  // The open room's scene, and a way out of it, for the checks in tools/.
+  I.scene = () => sc;
+  I.leave = () => leave();
   function leave() {
     if (!cv) return;
     const AU = SD.audio, room = ROOMS[cur];
