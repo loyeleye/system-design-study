@@ -1230,10 +1230,11 @@
       const n = nodeOf(G, id), f = FL();
       if (!n || !f) return;
       G.pos = id; G.seen.push(id); G.votes = {};
+      // The last room's café stock or card picks don't follow anyone in, a fight included.
+      Object.values(G.players).forEach(p => { p.o = []; p.sold = []; });
       if (n.type === 'fight' || n.type === 'elite') { G.k++; return fight(rnd(foes(f, n.type === 'elite')), n.type); }
       // A floor boss may bring an add (the floor's bossPack).
       if (n.type === 'boss') { G.k++; return fight(packOf(f.bossPack, chOf(f), f.boss) || { ids: [f.boss], sev: [0], dmg: [0] }, 'boss'); }
-      Object.values(G.players).forEach(p => { p.o = []; p.sold = []; });
       if (n.type === 'board') {
         const c = SD.enemies[f.boss].concept, q = SD.state && SD.state.pickQuestion ? SD.state.pickQuestion(c, []) : null;
         if (!q || !q.id) { G.note = 'The whiteboard was wiped clean. Nothing to answer.'; return toMap(); }
