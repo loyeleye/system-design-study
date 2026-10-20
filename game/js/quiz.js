@@ -42,9 +42,13 @@
 
   // q: {c, type: mc|num|order|multi|explain, q, opts, a, no, lo, hi, unit, items, ans, why, points, model}
   // no: optional, one line per option saying why that option is wrong here (null at a), shown after answering.
-  // opts.timer: seconds to answer in, with a countdown bar (Expedition Raid's questions, js/raid.js). When it runs out
-  // a typed answer is submitted as written and graded as usual; any other question counts as no answer (wrong).
-  // Either way it resolves with timeout: true. Without it nothing is timed, as before.
+  // opts.timer: seconds to answer in, with a burning fuse above the question (Expedition Raid's questions,
+  // js/raid.js). When it runs out a typed answer is submitted as written and graded as usual; any other question
+  // counts as no answer (wrong). Either way it resolves with timeout: true. Without it nothing is timed, as before.
+  // opts.bands: [s1, s2], the seconds where a right answer stops being Fast and then Steady: tick marks on the fuse,
+  // labelled Fast / Steady / Slow, the current band lit. opts.champ: the champion the player is playing, whose
+  // colours and fuse tip it takes (.q-timer.champ-<id> in index.html). Under 10 seconds it pulses.
+  const BAND_NAMES = ['Fast', 'Steady', 'Slow'];
   Q.ask = function (q, opts) {
     opts = opts || {};
     return new Promise(resolve => {
@@ -52,11 +56,33 @@
       const limit = opts.timer > 0 ? opts.timer * 1000 : 0;
       let clock = null, late = false;
       const stop = () => { if (clock) { clearInterval(clock); clock = null; } };
-      const bar = () => { const left = Math.max(0, limit - (Date.now() - t0)); return `<div class="q-timer${left < 10000 ? ' low' : ''}" role="timer" aria-label="${Math.ceil(left / 1000)} seconds left"><i style="width:${left / limit * 100}%"></i><span>${Math.ceil(left / 1000)}s</span></div>`; };
+      const champ = typeof opts.champ === 'string' && /^[a-z0-9]+$/.test(opts.champ) ? opts.champ : '';
+      const edges = Array.isArray(opts.bands) && opts.bands.length === 2 && limit ? opts.bands.map(Number).filter(x => x > 0 && x * 1000 < limit) : [];
+      // Where an elapsed time sits on the fuse, which burns from the right: the time left, as a share of the width.
+      const at = sec => Math.max(0, Math.min(100, (1 - sec * 1000 / limit) * 100));
+      const now = () => { const ms = Date.now() - t0, s = ms / 1000; return { left: Math.max(0, limit - ms), band: edges.length === 2 ? (s <= edges[0] ? 0 : s <= edges[1] ? 1 : 2) : -1 }; };
+      const say = (left, band) => `${Math.ceil(left / 1000)} seconds left${band >= 0 ? ', ' + BAND_NAMES[band] : ''}`;
+      const bar = () => {
+        const { left, band } = now();
+        const segs = edges.length === 2 ? [[0, at(edges[1])], [at(edges[1]), at(edges[0])], [at(edges[0]), 100]] : [];
+        const lbl = segs.map(([a, b], i) => `<b class="qt-b${2 - i === band ? ' on' : ''}" data-b="${2 - i}" style="left:${a}%;width:${b - a}%">${BAND_NAMES[2 - i]}</b>`).join('');
+        return `<div class="q-timer${champ ? ' champ-' + champ : ''}${left < 10000 ? ' low' : ''}" role="timer" aria-label="${say(left, band)}">
+          <div class="qt-top"><span class="qt-sec">${Math.ceil(left / 1000)}<small>s</small></span>${band >= 0 ? `<span class="qt-now">${BAND_NAMES[band]}</span>` : ''}</div>
+          <div class="qt-fuse"><span class="qt-burn" style="width:${left / limit * 100}%"></span>${edges.map(sec => `<i class="qt-tick" style="left:${at(sec)}%"></i>`).join('')}</div>
+          ${lbl ? `<div class="qt-bands" aria-hidden="true">${lbl}</div>` : ''}</div>`;
+      };
+      // Updated in place, so the champion's animations run on rather than restarting four times a second.
       if (limit) clock = setInterval(() => {
         const el = document.querySelector('#panel .q-timer');
         if (Date.now() - t0 >= limit) { stop(); timeUp(); return; }
-        if (el) el.outerHTML = bar();
+        if (!el) return;
+        const { left, band } = now();
+        el.querySelector('.qt-burn').style.width = left / limit * 100 + '%';
+        el.querySelector('.qt-sec').firstChild.textContent = Math.ceil(left / 1000);
+        el.classList.toggle('low', left < 10000);
+        el.setAttribute('aria-label', say(left, band));
+        const nw = el.querySelector('.qt-now'); if (nw && band >= 0) nw.textContent = BAND_NAMES[band];
+        el.querySelectorAll('.qt-b').forEach(b => b.classList.toggle('on', +b.dataset.b === band));
       }, 250);
       let thinking = sayFirst(q, opts);
       let pick = null, order = [], multi = new Set(), typed = '';

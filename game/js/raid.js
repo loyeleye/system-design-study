@@ -1379,7 +1379,7 @@
         const c = (ac && SD.concepts[ac] ? ac : null) || r.c || (SD.enemies[FL().boss] || {}).concept, q = r.t === 'board' ? findQ(r.q, c) : (SD.state.pickQuestion ? SD.state.pickQuestion(c, []) : null);
         if (!q) { send({ k: 'ans', ok: false }); return; }
         const typed = q.type === 'explain';
-        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), title: r.t === 'board' ? 'EXPEDITION · WHITEBOARD' : 'EXPEDITION · ' + String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase(), context: (SD.concepts[q.c] || {}).name });
+        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: r.t === 'board' ? 'EXPEDITION · WHITEBOARD' : 'EXPEDITION · ' + String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase(), context: (SD.concepts[q.c] || {}).name });
         send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout });
       });
     }
