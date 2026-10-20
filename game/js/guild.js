@@ -40,6 +40,15 @@
 .gh-note.warn { background: #fff1e6; border: 2px solid #e8833a; }
 .gh-back { font: 600 14px var(--f-head, system-ui); background: none; border: 0; padding: 0; cursor: pointer; color: var(--mi-muted); }
 .gh-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* In the game the hall is a scene of its own: it covers the solo adventure until you leave (body.gh-scene, G.play). */
+body.gh-scene .app { visibility: hidden; }
+body.gh-scene #panel { padding: 0; place-items: stretch; background:
+  radial-gradient(ellipse at 50% 0%, rgba(255, 196, 110, .35), transparent 60%),
+  repeating-linear-gradient(90deg, rgba(0, 0, 0, .14) 0 2px, transparent 2px 120px),
+  linear-gradient(#5b3a26, #3b2416); }
+body.gh-scene #panel > .win.gh-win { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; box-shadow: none; background: transparent; animation: none; }
+body.gh-scene #panel > .win.gh-win > .win-h { padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+body.gh-scene #panel > .win.gh-win > .win-b { width: min(940px, 100%); margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .gh-field { font: 600 16px var(--f-head, system-ui); border: 3px solid var(--mi-ink); border-radius: 12px; padding: 7px 12px; background: #fff; min-width: 0; width: 100%; color: var(--mi-ink); }
 select.gh-field { font-size: 15px; }
 .gh-seg { display: inline-flex; flex-wrap: wrap; border: 2.5px solid var(--mi-ink); border-radius: 12px; overflow: hidden; background: #fff; max-width: 100%; }
@@ -389,11 +398,13 @@ select.gh-field { font-size: 15px; }
     const U = SD.ui, AU = SD.audio;
     if (!U) return;
     const before = AU && AU.loopName;
-    const b = U.panel('<div id="gh-root"></div>', { title: 'THE GUILD HALL', cls: 'wide' });
+    const b = U.panel('<div id="gh-root"></div>', { title: 'THE GUILD HALL', cls: 'wide gh-win' });
+    document.body.classList.add('gh-scene');
     const h = G.open(b.querySelector('#gh-root'), { inGame: true, onMock: res => { if (SD.mock && SD.mock.reward) SD.mock.reward(res); } });
     if (AU && AU.music) AU.music('hall');
     await (SD.mock && SD.mock.panelClosed ? SD.mock.panelClosed() : Promise.resolve());
     h.close();
+    document.body.classList.remove('gh-scene');
     if (AU && AU.music) AU.music(o.after || (before && before !== 'hall' ? before : 'town'));
   };
 })();

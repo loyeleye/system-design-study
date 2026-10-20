@@ -182,7 +182,7 @@
     // The newer places' own themes (OpenGameArt, credited in CREDITS.md): the Eventual Isles, the PR Club and its
     // yoga studio, Aigerim's card shop, and Kagemaru's cave (a music box). Rooms otherwise keep the music from outside.
     isles: 'm-isles', gym: 'm-gym', studio: 'm-studio', shop: 'm-shop', cave: 'm-cave',
-    // The Guild Hall's lobbies and party rooms (a tavern jig, js/guild.js).
+    // The Guild Hall's lobbies and party rooms (an upbeat minstrel dance, js/guild.js).
     hall: 'm-hall' };
   // Songs without a synth version fall back to this one if the file fails to load.
   const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore',
