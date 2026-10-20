@@ -346,19 +346,22 @@
     const ch = Math.max(...Object.keys(GIST).map(Number).filter(k => k <= (sv.chapter || 1)));
     const g = GIST[ch];
     const ids = Object.keys(SD.concepts).filter(id => SD.concepts[id].zone === ch);
-    const b = U.panel(`<p class="muted small">Uptima's gist board. A minute on the big picture now makes the details land later. Read the shape, not the fine print.</p>
-      <div class="gist"><div class="gist-goal"><span class="q-ctx">Today's quest</span><p>${g.goal}</p></div>
-      <div class="gist-groups">${g.groups.map(([h, t]) => `<div><span class="q-ctx">${h}</span><p>${t}</p></div>`).join('')}</div>
-      <p class="small">Ask yourself before you go: <i>${g.ask}</i></p></div>
-      ${SD.lessons.buttons('A')}
-      <div class="row"><button class="primary" id="ar-codex">Open the cheat sheet</button><button class="ghost" id="ar-x">Leave</button></div>`, { title: 'GIST BOARD · GODDESS TEMPLE' });
-    let lesson = null;
-    SD.lessons.wire(b, id => { lesson = id; });
+    let lesson = null, tab = 'main';
+    const render = () => {
+      const b = U.panel(`${SD.lessons.tabBar('A', tab, 'Gist board')}${tab === 'lessons' ? SD.lessons.buttons('A') : `<p class="muted small">Uptima's gist board. A minute on the big picture now makes the details land later. Read the shape, not the fine print.</p>
+        <div class="gist"><div class="gist-goal"><span class="q-ctx">Today's quest</span><p>${g.goal}</p></div>
+        <div class="gist-groups">${g.groups.map(([h, t]) => `<div><span class="q-ctx">${h}</span><p>${t}</p></div>`).join('')}</div>
+        <p class="small">Ask yourself before you go: <i>${g.ask}</i></p></div>`}
+        <div class="row"><button class="primary" id="ar-codex">Open the cheat sheet</button><button class="ghost" id="ar-x">Leave</button></div>`, { title: 'GIST BOARD · GODDESS TEMPLE' });
+      SD.lessons.wireTabs(b, t => { tab = t; render(); });
+      SD.lessons.wire(b, id => { lesson = id; });
+      b.querySelector('#ar-codex').onclick = () => U.codex();
+      b.querySelector('#ar-x').onclick = U.closePanel;
+    };
+    render();
     ids.forEach(id => S.concept(id));
     if (sv.flags.primedLoop !== sv.loop) { sv.flags.primedLoop = sv.loop; SD.run.gainXp(5); }
     S.persist();
-    b.querySelector('#ar-codex').onclick = () => U.codex();
-    b.querySelector('#ar-x').onclick = U.closePanel;
     await waitClose();
     if (lesson) await SD.lessons.play(lesson);
   }
@@ -411,8 +414,10 @@
       }).join('') + (gifts.length ? `<p class="q-ctx">Gifts from friends</p><div class="opts">${gifts.map(it =>
         `<button class="opt" disabled><b>${U.esc(it.name)}</b> · Owned<br><span class="small">${U.esc(it.text)}</span></button>`).join('')}</div>` : '');
       const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Shards spend the same in every loop, dear. Croissants don't. Gary bought them all."</p></div>
-        <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
-        ${shelves}${SD.lessons.buttons('C')}`, { title: 'CACHE CAFÉ · KEEPSAKES' });
+        ${SD.lessons.tabBar('C', tab, 'Keepsakes')}
+        ${tab === 'lessons' ? SD.lessons.buttons('C') : `<div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
+        ${shelves}`}`, { title: 'CACHE CAFÉ · KEEPSAKES' });
+      SD.lessons.wireTabs(b, t => { tab = t; render(); });
       SD.lessons.wire(b, id => { lesson = id; });
       b.querySelectorAll('[data-r]').forEach(el => el.onclick = () => {
         const it = SD.metaShop.find(x => x.id === el.dataset.r);
@@ -421,7 +426,7 @@
         U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
       });
     };
-    let lesson = null;
+    let lesson = null, tab = 'main';
     render();
     await waitClose();
     if (lesson) await SD.lessons.play(lesson);
@@ -465,19 +470,19 @@
     const render = () => {
       const unlocked = S.unlockedCards();
       const locked = Object.keys(SD.cards).filter(id => !unlocked.includes(id) && !SD.starterDeck.includes(id) && !SD.cards[id].champ && !SD.cards[id].curse);
-      const b = U.panel(`<p class="muted small">Specs are hero classes. Each is best at something and weak at something else. Switch freely between runs. Seymour recommends all of them at once. That is not allowed.</p>
+      const b = U.panel(`${SD.lessons.tabBar('W', tab, 'Specs')}${tab === 'lessons' ? SD.lessons.buttons('W') : `<p class="muted small">Specs are hero classes. Each is best at something and weak at something else. Switch freely between runs. Seymour recommends all of them at once. That is not allowed.</p>
         <div class="opts">${Object.entries(SD.specs).map(([k, s]) => {
           const ok = sv.level >= s.rank, on = sv.spec === k;
           return `<button class="opt${on ? ' on' : ''}" data-s="${k}" ${ok && !sv.run ? '' : 'disabled'}><b>${U.esc(s.name)}</b>${on ? ' · Active' : ok ? '' : ' · Unlocks at level ' + s.rank}<br><span class="small">${U.esc(s.text)}</span></button>`;
         }).join('')}</div>
         ${sv.run ? '<p class="warn small">You can change Spec when no run is in progress.</p>' : ''}
         <p class="q-ctx">Cards you can find in Prod (${unlocked.length})</p><div class="cardgrid mini">${unlocked.map(id => U.cardHtml({ id })).join('')}</div>
-        ${locked.length ? `<p class="muted small">${locked.length} more cards unlock as your level rises.</p>` : ''}
-        ${SD.lessons.buttons('W')}`, { title: "SEYMOUR'S BUNKER · SPECS", cls: 'wide' });
+        ${locked.length ? `<p class="muted small">${locked.length} more cards unlock as your level rises.</p>` : ''}`}`, { title: "SEYMOUR'S BUNKER · SPECS", cls: 'wide' });
+      SD.lessons.wireTabs(b, t => { tab = t; render(); });
       SD.lessons.wire(b, id => { lesson = id; });
       b.querySelectorAll('[data-s]').forEach(el => el.onclick = () => { sv.spec = el.dataset.s; S.persist(); render(); });
     };
-    let lesson = null;
+    let lesson = null, tab = 'main';
     render();
     await waitClose();
     if (lesson) await SD.lessons.play(lesson);

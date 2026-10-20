@@ -455,6 +455,17 @@
     if (!list.length) return '';
     return `<p class="q-ctx">Lessons for the dungeon</p><div class="opts">${list.map(l => `<button class="opt lesson" data-lesson="${l.id}"><b>${esc(l.title)}</b> <span class="pill">${esc(l.kind)}</span>${doneSet()[l.id] ? ' <span class="pill s3">Done</span>' : ' <span class="pill due">New</span>'}<br><span class="small">${esc(l.blurb)}</span></button>`).join('')}</div>`;
   };
+  // A tab bar for a building whose panel has lessons: its own tab ('main', called label) and 'lessons'. Empty when the
+  // building has no lessons yet, so the panel shows just its own content.
+  L.tabBar = function (b, tab, label) {
+    const list = avail(b);
+    if (!list.length) return '';
+    const n = list.filter(l => !doneSet()[l.id]).length;
+    return `<div class="tabs" role="tablist">${[['main', label], ['lessons', n ? `Lessons · ${n} new` : 'Lessons']].map(([k, l]) => `<button role="tab" class="tab${k === tab ? ' on' : ''}" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
+  };
+  L.wireTabs = function (panel, onTab) {
+    panel.querySelectorAll('.tabs [data-tab]').forEach(el => el.onclick = () => onTab(el.dataset.tab));
+  };
   // Wire lesson buttons: a tap closes the building's panel and hands the lesson id to onPick.
   L.wire = function (panel, onPick) {
     panel.querySelectorAll('[data-lesson]').forEach(el => el.onclick = () => { U.closePanel(); onPick(el.dataset.lesson); });
