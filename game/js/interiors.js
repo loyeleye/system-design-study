@@ -79,8 +79,8 @@
       map: ['############', '############', '############', '############', '####.....U##',
         '####.....###', '####...#####', '####.....###', '#####DD#####'],
       enter: [5, 7, 'north'],
-      // Whoever has the café shift stands behind the counter; you talk to them across it.
-      counter: [5, 1.7, 'south'], over: [[5, 3], [6, 3]],
+      // Whoever has the café shift stands behind the counter, drawn again in front of them; you talk to them across it.
+      counter: [5, 2.4, 'south'], over: [[5, 3], [6, 3]], front: [[126, 86, 78, 42, 3]],
       spots: { _: [[8, 5, 'west'], [4, 5, 'east'], [7, 7, 'north']] },
       windows: [{ r: [186, 36, 38, 36] }],
       lights: [{ x: 7.9, y: 1.1, r: 4.5 }],
