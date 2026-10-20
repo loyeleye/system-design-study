@@ -13,7 +13,7 @@
   const GAMES = {
     pair: { name: 'Pair Mock', tab: 'Pair Mock', players: '2 players · 5 to 15 min', max: 2, color: '#bfe3ff', blurb: 'One of you plays a system design round. The other interviews with Ploy\'s answer packet and scores you on the rubric.', play: (root, hub, code, o) => SD.pair.play(root, hub, code, o) },
     show: { name: 'Whiteboard Showdown', tab: 'Showdown', players: '2 to 8 players', max: 8, color: '#e3d8ff', blurb: 'Smudge erases half a design and the whole party rebuilds it at once, betting on how sure they are. Then a vote on each stress test.', play: (root, hub, code, o) => SD.show.play(root, hub, code, o) },
-    raid: { name: 'Expedition Raid', tab: 'Raid', players: '2 to 4 players', max: 4, color: '#ffd7c2', blurb: 'A co-op dungeon crawl of 2 to 5 floors, each a map you vote your way through, then its boss. Everyone fights as their champion with their own deck; the SLA is shared.', play: (root, hub, code, o) => SD.raid.play(root, hub, code, o), ok: () => !!(SD.raid && SD.raid.available()) }
+    raid: { name: 'Expedition Raid', tab: 'Raid', players: '1 to 4 players, with bots', max: 4, color: '#ffd7c2', blurb: 'A co-op dungeon crawl of 2 to 5 floors, each a map you vote your way through, then its boss. Everyone fights as their champion with their own deck; the SLA is shared.', play: (root, hub, code, o) => SD.raid.play(root, hub, code, o), ok: () => !!(SD.raid && SD.raid.available()) }
   };
   const ORDER = ['pair', 'show', 'raid'];
   // A mode that needs the game's own cards and styles (Expedition Raid) is played only inside the game.

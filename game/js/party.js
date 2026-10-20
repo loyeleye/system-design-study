@@ -2,14 +2,16 @@
 // A mode keeps its own state and rules; this draws the shared parts around them and keeps the shared presence:
 // everyone's name, champion (js/champions.js) and Ready, the leader's Start, Remove and Open/Private, and the code.
 //
-//   const P = SD.party.join(hub, room, kind, { onKick, onChange, onFull, leader, max })  once, after the mode joins its room
+//   const P = SD.party.join(hub, room, kind, { onKick, onChange, onFull, leader, max, bots })  once, after the mode joins its room
 //     onFull is called once if the party already had max players when this one arrived; leader() names the peer
-//     whose Remove counts.
+//     whose Remove counts. bots() lists the mode's computer-controlled seats ([{ peer, nick, champ }], the Raid's):
+//     they take seats and champions, are always Ready, and give way to any human in a clash.
 //     P.fields()            -> presence fields to merge into the mode's own presence (nick, champ, ready)
 //     P.members()           -> present players of this kind: [{ peer, nick, champ, ready, isMe }]
 //     P.champ()             -> this player's champion id
 //     P.render(root, ctx)   -> draws the room; ctx: { mode, code, leader, max, min, settings, bind, chip, start,
-//                              startLabel, startWhy, boss, deck, vis, leave, note }
+//                              startLabel, startWhy, boss, deck, vis, leave, note, addBot }  addBot: the leader's
+//                              Add a bot, in the open seat
 //     P.leave()             -> stops listening
 //
 // Names: you arrive as the first free "Player N" (N counts from your seat), or as the name you saved last time
@@ -45,6 +47,7 @@
 .pt-mem .as { font-size: 12px; color: var(--mi-muted); }
 .pt-badge { position: absolute; top: 8px; font: 700 10px var(--f-body, system-ui); letter-spacing: .08em; border-radius: 6px; padding: 1px 6px; }
 .pt-badge.you { left: 8px; background: var(--mi-blue); color: #fff; }
+.pt-badge.bot { left: 8px; background: var(--mi-ink); color: #fff; }
 .pt-badge.lead { right: 8px; background: var(--mi-sun); border: 2px solid var(--mi-ink); padding: 0 5px; }
 .pt-mem.empty { border-style: dashed; background: rgba(255,255,255,.55); color: var(--mi-muted); }
 .pt-mem.empty .pt-stage { background: repeating-linear-gradient(45deg, rgba(255,255,255,.7), rgba(255,255,255,.7) 8px, transparent 8px, transparent 16px); }
@@ -108,7 +111,9 @@
     const members = () => room.peers().filter(p => p.presence && p.presence.kind === kind)
       .map(p => ({ peer: p.peer, isMe: p.isMe, nick: p.isMe ? me.nick : net.clean(p.presence.nick, 24) || 'A hero', champ: CH && CH.get(p.isMe ? champ : p.presence.champ) ? (p.isMe ? champ : p.presence.champ) : null, ready: p.isMe ? ready : !!p.presence.ready, since: p.isMe ? since : +p.presence.since || 0 }));
     const before = m => m.since < since || (m.since === since && m.peer < me.peer);
-    const others = () => members().filter(m => !m.isMe);
+    // A bot arrived after everyone (since: Infinity), so a human never gives way to one.
+    const bots = () => (opts.bots ? opts.bots() : []).map(b => ({ peer: b.peer, isMe: false, bot: true, nick: net.clean(b.nick, 24) || 'Bot', champ: CH.get(b.champ) ? b.champ : null, ready: true, since: Infinity }));
+    const others = () => members().filter(m => !m.isMe).concat(bots());
     const takenBy = id => others().find(m => m.champ === id);
     const free = id => CH.unlocked(id) && !takenBy(id);
 
@@ -159,7 +164,7 @@
     };
 
     P.render = function (root, ctx) {
-      const list = members(), mine = list.find(m => m.isMe);
+      const list = members().concat(bots()), mine = list.find(m => m.isMe);
       const leaderPeer = ctx.leader, iLead = leaderPeer === me.peer;
       const lead = list.find(m => m.peer === leaderPeer) || mine;
       const max = ctx.max || 2;
@@ -168,12 +173,12 @@
         const c = CH.get(m.champ);
         const chips = (ctx.chip ? ctx.chip(m) : '') + (m.peer === leaderPeer ? '' : `<span class="pt-chip ${m.ready ? 'ok' : 'wait'}">${m.ready ? 'Ready' : 'Not ready'}</span>`);
         return `<div class="pt-mem${m.ready || m.peer === leaderPeer ? ' ready' : ''}" data-peer="${esc(m.peer)}"><div class="pt-stage" data-spr="${esc(m.champ || '')}"></div>
-          ${m.isMe ? '<span class="pt-badge you">YOU</span>' : ''}${m.peer === leaderPeer ? '<span class="pt-badge lead">LEADER</span>' : ''}
+          ${m.isMe ? '<span class="pt-badge you">YOU</span>' : m.bot ? '<span class="pt-badge bot" title="A computer-controlled teammate, run by the leader\'s page">BOT</span>' : ''}${m.peer === leaderPeer ? '<span class="pt-badge lead">LEADER</span>' : ''}
           ${m.isMe ? `<div class="pt-rename"><input id="pt-nick" maxlength="24" value="${esc(m.nick)}" aria-label="Your name" autocomplete="off"><button class="mi-btn sm" type="button" id="pt-save">Save</button></div>` : `<b>${esc(m.nick)}</b>`}
           <span class="as">${c ? 'as ' + esc(c.name) : 'No champion yet'}</span><div class="pt-chips">${chips}</div>
           ${iLead && !m.isMe ? `<button class="pt-kick" type="button" data-kick="${esc(m.peer)}">Remove</button>` : ''}</div>`;
       });
-      if (list.length < max) seats.push(`<div class="pt-mem empty"><div class="pt-stage"></div><b>Open seat</b><span class="as">${max - list.length > 1 ? `${max - list.length} seats free. ` : ''}Share the code${ctx.listed ? ', or wait for the Quest Board' : ''}.</span></div>`);
+      if (list.length < max) seats.push(`<div class="pt-mem empty"><div class="pt-stage"></div><b>Open seat</b><span class="as">${max - list.length > 1 ? `${max - list.length} seats free. ` : ''}Share the code${ctx.listed ? ', or wait for the Quest Board' : ''}${iLead && ctx.addBot ? ', or fill it with a bot' : ''}.</span>${iLead && ctx.addBot ? '<button class="mi-btn sm" type="button" id="pt-bot">Add a bot</button>' : ''}</div>`);
       const taken = {}; list.forEach(m => { if (!m.isMe && m.champ) taken[m.champ] = m.nick; });
       const regions = CH.regions.map(r => {
         const cs = CH.list.filter(c => c.region === r);
@@ -225,6 +230,7 @@
       });
       root.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => room.emit('kick', { peer: b.dataset.kick }));
       root.querySelectorAll('[data-vis]').forEach(b => b.onclick = () => { ctx.vis.set(!!b.dataset.vis); if (opts.onChange) opts.onChange(); });
+      const ab = root.querySelector('#pt-bot'); if (ab) ab.onclick = () => ctx.addBot();
       const st = root.querySelector('#pt-start'); if (st) st.onclick = () => { if (!block) ctx.start(); };
       const rd = root.querySelector('#pt-ready'); if (rd) rd.onclick = () => P.setReady(!ready);
       if (ctx.bind) ctx.bind(root);
