@@ -1171,13 +1171,14 @@
     });
     return out;
   }
-  // The player keeps their village sprite: rows face south, west, east and north.
+  // The player keeps their village sprite: rows face south, west, east and north, breathing standing still and
+  // walking on the move (SD.art.sheetCol).
   const ROW = { south: 0, west: 1, east: 2, north: 3 };
   function person(t) {
     const c = ART().chars.you, im = pic('c-you');
     ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(P.px * ts + ts / 2, P.py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
     if (!c || !ok(im)) return;
-    const row = ROW[P.face] || 0, n = c.n[row], col = n ? 1 + Math.floor(t * (P.moving ? 8 : 5)) % n : 0;
+    const row = ROW[P.face] || 0, col = SD.art.sheetCol(c, row, P.moving, t);
     const w = c.w * ts / 32, h = c.h * ts / 32;
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, P.px * ts + ts / 2 - w / 2, P.py * ts + ts * 0.95 - h, w, h);
   }
