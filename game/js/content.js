@@ -1012,29 +1012,28 @@ SD.specs = {
   warden: { name: 'Reliability Warden', rank: 3, text: '+15 max SLA and Crash intents deal half. Weakness: flat mitigation is 2 lower.' }
 };
 
-// Meta shop (Grandma Wen, paid in Memory Shards that survive every loop). Keepsakes past the first five
+// Meta shop (Grandma Wen, paid in Memory Shards that survive every loop). Keepsakes past the first three
 // unlock with your Guild rank; most borrow an idea from a Slay the Spire relic (named in the comment).
 SD.metaShop = [
-  { id: 'pipeye', name: "Pip's Monocle", cost: 100, rank: 'E', text: 'Diagnoses show one wrong answer crossed out.' },
+  { id: 'pipeye', name: "Pip's Monocle", cost: 100, rank: 'E', text: 'Every incident opens with a diagnosis, and diagnoses show one wrong answer crossed out.' },
   { id: 'teapot', name: 'Bottomless Teapot', cost: 115, rank: 'E', text: 'Break rooms heal 15% more.' },
-  { id: 'lantern', name: 'Lucky Rubber Duck', cost: 125, rank: 'E', text: '+10 max SLA. You explain your bugs to it.' },
   { id: 'thermos', name: "Grandma's Thermos", cost: 150, rank: 'E', text: '+1 Capacity on the first turn of every fight.' },
-  { id: 'satchel', name: 'Bag of Holding (Cards)', cost: 190, rank: 'E', text: 'Card rewards offer 4 choices instead of 3.' },
   // C-Rank
-  { id: 'luckybit', name: 'Lucky Bit', cost: 140, rank: 'C', text: 'Incidents drop 25% more bits.' },   // Golden Idol
+  { id: 'luckybit', name: 'Lucky Bit', cost: 140, rank: 'C', text: 'At the start of every fight, flip the bit: heads gives 1 more Capacity on the first turn.' },
   { id: 'postnotes', name: 'Postmortem Notebook', cost: 175, rank: 'C', text: 'Heal 5 SLA after every incident you resolve. Writing it down helps.' },   // Burning Blood
   { id: 'whistle', name: "First Responder's Whistle", cost: 200, rank: 'C', text: 'The first card that mitigates in each fight mitigates 8 more.' },   // Akabeko
   { id: 'runbook', name: 'Dog-Eared Runbook', cost: 225, rank: 'C', text: 'Draw 2 extra cards on the first turn of every fight.' },   // Bag of Preparation
+  { id: 'satchel', name: 'Bag of Holding (Cards)', cost: 240, rank: 'C', text: 'Card rewards offer 4 choices instead of 3, and you draw 1 extra card every turn in elite and boss fights.' },
   // B-Rank
   { id: 'torii', name: 'Torii Gate Charm', cost: 240, rank: 'B', text: 'Whenever you would lose 5 SLA or less, lose only 1.' },   // Torii
   { id: 'standby', name: 'Warm Standby', cost: 250, rank: 'B', text: 'Start every fight with 8 Any absorb already up.' },   // Anchor
   { id: 'breaker', name: 'Circuit Breaker', cost: 275, rank: 'B', text: 'The first time you would lose SLA in each fight, lose none.' },   // Fossilized Helix
   { id: 'drip', name: 'Coffee Drip', cost: 290, rank: 'B', text: 'Every third turn, +1 Capacity.' },   // Happy Flower
-  { id: 'duster', name: "Grandma's Feather Duster", cost: 280, rank: 'B', text: 'Cafés in the dungeon let you remove a second card from your deck.' },   // Peace Pipe
+  { id: 'duster', name: "Grandma's Feather Duster", cost: 280, rank: 'B', text: 'After every second fight you resolve, Grandma dusts off one basic card: it is Refactored.' },
+  { id: 'membercard', name: 'Guild Membership Card', cost: 250, rank: 'B', text: 'Lounge access: every break room lets you choose two options instead of one.' },   // Membership Card, for the break room
   // A-Rank
-  { id: 'membercard', name: 'Guild Membership Card', cost: 395, rank: 'A', text: 'Shops inside dungeons charge 40% fewer bits.' },   // Membership Card
+  { id: 'lantern', name: 'Lucky Rubber Duck', cost: 450, rank: 'A', text: '+10 max SLA, and you explain every bug to it first: effective cards mitigate 4 more, and nothing resists you (a resisted card still helps a little).' },   // was only +10 max SLA, on the counter
   { id: 'stamp', name: 'Rubber Stamp of Approval', cost: 475, rank: 'A', text: 'Every 5th card that mitigates in a run mitigates double.' },   // Pen Nib
-  { id: 'badge', name: "Principal Engineer's Badge", cost: 515, rank: 'A', text: 'Every card that mitigates mitigates 3 more.' },   // Vajra, generously
   // S-Rank
   { id: 'pinned', name: 'Pinned Tabs', cost: 1130, rank: 'S', text: 'Your hand is no longer discarded at the end of your turn.' },   // Runic Pyramid
   { id: 'croissant', name: 'Leftover Croissant', cost: 1500, rank: 'S', text: 'Capacity you don\'t spend carries over to your next turn.' },   // Ice Cream, the strongest here

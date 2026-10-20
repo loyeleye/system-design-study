@@ -147,11 +147,17 @@
     setTimeout(() => { fx.remove(); done(); }, reduce ? 50 : 1300);
   }
 
+  // ---------- Seymour's tapes ----------
+  // Chapter 9 has his one tape. In chapter 10 you can also buy a second from him and earn a third (js/ch10-tapes.js
+  // sets flags.c10tape2 and flags.c10tape3). A run in progress keeps the count it started with.
+  A.tapesOwned = ch => 1 + (+ch === 10 ? (flags().c10tape2 ? 1 : 0) + (flags().c10tape3 ? 1 : 0) : 0);
+  A.tapesLeft = r => Math.max(0, (r.arc.tapes || 1) - (r.arc.tapesUsed != null ? r.arc.tapesUsed : r.arc.tapeUsed ? 1 : 0));
+
   // ---------- Hooks into js/run.js ----------
   A.hooks = {
     start(r) {
       const c = SD.chapters[r.ch];
-      r.arc = { floor: 0, floors: c.floors.length, deaths: 0, tapeUsed: false, kyuFloor: Math.floor(Math.random() * c.floors.length), seen: [] };
+      r.arc = { floor: 0, floors: c.floors.length, deaths: 0, tapeUsed: false, tapes: c.death === 'tape' ? A.tapesOwned(r.ch) : 0, tapesUsed: 0, kyuFloor: Math.floor(Math.random() * c.floors.length), seen: [] };
       // Chapter 10: Gary is missing and the Cloud is down, so no Gary and no Last Uptime.
       if (c.noGary) r.gary = true;
       if (c.noMercy) r.mercy = true;
@@ -176,8 +182,8 @@
     end(won, incident, quit) {
       const r = run(), c = chap();
       if (quit || won) return false;
-      // Death: retry the floor from its snapshot. Seymour's tape only plays once.
-      const canRetry = c.death === 'snapshot' || (c.death === 'tape' && !r.arc.tapeUsed);
+      // Death: retry the floor from its snapshot. Each of Seymour's tapes plays once.
+      const canRetry = c.death === 'snapshot' || (c.death === 'tape' && A.tapesLeft(r) > 0);
       if (!canRetry) return false;
       retry(incident);
       return true;
@@ -192,7 +198,7 @@
       return `<span class="hud-chip arc-floor">Floor <b>${r.arc.floor + 1}/${r.arc.floors}</b></span>`
         + (wh ? `<span class="hud-chip arc-whistle" title="Your whistle rank on this layer">🎖 ${wh}</span>` : '')
         + (fr ? `<span class="hud-chip arc-rule" title="${U.esc(fr.text)}">⚖ ${U.esc(fr.name)}</span>` : '')
-        + (c.death === 'tape' ? `<span class="hud-chip arc-tape" title="Seymour's one backup tape">📼 ${r.arc.tapeUsed ? 'used' : 'ready'}</span>` : '')
+        + (c.death === 'tape' ? `<span class="hud-chip arc-tape" title="Seymour's backup tapes left">📼 ${A.tapesLeft(r) ? `${A.tapesLeft(r)} ready` : 'used'}</span>` : '')
         + (dt ? `<span class="hud-chip arc-meter" title="Kyu's anger meter">Downtime <b>${dt}%</b></span>` : '')
         + (pages ? `<button class="hud-chip arc-rb" data-arc="runbook">Runbook <b>${pages}</b></button>` : '');
     },
@@ -339,14 +345,15 @@
     const tape = c.death === 'tape';
     const b = U.panel(`<div class="verdict bad">DOWN ON FLOOR ${r.arc.floor + 1}</div>
       <p>${U.esc(incident || 'An incident')} took you down.</p>
-      <p>${tape ? 'Seymour\'s one backup tape, on Ayo\'s drive, puts you back at the start of this floor with the state you entered it with. It only plays once. A second death ends the run.' : 'Uptima\'s snapshot puts you back at the very start of this floor, with your deck, SLA and bits as you entered it.'}</p>
+      <p>${tape ? `Seymour's backup tape, on Ayo's drive, puts you back at the start of this floor with the deck you entered it with, fully healed. Each tape plays once. ${A.tapesLeft(r) > 1 ? `You have ${A.tapesLeft(r)} left.` : 'This is your last one: another death ends the run.'}` : 'Uptima\'s snapshot puts you back at the very start of this floor, with your deck, SLA and bits as you entered it.'}</p>
       <div class="row"><button class="primary" id="arc-retry">${tape ? 'Play the tape' : 'Retry the floor'}</button><button class="ghost" id="arc-home">Go home</button></div>`, { title: tape ? 'RESTORE FROM TAPE' : 'RESTORE FROM SNAPSHOT', noClose: true });
     b.querySelector('#arc-retry').onclick = () => {
       U.closePanel();
       const s = r.arc.snap;
-      r.deck = clone(s.deck); r.sla = s.sla; r.bits = s.bits; r.map = clone(s.map); r.gary = s.gary; r.mercy = s.mercy;
+      // A tape also restores you fully healed (Ladi, 2026-10-20); a snapshot keeps the SLA you entered with.
+      r.deck = clone(s.deck); r.sla = tape ? S.maxSla() : s.sla; r.bits = s.bits; r.map = clone(s.map); r.gary = s.gary; r.mercy = s.mercy;
       r.pos = null; r.visited = []; r.pending = null; r.floor = -1;
-      if (tape) r.arc.tapeUsed = true;
+      if (tape) { r.arc.tapesUsed = (r.arc.tapesUsed || 0) + 1; r.arc.tapeUsed = true; }
       S.persist();
       floorFx(tape ? 'RESTORING FROM TAPE...' : 'SNAPSHOT RESTORED', () => R.showMap());
     };

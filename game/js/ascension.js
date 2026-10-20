@@ -6,18 +6,34 @@
   const S = SD.state, U = SD.ui, M = SD.meta, R = SD.run;
   const esc = s => U.esc(s == null ? '' : String(s));
 
+  // The numbers behind each level, tuned with the bot simulations (2026-10-20) to Ladi's targets for chapters 4-6:
+  // about 90% at E0, 60% at E5, 30-40% at E7, 20-35% at E8, 15-25% at E9 and 5% at E10. The bot measured 92, 84, 78,
+  // 71, 66, 59, 49, 34, 27, 23 and 6% from E0 to E10.
+  const T = AS.TUNE = {
+    sev1: 1.2,                // E1: every fight's severity
+    sev2: 1.12,               // E2: elites and bosses, on top
+    bits3: 0.75, price3: 1.25, sev3: 1.08, // E3: economy, plus cut-price infra
+    heal4: 0.4,               // E4: rest and tea healing kept
+    sla5: 0.88,               // E5: max SLA kept
+    cold6: 1, coldTurns6: 3,  // E6: Capacity lost, on the first N turns
+    dmg7: 1.35,               // E7: damage taken
+    sevBoss8: 1.1,            // E8: bosses, with nobody covering for Gary
+    dmg9: 1.1,                // E9: damage taken, with Pip's save off
+    rageEvery10: 3            // E10: +1 load to every move each N turns
+  };
+  const pct = (x, up) => Math.round(Math.abs((up ? x - 1 : 1 - x) * 100)) + '%';
   AS.LEVELS = [
     null,
-    { name: 'Peak Traffic', text: 'Every incident, elite and boss starts 10% more severe.' },
-    { name: 'Exec on the Bridge', text: 'Elites and bosses start a further 15% more severe.' },
-    { name: 'Budget Freeze', text: 'Fights pay 25% fewer bits, and the café charges 25% more.' },
-    { name: 'Pager Fatigue', text: 'Break-room rests and café tea heal 40% less.' },
-    { name: 'Degraded Capacity', text: 'Your max SLA is 10% lower.' },
-    { name: 'Cold Start', text: 'Every fight starts with 1 less Capacity on the first turn.' },
-    { name: 'Noisy Neighbours', text: 'You take 15% more damage.' },
-    { name: "Gary's on PTO", text: 'Gary never turns up. His out-of-office says "lol".' },
-    { name: 'No Safety Net', text: "Pip's Last Uptime save is switched off. He is sad about it." },
-    { name: 'Cascading Failure', text: 'Every incident adds 1 more load to all its moves each turn.' }
+    { name: 'Peak Traffic', text: `Every incident, elite and boss starts ${pct(T.sev1, 1)} more severe.` },
+    { name: 'Exec on the Bridge', text: `Elites and bosses start a further ${pct(T.sev2, 1)} more severe.` },
+    { name: 'Budget Freeze', text: `Fights pay ${pct(T.bits3)} fewer bits, the café charges ${pct(T.price3, 1)} more, and cut-price infra makes every incident ${pct(T.sev3, 1)} more severe.` },
+    { name: 'Pager Fatigue', text: `Break-room rests and café tea heal ${pct(T.heal4)} less.` },
+    { name: 'Degraded Capacity', text: `Your max SLA is ${pct(T.sla5)} lower.` },
+    { name: 'Cold Start', text: `Every fight starts with ${T.cold6} less Capacity on the first ${T.coldTurns6 > 1 ? T.coldTurns6 + ' turns' : 'turn'}.` },
+    { name: 'Noisy Neighbours', text: `You take ${pct(T.dmg7, 1)} more damage.` },
+    { name: "Gary's on PTO", text: `Gary never turns up, and bosses start ${pct(T.sevBoss8, 1)} more severe without him. His out-of-office says "lol".` },
+    { name: 'No Safety Net', text: `Pip's Last Uptime save is switched off, and you take ${pct(T.dmg9, 1)} more damage. He is sad about it.` },
+    { name: 'Cascading Failure', text: `Every incident adds 1 more load to all its moves every ${T.rageEvery10 > 1 ? T.rageEvery10 + ' turns' : 'turn'}.` }
   ];
   AS.MAX = AS.LEVELS.length - 1;
   // Shards for clearing a dungeon, per ascension level.
@@ -45,17 +61,17 @@
   const lv = () => (run() && run().asc) || 0;
   const at = k => lv() >= k;
   M.on('runStart', r => { if (!r.tutorial) r.asc = AS.level(); });
-  M.addMod('sev', (v, C) => v * (at(1) ? 1.1 : 1) * (at(2) && (C.elite || C.boss) ? 1.15 : 1));
-  M.addMod('bits', v => at(3) ? Math.round(v * 0.75) : v);
-  M.addMod('price', v => at(3) ? Math.round(v * 1.25) : v);
-  M.addMod('heal', v => at(4) ? Math.round(v * 0.6) : v);
+  M.addMod('sev', (v, C) => v * (at(1) ? T.sev1 : 1) * (at(2) && (C.elite || C.boss) ? T.sev2 : 1) * (at(3) ? T.sev3 : 1) * (at(8) && C.boss ? T.sevBoss8 : 1));
+  M.addMod('bits', v => at(3) ? Math.round(v * T.bits3) : v);
+  M.addMod('price', v => at(3) ? Math.round(v * T.price3) : v);
+  M.addMod('heal', v => at(4) ? Math.round(v * T.heal4) : v);
   M.addMod('gary', v => at(8) ? false : v);
-  M.addMod('energy', (v, C) => at(6) && C.turn === 1 ? v - 1 : v);
-  M.addMod('dmg', v => at(7) ? Math.round(v * 1.15) : v);
+  M.addMod('energy', (v, C) => at(6) && C.turn <= T.coldTurns6 ? v - T.cold6 : v);
+  M.addMod('dmg', v => at(7) || at(9) ? Math.round(v * (at(7) ? T.dmg7 : 1) * (at(9) ? T.dmg9 : 1)) : v);
   M.addMod('mercy', v => at(9) ? false : v);
-  M.on('turnEnd', C => { if (at(10)) C.rage += 1; });
+  M.on('turnEnd', C => { if (at(10) && C.turn % T.rageEvery10 === 0) C.rage += 1; });
   const maxSla = S.maxSla;
-  S.maxSla = function () { const v = maxSla.apply(this, arguments); return at(5) ? Math.round(v * 0.9) : v; };
+  S.maxSla = function () { const v = maxSla.apply(this, arguments); return at(5) ? Math.round(v * T.sla5) : v; };
 
   AS.opensNext = (ch, L) => +ch >= L;
   // Clearing a dungeon: shards per level, the chapter's best, and the next level if this was your highest and the

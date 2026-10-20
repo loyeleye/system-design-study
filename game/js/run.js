@@ -345,7 +345,7 @@
     };
     if (hook('node', n, done)) return;
     const pools = chap().pools;
-    if (n.type === 'fight') return fight(rnd(pools[n.f < 2 ? 1 : n.f < 5 ? 2 : 3]), { diagnose: Math.random() < 0.45 }, done);
+    if (n.type === 'fight') return fight(rnd(pools[n.f < 2 ? 1 : n.f < 5 ? 2 : 3]), { diagnose: rel('pipeye') || Math.random() < 0.45 }, done);
     if (n.type === 'elite') return fight(rnd(pools.elite), { diagnose: true, elite: true }, done);
     if (n.type === 'boss') return boss(done);
     if (n.type === 'board') return whiteboard(done);
@@ -382,12 +382,17 @@
   }
   function rewards(opts, done) {
     const run = S.save.run;
-    const bits = mod('bits', Math.round((opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9)) * (rel('luckybit') ? 1.25 : 1)));
+    const bits = mod('bits', Math.round((opts.boss ? 0 : opts.elite ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9))));
     const xp = opts.boss ? 120 : opts.elite ? 40 : 20;
     const shards = opts.boss ? 40 : opts.elite ? 15 : 5;
     run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
     if (rel('postnotes')) run.sla = Math.min(S.maxSla(), run.sla + 5);
     R.gainXp(xp);
+    // Grandma's Feather Duster dusts off (Refactors) a basic card after every second fight.
+    if (!opts.boss && rel('duster') && (run.dusted = (run.dusted || 0) + 1) % 2 === 0) {
+      const basics = run.deck.filter(c => SD.cards[c.id].rarity === 'basic' && !c.up);
+      if (basics.length) { const c = basics[Math.floor(Math.random() * basics.length)]; c.up = true; U.system('DUSTED OFF', U.esc(SD.cards[c.id].name) + '+'); }
+    }
     if (opts.boss) return done();
     const n = S.save.relics.includes('satchel') ? 4 : 3;
     const picks = cardChoices(n);
@@ -420,14 +425,12 @@
   function cafe(done) {
     const run = S.save.run;
     const price = { basic: 20, common: 30, uncommon: 45, rare: 65 };
-    if (rel('membercard')) for (const k in price) price[k] = Math.round(price[k] * 0.6);
     for (const k in price) price[k] = mod('price', price[k]);
     const tea = mod('heal', 15);
     const stock = cardChoices(3);
     const sold = new Set();
-    // Wen's Feather Duster allows a second removal.
     let removed = 0, healed = false;
-    const removals = rel('duster') ? 2 : 1;
+    const removals = 1;
     function render() {
       // Bits are small change, so nothing here asks before buying.
       SD.shop.panel({
@@ -461,30 +464,33 @@
     b.querySelectorAll('.card').forEach(el => el.onclick = () => { onPick(list[+el.dataset.i]); });
     b.querySelector('#pc-x').onclick = onCancel;
   }
-  function campfire(done) {
+  function campfire(done, second) {
     const run = S.save.run;
+    // The Guild Membership Card's lounge perk: a second pick in every break room.
+    if (rel('membercard') && !second) { const fin = done; done = () => campfire(fin, true); }
+    const again = () => campfire(done, true);
     const heal = mod('heal', Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0))));
     // The Exchange's Clearing House (js/relic-exchange.js) adds Clear the Books.
-    const clear = rel('clearing') && run.deck.length > 2;
+    const clear = rel('clearing');
     const b = U.panel(`<p>A quiet break room between floors: a squashy sofa, a humming vending machine, and Pip burning popcorn in the microwave. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
-      <p class="muted small">Diffuse mode: stepping back is part of learning. Choose one.</p>
+      <p class="muted small">${second ? 'Guild perk: choose one more.' : 'Diffuse mode: stepping back is part of learning. Choose one.'}</p>
       <div class="opts">
         <button class="opt" id="g-rest"><b>Rest</b> · Recover ${heal} SLA</button>
         <button class="opt" id="g-forge"><b>Refactor</b> · Upgrade a card (+3 to its numbers)</button>
         <button class="opt" id="g-reflect"><b>Reflect</b> · Connect two ideas for XP and a notebook link</button>
-        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Remove 2 cards from your deck, +5 max SLA this run</button>` : ''}
+        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Rest, Refactor a card and gain 10 max SLA this run</button>` : ''}
       </div>`, { title: 'BREAK ROOM', noClose: true });
     b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); AU.sfx('heal'); S.persist(); U.closePanel(); done(); };
-    b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => campfire(done), c => !c.up && SD.cards[c.id].rarity);
+    b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => campfire(done, second), c => !c.up && SD.cards[c.id].rarity);
     b.querySelector('#g-reflect').onclick = () => reflect(done);
-    const remove = c => { run.deck.splice(run.deck.indexOf(c), 1); S.persist(); };
-    if (b.querySelector('#g-clear')) b.querySelector('#g-clear').onclick = () => pickCard('Remove which card? (1 of 2)', c => {
-      remove(c);
-      // The second pick can be skipped; the max SLA comes with the first.
-      run.maxPlus = (run.maxPlus || 0) + 5; run.sla = Math.min(S.maxSla(), run.sla + 5); S.persist();
-      const fin = () => { U.closePanel(); U.system('BOOKS CLEARED', '+5 max SLA for this run.', 'gold'); done(); };
-      pickCard('Remove which card? (2 of 2)', c2 => { remove(c2); fin(); }, fin);
-    }, () => campfire(done));
+    if (b.querySelector('#g-clear')) b.querySelector('#g-clear').onclick = () => {
+      // Rest, +5 max SLA and a Refactor, all at once; the Refactor can be skipped.
+      run.maxPlus = (run.maxPlus || 0) + 10; run.sla = Math.min(S.maxSla(), run.sla + heal + 10); AU.sfx('heal'); S.persist();
+      const end = () => { U.closePanel(); U.system('BOOKS CLEARED', `+${heal} SLA and +10 max SLA for this run.`, 'gold'); done(); };
+      const can = c => !c.up && SD.cards[c.id].rarity;
+      if (!run.deck.some(can)) return end();
+      pickCard('Refactor which card?', c => { c.up = true; S.persist(); end(); }, end, can);
+    };
   }
   async function reflect(done) {
     const sv = S.save;
@@ -680,6 +686,8 @@
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
       + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry
       + (rel('openingbell') ? 1 : 0);   // the Exchange's relics (js/relic-exchange.js)
+    // The Lucky Bit flips at the start of every fight: heads is 1 more Capacity on the first turn.
+    if (C.turn === 1 && rel('luckybit') && Math.random() < 0.5) { C.energy++; C.log = (C.log ? C.log + ' ' : '') + 'The Lucky Bit lands heads: +1 Capacity.'; }
     C.energy = Math.max(0, mod('energy', C.energy, C));
     C.carry = 0;
     // Toro's cards (js/card-exchange.js) can hand Capacity on to the next turn.
@@ -687,7 +695,11 @@
     if (grouped()) { stash(); C.foes.forEach(f => { if (f.vuln) f.vuln--; }); load(C.fi); } else if (C.vuln) C.vuln--;
     // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
     // Thea's guards (js/club-shops.js) keep it for a set number of turns, too.
-    if (!C.infra.some(c => SD.cards[c.id].keepSh) && !(C.hold > 0)) C.sh = zero();
+    if (!C.infra.some(c => SD.cards[c.id].keepSh) && !(C.hold > 0)) {
+      // The Escrow Vault holds up to 5 of last turn's unused absorb.
+      const held = rel('escrow') ? Math.min(5, Object.values(C.sh).reduce((a, v) => a + Math.max(0, v), 0)) : 0;
+      C.sh = zero(); C.sh.any += held;
+    }
     if (C.hold > 0) C.hold--;
     // This-turn Thorns and Reflect wear off; Continuous Profiling adds Throughput every turn.
     C.tthorns = 0; C.reflect = 0; C.ghost = false;
@@ -704,7 +716,7 @@
       if (d.eachMit) mitigate(d.eachMit + (c.up ? 2 : 0), '', 'hit');
     });
     if (settle()) return;
-    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0) + metro);
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + ((C.elite || C.boss) && rel('satchel') ? 1 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0) + metro);
     if (metro) C.log = (C.log ? C.log + ' ' : '') + 'The Metronome ticks: a quiet turn, so 3 extra cards.';
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();
@@ -802,8 +814,9 @@
         const rs = tags.find(t => C.e.resist[t]);
         // The Oracle's rare card is always effective: it names the incident's first weakness.
         const wk = d.wild ? Object.keys(C.e.weak)[0] : tags.find(t => C.e.weak[t]);
-        if (wk) { mitigate(boost(d.pow + up), 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake(foeSel()); AU.sfx('crit'); }
-        else if (rs) {
+        // The Lucky Rubber Duck: explaining the bug out loud finds the right angle (+4 when effective, and no resists).
+        if (wk) { mitigate(boost(d.pow + up + (rel('lantern') ? 4 : 0)), 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake(foeSel()); AU.sfx('crit'); }
+        else if (rs && !rel('lantern')) {
           C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float(foeEl(), 'RESISTED', 'res'); AU.sfx('resist');
           // Wen's Bottomless Mug: once a fight, a resisted card hands its Capacity back.
           if (dev('mug') && !C.mugUsed) { C.energy += cost; C.mugUsed = true; C.log += ' The mug refilled your Capacity.'; }
@@ -1137,8 +1150,6 @@
     // Cards with Retain (js/card-exchange.js) stay in your hand either way.
     if (!rel('pinned')) { const keep = C.hand.filter(h => SD.cards[h.id].retain); C.disc.push(...C.hand.filter(h => !keep.includes(h))); C.hand = keep; }
     if (rel('croissant')) C.carry = C.energy;
-    // The Escrow Vault holds something back when nothing else is up.
-    if (rel('escrow') && !Object.values(C.sh).some(v => v > 0)) C.sh.any += 6;
     const run = S.save.run;
     // Fuses burn down at the end of your turn; one that reaches 0 hits every incident before they act.
     let boom = '';
