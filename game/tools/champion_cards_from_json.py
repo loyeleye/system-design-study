@@ -37,10 +37,10 @@ KNOWN = {
     'killswitch', 'streaming', 'sandbox', 'steplimit', 'leak', 'degrade', 'deesc', 'momentum', 'prewarm', 'nextDraw',
     'brittle', 'weakMe', 'hardened', 'regen', 'thorns', 'buffer', 'intangible', 'artifact', 'addCard', 'heal', 'canary',
     'cob', 'later', 'reflect', 'restoreAbs', 'temper', 'temperWho', 'clearCard', 'cleanse', 'giveCap', 'givePrewarm',
-    'giveDraw', 'give', 'delay', 'crit', 'critShare', 'slowCost', 'ask', 'speed', 'sure', 'sureSpeed', 'wrong', 'perPoint',
+    'giveDraw', 'give', 'delay', 'crit', 'critShare', 'wrongCost', 'ask', 'speed', 'sure', 'sureSpeed', 'wrong', 'perPoint',
 }
 # Keys only a rare's question uses: no common or uncommon may carry them (Addendum 3).
-ASKING = {'ask', 'speed', 'sure', 'sureSpeed', 'wrong', 'perPoint', 'crit', 'critShare', 'slowCost'}
+ASKING = {'ask', 'speed', 'sure', 'sureSpeed', 'wrong', 'perPoint', 'crit', 'critShare', 'wrongCost'}
 
 # The card's art: an existing game-icons name, chosen by words in its name (counted three times) and its rules text.
 # The first entry with the best score wins; a champion's 20 cards avoid repeating one where another fits.

@@ -857,7 +857,7 @@
   // sure: false or sureSpeed leaves it out. Wrong (or out of time) applies `wrong`, twice if the player was sure on a
   // card that bets on it. A typed card pays perPoint for every rubric point whatever happened; passing is right.
   // A pair card pays each right answer by its own player's band; solo, a "counts twice" card (solo2) counts the one
-  // answer twice. slowCost: the team loses that much SLA if anyone answered slow or ran out of time. Lord Latency
+  // answer twice. wrongCost: the team loses that much SLA if anyone answered wrong or ran out of time. Lord Latency
   // answering for a teammate's card always counts as Fast (his own rares pay the same at every speed anyway).
   const RQ = { fast: 'right, fast', steady: 'right, steady', slow: 'right, but slow' };
   function resolveQ(G, e) {
@@ -901,7 +901,7 @@
       if (ln > 0 && G.lt.length < 12) G.lt.push([aim(G, t), ln, 0]);
       log += `CRITICAL! x${Math.round(crit * 100) / 100}: mitigated ${more} more${ln ? `, and ${ln} more next turn` : ''}. `;
     }
-    if (d.slowCost && ans.some(x => x.late || x.band === 'slow')) { G.sla = Math.max(1, G.sla - d.slowCost); log += `Someone was slow: the team loses ${d.slowCost} SLA. `; }
+    if (d.wrongCost && ans.some(x => x.late || !x.ok)) { G.sla = Math.max(1, G.sla - d.wrongCost); log += `Someone missed: the team loses ${d.wrongCost} SLA. `; }
     p.ab += Math.max(0, Math.round(shSum(G) - sh0));
     G.log = `${d.name}: ${log}`.trim();
     if (allDown(G)) { G.ph = 'won'; G.qs = []; }
@@ -1165,7 +1165,7 @@
       if (j !== sentP) { sentP = j; room.presence(v); }
     };
     let left = false;
-    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); clearInterval(iv); clearInterval(bt); clearTimeout(lone); room.leave(); done(typeof why === 'string' ? why : undefined); };
+    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); clearInterval(iv); clearInterval(bt); clearTimeout(lone); room.leave(); if (SD.audio && SD.audio.music) SD.audio.music('hall'); done(typeof why === 'string' ? why : undefined); };
     if (o.bind) o.bind(leave);
     const X = () => xpOf(G.xp), FL = () => floorsOf(X())[G.fl] || null;
     // Kyu can't fight her own raid boss (js/champions.js bossConflict).
@@ -1993,9 +1993,25 @@
       const mine = G.players[me.peer];
       return `<p class="muted small">${esc(title)}</p><div class="cardgrid pick">${mine.deck.map((id, i) => (ok(id) ? `<div ${sendAttr({ k: act, i })} class="rd-pickc">${chtml(id, { i })}</div>` : '')).join('')}</div>${cancel ? `<button class="ghost" type="button" ${cancel}>Cancel</button>` : ''}`;
     }
+    // The raid's music follows the room: the Guild Hall's tune in the party room and at the end, then the raid's own
+    // map, fight (Incident, Elite or boss), Break Room and Café, Whiteboard and event tracks (js/audio.js). A won fight
+    // plays the victory jingle into the map music; the end plays victory or defeat, then the hall's tune.
+    let tuned = null;
+    function tune() {
+      const AU = SD.audio, r = G.room;
+      if (!AU || !AU.music) return;
+      const t = !G.host || mismatch || G.ph === 'lobby' ? 'hall' : G.ph === 'done' || G.ph === 'over' ? G.ph : G.ph === 'map' ? 'raidmap'
+        : G.ph === 'fight' ? (G.tier === 'boss' ? 'raidboss' : G.tier === 'elite' ? 'raidelite' : 'raidfight')
+        : !r ? tuned : r.t === 'reward' ? 'won' : r.t === 'cafe' || r.t === 'camp' ? 'raidrest' : r.t === 'board' ? 'raidboard' : r.t === 'event' ? 'raidevent' : tuned;
+      if (t === tuned) return;
+      const was = tuned; tuned = t;
+      if (t === 'won') { if (was && was !== 'hall') AU.jingle('victory', 'raidmap'); else AU.music('raidmap'); }
+      else if (t === 'done' || t === 'over') { if (was && was !== 'hall') AU.jingle(t === 'done' ? 'victory' : 'defeat', 'hall'); else AU.music('hall'); }
+      else if (t) AU.music(t);
+    }
     function render() {
       if (left) return;
-      scenes(); owed(); owedQ(); offer();
+      scenes(); owed(); owedQ(); offer(); tune();
       if (mismatch) return paint(`<div class="mi-card">${head('A different version')}<p>This party is running a different version of the game. Reload both pages, then join again.</p></div>`);
       if (!G.host) return paint(`<div class="mi-card">${head('Finding the host…')}</div>`);
       const mine = G.players[me.peer], x = X();
