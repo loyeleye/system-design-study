@@ -808,6 +808,15 @@
     ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h, w, h);
   }
+  // Wen's sweep (tools/wen_sweep_art.py): a w x h frame per step of the stroke, east on the top row, west below,
+  // centred on the tile with row `foot` (where her feet stand) on the ts * 0.95 line, as person() puts them.
+  const SWEEP = { w: 54, h: 61, n: 8, foot: 60 };
+  function sweeping(n, col, face) {
+    const s = ts / 32, X = xx(n) * ts + ts / 2, Y = yy(n) * ts + ts * 0.95;
+    ctx.fillStyle = 'rgba(43,35,64,0.22)';
+    ctx.beginPath(); ctx.ellipse(X, yy(n) * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(pic('sw-' + n.id), col * SWEEP.w, (face === 'west' ? 1 : 0) * SWEEP.h, SWEEP.w, SWEEP.h, X - SWEEP.w * s / 2, Y - SWEEP.foot * s, SWEEP.w * s, SWEEP.h * s);
+  }
   const headY = y => (y - 0.55) * ts;
   function drawPlayer(t) {
     if (drop && !drop.landed && lastCloud) {
@@ -860,6 +869,7 @@
       // Uptima's idle gags (js/uptima-idle.js): a spin on the spot, or a frame of her gag sheet instead of her own.
       gag = n.id === 'uptima' && SD.uptimaIdle ? SD.uptimaIdle.pose(n, t, { still: !going && face === 'south' && yawn < 0 }) : null;
       if (gag && gag.im) cell(gag.im, gag.col, gag.row, ART().chars.uptima, xx(n), yy(n));
+      else if (a && a.sweep != null && !near && ok(pic('sw-' + n.id))) sweeping(n, a.sweep, face);
       else person(n.id, xx(n), yy(n), t, gag ? gag.face : face, going, false, n.moving ? pace(n) : 1, yawn, SD.art.turned(n, gag ? gag.face : face, going, t));
       ctx.restore();
       if (a && a.fx && !gag) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
@@ -906,8 +916,12 @@
       case 'laptop':
         return { face: 'south', dy: k % 0.5 < 0.08 ? 0.02 : 0, bub: every(n, t, 8, ['dots', 'cash', 'sweat', 'idea']), fx: (x, y) => laptop(x, y - ts * 0.34, k) };
       case 'sweep': {
-        const side = Math.floor(k / 0.7) % 2 ? 'east' : 'west';
-        return { face: side, anim: true, bub: every(n, t, 10, ['music', 'happy']), fx: (x, y, f) => broom(x, y, f, k) };
+        // Sweeping is a stroke drawn in both hands (SWEEP); every 50 s cycle splits into a stretch of sweeping and one
+        // of standing idle, each 20 to 30 s long and picked per cycle, so the switch never looks like a timer.
+        const cyc = Math.floor(k / 50);
+        if (k % 50 >= 20 + hash(cyc + 1, n.id.length * 31 + 7) % 11) return { face: 'south', bub: every(n, t, 12, ['happy', 'music']) };
+        // One loop of the stroke, a pull and a push, is 8 frames at 5 a second.
+        return { face: cyc % 2 ? 'east' : 'west', sweep: Math.floor(k * 5) % SWEEP.n, bub: every(n, t, 10, ['music', 'happy']) };
       }
       case 'sleep': return { face: 'south', dy: Math.sin(k * 1.5) * 0.015, bub: k % 4 < 2.6 ? 'zz' : 'sleep' };
       case 'sell': return { face: 'south', dy: k % 6 < 0.5 ? -Math.abs(Math.sin(k * 12)) * 0.06 : 0, bub: every(n, t, 6, ['cash', 'star', 'heart', 'talk']) };
@@ -967,14 +981,6 @@
     ctx.fillStyle = '#ffe14d'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
     ctx.fillRect(x + 4 * s, y, 5 * s, 8 * s); ctx.strokeRect(x + 4 * s, y, 5 * s, 8 * s);
     ctx.beginPath(); ctx.moveTo(x + 8 * s, y); ctx.lineTo(x + 8 * s, y - 5 * s); ctx.stroke();
-  }
-  function broom(x, y, f, k) {
-    const s = ts / 32, dir = f === 'east' ? 1 : -1, sw = Math.sin(k * 9) * 3 * s;
-    ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(x + dir * 2 * s, y - 16 * s); ctx.lineTo(x + dir * 11 * s + sw, y - 1 * s); ctx.stroke();
-    ctx.fillStyle = '#e8c36a'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
-    ctx.fillRect(x + dir * 11 * s + sw - 3 * s, y - 3 * s, 6 * s, 4 * s); ctx.strokeRect(x + dir * 11 * s + sw - 3 * s, y - 3 * s, 6 * s, 4 * s);
-    if (k % 0.7 < 0.25) { ctx.fillStyle = 'rgba(240,230,210,.7)'; ctx.beginPath(); ctx.arc(x + dir * 15 * s + sw, y - s, 2.5 * s, 0, Math.PI * 2); ctx.fill(); }
   }
   // The plaza bench, drawn in code: two planks on stubby legs, in the village's ink outline.
   function drawBench(x, y) {
