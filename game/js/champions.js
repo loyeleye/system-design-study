@@ -1,5 +1,5 @@
 // Champions: the key NPCs a player can pick in a Guild Hall party (Ladi, 2026-10-19). Each is unlocked by reaching
-// them in the game, shows on the party room's cards, and in an Incident Raid brings three signature cards that
+// them in the game, shows on the party room's cards, and in an Expedition Raid brings three signature cards that
 // replace one Hotfix and two Bigger Boxes in that player's starting deck. Signature cards only exist in raids:
 // they are `quest` cards (never rewards) marked `champ`, so no shop, dealer or unlock list ever offers them.
 //   SD.champions.list                 -> [{ id, name, short, region, how, style }] in roster order
@@ -7,6 +7,7 @@
 //   SD.champions.deck(id, base)       -> base deck (default the starter deck) with that champion's signature cards
 //   SD.champions.sprite(id, scale, animate) -> a div showing their south-facing idle, from their map sheet
 //   SD.champions.mine() / setMine(id) -> this browser's last pick
+//   SD.champions.rewards(id)          -> extra cards that champion can find in Expedition Raid rewards (none yet)
 (function () {
   const C = SD.champions = {};
   const KEY = 'sd-guild-champ';
@@ -146,6 +147,9 @@
       return id;
     });
   });
+  // Cards only this champion can find in an Expedition Raid's card rewards (js/raid.js weights them by rarity:
+  // common 2, uncommon 0.75, rare 0.1, against 1 for a regular card). Empty while the champion cards are in review.
+  C.rewards = () => [];
   // The starter deck with this champion's three cards in place of one Hotfix and two Bigger Boxes.
   C.deck = function (id, base) {
     const deck = (base || SD.starterDeck || []).slice(), sig = C.cards[id];

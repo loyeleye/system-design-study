@@ -463,7 +463,7 @@
     await U.dialog(SD.story.seymour.map(t => ({ s: 'seymour', t })));
     const render = () => {
       const unlocked = S.unlockedCards();
-      const locked = Object.keys(SD.cards).filter(id => !unlocked.includes(id) && !SD.starterDeck.includes(id) && !SD.cards[id].champ);
+      const locked = Object.keys(SD.cards).filter(id => !unlocked.includes(id) && !SD.starterDeck.includes(id) && !SD.cards[id].champ && !SD.cards[id].curse);
       const b = U.panel(`<p class="muted small">Specs are hero classes. Each is best at something and weak at something else. Switch freely between runs. Seymour recommends all of them at once. That is not allowed.</p>
         <div class="opts">${Object.entries(SD.specs).map(([k, s]) => {
           const ok = sv.level >= s.rank, on = sv.spec === k;

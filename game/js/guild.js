@@ -13,10 +13,10 @@
   const GAMES = {
     pair: { name: 'Pair Mock', tab: 'Pair Mock', players: '2 players · 5 to 15 min', max: 2, color: '#bfe3ff', blurb: 'One of you plays a system design round. The other interviews with Ploy\'s answer packet and scores you on the rubric.', play: (root, hub, code, o) => SD.pair.play(root, hub, code, o) },
     show: { name: 'Whiteboard Showdown', tab: 'Showdown', players: '2 to 8 players', max: 8, color: '#e3d8ff', blurb: 'Smudge erases half a design and the whole party rebuilds it at once, betting on how sure they are. Then a vote on each stress test.', play: (root, hub, code, o) => SD.show.play(root, hub, code, o) },
-    raid: { name: 'Incident Raid', tab: 'Raid', players: '2 to 4 players', max: 4, color: '#ffd7c2', blurb: 'Co-op card battle against one boss. Everyone fights as their champion with their own deck and hand; the SLA and the infra slots are shared.', play: (root, hub, code, o) => SD.raid.play(root, hub, code, o), ok: () => !!(SD.raid && SD.raid.available()) }
+    raid: { name: 'Expedition Raid', tab: 'Raid', players: '2 to 4 players', max: 4, color: '#ffd7c2', blurb: 'A co-op dungeon crawl of 2 to 5 floors, each a map you vote your way through, then its boss. Everyone fights as their champion with their own deck; the SLA is shared.', play: (root, hub, code, o) => SD.raid.play(root, hub, code, o), ok: () => !!(SD.raid && SD.raid.available()) }
   };
   const ORDER = ['pair', 'show', 'raid'];
-  // A mode that needs the game's own cards and styles (Incident Raid) is played only inside the game.
+  // A mode that needs the game's own cards and styles (Expedition Raid) is played only inside the game.
   const on = k => !GAMES[k].ok || GAMES[k].ok();
 
   // The standalone Guild Hall artifact (for a copy of the game that can't reach rooms), and the game itself.
@@ -158,7 +158,7 @@ select.gh-field { font-size: 15px; }
     // Where this player is: the hall, a mode's board or form, or a party (the mode draws it).
     const view = { scr: 'hall', mode: playable[0], card: playable[0], note: '' };
     // Form a party's choices, per mode, kept between visits.
-    const form = { open: true, pid: null, pace: 'standard', bp: null, boss: null };
+    const form = { open: true, pid: null, pace: 'standard', bp: null, xp: null };
     let at = null;
 
     const listOf = k => dirs[k].tables().filter(t => net.cleanCode(t.code).length >= 4);
@@ -342,9 +342,11 @@ select.gh-field { font-size: 15px; }
         if (!form.bp || !W.blueprints.some(b => b.id === form.bp)) form.bp = (W.blueprints[0] || {}).id;
         settings = `<label class="gh-lbl" for="gh-bp">Blueprint <small>The design Smudge erases half of.</small><select class="gh-field" id="gh-bp">${W.blueprints.map(b => `<option value="${esc(b.id)}" ${b.id === form.bp ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></label>`;
       } else if (k === 'raid') {
-        const bosses = SD.raid.bosses();
-        if (!form.boss || !bosses.includes(form.boss)) form.boss = bosses[0];
-        settings = `<label class="gh-lbl" for="gh-boss">Boss <small>Bosses from the chapters you've reached. Each extra player makes it tougher.</small><select class="gh-field" id="gh-boss">${bosses.map(b => `<option value="${esc(b)}" ${b === form.boss ? 'selected' : ''}>${esc(SD.enemies[b].name)}</option>`).join('')}</select></label>`;
+        // A new expedition from the chapters you've reached, or one this browser saved (it keeps its code).
+        const xps = SD.raid.expeditions(), saves = SD.raid.saved();
+        const vals = xps.map(x => x.id).concat(saves.map(v => 'resume:' + v.code));
+        if (!form.xp || !vals.includes(form.xp)) form.xp = vals[0] || null;
+        settings = `<label class="gh-lbl" for="gh-xp">Expedition <small>2 to 5 floors, each a dungeon map and a boss. Each extra player makes the fights tougher.</small>${vals.length ? `<select class="gh-field" id="gh-xp">${xps.length ? `<optgroup label="New">${xps.map(x => `<option value="${esc(x.id)}" ${x.id === form.xp ? 'selected' : ''}>${esc(x.name)} · ${x.floors.length} floors</option>`).join('')}</optgroup>` : ''}${saves.length ? `<optgroup label="Resume, with the same code">${saves.map(v => `<option value="resume:${esc(v.code)}" ${'resume:' + v.code === form.xp ? 'selected' : ''}>${esc(v.name)} · floor ${v.fl + 1} of ${v.floors} · ${esc(v.code.toUpperCase())}</option>`).join('')}</optgroup>` : ''}</select>` : '<small>None open yet. Reach chapter 2 for the first.</small>'}</label>`;
       }
       paint(`<div class="mi-card">
         <div class="gh-top"><button class="gh-back" type="button" id="gh-back">← Quest Board</button><span class="gh-eye">${esc(GAMES[k].name)} · ${form.open ? 'Open' : 'Private'} party</span></div>
@@ -361,12 +363,13 @@ select.gh-field { font-size: 15px; }
       root.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { form.open = !!b.dataset.open; formScreen(); });
       root.querySelectorAll('[data-pace]').forEach(b => b.onclick = () => { form.pace = b.dataset.pace; formScreen(); });
       const sel = (id, key) => { const s = root.querySelector(id); if (s) s.onchange = () => { form[key] = s.value; }; };
-      sel('#gh-pid', 'pid'); sel('#gh-bp', 'bp'); sel('#gh-boss', 'boss');
+      sel('#gh-pid', 'pid'); sel('#gh-bp', 'bp'); sel('#gh-xp', 'xp');
       const nick = root.querySelector('#gh-nick');
       root.querySelector('#gh-make').onclick = () => {
         const v = net.clean(nick.value, 24);
         if (v && v !== hub.me.nick) hub.setNick(v);
-        sit(k, net.code(k), true, k === 'pair' ? { pid: form.pid, pace: form.pace } : k === 'show' ? { bp: form.bp } : { boss: form.boss });
+        const resume = k === 'raid' && /^resume:/.test(form.xp || '') ? form.xp.slice(7) : null;
+        sit(k, resume || net.code(k), true, k === 'pair' ? { pid: form.pid, pace: form.pace } : k === 'show' ? { bp: form.bp } : resume ? { resume: true } : { xp: form.xp });
       };
     }
 

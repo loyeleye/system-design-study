@@ -115,6 +115,10 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .win-b { padding: 16px; overflow-y: auto; min-height: 0; }
 .win-b p { margin: 0 0 10px; }
 .q-ctx { font-family: var(--f-head); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--blue-d); margin-bottom: 6px; }
+.q-timer { position: relative; height: 16px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; overflow: hidden; margin: 2px 0 8px; }
+.q-timer i { position: absolute; inset: 0 auto 0 0; background: var(--sun); transition: width .25s linear; }
+.q-timer.low i { background: var(--red); }
+.q-timer span { position: relative; display: block; text-align: center; font: 700 11px/12px var(--f-head); }
 .q-q { font-size: 17px; font-weight: 700; text-wrap: balance; }
 .opts { display: grid; gap: 8px; margin: 12px 0; }
 .opt { text-align: left; padding: 11px 13px; background: #fff; border: 2px solid var(--ink); border-radius: 12px; line-height: 1.4; box-shadow: 0 3px 0 rgba(43,35,64,.85); transition: transform .08s; }
@@ -962,6 +966,8 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/card-dealer.js"></script>
 <script src="js/npc-arcs.js"></script>
 <script src="js/exchange-rooms.js"></script>
+<!-- Expedition Raid's content (js/raid.js): after every chapter file, so their enemies and cards are there -->
+<script src="js/expeditions.js"></script>
 <!-- Debug start (testing only; remove before release) -->
 <script src="js/debug.js"></script>
 <!-- @page-end -->

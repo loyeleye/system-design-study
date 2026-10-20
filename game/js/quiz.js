@@ -42,10 +42,22 @@
 
   // q: {c, type: mc|num|order|multi|explain, q, opts, a, no, lo, hi, unit, items, ans, why, points, model}
   // no: optional, one line per option saying why that option is wrong here (null at a), shown after answering.
+  // opts.timer: seconds to answer in, with a countdown bar (Expedition Raid's questions, js/raid.js). When it runs out
+  // a typed answer is submitted as written and graded as usual; any other question counts as no answer (wrong).
+  // Either way it resolves with timeout: true. Without it nothing is timed, as before.
   Q.ask = function (q, opts) {
     opts = opts || {};
     return new Promise(resolve => {
       const t0 = Date.now();
+      const limit = opts.timer > 0 ? opts.timer * 1000 : 0;
+      let clock = null, late = false;
+      const stop = () => { if (clock) { clearInterval(clock); clock = null; } };
+      const bar = () => { const left = Math.max(0, limit - (Date.now() - t0)); return `<div class="q-timer${left < 10000 ? ' low' : ''}" role="timer" aria-label="${Math.ceil(left / 1000)} seconds left"><i style="width:${left / limit * 100}%"></i><span>${Math.ceil(left / 1000)}s</span></div>`; };
+      if (limit) clock = setInterval(() => {
+        const el = document.querySelector('#panel .q-timer');
+        if (Date.now() - t0 >= limit) { stop(); timeUp(); return; }
+        if (el) el.outerHTML = bar();
+      }, 250);
       let thinking = sayFirst(q, opts);
       let pick = null, order = [], multi = new Set(), typed = '';
       if (q.type === 'explain' && SD.embed) SD.embed.load();
@@ -56,7 +68,7 @@
       const hidden = opts.hideOne && q.type === 'mc' ? optOrder.find(i => i !== q.a) : null;
       const concept = SD.concepts[q.c];
       function render() {
-        let h = `<div class="q-ctx">${U.esc(opts.context || (concept ? concept.name : 'Question'))}</div><p class="q-q">${U.esc(q.q)}</p>`;
+        let h = `<div class="q-ctx">${U.esc(opts.context || (concept ? concept.name : 'Question'))}</div>${limit ? bar() : ''}<p class="q-q">${U.esc(q.q)}</p>`;
         if (thinking) {
           h += `<div class="say-first"><p>Answer it in your own words first, out loud or in your head, the way you would in the room.</p>
             <button class="primary" id="q-said">I've said it. Show the options</button></div>`;
@@ -107,6 +119,7 @@
         b.querySelectorAll('[data-c]').forEach(el => el.onclick = () => submit(+el.dataset.c));
       }
       function submit(conf) {
+        stop();
         const ms = Date.now() - t0;
         if (q.type === 'explain') return checkTyped(conf, ms);
         let ok = false, score = null;
@@ -153,6 +166,15 @@
         };
         draw();
       }
+      // Out of time: a typed answer goes in as it stands; anything else is no answer, with the right one shown.
+      function timeUp() {
+        if (q.type === 'explain') { late = true; return submit(0); }
+        const ms = Date.now() - t0;
+        if (q.c && !opts.noRecord) SD.state.recordAnswer(q.c, false, 0, ms);
+        SD.state.persist();
+        late = true;
+        feedback(false, 0, ms, null, null);
+      }
       function feedback(ok, conf, ms, page, score) {
         let right = '';
         if (q.type === 'mc') right = q.opts[q.a];
@@ -162,7 +184,7 @@
         if (q.type === 'explain') right = q.model;
         const over = !ok && conf === 2;
         if (SD.audio) SD.audio.sfx(ok ? 'right' : 'wrong');
-        let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : 'NOT QUITE!'}</div>`;
+        let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : late ? 'TIME\'S UP!' : 'NOT QUITE!'}</div>`;
         if (q.type === 'explain') h += `<p class="muted small">You covered ${score} of ${q.points.length} points.</p>`;
         else if ((!ok || conf === 0) && !q.tiers) h += `<p><b>Answer:</b> ${U.esc(right)}</p>`;
         h += `<p class="why">${U.esc(q.why || '')}</p>`;
@@ -216,12 +238,12 @@
             nx.disabled = false;
           });
           setTimeout(() => { nx.disabled = false; }, 2500);
-          nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score }); };
+          nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
         } else {
           h += huhBlock + `<button class="primary" id="q-next">Continue</button>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
-          b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score }); };
+          b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
           b.querySelector('#q-next').focus();
         }
         if (page) U.system('CHEAT SHEET PAGE RESTORED!', U.esc(SD.concepts[q.c].name) + ': a page in Uptima\'s handwriting fades back in.', 'gold');
