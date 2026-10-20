@@ -346,19 +346,22 @@
     const ch = Math.max(...Object.keys(GIST).map(Number).filter(k => k <= (sv.chapter || 1)));
     const g = GIST[ch];
     const ids = Object.keys(SD.concepts).filter(id => SD.concepts[id].zone === ch);
-    const b = U.panel(`<p class="muted small">Uptima's gist board. A minute on the big picture now makes the details land later. Read the shape, not the fine print.</p>
-      <div class="gist"><div class="gist-goal"><span class="q-ctx">Today's quest</span><p>${g.goal}</p></div>
-      <div class="gist-groups">${g.groups.map(([h, t]) => `<div><span class="q-ctx">${h}</span><p>${t}</p></div>`).join('')}</div>
-      <p class="small">Ask yourself before you go: <i>${g.ask}</i></p></div>
-      ${SD.lessons.buttons('A')}
-      <div class="row"><button class="primary" id="ar-codex">Open the cheat sheet</button><button class="ghost" id="ar-x">Leave</button></div>`, { title: 'GIST BOARD · GODDESS TEMPLE' });
-    let lesson = null;
-    SD.lessons.wire(b, id => { lesson = id; });
+    let lesson = null, tab = 'main';
+    const render = () => {
+      const b = U.panel(`${SD.lessons.tabBar('A', tab, 'Gist board')}${tab === 'lessons' ? SD.lessons.buttons('A') : `<p class="muted small">Uptima's gist board. A minute on the big picture now makes the details land later. Read the shape, not the fine print.</p>
+        <div class="gist"><div class="gist-goal"><span class="q-ctx">Today's quest</span><p>${g.goal}</p></div>
+        <div class="gist-groups">${g.groups.map(([h, t]) => `<div><span class="q-ctx">${h}</span><p>${t}</p></div>`).join('')}</div>
+        <p class="small">Ask yourself before you go: <i>${g.ask}</i></p></div>`}
+        <div class="row"><button class="primary" id="ar-codex">Open the cheat sheet</button><button class="ghost" id="ar-x">Leave</button></div>`, { title: 'GIST BOARD · GODDESS TEMPLE' });
+      SD.lessons.wireTabs(b, t => { tab = t; render(); });
+      SD.lessons.wire(b, id => { lesson = id; });
+      b.querySelector('#ar-codex').onclick = () => U.codex();
+      b.querySelector('#ar-x').onclick = U.closePanel;
+    };
+    render();
     ids.forEach(id => S.concept(id));
     if (sv.flags.primedLoop !== sv.loop) { sv.flags.primedLoop = sv.loop; SD.run.gainXp(5); }
     S.persist();
-    b.querySelector('#ar-codex').onclick = () => U.codex();
-    b.querySelector('#ar-x').onclick = U.closePanel;
     await waitClose();
     if (lesson) await SD.lessons.play(lesson);
   }
@@ -396,31 +399,34 @@
   async function cafe() {
     const sv = S.save;
     if (sv.flags.wenLoop !== sv.loop) { sv.flags.wenLoop = sv.loop; await U.dialog(SD.story.wen.map(t => ({ s: 'wen', t }))); }
-    // Keepsakes past the first shelf unlock with your Guild rank; locked ones show what is coming.
+    // Keepsakes past the first shelf unlock with your Guild rank. The next rank's shelf shows, locked, as a preview;
+    // shelves two or more ranks up stay hidden until then.
     const rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
     const render = () => {
       // Gifts (gift: true) are never for sale: they sit on their own shelf once a friend has given you one.
       const sale = SD.metaShop.filter(it => !it.gift), gifts = SD.metaShop.filter(it => it.gift && sv.relics.includes(it.id));
-      const shelves = SD.ranks.filter(r => sale.some(it => it.rank === r)).map(r => {
+      const item = (it, open) => ({ id: it.id, name: it.name, text: it.text, cost: it.cost, lock: it.rank + '-Rank',
+        state: SD.shop.state({ owned: sv.relics.includes(it.id), locked: !open, cost: it.cost, have: sv.shards }) });
+      const shelves = tab === 'lessons' ? [] : SD.ranks.filter(r => rankAt(r) <= mine + 1 && sale.some(it => it.rank === r)).map(r => {
         const open = rankAt(r) <= mine;
-        return `<p class="q-ctx">${r === 'E' ? 'On the counter' : `${r}-Rank shelf`}${open ? '' : ` · unlocks at ${r}-Rank`}</p><div class="opts">${sale.filter(it => it.rank === r).map(it => {
-          const own = sv.relics.includes(it.id);
-          return `<button class="opt" data-r="${it.id}" ${own || !open || sv.shards < it.cost ? 'disabled' : ''}><b>${U.esc(it.name)}</b> · ${own ? 'Owned' : it.cost + ' shards'}<br><span class="small">${U.esc(it.text)}</span></button>`;
-        }).join('')}</div>`;
-      }).join('') + (gifts.length ? `<p class="q-ctx">Gifts from friends</p><div class="opts">${gifts.map(it =>
-        `<button class="opt" disabled><b>${U.esc(it.name)}</b> · Owned<br><span class="small">${U.esc(it.text)}</span></button>`).join('')}</div>` : '');
-      const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Shards spend the same in every loop, dear. Croissants don't. Gary bought them all."</p></div>
-        <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
-        ${shelves}${SD.lessons.buttons('C')}`, { title: 'CACHE CAFÉ · KEEPSAKES' });
-      SD.lessons.wire(b, id => { lesson = id; });
-      b.querySelectorAll('[data-r]').forEach(el => el.onclick = () => {
-        const it = SD.metaShop.find(x => x.id === el.dataset.r);
-        if (!it || it.gift || sv.shards < it.cost || rankAt(it.rank) > mine) return;
-        sv.shards -= it.cost; sv.relics.push(it.id); S.persist();
-        U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
+        return { label: r === 'E' ? 'On the counter' : `${r}-Rank shelf`, lock: open ? null : r + '-Rank', items: sale.filter(it => it.rank === r).map(it => item(it, open)) };
+      }).concat(gifts.length ? [{ label: 'Gifts from friends', items: gifts.map(it => Object.assign(item(it, true), { label: 'Gift' })) }] : []);
+      SD.shop.panel({
+        title: 'CACHE CAFÉ · KEEPSAKES', keeper: 'wen', line: "Shards spend the same in every loop, dear. Croissants don't. Gary bought them all.",
+        wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' }, rank: true,
+        tabs: SD.lessons.tabs('C', 'Keepsakes'), tab, onTab: t => { tab = t; render(); },
+        sections: shelves, extra: tab === 'lessons' ? SD.lessons.buttons('C') : '',
+        wire: b => SD.lessons.wire(b, id => { lesson = id; }),
+        onBuy: x => {
+          const it = SD.metaShop.find(y => y.id === x.id);
+          if (!it || it.gift || sv.relics.includes(it.id) || sv.shards < it.cost || rankAt(it.rank) > mine) return;
+          sv.shards -= it.cost; sv.relics.push(it.id); S.persist();
+          if (SD.audio) SD.audio.sfx('coin');
+          U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
+        }
       });
     };
-    let lesson = null;
+    let lesson = null, tab = 'main';
     render();
     await waitClose();
     if (lesson) await SD.lessons.play(lesson);
@@ -464,19 +470,19 @@
     const render = () => {
       const unlocked = S.unlockedCards();
       const locked = Object.keys(SD.cards).filter(id => !unlocked.includes(id) && !SD.starterDeck.includes(id) && !SD.cards[id].champ && !SD.cards[id].curse);
-      const b = U.panel(`<p class="muted small">Specs are hero classes. Each is best at something and weak at something else. Switch freely between runs. Seymour recommends all of them at once. That is not allowed.</p>
+      const b = U.panel(`${SD.lessons.tabBar('W', tab, 'Specs')}${tab === 'lessons' ? SD.lessons.buttons('W') : `<p class="muted small">Specs are hero classes. Each is best at something and weak at something else. Switch freely between runs. Seymour recommends all of them at once. That is not allowed.</p>
         <div class="opts">${Object.entries(SD.specs).map(([k, s]) => {
           const ok = sv.level >= s.rank, on = sv.spec === k;
           return `<button class="opt${on ? ' on' : ''}" data-s="${k}" ${ok && !sv.run ? '' : 'disabled'}><b>${U.esc(s.name)}</b>${on ? ' · Active' : ok ? '' : ' · Unlocks at level ' + s.rank}<br><span class="small">${U.esc(s.text)}</span></button>`;
         }).join('')}</div>
         ${sv.run ? '<p class="warn small">You can change Spec when no run is in progress.</p>' : ''}
         <p class="q-ctx">Cards you can find in Prod (${unlocked.length})</p><div class="cardgrid mini">${unlocked.map(id => U.cardHtml({ id })).join('')}</div>
-        ${locked.length ? `<p class="muted small">${locked.length} more cards unlock as your level rises.</p>` : ''}
-        ${SD.lessons.buttons('W')}`, { title: "SEYMOUR'S BUNKER · SPECS", cls: 'wide' });
+        ${locked.length ? `<p class="muted small">${locked.length} more cards unlock as your level rises.</p>` : ''}`}`, { title: "SEYMOUR'S BUNKER · SPECS", cls: 'wide' });
+      SD.lessons.wireTabs(b, t => { tab = t; render(); });
       SD.lessons.wire(b, id => { lesson = id; });
       b.querySelectorAll('[data-s]').forEach(el => el.onclick = () => { sv.spec = el.dataset.s; S.persist(); render(); });
     };
-    let lesson = null;
+    let lesson = null, tab = 'main';
     render();
     await waitClose();
     if (lesson) await SD.lessons.play(lesson);

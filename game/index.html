@@ -753,6 +753,43 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 .cardgrid.mini .card:hover { transform: none; }
 .buy { display: grid; justify-items: center; gap: 4px; }
 .price { font-family: var(--f-head); font-weight: 600; font-size: 13px; }
+/* Shops (js/shop-ui.js): a pinned header, item tiles that say their state, and a confirm bar for big buys. */
+.win.shop .shop-top { position: sticky; top: -16px; z-index: 3; margin: 0 -16px 10px; padding: 10px 16px 2px; background: var(--cream); border-bottom: 2px solid var(--line); }
+.shop-top .loot { margin-bottom: 8px; }
+.shop-top .tabs { margin-bottom: 8px; }
+.shop-sec { margin-bottom: 14px; }
+.shop-sec .q-ctx .si-lock { margin-right: 4px; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.shop-it { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 10px; background: #fff; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 rgba(43,35,64,.85); line-height: 1.35; color: var(--ink); font: inherit; transition: transform .08s; }
+.shop-it:hover:not(:disabled) { background: #f1f7ff; transform: translateY(-1px); }
+.shop-it .si-ic { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border: 2px solid var(--ink); border-radius: 10px; background: var(--sun); color: var(--ink); }
+.shop-it .si-ic svg { width: 30px; height: 30px; }
+.shop-it .si-b { display: grid; gap: 3px; min-width: 0; }
+.shop-it .small { color: var(--ink); }
+.si-tag { justify-self: start; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-family: var(--f-head); font-weight: 600; font-size: 13px; padding: 2px 9px; border: 2px solid var(--ink); border-radius: 20px; }
+.si-tag small { font-family: var(--f-body); font-weight: 700; font-size: 11px; }
+.si-tag s { opacity: .6; }
+.si-tag.t-buy { background: var(--sun); }
+.si-tag.t-own { background: #c9f3dc; border-color: #1f8a5a; color: #145c3c; }
+.si-tag.t-lock { background: #eceaf2; border-color: var(--muted); color: var(--muted); }
+.si-tag.t-short { background: #ffe1e1; border-color: #a3172b; color: #a3172b; }
+.si-lock { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; }
+.shop-it:disabled { cursor: default; }
+.shop-it.s-owned { background: #f4fbf7; box-shadow: none; }
+.shop-it.s-owned .si-ic { background: #c9f3dc; }
+.shop-it.s-locked { background: #f6f5f9; box-shadow: none; border-color: var(--muted); }
+.shop-it.s-locked .si-ic { background: #eceaf2; color: var(--muted); border-color: var(--muted); }
+.shop-it.s-locked b, .shop-it.s-locked .small { color: var(--muted); }
+.shop-it.s-short .si-ic { background: #fff3dc; }
+.shop-it.sel, .shop-card.sel .card { outline: 4px solid var(--blue); outline-offset: 2px; }
+.shop-cards { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; padding-top: 6px; }
+.shop-card { display: grid; justify-items: center; gap: 6px; }
+.shop-card .si-tag { justify-self: center; }
+.shop-card[aria-disabled] .card { cursor: default; }
+.shop-card[aria-disabled] .card:hover { transform: none; }
+.shop-confirm { position: sticky; bottom: -16px; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px -16px -16px; padding: 12px 16px; background: #fff3c4; border-top: 3px solid var(--ink); }
+.shop-confirm p { flex: 1 1 200px; margin: 0; }
+.shop-confirm-b { display: flex; gap: 10px; margin-left: auto; }
 
 /* Effects */
 .floatnum { position: fixed; z-index: 50; pointer-events: none; font-family: var(--f-head); font-weight: 700; font-size: 30px; transform: translateX(-50%); animation: floatUp 1.1s ease-out forwards; color: #fff;
@@ -937,6 +974,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/run.js"></script>
 <script src="js/eli5.js"></script>
 <script src="js/goddess.js"></script>
+<script src="js/shop-ui.js"></script>
 <script src="js/lessons.js"></script>
 <script src="js/minigames.js"></script>
 <script src="js/quests.js"></script>
