@@ -351,7 +351,8 @@
     name: 'the Abyss Beneath the Temple', rank: 'SSS', boss: 'leviathan9', bosses: ['leviathan9', 'vaultgolem', 'whistleboard'], win: 'c9Win',
     gate: 'INTO THE ABYSS...',
     blurb: 'Three layers down into the pit under the temple. Each layer heals you less. One backup tape, one retry. Kyu is waiting at the bottom.',
-    sevMult: 1.7, clearShards: 250, music: { map: 'ch9' }, curses: [], latency: true, death: 'tape', downtime: 100, healDrop: 0.1,
+    sevMult: 1.48, clearShards: 250,   // eased from 1.7 so the bot clears about 60% at Escalation 0 (Ladi, 2026-10-20)
+    music: { map: 'ch9' }, curses: [], latency: true, death: 'tape', downtime: 100, healDrop: 0.1,
     whistles: ['Red Whistle', 'Blue Whistle', 'Moon Whistle'],
     pools: { 1: ['unreadimp', 'spamslime', 'bitrot'], 2: ['unreadimp', 'spamslime', 'bitrot', 'orphanchunk', 'rankrat'], 3: ['orphanchunk', 'rankrat', 'hotshard', 'bitrot'], elite: ['mailstorm'] },
     // A descent: fewer rests, notes from below, and the deeper you go the fewer cafés.

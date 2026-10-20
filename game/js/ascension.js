@@ -6,19 +6,20 @@
   const S = SD.state, U = SD.ui, M = SD.meta, R = SD.run;
   const esc = s => U.esc(s == null ? '' : String(s));
 
-  // The numbers behind each level. Tuned with the bot simulations so chapters 4-6 win about 90% at E0, 60% at E5,
-  // 35% at E7, 27% at E8, 20% at E9 and 5% at E10 (Ladi's targets).
+  // The numbers behind each level, tuned with the bot simulations (2026-10-20) to Ladi's targets for chapters 4-6:
+  // about 90% at E0, 60% at E5, 30-40% at E7, 20-35% at E8, 15-25% at E9 and 5% at E10. The bot measured 92, 84, 78,
+  // 71, 66, 59, 49, 34, 27, 23 and 6% from E0 to E10.
   const T = AS.TUNE = {
-    sev1: 1.25,               // E1: every fight's severity
-    sev2: 1.25,               // E2: elites and bosses, on top
-    bits3: 0.75, price3: 1.25, sev3: 1.05, // E3: economy, plus cut-price infra
+    sev1: 1.2,                // E1: every fight's severity
+    sev2: 1.12,               // E2: elites and bosses, on top
+    bits3: 0.75, price3: 1.25, sev3: 1.08, // E3: economy, plus cut-price infra
     heal4: 0.4,               // E4: rest and tea healing kept
-    sla5: 0.85,               // E5: max SLA kept
-    cold6: 1, coldTurns6: 1,  // E6: Capacity lost, on the first N turns
-    dmg7: 1.25,               // E7: damage taken
+    sla5: 0.88,               // E5: max SLA kept
+    cold6: 1, coldTurns6: 3,  // E6: Capacity lost, on the first N turns
+    dmg7: 1.35,               // E7: damage taken
     sevBoss8: 1.1,            // E8: bosses, with nobody covering for Gary
-    dmg9: 1.05,               // E9: damage taken, with Pip's save off
-    rageEvery10: 2            // E10: +1 load to every move each N turns
+    dmg9: 1.1,                // E9: damage taken, with Pip's save off
+    rageEvery10: 3            // E10: +1 load to every move each N turns
   };
   const pct = (x, up) => Math.round(Math.abs((up ? x - 1 : 1 - x) * 100)) + '%';
   AS.LEVELS = [

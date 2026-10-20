@@ -12,16 +12,18 @@ Three post-game and study features for *Isekai'd Into Prod*, built together beca
 
 | Level | Name | Rule |
 | --- | --- | --- |
-| 1 | Peak Traffic | Every incident, elite and boss starts 10% more severe. |
-| 2 | Exec on the Bridge | Elites and bosses start a further 15% more severe. |
-| 3 | Budget Freeze | Fights pay 25% fewer bits, and the café charges 25% more. |
-| 4 | Pager Fatigue | Break-room rests and café tea heal 40% less. |
-| 5 | Degraded Capacity | Max SLA is 10% lower. |
-| 6 | Cold Start | Every fight starts with 1 less Capacity on the first turn. |
-| 7 | Noisy Neighbours | You take 15% more damage. |
-| 8 | Gary's on PTO | Gary never turns up. |
-| 9 | No Safety Net | Pip's Last Uptime save is switched off. |
-| 10 | Cascading Failure | Every incident adds 1 more load to all its moves each turn. |
+| 1 | Peak Traffic | Every incident, elite and boss starts 20% more severe. |
+| 2 | Exec on the Bridge | Elites and bosses start a further 12% more severe. |
+| 3 | Budget Freeze | Fights pay 25% fewer bits, the café charges 25% more, and every incident is 8% more severe. |
+| 4 | Pager Fatigue | Break-room rests and café tea heal 60% less. |
+| 5 | Degraded Capacity | Max SLA is 12% lower. |
+| 6 | Cold Start | Every fight starts with 1 less Capacity on each of the first 3 turns. |
+| 7 | Noisy Neighbours | You take 35% more damage. |
+| 8 | Gary's on PTO | Gary never turns up, and bosses start 10% more severe. |
+| 9 | No Safety Net | Pip's Last Uptime save is switched off, and you take 10% more damage. |
+| 10 | Cascading Failure | Every incident adds 1 more load to all its moves every 3 turns. |
+
+The numbers live in `AS.TUNE` in `ascension.js`, and the level texts are built from them. They were tuned with the bot simulations (2026-10-20, `/mnt/project-files/relic-sim/`) to Ladi's targets for chapters 4–6: about 90% wins at E0, 60% at E5, 30–40% at E7, 20–35% at E8, 15–25% at E9 and 5% at E10. The bot measured 92, 84, 78, 71, 66, 59, 49, 34, 27, 23 and 6% from E0 to E10.
 
 ## Files
 

@@ -388,8 +388,8 @@
     run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
     if (rel('postnotes')) run.sla = Math.min(S.maxSla(), run.sla + 5);
     R.gainXp(xp);
-    // Grandma's Feather Duster sweeps a basic card out of the deck after every elite.
-    if (opts.elite && rel('duster')) {
+    // Grandma's Feather Duster sweeps a basic card out of the deck after every incident and elite.
+    if (!opts.boss && rel('duster')) {
       const basics = run.deck.filter(c => SD.cards[c.id].rarity === 'basic');
       if (basics.length) { const c = basics[Math.floor(Math.random() * basics.length)]; run.deck.splice(run.deck.indexOf(c), 1); U.system('DUSTED', U.esc(SD.cards[c.id].name) + ' swept out of your deck.'); }
     }
@@ -465,28 +465,27 @@
     const again = () => campfire(done, true);
     const heal = mod('heal', Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0))));
     // The Exchange's Clearing House (js/relic-exchange.js) adds Clear the Books.
-    const clear = rel('clearing') && run.deck.length > 2;
+    const clear = rel('clearing');
     const b = U.panel(`<p>A quiet break room between floors: a squashy sofa, a humming vending machine, and Pip burning popcorn in the microwave. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
       <p class="muted small">${second ? 'Guild perk: choose one more.' : 'Diffuse mode: stepping back is part of learning. Choose one.'}</p>
       <div class="opts">
         <button class="opt" id="g-rest"><b>Rest</b> · Recover ${heal} SLA</button>
         <button class="opt" id="g-forge"><b>Refactor</b> · Upgrade a card (+3 to its numbers)</button>
         <button class="opt" id="g-reflect"><b>Reflect</b> · Connect two ideas for XP and a notebook link</button>
-        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Remove 2 cards from your deck, +5 max SLA this run, then Refactor a card</button>` : ''}
+        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Refactor 2 cards and gain 5 max SLA this run</button>` : ''}
       </div>`, { title: 'BREAK ROOM', noClose: true });
     b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); AU.sfx('heal'); S.persist(); U.closePanel(); done(); };
     b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => campfire(done, second), c => !c.up && SD.cards[c.id].rarity);
     b.querySelector('#g-reflect').onclick = () => reflect(done);
-    const remove = c => { run.deck.splice(run.deck.indexOf(c), 1); S.persist(); };
-    if (b.querySelector('#g-clear')) b.querySelector('#g-clear').onclick = () => pickCard('Remove which card? (1 of 2)', c => {
-      remove(c);
-      // The second pick can be skipped; the max SLA comes with the first.
+    if (b.querySelector('#g-clear')) b.querySelector('#g-clear').onclick = () => {
+      // The max SLA comes at once; either Refactor can be skipped.
       run.maxPlus = (run.maxPlus || 0) + 5; run.sla = Math.min(S.maxSla(), run.sla + 5); S.persist();
       const end = () => { U.closePanel(); U.system('BOOKS CLEARED', '+5 max SLA for this run.', 'gold'); done(); };
-      const fin = () => run.deck.some(c => !c.up && SD.cards[c.id].rarity)
-        ? pickCard('Refactor which card?', c => { c.up = true; S.persist(); end(); }, end, c => !c.up && SD.cards[c.id].rarity) : end();
-      pickCard('Remove which card? (2 of 2)', c2 => { remove(c2); fin(); }, fin);
-    }, () => campfire(done, second));
+      const can = c => !c.up && SD.cards[c.id].rarity;
+      const up = c => { c.up = true; S.persist(); };
+      if (!run.deck.some(can)) return end();
+      pickCard('Refactor which card? (1 of 2)', c => { up(c); run.deck.some(can) ? pickCard('Refactor which card? (2 of 2)', c2 => { up(c2); end(); }, end, can) : end(); }, end, can);
+    };
   }
   async function reflect(done) {
     const sv = S.save;
@@ -648,6 +647,7 @@
       // The Unindexed Stacks curse: you know what it is, but you can't find the fix in time.
       const bonus = curse('stacks') ? 0 : (dev('bookmark') ? 2 : 1) + (rel('pipeye') ? 1 : 0);
       C.diagBonus += bonus;
+      if (rel('pipeye')) C.diagDraw = 1;
       Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t));
       saveKnown();
       U.system('DIAGNOSIS CORRECT', bonus ? `+${bonus} Capacity this turn. Weaknesses revealed.` : 'Weaknesses revealed. The Unindexed Stacks hide the fix: no Capacity bonus.');
@@ -692,8 +692,8 @@
     // Persistent Volumes keeps last turn's absorb; Warm Standby starts the fight with some up.
     // Thea's guards (js/club-shops.js) keep it for a set number of turns, too.
     if (!C.infra.some(c => SD.cards[c.id].keepSh) && !(C.hold > 0)) {
-      // The Escrow Vault holds up to 8 of last turn's unused absorb.
-      const held = rel('escrow') ? Math.min(8, Object.values(C.sh).reduce((a, v) => a + Math.max(0, v), 0)) : 0;
+      // The Escrow Vault holds up to 5 of last turn's unused absorb.
+      const held = rel('escrow') ? Math.min(5, Object.values(C.sh).reduce((a, v) => a + Math.max(0, v), 0)) : 0;
       C.sh = zero(); C.sh.any += held;
     }
     if (C.hold > 0) C.hold--;
@@ -712,7 +712,7 @@
       if (d.eachMit) mitigate(d.eachMit + (c.up ? 2 : 0), '', 'hit');
     });
     if (settle()) return;
-    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + (C.turn === 1 && rel('satchel') ? 1 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0) + metro);
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + ((C.elite || C.boss) && rel('satchel') ? 1 : 0) + (C.turn === 1 && C.diagDraw ? 1 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0) + metro);
     if (metro) C.log = (C.log ? C.log + ' ' : '') + 'The Metronome ticks: a quiet turn, so 3 extra cards.';
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();

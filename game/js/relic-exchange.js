@@ -10,9 +10,9 @@
   SD.exchangeShop = [
     // A-Rank
     { id: 'orderbook', name: 'The Order Book', cost: 850, rank: 'A', text: 'Every 10th card you play in a fight draws a card. Every trade, in order, on the record.' },   // Ink Bottle
-    { id: 'clearing', name: 'The Clearing House', cost: 850, rank: 'A', text: 'Break rooms let you Clear the Books: remove 2 cards from your deck, gain 5 max SLA for the run, then Refactor a card.' },   // Peace Pipe, twice, with a meal
+    { id: 'clearing', name: 'The Clearing House', cost: 850, rank: 'A', text: 'Break rooms let you Clear the Books: Refactor 2 cards and gain 5 max SLA for the run.' },   // Peace Pipe, twice, with a meal
     { id: 'marketdepth', name: 'Market Depth', cost: 900, rank: 'A', text: 'Draw 1 more card every turn. There is always another order behind the first.' },
-    { id: 'escrow', name: 'Escrow Vault', cost: 900, rank: 'A', text: 'Up to 8 absorb you don\'t use carries over to your next turn. Held until it\'s safe to let go.' },   // Orichalcum
+    { id: 'escrow', name: 'Escrow Vault', cost: 900, rank: 'A', text: 'Up to 5 absorb you don\'t use carries over to your next turn. Held until it\'s safe to let go.' },   // Orichalcum
     { id: 'bluechip', name: 'Blue-Chip Portfolio', cost: 1000, rank: 'A', text: 'Whenever you would lose SLA, lose 1 less. Boring. Reliable. Up.' },   // Tungsten Rod
     { id: 'genesis', name: 'The Genesis Ledger', cost: 1000, rank: 'A', text: '+25 max SLA. Entry one. Every balance since is built on it.' },
     // S-Rank
