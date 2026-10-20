@@ -181,6 +181,29 @@
     BRAZIERS.forEach(([x, y]) => m.put(x, y, '#'));
     const FLOOR = pic('assets/img/arc/ar-floor.webp');
 
+    // ---------- Fire ----------
+    // The ten braziers flicker (js/scene.js ANIM), and so do the six torches painted into the floor: four on the ring's
+    // corner posts and two either side of the great door, each a strip of frames cut from the floor picture at
+    // [left, top] (tools/arena_fires.py TORCHES) and laid back over it. Rain puts them all out (chapter 10's storm, or
+    // rain forced in debug, js/northroad.js NR.doused): charred braziers, the floor picture with the torches out, no
+    // firelight, and smoke curling up off each one.
+    SD.arcArt.objects['ar-brazier-out'] = [23, 58];
+    const WEATHER = 'sun', out = () => NR.doused(WEATHER);
+    const FLOOR_OUT = pic('assets/img/arc/ar-floor-out.webp');
+    const TORCHES = [[538, 430], [812, 430], [538, 530], [812, 530], [582, 106], [756, 106]]
+      .map(([x, y], i) => ({ x, y, im: pic('assets/img/arc/ar-torch-' + i + '-anim.webp') }));
+    const FIRES = BRAZIERS.map(([x, y]) => ({ name: 'ar-brazier', x, y }));
+    // Where the smoke rises from, in floor pixels: each brazier's bowl, then each torch's head.
+    const SMOKE = BRAZIERS.map(([x, y]) => [(x + 0.5) * 32, (y + 1) * 32 - 46, 0.7])
+      .concat([[570, 470], [845, 470], [570, 572], [845, 572], [614, 138], [788, 138]].map(([x, y]) => [x, y, 0.5]));
+    function smoke(ctx, t, ts) {
+      if (out()) SMOKE.forEach(([x, y, k]) => NR.smoke(ctx, t, ts, x * ts / 32, y * ts / 32, k, 8));
+    }
+    NR.onGo.push((key, sc) => { if (key === 'arena' && !sc.fx.includes(smoke)) sc.fx.push(smoke); });
+    const LIGHTS = BRAZIERS.map(([x, y]) => ({ x, y: y - 1, r: 2.6, rgb: FIRE }))
+      .concat([[17.2, 15], [25.8, 15], [17.2, 19], [25.8, 19], [19.3, 4.6], [24.7, 4.6]].map(([x, y]) => ({ x, y, r: 2.4, rgb: FIRE })));
+    const BOX = [{ x: 31, y: 3.2, r: 2.4, rgb: '255,200,120' }];   // the emperor's box (tools/arena_art.py puts it at 31.5)
+
     // ---------- Wind ----------
     // A dry wind blows west to east. Tumbleweeds roll across the sand, bouncing and spinning, each on a lane clear of
     // the ring; they are actors (solid: false, they can't be talked to) so people are drawn in front of or behind
@@ -208,7 +231,12 @@
     let cam = { x: 0, y: 0, ts: 32 };
     function under(ctx, ts, t) {
       const T = ctx.getTransform(); cam = { x: -T.e / T.a, y: -T.f / T.d, ts };   // scene.js has shifted the canvas by the camera
-      if (FLOOR.complete && FLOOR.naturalWidth) ctx.drawImage(FLOOR, 0, 0, W * ts, H * ts);
+      const dark = out(), fl = dark && ok(FLOOR_OUT) ? FLOOR_OUT : FLOOR;
+      FIRES.forEach(o => { o.name = dark ? 'ar-brazier-out' : 'ar-brazier'; });
+      if (ok(fl)) ctx.drawImage(fl, 0, 0, W * ts, H * ts);
+      if (!dark) TORCHES.forEach((c, i) => {
+        if (ok(c.im)) ctx.drawImage(c.im, (Math.floor(t * 9) + i * 3) % 8 * 64, 0, 64, 64, c.x * ts / 32, c.y * ts / 32, 2 * ts, 2 * ts);
+      });
       const sc = NR.scene && NR.scene();
       TW.forEach(([k, speed], j) => {
         const a = sc && sc.actors['tumble' + j]; if (!a) return;
@@ -288,7 +316,7 @@
       objects: [
         ...[7, 13.5, 27.4, 36].map(x => ({ name: 'ar-banner', x, y: 6.4 })),
         { name: 'ar-weapons', x: 11, y: 7 }, { name: 'ar-weapons', x: 32, y: 7, flip: true },
-        ...BRAZIERS.map(([x, y]) => ({ name: 'ar-brazier', x, y })),
+        ...FIRES,
         { name: 'ar-bracket', x: 7, y: 10 }, { name: 'ar-booth', x: 36.5, y: 10 }, { name: 'ar-gong', x: 31, y: 13 },
         { name: 'ar-weapons', x: 8, y: 19 }, { name: 'cp-dummy', x: 12, y: 19 }, { name: 'cp-dummy', x: 10, y: 21 },
         { name: 'ar-banner', x: 16, y: 15 }, { name: 'ar-banner', x: 27, y: 15 },
@@ -297,16 +325,14 @@
         { name: 'ar-crates', x: 5, y: 29 }, { name: 'ar-crates', x: 38, y: 29, flip: true },
         { name: 'ar-pillar', x: 19.5, y: 32.2 }, { name: 'ar-pillar', x: 23.5, y: 32.2 }
       ],
-      lights: BRAZIERS.map(([x, y]) => ({ x, y: y - 1, r: 2.6, rgb: FIRE }))
-        .concat([[17.2, 15], [25.8, 15], [17.2, 19], [25.8, 19], [19.3, 4.6], [24.7, 4.6]].map(([x, y]) => ({ x, y, r: 2.4, rgb: FIRE })))
-        .concat([{ x: 31, y: 3.2, r: 2.4, rgb: '255,200,120' }]),   // the emperor's box (tools/arena_art.py puts it at 31.5)
+      get lights() { return out() ? BOX : LIGHTS.concat(BOX); },
       labels: [{ x: 21.5, y: 7.4, text: "FIGHTERS' GATE" }, { x: 7, y: 11.1, text: 'THE BRACKET' }, { x: 21.5, y: 23.2, text: 'THE RING' }, { x: 21.5, y: 34.6, text: 'ROAD ↓' }],
       actors: Object.assign({
         gong: { x: 34, y: 13, face: 'south', name: 'GONG' },
         v3: { x: 6, y: 16, face: 'east', name: 'FAN' }, v1: { x: 30, y: 29, face: 'west', name: 'FAN' }, v2: { x: 12, y: 29, face: 'east', name: 'FAN' }, v4: { x: 37, y: 22, face: 'west', name: 'BOOKIE' },
         hero500: { x: 24, y: 18, face: 'west', name: 'HERO #500', hidden: true }
       }, crowd, tumble),
-      back: { D: [21, 7, 'south'], S: [21, 34, 'north'] }, enter: [21, 34, 'north'], ch: 8, music: 'ch8', weather: 'sun'
+      back: { D: [21, 7, 'south'], S: [21, 34, 'north'] }, enter: [21, 34, 'north'], ch: 8, music: 'ch8', weather: WEATHER
     };
   })();
 })();
