@@ -76,12 +76,21 @@
 .pt-champ.taken::after { content: attr(data-by); position: absolute; top: 4px; right: 4px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 9px var(--f-body, system-ui); background: var(--mi-ink); color: #fff; border-radius: 6px; padding: 1px 4px; }
 .pt-champ.lock { background: #ece8f3; cursor: not-allowed; }
 .pt-champ.lock .pic { filter: brightness(0) opacity(.35); }
-.pt-deck { display: grid; gap: 6px; }
-.pt-minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
-.pt-mini { position: relative; background: #fff; border: 2.5px solid var(--mi-ink); border-radius: 12px; padding: 8px 10px 8px 34px; display: grid; gap: 2px; min-width: 0; }
-.pt-mini.infra { background: #eef6ff; }
-.pt-mini .cost { position: absolute; left: 8px; top: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--mi-blue); color: #fff; display: grid; place-items: center; font: 700 12px var(--f-head, system-ui); }
-.pt-mini b { font: 600 14px var(--f-head, system-ui); } .pt-mini small { font-size: 12px; color: var(--mi-muted); }
+.pt-deck { display: grid; gap: 8px; }
+.pt-deck-h { display: grid; gap: 2px; }
+.pt-deck-h b { font: 700 13px var(--f-body, system-ui); } .pt-deck-h small { font: 600 13px var(--f-body, system-ui); color: var(--mi-muted); }
+.pt-sigs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 10px; }
+.pt-sig { background: #fff; border: 2.5px solid var(--mi-ink); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pt-sig.is-infra { background: #eef6ff; }
+.pt-sig-top { display: flex; align-items: flex-start; gap: 8px; }
+.pt-sig-cost { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--mi-blue); color: #fff; border: 2px solid var(--mi-ink); display: grid; place-items: center; font: 700 14px var(--f-head, system-ui); }
+.pt-sig-name { flex: 1; min-width: 0; font: 600 16px/1.2 var(--f-head, system-ui); overflow-wrap: break-word; padding-top: 2px; }
+.pt-sig-art { flex: none; width: 28px; height: 28px; } .pt-sig-art svg { width: 100%; height: 100%; display: block; }
+.pt-sig-kind { display: inline-block; vertical-align: 1px; font: 700 10px/1.5 var(--f-body, system-ui); letter-spacing: .08em; text-transform: uppercase; border: 2px solid var(--mi-ink); border-radius: 6px; padding: 0 5px; margin-right: 2px; background: var(--mi-paper); font-style: normal; }
+.pt-sig.is-infra .pt-sig-kind { background: var(--mi-blue); color: #fff; }
+.pt-sig p { margin: 0; font-size: 14px; line-height: 1.4; }
+.pt-sig .pt-sig-fl { margin-top: auto; padding-top: 6px; border-top: 1.5px dashed rgba(43,35,64,.25); font-size: 13px; font-style: italic; color: var(--mi-muted); }
+.pt-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .pt-bar { position: sticky; bottom: max(10px, env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--mi-cream); border: 2.5px solid var(--mi-ink); border-radius: 14px; padding: 10px 12px; box-shadow: 0 4px 0 rgba(43,35,64,.25); }
 .pt-bar p { margin: 0; font-size: 14px; color: var(--mi-muted); }
 .pt-bar .mi-btn.done { background: var(--mi-mint); color: #fff; }
@@ -89,7 +98,7 @@
 .pt-vis { display: inline-flex; border: 2.5px solid var(--mi-ink); border-radius: 10px; overflow: hidden; }
 .pt-vis button { font: 700 13px var(--f-body, system-ui); padding: 3px 10px; border: 0; background: #fff; color: var(--mi-ink); cursor: pointer; }
 .pt-vis button.on { background: var(--mi-ink); color: #fff; }
-@media (max-width: 560px) { .pt-members { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pt-mem .pt-stage { height: 100px; } .pt-head h2 { font-size: 24px; } }
+@media (max-width: 560px) { .pt-sig { padding: 8px 10px; gap: 4px; } .pt-sig p { font-size: 13.5px; } .pt-members { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pt-mem .pt-stage { height: 100px; } .pt-head h2 { font-size: 24px; } }
 `;
     document.head.appendChild(st);
   }
@@ -104,6 +113,30 @@
   };
   // A link that opens the Guild Hall straight into this party (js/guild.js reads #join-CODE).
   PT.link = code => location.href.split('#')[0] + '#join-' + net.cleanCode(code);
+
+  // A signature card's text is its rules, then a joke. The rules are the leading sentences that start like a game
+  // effect; the rest is flavour. "Infra." is dropped, as the card's kind tag says it. {mit} and the like are filled in.
+  const RULE = /^(Mitigate|Absorb|Draw \d|The team loses|[+-]\d|Exhaust\.|Remove all Stale|Reveal|Always hits|This turn|For \d+ turns|Double all|Your absorb|(Flood|Scan) intents|Bad deploys)/;
+  PT.sigText = function (d) {
+    const n = Object.assign({}, d.abs, d.mit != null ? { mit: d.mit } : null);
+    const all = d.text.replace(/\{(\w+)\}/g, (_, k) => n[k] != null ? n[k] : '').replace(/^Infra\.\s*/, '');
+    const parts = all.split(/(?<=[.!?])\s+(?=\S)/);
+    let i = 0;
+    while (i < parts.length && RULE.test(parts[i])) i++;
+    return i ? { rules: parts.slice(0, i).join(' '), flavor: parts.slice(i).join(' ') } : { rules: all, flavor: '' };
+  };
+  // The chosen champion's three signature cards (Expedition Raid only). ed: the bot being picked for, if any.
+  function sigCards(pick, ed) {
+    const c = CH.get(pick), who = ed ? esc(ed.nick) + '\'s' : 'your';
+    const cards = CH.cards[pick].map(id => {
+      const d = SD.cards[id], t = PT.sigText(d), infra = d.kind === 'infra';
+      const art = SD.art && SD.art.glyph ? `<span class="pt-sig-art" aria-hidden="true">${SD.art.glyph(d.art, infra ? '#2a62c9' : '#2b2340')}</span>` : '';
+      return `<li class="pt-sig${infra ? ' is-infra' : ''}"><div class="pt-sig-top"><span class="pt-sig-cost" title="Costs ${d.cost} Capacity"><span aria-hidden="true">${d.cost}</span><span class="pt-vh">Costs ${d.cost} Capacity.</span></span><b class="pt-sig-name">${esc(d.name)}</b>${art}</div>
+        <p><span class="pt-sig-kind">${infra ? 'Infra' : 'Action'}</span> ${esc(t.rules)}</p>${t.flavor ? `<p class="pt-sig-fl">${esc(t.flavor)}</p>` : ''}</li>`;
+    }).join('');
+    return `<div class="pt-deck"><div class="pt-deck-h"><b id="pt-sig-h">${ed ? esc(ed.nick) + ': ' : ''}${esc(c.name)}'s signature cards</b><small>${esc(c.style)}. In the raid they replace one Hotfix and two Bigger Boxes in ${who} starting deck.</small></div>
+      <ul class="pt-sigs" aria-labelledby="pt-sig-h">${cards}</ul></div>`;
+  }
 
   PT.join = function (hub, room, kind, opts) {
     css();
@@ -201,7 +234,7 @@
           return `<button type="button" class="pt-champ${c.id === pick ? ' sel' : ''}${lock ? ' lock' : ''}${by || boss ? ' taken' : ''}${hb ? ' held' : ''}" data-ch="${c.id}" ${by ? `data-by="${esc(by)}"` : boss ? 'data-by="BOSS"' : hb ? `data-by="${esc(hb)}" title="${esc(hb)} will switch to a free champion"` : ''} ${off ? 'aria-disabled="true"' : ''} aria-pressed="${c.id === pick}"><span class="pic" data-spr="${lock ? 'lock:' : ''}${c.id}"></span><b>${lock ? '???' : esc(c.short)}</b>${lock ? `<small>${esc(c.how)}</small>` : boss ? '<small>She\'s the boss</small>' : ''}</button>`;
         }).join('')}</div>`;
       }).join('');
-      const sig = ctx.deck && pick && CH.cards[pick] ? `<div class="pt-deck"><span class="mi-tag">${ed ? esc(ed.nick) + ': ' : ''}${esc(CH.get(pick).name)}'s signature cards · ${esc(CH.get(pick).style)}</span><div class="pt-minis">${CH.cards[pick].map(id => { const d = SD.cards[id]; return `<div class="pt-mini ${d.kind}"><span class="cost">${d.cost}</span><b>${esc(d.name)}</b><small>${esc(d.text)}</small></div>`; }).join('')}</div></div>` : '';
+      const sig = ctx.deck && pick && CH.cards[pick] ? sigCards(pick, ed) : '';
       const why = ctx.startWhy ? ctx.startWhy() : null;
       const notReady = list.filter(m => m.peer !== leaderPeer && !m.ready).length;
       const bossClash = list.some(m => CH.bossConflict(m.champ, ctx.boss));
