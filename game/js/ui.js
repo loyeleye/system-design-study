@@ -129,7 +129,8 @@
   // ---- Cards ----
   U.cardDef = function (c) { return SD.cards[c.id || c]; };
   U.cardNums = function (c) {
-    const d = U.cardDef(c), up = c.up ? 3 : 0;
+    // c.up: true for a refactored card (+3), or how many +3s it has (Expedition Raid's Temper stacks on a Refactor).
+    const d = U.cardDef(c), up = c.up ? 3 * (+c.up || 1) : 0;
     const n = {};
     if (d.abs) for (const k in d.abs) n[k] = d.abs[k] + up;
     if (d.mit) n.mit = d.mit + up;
@@ -145,7 +146,7 @@
     const cost = d.xcost ? 'X' : opts.cost != null ? opts.cost : d.cost;
     return `<div class="card ${d.kind} r-${d.rarity}${opts.dim ? ' dim' : ''}" style="--h:${hue}" data-i="${opts.i != null ? opts.i : ''}" tabindex="0" role="button" aria-label="${U.esc(d.name)}, cost ${cost}. ${U.esc(text)}">
       <div class="c-cost">${cost}</div>
-      <div class="c-name">${U.esc(d.name)}${c.up ? '+' : ''}${c.replay ? ` <b title="Replay ${c.replay}">⟳${c.replay}</b>` : ''}</div>
+      <div class="c-name">${U.esc(d.name)}${c.up && c.plus !== false ? '+' : ''}${c.replay ? ` <b title="Replay ${c.replay}">⟳${c.replay}</b>` : ''}</div>
       <div class="c-art">${SD.art.glyph(d.art, `hsl(${hue},70%,38%)`)}</div>
       <div class="c-kind">${d.kind === 'infra' ? 'INFRA' : 'ACTION'}${d.concept ? ' · ' + U.esc(SD.concepts[d.concept].name) : ''}</div>
       <div class="c-text">${U.esc(text)}</div></div>`;
