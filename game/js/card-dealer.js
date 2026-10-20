@@ -116,35 +116,37 @@
     const hello = pick(D.sale() ? HELLO_STORM : HELLO);
     return new Promise(res => {
       let done = false;
-      const grid = (ids, label) => ids.map(id => {
-        const p = D.price(id);
-        return `<div class="buy">${U.cardHtml({ id }, { i: label ? '' : id, dim: !label && sv.shards < p })}<span class="price">${label || p + ' shards'}</span></div>`;
-      }).join('');
+      const items = (ids, label) => ids.map(id => ({ id, card: id, name: SD.cards[id].name, cost: D.price(id), label,
+        state: SD.shop.state({ owned: !!label, cost: D.price(id), have: sv.shards }) }));
       const render = () => {
         const order = { ancient: 0, rare: 1, uncommon: 2, common: 3 }, rank = id => order[SD.cards[id].rarity] || 0;
         const stock = D.stock().sort((a, b) => rank(a) - rank(b) || D.base(b) - D.base(a));
         const bought = S.cardPool ? S.cardPool() : [], mine = stock.filter(id => bought.includes(id)), rest = stock.filter(id => !bought.includes(id));
         const pinned = list().filter(p => SD.cards[p.id]);
         const run = !!(sv.run && !sv.run.tutorial);
-        const body = `<div class="shopkeep">${SD.art.portrait('kagemaru', 72)}<p>"${U.esc(hello)}"</p></div>
-          <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span>${D.sale() ? '<span>25% off · the end of the world</span>' : ''}</div>
-          <p class="muted small">A pinned card joins your starting deck from your next run, on top of your usual cards, and stays while you keep winning. Lose or abandon a run with it and the pin is gone. A pin costs a tenth of the card's unlock price${D.sale() ? ', and 25% less today' : ''}. No refunds.</p>
-          ${pinned.length ? `<p class="q-ctx">Pinned (${pinned.length})</p><div class="cardgrid pick">${pinned.map(p => grid([p.id], p.live && run ? 'In this run' : p.live ? 'Kept: you won' : 'From your next run')).join('')}</div>` : ''}
-          ${mine.length ? `<p class="q-ctx">Cards you unlocked at the shops</p><div class="cardgrid pick">${grid(mine)}</div>` : ''}
-          ${rest.length ? `<p class="q-ctx">Everyday card rewards</p><div class="cardgrid pick">${grid(rest)}</div>` : ''}
-          ${stock.length ? '' : '<p class="muted small">"You\'ve pinned everything I can get my hands on. Heh. I\'m almost impressed."</p>'}
-          <div class="row"><button class="ghost" id="kg-chat">Just chat</button></div>`;
-        const b = U.panel(body, { title: "KAGEMARU'S PINS", cls: 'wide', onClose: () => res(done || 'closed') });
-        b.querySelector('#kg-chat').onclick = () => { U.closePanel(); res(done || false); };
-        b.querySelectorAll('.card').forEach(el => el.onclick = () => {
-          const id = el.dataset.i;
-          if (!id || !D.stock().includes(id)) return;
-          const p = D.price(id);
-          if (sv.shards < p) return;
-          sv.shards -= p; list().push({ id, live: false }); S.persist(); done = true;
-          if (AU) AU.sfx('coin');
-          U.system('CARD PINNED!', `${U.esc(SD.cards[id].name)} joins your starting deck from your next run. "${U.esc(pick(PIN))}"`, 'gold');
-          render();
+        SD.shop.panel({
+          title: "KAGEMARU'S PINS", keeper: 'kagemaru', line: hello, wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' },
+          pills: D.sale() ? ['25% off · the end of the world'] : [],
+          note: `A pinned card joins your starting deck from your next run, on top of your usual cards, and stays while you keep winning. Lose or abandon a run with it and the pin is gone. A pin costs a tenth of the card's unlock price${D.sale() ? ', and 25% less today' : ''}. No refunds.`,
+          sections: [
+            { label: `Pinned (${pinned.length})`, items: pinned.flatMap(p => items([p.id], p.live && run ? 'In this run' : p.live ? 'Kept: you won' : 'From your next run')) },
+            { label: 'Cards you unlocked at the shops', items: items(mine) },
+            { label: 'Everyday card rewards', items: items(rest) }
+          ],
+          extra: stock.length ? '' : '<p class="muted small">"You\'ve pinned everything I can get my hands on. Heh. I\'m almost impressed."</p>',
+          footer: '<div class="row"><button class="ghost" id="kg-chat">Just chat</button></div>',
+          onClose: () => res(done || 'closed'),
+          wire: b => { b.querySelector('#kg-chat').onclick = () => { U.closePanel(); res(done || false); }; },
+          onBuy: x => {
+            const id = x.id;
+            if (!D.stock().includes(id)) return;
+            const p = D.price(id);
+            if (sv.shards < p) return;
+            sv.shards -= p; list().push({ id, live: false }); S.persist(); done = true;
+            if (AU) AU.sfx('coin');
+            U.system('CARD PINNED!', `${U.esc(SD.cards[id].name)} joins your starting deck from your next run. "${U.esc(pick(PIN))}"`, 'gold');
+            render();
+          }
         });
       };
       render();

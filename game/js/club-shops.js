@@ -99,21 +99,22 @@
       let shopped = false;
       const owned = id => S.cardPool().includes(id);
       const render = () => {
-        const shelves = sh.shelves.map((label, n) => `<p class="q-ctx">${label}</p><div class="cardgrid pick">${stock.filter(it => it.shelf === n).map(it => {
-          const have = owned(it.id);
-          return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || sv.shards < it.cost })}<span class="price">${have ? 'Unlocked' : it.cost + ' shards'}</span></div>`;
-        }).join('')}</div>`).join('');
-        const b = U.panel(`<div class="shopkeep">${SD.art.portrait(who, 72)}<p>"${U.esc(pitch)}"</p></div>
-          <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span></div>
-          <p class="muted small">Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on. ${U.esc(sh.note)}</p>
-          ${shelves}<div class="row"><button class="ghost" id="cs-chat">Just chat</button></div>`, { title: sh.title, cls: 'wide', onClose: () => res(shopped || 'closed') });
-        b.querySelector('#cs-chat').onclick = () => { U.closePanel(); res(false); };
-        b.querySelectorAll('.card').forEach(el => el.onclick = () => {
-          const it = stock.find(x => x.id === el.dataset.i);
-          if (!it || owned(it.id) || sv.shards < it.cost) return;
-          sv.shards -= it.cost; S.cardPool().push(it.id); S.persist(); shopped = true;
-          if (AU) AU.sfx('coin');
-          U.system('CARD UNLOCKED!', `${U.esc(SD.cards[it.id].name)} can turn up as a card reward from your next run. "${U.esc(pick(sh.buy))}"`, 'gold'); render();
+        const shelves = sh.shelves.map((label, n) => ({ label, items: stock.filter(it => it.shelf === n).map(it => ({
+          id: it.id, card: it.id, name: SD.cards[it.id].name, cost: it.cost, label: 'Unlocked',
+          state: SD.shop.state({ owned: owned(it.id), cost: it.cost, have: sv.shards }) })) }));
+        SD.shop.panel({
+          title: sh.title, keeper: who, line: pitch, wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' },
+          note: `Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on. ${U.esc(sh.note)}`,
+          sections: shelves, footer: '<div class="row"><button class="ghost" id="cs-chat">Just chat</button></div>',
+          onClose: () => res(shopped || 'closed'),
+          wire: b => { b.querySelector('#cs-chat').onclick = () => { U.closePanel(); res(false); }; },
+          onBuy: x => {
+            const it = stock.find(y => y.id === x.id);
+            if (!it || owned(it.id) || sv.shards < it.cost) return;
+            sv.shards -= it.cost; S.cardPool().push(it.id); S.persist(); shopped = true;
+            if (AU) AU.sfx('coin');
+            U.system('CARD UNLOCKED!', `${U.esc(SD.cards[it.id].name)} can turn up as a card reward from your next run. "${U.esc(pick(sh.buy))}"`, 'gold'); render();
+          }
         });
       };
       render();

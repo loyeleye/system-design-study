@@ -1,14 +1,18 @@
 // The clock: one loop is one day in Pingsby, in four time blocks (docs: /mnt/project-files/living-npcs/design.md).
-// Time never ticks on its own. It moves on one block when you do something (a quest step, a mini-game, a lesson,
-// the daily review, a blueprint in the Hall) and when the story says so; walking and plain talk don't move it.
-// Entering the dungeon jumps to night, and the next loop starts in the morning. Night is the end of the day: only a
-// run brings the next morning. From Gary leaving (chapter 9's end) until chapter 10 is cleared it is always night.
+// Time never ticks on its own. It moves on one block when you finish a quest (a town quest or an isles quest), when
+// you wait on the plaza bench, and when the story says so; talking, walking, lessons and reviews don't move it.
+// The day never turns to night while the deepest dungeon you've reached still has a curse no Plot Device has lifted:
+// it stays evening until those quests are done. Entering the dungeon jumps to night, and the next loop starts in the
+// morning. Night is the end of the day: only a run brings the next morning. From Gary leaving (chapter 9's end) until
+// chapter 10 is cleared it is always night.
 //
 // API (other files read the clock through this, never through the save):
 //   SD.clock.block()          'morning' | 'afternoon' | 'evening' | 'night', for the current loop
 //   SD.clock.index()          0..3, the same as a number
 //   SD.clock.label()          'Evening', for the HUD ("Loop 12 · Evening")
-//   SD.clock.advance(why)     move on one block; does nothing at night or while frozen. Returns the block.
+//   SD.clock.advance(why)     move on one block; does nothing at night, while frozen, or (at evening) while
+//                             nightOk() is false. Returns the block.
+//   SD.clock.nightOk()        true once the deepest dungeon reached has no curses left
 //   SD.clock.set(block, why)  jump to a block (story beats, entering the dungeon)
 //   SD.clock.frozen()         true while chapter 10 keeps the town at night
 //   SD.clock.onChange(fn)     fn(block, previous, why) after every change
@@ -59,10 +63,14 @@
     }
     return now;
   };
+  // Night waits on the dungeon's curses (js/quests.js): chapters without curses never hold it back.
+  C.nightOk = () => !(SD.quests && SD.quests.curses && SD.quests.curses(S.save.chapter || 1).length);
   C.advance = function (why) {
     if (C.frozen()) return 'night';
     const i = BLOCKS.indexOf(st().block);
-    return i >= BLOCKS.length - 1 ? 'night' : C.set(BLOCKS[i + 1], why || 'action');
+    if (i >= BLOCKS.length - 1) return 'night';
+    if (BLOCKS[i + 1] === 'night' && !C.nightOk()) return st().block;
+    return C.set(BLOCKS[i + 1], why || 'action');
   };
 
   // Walking into the dungeon is the evening's work, whatever the time: it is night when you come up for air.
@@ -82,6 +90,11 @@
       return;
     }
     const next = BLOCKS[BLOCKS.indexOf(b) + 1];
+    if (next === 'night' && !C.nightOk()) {
+      await U.dialog([{ s: 'narr', t: 'You sit and watch the sun hang low over the river. It doesn\'t seem to want to set.' },
+        { s: 'pip', t: 'Not while the dungeon\'s still cursed. Lift every curse with the town\'s quests and the night can come.' }]);
+      return;
+    }
     const go = await new Promise(res => {
       const p = U.panel(`<p>A wooden bench by the well, ${b === 'evening' ? 'cool in the evening air' : 'warm from the sun'}. Someone has carved <i>"cron was here"</i> into the armrest, every hour on the hour.</p>
         <div class="row"><button class="primary" id="bn-y">Wait until ${LABEL[next].toLowerCase()}</button><button class="ghost" id="bn-n">Not now</button></div>`,

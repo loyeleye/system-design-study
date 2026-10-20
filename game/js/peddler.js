@@ -126,39 +126,40 @@
       const price = it => sales.includes(it.id) ? Math.round(it.cost / 2) : it.cost;
       const pitch = full ? "Every card I own, for you. Two are on sale. I chose which. You know why."
         : "Psst. Cards. Hand-picked. Don't tell Ayo, he thinks cards are a fad.";
-      let body = `<div class="shopkeep">${SD.art.portrait('aigerim', 72)}<p>"${U.esc(pitch)}"</p></div>
-        <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span></div>
-        <div class="tabs" role="tablist">${[['shop', full ? 'Shop' : 'Her coat'], ['lib', `Your cards (${sv.cardLib.length + S.cardPool().length})`]].map(([k, l]) => `<button role="tab" class="tab${k === tab ? ' on' : ''}" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
+      const sections = [];
+      let body = '';
       if (tab === 'shop') {
         const sh = full && P.shelf();
-        if (sh) {
-          const have = owned(sh), p = P.shelfPrice(sh);
-          body += `<div class="aig-shelf"><h4>THE RARE SHELF · ${SD.cards[sh].rarity === 'ancient' ? 'ANCIENT' : 'RARE'}</h4><p class="muted small">One card a loop. "My grandmother's eagle brought this one. It chose you. I may have helped it choose."</p>
-            <div class="cardgrid pick"><div class="buy">${U.cardHtml({ id: sh }, { i: sh, dim: have || sv.shards < p })}<span class="price">${have ? 'Unlocked' : p + ' shards'}</span></div></div></div>`;
-        } else if (full && P.shelfOpen()) body += '<div class="aig-shelf"><h4>THE RARE SHELF</h4><p class="muted small">Empty. You own everything on it. She is so proud of you it is frightening.</p></div>';
-        body += `<p class="muted small">Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on.${full ? ' Two cards are half price each loop.' : ' She opens a proper shop later, somewhere you are going.'}</p>
-          <div class="cardgrid pick">${stock().map(it => {
-            const have = owned(it.id), p = price(it);
-            return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || sv.shards < p })}<span class="price">${have ? 'Unlocked' : sales.includes(it.id) ? `<s>${it.cost}</s> <b>${p}</b> · SALE` : p + ' shards'}</span></div>`;
-          }).join('')}</div>`;
+        const cardItem = (id, cost, was) => ({ id, card: id, name: SD.cards[id].name, cost, was, label: 'Unlocked', state: SD.shop.state({ owned: owned(id), cost, have: sv.shards }) });
+        if (sh) sections.push({ cls: 'aig-shelf', label: `The Rare Shelf · ${SD.cards[sh].rarity === 'ancient' ? 'Ancient' : 'Rare'}`,
+          note: 'One card a loop. "My grandmother\'s eagle brought this one. It chose you. I may have helped it choose."', items: [cardItem(sh, P.shelfPrice(sh))] });
+        else if (full && P.shelfOpen()) sections.push({ cls: 'aig-shelf', label: 'The Rare Shelf', note: 'Empty. You own everything on it. She is so proud of you it is frightening.', items: [] });
+        sections.push({ label: full ? 'The shop' : 'Her coat', items: stock().map(it => cardItem(it.id, price(it), sales.includes(it.id) ? it.cost : null)) });
       } else {
         const pool = S.cardPool();
         body += pool.length ? `<p class="muted small">Unlocked: these can turn up as card rewards after any fight.</p>
           <div class="cardgrid pick">${pool.map(id => `<div class="buy">${U.cardHtml({ id }, { i: '' })}<span class="price">In card rewards</span></div>`).join('')}</div>` : '';
         body += sv.cardLib.length ? `<p class="muted small">Quest prizes join your starting deck. Tap one to bench it or put it back; benched cards stay yours but skip your next runs.</p>
-          <div class="cardgrid pick">${sv.cardLib.map(x => `<div class="buy">${U.cardHtml({ id: x.id }, { i: x.id, dim: !x.on })}<span class="price">${x.on ? 'In your deck' : 'Benched'}</span></div>`).join('')}</div>` : '';
+          <div class="cardgrid pick lib">${sv.cardLib.map(x => `<div class="buy">${U.cardHtml({ id: x.id }, { i: x.id, dim: !x.on })}<span class="price">${x.on ? 'In your deck' : 'Benched'}</span></div>`).join('')}</div>` : '';
         if (!pool.length && !sv.cardLib.length) body += '<p class="muted small">Nothing yet. She has already written down which one you will buy first.</p>';
       }
-      const b = U.panel(body, { title: full ? "AIGERIM'S CARD SHOP" : "AIGERIM'S COAT", cls: 'wide' });
-      b.querySelectorAll('[data-tab]').forEach(el => el.onclick = () => { tab = el.dataset.tab; render(); });
-      b.querySelectorAll('.card').forEach(el => el.onclick = () => {
-        const id = el.dataset.i;
-        if (tab === 'lib') { const x = deck(id); if (!x) return; x.on = !x.on; S.persist(); AU.sfx('blip'); render(); return; }
-        const shelf = full && P.shelf() === id;
-        const it = shelf ? { id, cost: P.shelfPrice(id) } : stock().find(x => x.id === id), p = it && (shelf ? it.cost : price(it));
-        if (!it || owned(id) || sv.shards < p) return;
-        sv.shards -= p; S.cardPool().push(id); S.persist();
-        U.system('CARD UNLOCKED!', `${U.esc(SD.cards[id].name)} can turn up as a card reward from your next run. "${U.esc(pick(BUY))}"`, 'gold'); render();
+      SD.shop.panel({
+        title: full ? "AIGERIM'S CARD SHOP" : "AIGERIM'S COAT", keeper: 'aigerim', line: pitch, wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' },
+        tabs: [['shop', full ? 'Shop' : 'Her coat'], ['lib', `Your cards (${sv.cardLib.length + S.cardPool().length})`]], tab, onTab: t => { tab = t; render(); },
+        note: tab === 'shop' ? `Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on.${full ? ' Two cards are half price each loop.' : ' She opens a proper shop later, somewhere you are going.'}` : '',
+        sections, extra: body,
+        // Your cards: tap a quest prize to bench it or put it back.
+        wire: b => b.querySelectorAll('.lib .card').forEach(el => el.onclick = () => {
+          const x = deck(el.dataset.i); if (!x) return; x.on = !x.on; S.persist(); AU.sfx('blip'); render();
+        }),
+        onBuy: x => {
+          const id = x.id, shelf = full && P.shelf() === id;
+          const it = shelf ? { id, cost: P.shelfPrice(id) } : stock().find(y => y.id === id), p = it && (shelf ? it.cost : price(it));
+          if (!it || owned(id) || sv.shards < p) return;
+          sv.shards -= p; S.cardPool().push(id); S.persist();
+          if (AU) AU.sfx('coin');
+          U.system('CARD UNLOCKED!', `${U.esc(SD.cards[id].name)} can turn up as a card reward from your next run. "${U.esc(pick(BUY))}"`, 'gold'); render();
+        }
       });
     };
     render();

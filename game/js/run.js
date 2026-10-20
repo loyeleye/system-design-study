@@ -429,22 +429,28 @@
     let removed = 0, healed = false;
     const removals = rel('duster') ? 2 : 1;
     function render() {
-      const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Grandma Wen runs a branch down here too, dear. Don't ask how. Everything is fresh. Well. Fresh enough."</p></div>
-        <div class="loot"><span>You have <b>${run.bits}</b> bits</span></div>
-        <div class="cardgrid pick">${stock.map((id, i) => sold.has(i) ? '<div class="card sold">SOLD</div>' : `<div class="buy">${U.cardHtml({ id }, { i, dim: run.bits < price[SD.cards[id].rarity] })}<span class="price">${price[SD.cards[id].rarity]} bits</span></div>`).join('')}</div>
-        <div class="row">
+      // Bits are small change, so nothing here asks before buying.
+      SD.shop.panel({
+        title: 'CACHE CAFÉ', keeper: 'wen', line: "Grandma Wen runs a branch down here too, dear. Don't ask how. Everything is fresh. Well. Fresh enough.",
+        wallet: { have: run.bits, unit: 'bits', short: 'bits' }, noClose: true, confirmAt: Infinity,
+        sections: [{ items: stock.map((id, i) => ({ id: i, card: id, name: SD.cards[id].name, cost: price[SD.cards[id].rarity],
+          state: SD.shop.state({ sold: sold.has(i), cost: price[SD.cards[id].rarity], have: run.bits }) })) }],
+        footer: `<div class="row">
           <button id="rm" ${removed >= removals || run.bits < 35 ? 'disabled' : ''}>Remove a card · 35${removals > 1 ? ` (${removals - removed} left)` : ''}</button>
           <button id="heal" ${healed || run.bits < 20 ? 'disabled' : ''}>Tea: +${tea} SLA · 20</button>
           <button class="primary" id="leave">Leave</button>
-        </div>`, { title: 'CACHE CAFÉ', noClose: true, cls: 'wide' });
-      b.querySelectorAll('.buy .card').forEach(el => el.onclick = () => {
-        const i = +el.dataset.i, id = stock[i], p = price[SD.cards[id].rarity];
-        if (run.bits < p) return;
-        run.bits -= p; run.deck.push({ id, up: false }); sold.add(i); AU.sfx('coin'); S.persist(); render();
+        </div>`,
+        wire: b => {
+          b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + tea); healed = true; AU.sfx('heal'); S.persist(); render(); };
+          b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed++; S.persist(); render(); }, render);
+          b.querySelector('#leave').onclick = () => { U.closePanel(); done(); };
+        },
+        onBuy: x => {
+          const i = x.id, id = stock[i], p = price[SD.cards[id].rarity];
+          if (sold.has(i) || run.bits < p) return;
+          run.bits -= p; run.deck.push({ id, up: false }); sold.add(i); AU.sfx('coin'); S.persist(); render();
+        }
       });
-      b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + tea); healed = true; AU.sfx('heal'); S.persist(); render(); };
-      b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed++; S.persist(); render(); }, render);
-      b.querySelector('#leave').onclick = () => { U.closePanel(); done(); };
     }
     render();
   }
