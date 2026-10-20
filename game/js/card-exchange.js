@@ -50,6 +50,7 @@
     return P && P.ANCIENT && (P.ANCIENT.includes(id) || Object.values(SD.chapters).some(c => c.rareCard === id)) ? P.shelfPrice(id) : null;
   };
   const SHELF = { A: 'A', S: 'S', Floor: 'S' };   // the Guild rank each shelf opens at
+  // Only shelves open now or at the next rank show; ones two or more ranks up are hidden.
   const LABEL = { A: 'A-Rank shelf · 2 Capacity', S: 'S-Rank shelf · 3 Capacity', Floor: 'The trading floor · Ancient' };
 
   Object.assign(SD.cast, {
@@ -84,13 +85,13 @@
       let shopped = false;
       const owned = id => S.cardPool().includes(id);
       const render = () => {
-        const shelves = ['A', 'S', 'Floor'].map(r => {
+        const shelves = ['A', 'S', 'Floor'].filter(r => rankAt(SHELF[r]) <= mine + 1).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
           return `<p class="q-ctx">${LABEL[r]}${ok ? '' : ` · unlocks at ${SHELF[r]}-Rank`}</p><div class="cardgrid pick">${SD.cardExchange.filter(it => it.rank === r).map(it => {
             const have = owned(it.id);
             return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || !ok || sv.shards < it.cost })}<span class="price">${have ? 'Unlocked' : it.cost + ' shards'}</span></div>`;
           }).join('')}</div>`;
-        }).join('');
+        }).join('') || `<p class="muted small">Nothing for a ${S.rank()}-Rank yet. Come back when your Guild rank is higher.</p>`;
         const b = U.panel(`<div class="shopkeep">${SD.art.portrait('toro', 72)}<p>"${U.esc(pitch)}"</p></div>
           <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
           <p class="muted small">Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on. Replay: the card goes again, free. Retain: it stays in your hand when your turn ends.</p>

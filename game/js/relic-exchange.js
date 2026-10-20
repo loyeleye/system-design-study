@@ -24,6 +24,7 @@
     { id: 'clearing', name: 'The Clearing House', cost: 2000, rank: 'Ancient', text: 'Break rooms let you Clear the Books: remove 2 cards from your deck and gain 5 max SLA for the run.' }   // Peace Pipe, twice, with a meal
   ];
   const SHELF = { A: 'A', S: 'S', Ancient: 'S' };   // the Guild rank each shelf opens at
+  // Only shelves open now or at the next rank show; ones two or more ranks up are hidden.
 
   // Resolves true if you shopped, false to let the trader just chat.
   function open() {
@@ -31,13 +32,13 @@
     return new Promise(res => {
       let shopped = false;
       const render = () => {
-        const shelves = ['A', 'S', 'Ancient'].map(r => {
+        const shelves = ['A', 'S', 'Ancient'].filter(r => rankAt(SHELF[r]) <= mine + 1).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
           return `<p class="q-ctx">${r === 'Ancient' ? 'Under the counter: Ancient' : `${r}-Rank shelf`}${ok ? '' : ` · unlocks at ${SHELF[r]}-Rank`}</p><div class="opts">${SD.exchangeShop.filter(it => it.rank === r).map(it => {
             const own = sv.relics.includes(it.id);
             return `<button class="opt" data-r="${it.id}" ${own || !ok || sv.shards < it.cost ? 'disabled' : ''}><b>${U.esc(it.name)}</b> · ${own ? 'Owned' : it.cost + ' shards'}<br><span class="small">${U.esc(it.text)}</span></button>`;
           }).join('')}</div>`;
-        }).join('');
+        }).join('') || `<p class="muted small">Nothing for a ${S.rank()}-Rank yet. Come back when your Guild rank is higher.</p>`;
         const b = U.panel(`<div class="shopkeep">${SD.art.portrait('trader', 72)}<p>"Everything in the Exchange is down. Except these. These only go up. Mostly the price."</p></div>
           <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
           ${shelves}<div class="row"><button class="ghost" id="rx-chat">Just chat</button></div>`, { title: 'THE EXCHANGE · RELICS', onClose: () => res(shopped || 'closed') });

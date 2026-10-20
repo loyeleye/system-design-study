@@ -396,12 +396,13 @@
   async function cafe() {
     const sv = S.save;
     if (sv.flags.wenLoop !== sv.loop) { sv.flags.wenLoop = sv.loop; await U.dialog(SD.story.wen.map(t => ({ s: 'wen', t }))); }
-    // Keepsakes past the first shelf unlock with your Guild rank; locked ones show what is coming.
+    // Keepsakes past the first shelf unlock with your Guild rank. The next rank's shelf shows, locked, as a preview;
+    // shelves two or more ranks up stay hidden until then.
     const rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
     const render = () => {
       // Gifts (gift: true) are never for sale: they sit on their own shelf once a friend has given you one.
       const sale = SD.metaShop.filter(it => !it.gift), gifts = SD.metaShop.filter(it => it.gift && sv.relics.includes(it.id));
-      const shelves = SD.ranks.filter(r => sale.some(it => it.rank === r)).map(r => {
+      const shelves = SD.ranks.filter(r => rankAt(r) <= mine + 1 && sale.some(it => it.rank === r)).map(r => {
         const open = rankAt(r) <= mine;
         return `<p class="q-ctx">${r === 'E' ? 'On the counter' : `${r}-Rank shelf`}${open ? '' : ` · unlocks at ${r}-Rank`}</p><div class="opts">${sale.filter(it => it.rank === r).map(it => {
           const own = sv.relics.includes(it.id);
