@@ -388,8 +388,8 @@
     run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
     if (rel('postnotes')) run.sla = Math.min(S.maxSla(), run.sla + 5);
     R.gainXp(xp);
-    // Grandma's Feather Duster dusts off (Refactors) a basic card after every incident and elite.
-    if (!opts.boss && rel('duster')) {
+    // Grandma's Feather Duster dusts off (Refactors) a basic card after every second fight.
+    if (!opts.boss && rel('duster') && (run.dusted = (run.dusted || 0) + 1) % 2 === 0) {
       const basics = run.deck.filter(c => SD.cards[c.id].rarity === 'basic' && !c.up);
       if (basics.length) { const c = basics[Math.floor(Math.random() * basics.length)]; c.up = true; U.system('DUSTED OFF', U.esc(SD.cards[c.id].name) + '+'); }
     }

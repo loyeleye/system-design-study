@@ -1030,7 +1030,7 @@ SD.metaShop = [
   { id: 'standby', name: 'Warm Standby', cost: 250, rank: 'B', text: 'Start every fight with 8 Any absorb already up.' },   // Anchor
   { id: 'breaker', name: 'Circuit Breaker', cost: 275, rank: 'B', text: 'The first time you would lose SLA in each fight, lose none.' },   // Fossilized Helix
   { id: 'drip', name: 'Coffee Drip', cost: 290, rank: 'B', text: 'Every third turn, +1 Capacity.' },   // Happy Flower
-  { id: 'duster', name: "Grandma's Feather Duster", cost: 280, rank: 'B', text: 'After every incident and elite you resolve, Grandma dusts off one basic card: it is Refactored.' },
+  { id: 'duster', name: "Grandma's Feather Duster", cost: 280, rank: 'B', text: 'After every second fight you resolve, Grandma dusts off one basic card: it is Refactored.' },
   { id: 'membercard', name: 'Guild Membership Card', cost: 250, rank: 'B', text: 'Lounge access: every break room lets you choose two options instead of one.' },   // Membership Card, for the break room
   // A-Rank
   { id: 'stamp', name: 'Rubber Stamp of Approval', cost: 475, rank: 'A', text: 'Every 5th card that mitigates in a run mitigates double.' },   // Pen Nib
