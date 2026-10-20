@@ -15,7 +15,8 @@
   const comms = () => { const I = isles(); return I ? I.commissions.map(c => I.st().commissions[c.id]).filter(s => s && s.done) : []; };
   const questsDone = () => Object.values(sv().quests || {}).filter(q => q && q.done).length;
   const mockPassed = () => { const b = (sv().mock || {}).best || {}; return SD.mock ? SD.mock.problems.filter(p => b[p.id] === 'senior' || b[p.id] === 'strong') : []; };
-  const bossIds = () => SD.bestiary.ids().filter(id => SD.enemies[id].boss);
+  // Expedition Raid's own bosses (raid: true, js/expeditions.js) aren't part of Boss Rush.
+  const bossIds = () => SD.bestiary.ids().filter(id => SD.enemies[id].boss && !SD.enemies[id].raid);
 
   // test() returns true once earned; progress() returns [have, need] for a bar.
   // Event badges (no test) are given by AC.give() from the listeners further down.

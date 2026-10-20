@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Expedition Raid content: turn the writers' expeditions.json into game/js/expeditions.js.
+"""Expedition Raid content: turn the writers' JSON into game/js/expeditions.js.
 
-    python3 tools/expeditions_from_json.py path/to/expeditions.json [js/expeditions.js]
+    python3 tools/expeditions_from_json.py expeditions.json [--enemies new-enemies.json] [--sprites DIR] [--out FILE]
 
 expeditions.json (the writers' format, with expeditions.md as its human view) has
   expeditions: [{ id, name, who, opens: 'clear chapter N' | 'chapter N', blurb,
                   floors: [{ name, looks: 'chapter N dungeon', beat, fights, elites, boss, bossTitle,
                              intro, outro, events: [{ id, title, who, text, choices: [{ label, fx, data }] }] }] }]
   curses: [{ id, name, text }], fxKey, tape, needsArt (skipped).
-Each choice's `fx` is the line shown with it (its trailing {code} dropped) and `data` is what it does. The game's
-format is documented at the top of js/expeditions.js. Optional floor fields the game reads and this keeps if present:
-packs, elitePacks, packChance, elitePackChance, adds, debuff. Run it again whenever the JSON changes.
+Each choice's `fx` is the line shown with it (its trailing {code} dropped) and `data` is what it does.
+new-enemies.json (the enemy design pass, new-enemies.md its human view) adds raid-only enemies and adds
+(`raid: true`), where they go (placement), and packs of 2-3 enemies per floor with their Severity and load
+scales (packs). Those only change Expedition Raid floors; the story's dungeons never see them.
+--sprites DIR copies DIR/<id>.webp for each raid enemy into assets/img/monsters/ (re-saved as tools/arc_art.py saves)
+and lists it in js/arc-battle-art.js. An enemy whose sprite is there uses it; one without borrows the existing sprite in
+FALLBACK until its own arrives.
+The game's format is documented at the top of js/expeditions.js. Run this again whenever either JSON changes.
 """
 import json
+import os
 import re
+import shutil
 import sys
 
 # Each floor boss's one debuffing move, by theme: Tightly Coupled (brittle) for data that's all tangled together,
@@ -35,7 +42,25 @@ CURSE = {
     'missedbeat': {'cost': 0, 'art': 'heart-beats', 'unplayable': True, 'onDraw': {'tax': 1}},
 }
 RARITY = ('common', 'uncommon', 'rare')
-KEEP = ('packs', 'elitePacks', 'packChance', 'elitePackChance', 'adds', 'debuff')
+KEEP = ('debuff',)
+
+# Decisions on the enemy design pass that Ladi may still change: one line each.
+# The Rota With No Saturdays replaces the Streamlord on Weekends for Skeletons floor 2 (with its two story lines).
+ROTA_REPLACES_STREAMLORD = True
+# Packs left out: the shadowhero pair on Out of Office floor 5 waits on the Shadow Army arc's timeline.
+SKIP_PACK = lambda p: 'shadowhero' in p['ids']
+# The existing sprite (and a hue shift) each raid enemy borrows until its own is in assets/img/monsters/.
+FALLBACK = {
+    'cronjob': ('spiders', 40), 'knownissue': ('golem', 160), 'archivedking': ('latency', 200), 'flapper': ('banshee', 60),
+    'escalation': ('wraith', 120), 'rota': ('alertbanshee', 220), 'todo': ('comment', 30), 'logspam': ('scroll', 90),
+    'staleflag': ('imp', 140), 'snoozed': ('ghost', 180), 'dupepage': ('bots', 250),
+}
+# The Rota's story lines on Weekends for Skeletons floor 2 (new-enemies.json placement).
+ROTA_LINES = {
+    'On a stage at the far end, the Streamlord is broadcasting karaoke night to the whole castle. Nobody is allowed to stop singing.':
+        'On the wall at the far end hangs the rota. Every shift has the same name on it: whoever looked last. Every few minutes, it rings.',
+    'The broadcast cuts out.': 'The rota stops ringing.',
+}
 
 
 def curse_id(c):
@@ -94,14 +119,90 @@ def say(fx):
     return t
 
 
+def args():
+    a = {'src': None, 'enemies': None, 'sprites': None, 'out': 'js/expeditions.js'}
+    v = sys.argv[1:]
+    while v:
+        k = v.pop(0)
+        if k in ('--enemies', '--sprites', '--out'):
+            a[k[2:]] = v.pop(0)
+        elif a['src'] is None:
+            a['src'] = k
+        else:
+            a['out'] = k
+    if not a['src']:
+        raise SystemExit(__doc__)
+    return a
+
+
+def entry(ids, sev=None, dmg=None):
+    """A room's enemies: one id, or a pack { ids, sev, dmg } with each member's Severity and load scales."""
+    if len(ids) == 1 and sev is None:
+        return ids[0]
+    e = {'ids': ids}
+    if sev:
+        e['sev'] = sev
+    if dmg:
+        e['dmg'] = dmg
+    return e
+
+
+# Each raid enemy's hit-flash colour and idle motion (the sprite README's suggested motions).
+SPRITE_LOOK = {
+    'cronjob': ('#c98b4a', 'squish'), 'knownissue': ('#e8e8f0', 'squish'), 'archivedking': ('#b98fff', 'float'),
+    'flapper': ('#ff4d4d', 'float'), 'escalation': ('#8fa0c0', 'float'), 'rota': ('#e8d8a0', 'shake'),
+    'todo': ('#ffe066', 'squish'), 'logspam': ('#f0f0f0', 'squish'), 'staleflag': ('#ff8a8a', 'shake'),
+    'snoozed': ('#8fd0ff', 'squish'), 'dupepage': ('#7ed957', 'shake'),
+}
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MON = os.path.join(HERE, 'assets', 'img', 'monsters')
+
+
+def add_sprites(ids, src):
+    """Copy each raid enemy's sprite from src into assets/img/monsters/, re-saved as tools/arc_art.py saves (lossless
+    WebP, which also drops any metadata the source picked up), and list it in js/arc-battle-art.js like the arc's."""
+    from PIL import Image
+    path = os.path.join(HERE, 'js', 'arc-battle-art.js')
+    text = open(path, encoding='utf-8').read()
+    m = re.search(r'SD\.arcBattleArt = (\{.*\});\n', text)
+    art = json.loads(m.group(1))
+    for i in ids:
+        f = os.path.join(src, i + '.webp')
+        if not os.path.exists(f):
+            continue
+        im = Image.open(f)
+        im.load()
+        im.save(os.path.join(MON, i + '.webp'), lossless=True, quality=100, method=6)
+        art['monsters'][i] = list(im.size)
+        art['cols'][i], art['anims'][i] = SPRITE_LOOK[i]
+    head = '// Made by tools/arc_art.py: sizes of the North Road arc battle art. Expedition Raid\'s own enemies are added by\n' \
+           '// tools/expeditions_from_json.py --sprites (run it again after arc_art.py).\n'
+    open(path, 'w', encoding='utf-8').write(head + 'SD.arcBattleArt = ' + json.dumps(art) + ';\n')
+
+
+def raid_enemies(n):
+    """The raid-only enemies and adds as SD.enemies entries, with their bestiary lines. One whose sprite isn't in
+    assets/img/monsters/ yet borrows an existing one (FALLBACK)."""
+    enemies = {}
+    for e in n['enemies'] + n['adds']:
+        assert e.get('raid') is True, e['id']
+        x = {k: v for k, v in e.items() if k not in ('id', 'artBrief', 'bestiary')}
+        if os.path.exists(os.path.join(MON, e['id'] + '.webp')):
+            x['sprite'] = e['id']
+        else:
+            x['sprite'], x['hue'] = FALLBACK[e['id']]
+        enemies[e['id']] = (x, e.get('bestiary'))
+    return enemies
+
+
 def main():
-    src = sys.argv[1]
-    dst = sys.argv[2] if len(sys.argv) > 2 else 'js/expeditions.js'
-    d = json.load(open(src, encoding='utf-8'))
+    a = args()
+    d = json.load(open(a['src'], encoding='utf-8'))
+    n = json.load(open(a['enemies'], encoding='utf-8')) if a['enemies'] else {'enemies': [], 'adds': [], 'placement': [], 'packs': []}
     events, xps = {}, []
     for x in d['expeditions']:
         floors = []
-        for f in x['floors']:
+        for fi, f in enumerate(x['floors']):
             m = re.fullmatch(r'chapter (\d+) dungeon', f['looks'])
             assert m, f['looks']
             ids = []
@@ -111,11 +212,44 @@ def main():
                 events[ev['id']] = {'id': ev['id'], 'title': ev['title'], 'who': ev['who'], 'text': ev['text'],
                                     'choices': [{'label': c['label'], 'out': say(c['fx']), 'fx': fx_of(c['data'], ev['id'])} for c in ev['choices']]}
             fl = {'name': f['name'], 'gate': f['name'].upper() + '...', 'beat': f['beat'], 'map': m.group(1),
-                  'fights': f['fights'], 'elites': f['elites'], 'boss': f['boss'], 'bossTitle': f['bossTitle'],
+                  'fights': list(f['fights']), 'elites': list(f['elites']), 'boss': f['boss'], 'bossTitle': f['bossTitle'],
                   'debuff': {'kind': DEBUFF.get(f['boss'], 'brittle'), 'n': 2}, 'intro': f['intro'], 'outro': f['outro'], 'events': ids}
             for k in KEEP:
                 if k in f:
                     fl[k] = f[k]
+            # The enemy design pass: themed elites beside the floor's own, a themed boss in place of one.
+            for pl in n['placement']:
+                if pl['expedition'] != x['id'] or pl['floor'] != fi + 1:
+                    continue
+                if pl['role'] == 'elite' and len(pl['ids']) == 1:
+                    fl['elites'].append(pl['ids'][0])
+                if pl['role'] == 'boss':
+                    if pl['ids'][0] == 'rota' and not ROTA_REPLACES_STREAMLORD:
+                        continue
+                    assert fl['boss'] == pl['replaces'], (x['id'], fi, fl['boss'])
+                    fl['boss'] = pl['ids'][0]
+                    fl['debuff']['kind'] = DEBUFF.get(fl['boss'], 'brittle')
+                    if pl['ids'][0] == 'rota':
+                        fl['bossTitle'] = 'The Rota (No Saturdays)'
+                        for part in ('intro', 'outro'):
+                            for line in fl[part]:
+                                for old, new in ROTA_LINES.items():
+                                    if line['text'].startswith(old):
+                                        line['text'] = new + line['text'][len(old):]
+            # Packs: in place of the single they name, or beside the room's others; a boss's comes with it.
+            for p in n['packs']:
+                if p['expedition'] != x['id'] or p['floor'] != fi + 1 or SKIP_PACK(p):
+                    continue
+                e = entry(p['ids'], p.get('sevScale'), p.get('dmgScale'))
+                if p['room'] == 'boss':
+                    assert p['ids'][0] == fl['boss'], (x['id'], fi, p['ids'])
+                    fl['bossPack'] = e
+                    continue
+                room = fl['fights' if p['room'] == 'fight' else 'elites']
+                if p.get('replaces') in room:
+                    room[room.index(p['replaces'])] = e
+                else:
+                    room.append(e)
             floors.append(fl)
         assert 2 <= len(floors) <= 5, x['id']
         xps.append({'id': x['id'], 'name': x['name'], 'who': x['who'], 'blurb': x['blurb'], 'opens': '@@' + opens_js(x['opens']) + '@@', 'floors': floors})
@@ -129,8 +263,14 @@ def main():
             if k in b:
                 card[k] = b[k]
         curses[curse_id(c['id'])] = card
+    if a['sprites']:
+        add_sprites([e['id'] for e in n['enemies'] + n['adds']], a['sprites'])
+    foes = raid_enemies(n)
     js = lambda v: json.dumps(v, ensure_ascii=False, indent=1)
     xp_js = re.sub(r'"@@(.*?)@@"', r'\1', js(xps))
+    one = lambda v: json.dumps(v, ensure_ascii=False)
+    foe_js = ',\n'.join(f'    {one(k)}: {one(v[0])}' for k, v in foes.items())
+    notes_js = ',\n'.join(f'    {one(k)}: {one(v[1])}' for k, v in foes.items() if v[1])
     out = HEAD + f"""(function () {{
   const sv = () => (SD.state && SD.state.save) || null;
   const cleared = ch => !!(sv() && sv().flags && sv().flags['ch' + ch]);
@@ -141,13 +281,27 @@ def main():
   const CURSES = {js(curses)};
   if (SD.cards) Object.keys(CURSES).forEach(id => {{ SD.cards[id] = CURSES[id]; }});
 
+  // Raid-only enemies and adds (new-enemies.json): `raid: true` keeps them out of the story, the dungeon run's
+  // pools, Boss Rush and the bestiary. hands: 'debt' | 'page' hands out a Tech Debt or Pager Alert: (2) from an
+  // elite, (3) from a floor boss, or the version handsLevel names, and not before the expedition's handsFromFloor.
+  // handMode: 'hit' (a hit that gets through hands one out), 'give' (only its pattern's give steps do) or 'both'.
+  // A give step {{t:'give', card, lvl, to, name, n}} is the enemy's whole move (js/raid.js giveStep).
+  // sevAt: Severity by the floor's chapter; minCh: an add's earliest chapter; add: a small pack member.
+  const RAID_FOES = {{
+{foe_js}
+  }};
+  if (SD.enemies) Object.keys(RAID_FOES).forEach(id => {{ SD.enemies[id] = RAID_FOES[id]; }});
+  if (SD.bestiaryNotes) Object.assign(SD.bestiaryNotes, {{
+{notes_js}
+  }});
+
   SD.expeditions = {xp_js};
 
   SD.expeditionEvents = {js(events)};
 }})();
 """
-    open(dst, 'w', encoding='utf-8').write(out)
-    print(f'{dst}: {len(xps)} expeditions, {sum(len(x["floors"]) for x in xps)} floors, {len(events)} events, {len(curses)} curse cards')
+    open(a['out'], 'w', encoding='utf-8').write(out)
+    print(f"{a['out']}: {len(xps)} expeditions, {sum(len(x['floors']) for x in xps)} floors, {len(events)} events, {len(curses)} curse cards, {len(foes)} raid enemies ({sum(1 for v in foes.values() if 'hue' not in v[0])} with their own sprite)")
 
 
 HEAD = """// Expedition Raid's content (Ladi, 2026-10-20): the expeditions a Guild Hall party can pick, the "?" rooms on their
@@ -158,15 +312,15 @@ HEAD = """// Expedition Raid's content (Ladi, 2026-10-20): the expeditions a Gui
 //
 //   SD.expeditions = [{ id, name, who: [character ids it's about], blurb, opens() -> bool, floors: [floor, ...] }]
 //     2 to 5 floors. opens() reads this player's save (the leader's, since the leader picks).
-//   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, debuff, intro, outro, events,
-//             packs, elitePacks, packChance, elitePackChance, adds }
+//   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, bossPack, debuff, intro, outro, events }
 //     gate    the title card shown on entering the floor; beat: what the floor is about
-//     map     the dungeon tileset: the chapter whose map art it uses ('1' to '10')
-//     fights  enemy ids for Incident rooms; elites: for Elite rooms; boss: the floor boss's enemy id (never one of
-//             the story bosses, pager and shadowarmy); bossTitle: what the boss is called on this floor
-//     packs   optional: Incident rooms that are 2 or 3 enemies at once, [[id, id], [id, id, id]]; elitePacks the
-//             same for Elite rooms (the elite first). With packChance (0 to 1) a pack comes up that often; without,
-//             every single and every pack is as likely. adds: enemies that join the floor boss (up to 2).
+//     map     the dungeon tileset: the chapter whose map art it uses ('1' to '10'), which is also the floor's chapter
+//     fights  Incident rooms, elites: Elite rooms, each picked at random from its list. An entry is an enemy id or a
+//             pack of 2 or 3 enemies at once, { ids, sev: [scale per member], dmg: [scale per member] } (each one's
+//             Severity and load; without them, the default for a pack that size). In an Elite room the elite comes
+//             first, and its company leaves when it falls.
+//     boss    the floor boss's enemy id (never one of the story bosses, pager and shadowarmy); bossTitle: what it is
+//             called on this floor; bossPack: { ids: [boss, add], sev, dmg } when it brings an add
 //     debuff  the boss's one move that also debuffs the team: { move: its pattern step (default the last),
 //             kind: 'brittle' (Tightly Coupled) | 'weakMe' (Context Switching) | 'techdebt' | 'pager'
 //             (a Tech Debt (1) or Pager Alert (1) in every deck), n: turns }

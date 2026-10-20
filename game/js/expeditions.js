@@ -6,15 +6,15 @@
 //
 //   SD.expeditions = [{ id, name, who: [character ids it's about], blurb, opens() -> bool, floors: [floor, ...] }]
 //     2 to 5 floors. opens() reads this player's save (the leader's, since the leader picks).
-//   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, debuff, intro, outro, events,
-//             packs, elitePacks, packChance, elitePackChance, adds }
+//   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, bossPack, debuff, intro, outro, events }
 //     gate    the title card shown on entering the floor; beat: what the floor is about
-//     map     the dungeon tileset: the chapter whose map art it uses ('1' to '10')
-//     fights  enemy ids for Incident rooms; elites: for Elite rooms; boss: the floor boss's enemy id (never one of
-//             the story bosses, pager and shadowarmy); bossTitle: what the boss is called on this floor
-//     packs   optional: Incident rooms that are 2 or 3 enemies at once, [[id, id], [id, id, id]]; elitePacks the
-//             same for Elite rooms (the elite first). With packChance (0 to 1) a pack comes up that often; without,
-//             every single and every pack is as likely. adds: enemies that join the floor boss (up to 2).
+//     map     the dungeon tileset: the chapter whose map art it uses ('1' to '10'), which is also the floor's chapter
+//     fights  Incident rooms, elites: Elite rooms, each picked at random from its list. An entry is an enemy id or a
+//             pack of 2 or 3 enemies at once, { ids, sev: [scale per member], dmg: [scale per member] } (each one's
+//             Severity and load; without them, the default for a pack that size). In an Elite room the elite comes
+//             first, and its company leaves when it falls.
+//     boss    the floor boss's enemy id (never one of the story bosses, pager and shadowarmy); bossTitle: what it is
+//             called on this floor; bossPack: { ids: [boss, add], sev, dmg } when it brings an add
 //     debuff  the boss's one move that also debuffs the team: { move: its pattern step (default the last),
 //             kind: 'brittle' (Tightly Coupled) | 'weakMe' (Context Switching) | 'techdebt' | 'pager'
 //             (a Tech Debt (1) or Pager Alert (1) in every deck), n: turns }
@@ -123,6 +123,40 @@
 };
   if (SD.cards) Object.keys(CURSES).forEach(id => { SD.cards[id] = CURSES[id]; });
 
+  // Raid-only enemies and adds (new-enemies.json): `raid: true` keeps them out of the story, the dungeon run's
+  // pools, Boss Rush and the bestiary. hands: 'debt' | 'page' hands out a Tech Debt or Pager Alert: (2) from an
+  // elite, (3) from a floor boss, or the version handsLevel names, and not before the expedition's handsFromFloor.
+  // handMode: 'hit' (a hit that gets through hands one out), 'give' (only its pattern's give steps do) or 'both'.
+  // A give step {t:'give', card, lvl, to, name, n} is the enemy's whole move (js/raid.js giveStep).
+  // sevAt: Severity by the floor's chapter; minCh: an add's earliest chapter; add: a small pack member.
+  const RAID_FOES = {
+    "cronjob": {"name": "The Cron Job Nobody Owns", "short": "The Cron Job", "sev": 60, "concept": "sched", "tier": 3, "elite": true, "ch": 5, "sprite": "cronjob", "hands": "debt", "raid": true, "flavor": "It runs every hour, on the hour. Its owner left years ago. Nobody has ever asked it to stop, so it never has.", "symptom": "Every hour on the hour, a job nobody recognises runs on a box nobody remembers. When a run goes long, the next one starts anyway, both rewrite the same rows, and the output is emailed to an inbox that was deleted. Nobody dares turn it off.", "weak": {"sched": "A real scheduler stores the job with an owner and a due time, and spreads runs with jitter instead of firing everything at :00.", "fence": "A lease with a fencing token lets one run hold the job at a time; an overlapping copy is refused.", "idem": "An idempotent job is safe to run twice, so an overlap or a retry changes nothing.", "queue": "Put the hourly work on a queue and let workers take it at their own pace."}, "resist": {"vscale": "A bigger box runs the mystery job faster. It still runs at :00, and it still overlaps.", "cache": "The job writes. A cache cannot do its writes for it."}, "pattern": [{"t": "burst", "n": 16}, {"t": "collide", "n": 12}, {"t": "burst", "n": 20}, {"t": "give", "card": "debt", "lvl": 2, "to": "least", "name": "Runs On Schedule", "n": 12}, {"t": "escalate"}], "handMode": "both"},
+    "knownissue": {"name": "The Known Issue", "sev": 56, "concept": "backpressure", "tier": 3, "elite": true, "ch": 4, "sprite": "knownissue", "hands": "debt", "raid": true, "flavor": "Marked in chalk last week. Written up in a notebook nobody is allowed to read. Still holding. For now.", "symptom": "The dock's limit is known: about sixty ships. It is written down, privately. Nothing enforces it, nobody owns the fix, and a hundred ships are on the way.", "weak": {"shed": "Load shedding turns ships away past the known limit, so the weak piling never meets ship sixty-one.", "waitroom": "Admission control lets ships on at the pace the piling can take; the rest wait their turn.", "queue": "A bounded queue keeps the overflow waiting offshore instead of standing on the dock.", "ops": "Root-cause it and fix the piling. Paying the debt down is the only fix that lasts."}, "resist": {"hscale": "More docks bolted onto the weak one put more weight on the same piling.", "cache": "A cached \"dock OK\" sign is how nobody noticed."}, "pattern": [{"t": "overload", "n": 14}, {"t": "give", "card": "debt", "lvl": 2, "to": "random", "name": "Written Up, Not Fixed", "n": 12}, {"t": "burst", "n": 12}, {"t": "overload", "n": 18}, {"t": "escalate"}], "handMode": "give"},
+    "archivedking": {"name": "The Archived Demon King", "short": "The Archived Copy", "sev": 145, "concept": "blob", "tier": 9, "boss": true, "ch": 2, "sprite": "archivedking", "hands": "debt", "raid": true, "flavor": "Filed long ago, never processed, still answering. Nobody knows what would break if they switched it off, so nobody does.", "symptom": "A legacy service keeps ten thousand years of forms as BLOB columns in its own database and streams every download through itself. The migration plan is dated \"soon\". Every new feature still has to talk to it.", "weak": {"blob": "Move the forms to object storage behind presigned URLs, a batch at a time, and the old copy has nothing left to hold.", "chunk": "Chunked, resumable copies let a long migration stop and pick up again instead of starting over.", "queue": "Backfill workers drain the archive at a steady pace while the old copy keeps answering.", "gateway": "A gateway in front lets you move one route at a time to the new store: the strangler fig."}, "resist": {"vscale": "A bigger box keeps the legacy system alive longer. That is how it got this old.", "cache": "Caching its answers adds one more thing nobody understands."}, "pattern": [{"t": "upload", "n": 14}, {"t": "read", "n": 12}, {"t": "audit"}, {"t": "burst", "n": 16}, {"t": "upload", "n": 18}, {"t": "crash", "n": 14}, {"t": "escalate"}], "handsLevel": 2, "handMode": "hit"},
+    "flapper": {"name": "The Flapping Alert", "short": "The Flapper", "sev": 60, "sevAt": {"5": 60, "8": 64, "9": 68}, "concept": "failure", "tier": 3, "elite": true, "ch": 5, "sprite": "flapper", "hands": "page", "raid": true, "flavor": "FIRING. RESOLVED. FIRING. RESOLVED. It has been right twice this year, and loud four hundred times.", "symptom": "An alert pages whenever one box's CPU crosses 80% for a single check, and clears itself a minute later. It paged 400 times this week and nobody acted on any of them. On Thursday the real outage page went unread.", "weak": {"heartbeat": "Wait for several bad checks in a row, the way a heartbeat timeout does, and one blip never pages anyone.", "gossip": "Ask a few peers to probe before declaring a box down, and a hiccup stops looking like an outage.", "observe": "Alert on what users feel, over a window (SLO burn rate), not on one box crossing a line."}, "resist": {"hscale": "More servers means more boxes to blip over 80%: more pages, not fewer.", "cache": "Nothing here is a read to cache. It is noise."}, "pattern": [{"t": "nodefail", "n": 12}, {"t": "give", "card": "page", "lvl": 2, "to": "random", "name": "FIRING", "n": 12}, {"t": "nodefail", "n": 16}, {"t": "retry", "n": 12}, {"t": "escalate"}], "handMode": "give"},
+    "escalation": {"name": "The Escalation Policy", "short": "The Escalation Policy", "sev": 104, "concept": "metrics", "tier": 4, "elite": true, "ch": 10, "sprite": "escalation", "hands": "page", "raid": true, "flavor": "Step 1: page the primary. Step 2: no answer in five minutes? Page the secondary. Step 3: there is no secondary. Go to step 1.", "symptom": "One person holds the only pager. Every alert is SEV-1, the escalation chain loops back to the same phone, and the last tier is a mailing list nobody reads.", "weak": {"standby": "A real secondary on call: the second page goes to somebody who is awake.", "oncall": "A proper rotation shares the pager, so no one holds it for ten thousand years.", "slo": "Route by severity: only a fast error-budget burn wakes anyone up.", "queue": "Low-severity alerts become tickets in a queue, worked in the morning."}, "resist": {"vscale": "One tireless person is still one person.", "cache": "A cached \"acknowledged\" is how a page gets lost."}, "pattern": [{"t": "give", "card": "page", "lvl": 2, "to": "least", "name": "Page the Primary", "n": 14}, {"t": "escalate"}, {"t": "overload", "n": 16}, {"t": "burst", "n": 18}], "handMode": "both"},
+    "rota": {"name": "The Rota With No Saturdays", "short": "The Rota", "sev": 175, "concept": "observe", "tier": 9, "boss": true, "ch": 5, "sprite": "rota", "hands": "page", "raid": true, "flavor": "Forty names on the rota. Every shift says the same one: whoever looked at it last.", "symptom": "Every alert in the castle pages every skeleton at once, at any hour, with no secondary and no handoff. Most pages are noise, the rest are the same outage forty times, and nobody has had a Saturday since the Demon King left.", "weak": {"observe": "Page only on symptoms users feel. Every page should be urgent, actionable and new.", "notify": "A notification queue groups and dedupes pages and respects quiet hours, so forty skeletons get one page, not forty.", "queue": "Non-urgent alerts become tickets in a queue for the morning shift.", "ratelimit": "Cap pages per person per hour. Past the cap, the policy moves on to the next name, not the same one."}, "resist": {"hscale": "More skeletons on a broken rota means more of them woken, not more sleep.", "vscale": "A bigger, tireless skeleton is still one skeleton at 3 a.m."}, "pattern": [{"t": "give", "card": "page", "lvl": 1, "to": "all", "name": "Shift Change", "n": 14}, {"t": "crash", "n": 16}, {"t": "retry", "n": 14}, {"t": "overload", "n": 16}, {"t": "notifyflood", "n": 20}, {"t": "escalate"}], "handMode": "both"},
+    "todo": {"name": "The TODO From 2016", "short": "The TODO", "sev": 15, "sevAt": {"1": 15, "2": 18, "3": 21, "4": 21, "5": 23, "6": 24, "7": 24, "8": 26, "9": 27, "10": 32}, "minCh": 1, "concept": "cache", "tier": 1, "add": true, "ch": 1, "sprite": "todo", "raid": true, "flavor": "// TODO: invalidate the cache on update. Written before launch. The launch was in 2016. The comment has seen things.", "symptom": "A shortcut from years ago that was never ticketed: the cache is not invalidated on writes, so a little wrongness piles up until an audit finds all of it at once.", "weak": {"invalidate": "Do the TODO: invalidate on write and the stale answers stop.", "ttl": "A TTL bounds how stale an entry can get, even before anyone does the TODO."}, "resist": {"replica": "More copies of a stale answer are still stale."}, "pattern": [{"t": "read", "n": 7}, {"t": "give", "card": "debt", "lvl": 1, "to": "random", "name": "Still TODO", "n": 7}, {"t": "read", "n": 9}], "hands": "debt", "handsLevel": 1, "handsFromFloor": 2, "handMode": "give"},
+    "logspam": {"name": "DEBUG Logging in Prod", "short": "The Log Spam", "sev": 15, "sevAt": {"1": 15, "2": 18, "3": 21, "4": 21, "5": 23, "6": 24, "7": 24, "8": 26, "9": 27, "10": 32}, "minCh": 1, "concept": "estimation", "tier": 1, "add": true, "ch": 1, "sprite": "logspam", "raid": true, "flavor": "It logs every request, twice, at DEBUG, in production. It has a lot to say, and the disk has heard all of it.", "symptom": "Every request writes two DEBUG lines, about 2 KB in all. At 10,000 requests a second that is roughly 1.7 TB of logs a day, and the disk is full by Thursday.", "weak": {"queue": "Ship logs through a buffer to a log store instead of straight onto the app server's disk.", "sketch": "Sample it: keep one DEBUG line in a hundred and every error.", "observe": "Metrics for counts, traces for one request, and logs at INFO for what happened."}, "resist": {"vscale": "A bigger disk fills more slowly. It still fills.", "replica": "Every replica writes its own copy of the noise."}, "pattern": [{"t": "write", "n": 8}, {"t": "write", "n": 10}, {"t": "burst", "n": 8}], "hands": "debt", "handsLevel": 1, "handsFromFloor": 2, "handMode": "hit"},
+    "staleflag": {"name": "The Temporary Feature Flag", "short": "The Stale Flag", "sev": 23, "sevAt": {"5": 23, "6": 24, "7": 24, "8": 26, "9": 27, "10": 32}, "minCh": 5, "concept": "deploy", "tier": 1, "add": true, "ch": 5, "sprite": "staleflag", "raid": true, "flavor": "NEW_CHECKOUT = ON. Temporary since the spring before last. Turning it off would bring back code nobody has run since.", "symptom": "A flag added for a launch years ago is still in the code, 100% on. Its off path has not run since, its test was deleted, and nobody knows what flipping it would do.", "weak": {"flag": "Flip it off, then delete the code behind it: a flag at 100% for a year is an if statement with extra steps.", "canary": "A canary exercises the path the flag hides on 1% before anyone else meets it.", "ops": "Somebody finally reads the code and deletes the dead branch."}, "resist": {"cache": "A cached flag value is one more place the old setting lives."}, "pattern": [{"t": "deploybad", "n": 9}, {"t": "read", "n": 7}, {"t": "give", "card": "debt", "lvl": 1, "to": "least", "name": "Temporary Since Spring", "n": 7}], "hands": "debt", "handsLevel": 1, "handsFromFloor": 2, "handMode": "both"},
+    "snoozed": {"name": "The Snoozed Alert", "short": "The Snoozed Alert", "sev": 23, "sevAt": {"5": 23, "6": 24, "7": 24, "8": 26, "9": 27, "10": 32}, "minCh": 5, "concept": "observe", "tier": 1, "add": true, "ch": 5, "sprite": "snoozed", "raid": true, "flavor": "Snoozed for one hour. Four hundred and twelve times. It is starting to take it personally.", "symptom": "A noisy alert that nobody fixes or deletes, only snoozes. Every snooze ends with the same page, at the same time, about the same thing.", "weak": {"observe": "Fix it or delete it. Snoozing is neither.", "idem": "One alert ID: a repeat updates the open page instead of sending a new one.", "backoff": "Re-notify on a backoff, not every minute."}, "resist": {"hscale": "More servers, more of the same alert to snooze."}, "pattern": [{"t": "retry", "n": 8}, {"t": "give", "card": "page", "lvl": 1, "to": "random", "name": "Snooze Ends", "n": 7}, {"t": "retry", "n": 10}], "hands": "page", "handsLevel": 1, "handsFromFloor": 2, "handMode": "give"},
+    "dupepage": {"name": "The Duplicate Page", "short": "The Duplicate Page", "sev": 23, "sevAt": {"5": 23, "6": 24, "7": 24, "8": 26, "9": 27, "10": 32}, "minCh": 5, "concept": "notify", "tier": 1, "add": true, "ch": 5, "sprite": "dupepage", "raid": true, "flavor": "The same alert, from three monitoring tools, to two phones, every minute. It just wants to be sure you heard.", "symptom": "Three monitoring tools watch the same service, and each pages on the same failure every minute, with no shared alert ID. One problem, dozens of pages.", "weak": {"notify": "A notification queue dedupes by alert ID and groups related pages into one incident.", "idem": "Same alert, same key, one page.", "queue": "Queue the pages and send each one once."}, "resist": {"hscale": "More pagers, more beeping.", "cache": "Caching a page just lets it ring again later."}, "pattern": [{"t": "notifyflood", "n": 8}, {"t": "give", "card": "page", "lvl": 1, "to": "two", "name": "Sent Again, Twice", "n": 8}, {"t": "notifyflood", "n": 10}], "hands": "page", "handsLevel": 1, "handsFromFloor": 2, "handMode": "give"}
+  };
+  if (SD.enemies) Object.keys(RAID_FOES).forEach(id => { SD.enemies[id] = RAID_FOES[id]; });
+  if (SD.bestiaryNotes) Object.assign(SD.bestiaryNotes, {
+    "cronjob": "Scheduled jobs need an owner, a lease and idempotency. Run them from a scheduler (a due-time table or sorted set feeding a queue), give each run a lease with a fencing token so two copies never overlap, jitter the start so the fleet does not fire at :00, and alert on failures. Then ask whether it is still needed: the cheapest job is a deleted one.",
+    "knownissue": "A known limit that nothing enforces is an outage with a date to be announced. Write it where on-call can see it, enforce it with admission control or load shedding until it is fixed, and give the fix an owner and a deadline.",
+    "archivedking": "Retire a legacy system with the strangler fig: put a gateway in front, move one route at a time to the new service, backfill the data in resumable batches, compare old and new answers, and switch the old one off only when nothing calls it any more.",
+    "flapper": "Flapping comes from thresholds with no duration and no hysteresis. Require the condition for several checks or minutes, confirm from more than one vantage point, clear at a lower line than you fire at, and page on SLO burn rate rather than a single host's CPU.",
+    "escalation": "An escalation policy needs real tiers: a primary and a secondary from a rotation, ack timeouts that move to a different person, severity-based routing so only urgent, user-facing pages wake anyone, and everything else as tickets.",
+    "rota": "Healthy on-call: enough people in the rotation, a secondary, clean handoffs, pages only for actionable user-facing symptoms, and a postmortem habit that fixes or deletes noisy alerts. Count pages per shift and treat a rising number as a bug.",
+    "todo": "Cache invalidation is the classic deferred fix. Invalidate or update on write, keep a TTL as a safety net, and turn the TODO into a ticket with an owner. In an interview, say which shortcuts you are taking and why.",
+    "logspam": "Do the napkin math on logs: requests per second x bytes per request x 86,400 seconds. Then set levels, sample the chatty ones, keep every error, use metrics for counts and traces for single requests, and set a retention period.",
+    "staleflag": "Feature flags separate deploying from releasing, but every flag is a branch in the code. Give each one an owner and an expiry date, test both paths while it lives, and delete it once the rollout is done.",
+    "snoozed": "Every page should be urgent, actionable and new. If an alert is snoozed more often than it is acted on, fix the cause, change its threshold or window, or delete it.",
+    "dupepage": "Deduplicate alerts on a stable alert key, group related ones into a single incident, and route everything through one paging system, so one failure is one page."
+  });
+
   SD.expeditions = [
  {
   "id": "every-time-you-die",
@@ -210,18 +244,71 @@
     "beat": "The forms are floating in the Tidewater Archives, guarded by an archived copy of the old Demon King; Kaito finds his form and decides pencil is fine.",
     "map": "2",
     "fights": [
-     "scrapers",
+     {
+      "ids": [
+       "scrapers",
+       "echo"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
      "echo",
-     "racetwins",
-     "drop"
+     {
+      "ids": [
+       "racetwins",
+       "todo"
+      ],
+      "sev": [
+       0.8,
+       1.0
+      ],
+      "dmg": [
+       0.8,
+       1.0
+      ]
+     },
+     {
+      "ids": [
+       "drop",
+       "logspam"
+      ],
+      "sev": [
+       0.8,
+       1.0
+      ],
+      "dmg": [
+       0.8,
+       1.0
+      ]
+     }
     ],
     "elites": [
-     "hydra"
+     "hydra",
+     {
+      "ids": [
+       "hydra",
+       "todo"
+      ],
+      "sev": [
+       0.85,
+       1.0
+      ],
+      "dmg": [
+       0.85,
+       1.0
+      ]
+     }
     ],
-    "boss": "latencyboss",
+    "boss": "archivedking",
     "bossTitle": "The Demon King of Lag (Archived Copy)",
     "debuff": {
-     "kind": "weakMe",
+     "kind": "brittle",
      "n": 2
     },
     "intro": [
@@ -365,7 +452,35 @@
      "fullscan",
      "comment",
      "scroll",
-     "backlog"
+     "backlog",
+     {
+      "ids": [
+       "fullscan",
+       "logspam"
+      ],
+      "sev": [
+       0.75,
+       1.0
+      ],
+      "dmg": [
+       0.75,
+       1.0
+      ]
+     },
+     {
+      "ids": [
+       "comment",
+       "scroll"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "typeahead"
@@ -428,12 +543,69 @@
     "beat": "Lupita has posted where she is on every floor, for Mari, and gone viral; at the top Bru counts six at last, and Lupita hands over a jar.",
     "map": "3",
     "fights": [
-     "snatchers",
-     "clickstorm",
-     "oracle"
+     {
+      "ids": [
+       "snatchers",
+       "snatchers"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     {
+      "ids": [
+       "clickstorm",
+       "oracle"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     "oracle",
+     {
+      "ids": [
+       "snatchers",
+       "clickstorm",
+       "oracle"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "typeahead"
+     "typeahead",
+     {
+      "ids": [
+       "typeahead",
+       "logspam"
+      ],
+      "sev": [
+       0.85,
+       1.0
+      ],
+      "dmg": [
+       0.85,
+       1.0
+      ]
+     }
     ],
     "boss": "leviathan",
     "bossTitle": "The Feed Leviathan (Following One Small Girl)",
@@ -581,7 +753,21 @@
      "fullscan",
      "comment",
      "clickstorm",
-     "snatchers"
+     "snatchers",
+     {
+      "ids": [
+       "snatchers",
+       "clickstorm"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "typeahead"
@@ -654,7 +840,21 @@
     "fights": [
      "driftclock",
      "twokings",
-     "phantoms"
+     "phantoms",
+     {
+      "ids": [
+       "driftclock",
+       "twokings"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "scribes"
@@ -723,7 +923,21 @@
     "fights": [
      "vanish",
      "avalanche",
-     "jobswarm"
+     "jobswarm",
+     {
+      "ids": [
+       "vanish",
+       "avalanche"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "djinn"
@@ -794,12 +1008,69 @@
     "beat": "The last game on the top berth, with the rain coming up through the clouds; Ploy wins it, the series is a tie, and ties go to the dancers.",
     "map": "4",
     "fights": [
-     "twokings",
+     {
+      "ids": [
+       "twokings",
+       "driftclock"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
      "driftclock",
-     "avalanche"
+     {
+      "ids": [
+       "avalanche",
+       "avalanche"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     {
+      "ids": [
+       "twokings",
+       "driftclock",
+       "avalanche"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "basilisk"
+     "basilisk",
+     {
+      "ids": [
+       "basilisk",
+       "avalanche"
+      ],
+      "sev": [
+       0.85,
+       0.4
+      ],
+      "dmg": [
+       0.85,
+       0.4
+      ]
+     }
     ],
     "boss": "rider",
     "bossTitle": "The Surge Rider (Rides the Rain In)",
@@ -884,7 +1155,8 @@
      "wisp"
     ],
     "elites": [
-     "revenant"
+     "revenant",
+     "cronjob"
     ],
     "boss": "crawlqueen",
     "bossTitle": "The Crawler Queen, Head of Housekeeping",
@@ -950,15 +1222,58 @@
     "fights": [
      "banshee",
      "pushimp",
-     "bigbang"
+     "bigbang",
+     {
+      "ids": [
+       "banshee",
+       "pushimp"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     },
+     {
+      "ids": [
+       "bigbang",
+       "staleflag"
+      ],
+      "sev": [
+       0.75,
+       1.0
+      ],
+      "dmg": [
+       0.75,
+       1.0
+      ]
+     }
     ],
     "elites": [
-     "calendar"
+     "calendar",
+     "flapper",
+     {
+      "ids": [
+       "flapper",
+       "snoozed"
+      ],
+      "sev": [
+       0.8,
+       0.8
+      ],
+      "dmg": [
+       0.8,
+       0.8
+      ]
+     }
     ],
-    "boss": "streamer",
-    "bossTitle": "The Streamlord (Skeleton Karaoke Night)",
+    "boss": "rota",
+    "bossTitle": "The Rota (No Saturdays)",
     "debuff": {
-     "kind": "weakMe",
+     "kind": "brittle",
      "n": 2
     },
     "intro": [
@@ -976,13 +1291,13 @@
      },
      {
       "who": null,
-      "text": "On a stage at the far end, the Streamlord is broadcasting karaoke night to the whole castle. Nobody is allowed to stop singing."
+      "text": "On the wall at the far end hangs the rota. Every shift has the same name on it: whoever looked last. Every few minutes, it rings."
      }
     ],
     "outro": [
      {
       "who": null,
-      "text": "The broadcast cuts out. Forty skeletons put down forty mugs at once. It sounds like rain on a xylophone."
+      "text": "The rota stops ringing. Forty skeletons put down forty mugs at once. It sounds like rain on a xylophone."
      },
      {
       "who": "latency",
@@ -1013,12 +1328,69 @@
     "beat": "On the throne sits the unbounded queue that lost Lord Latency his crown; capped at last, it lets the skeletons line up to hand him dishes.",
     "map": "5",
     "fights": [
-     "spiders",
+     {
+      "ids": [
+       "spiders",
+       "wisp"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
      "wisp",
-     "wheel"
+     {
+      "ids": [
+       "wheel",
+       "staleflag"
+      ],
+      "sev": [
+       0.8,
+       1.0
+      ],
+      "dmg": [
+       0.8,
+       1.0
+      ]
+     },
+     {
+      "ids": [
+       "spiders",
+       "wisp",
+       "wheel"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "regioneater"
+     "regioneater",
+     {
+      "ids": [
+       "regioneater",
+       "todo"
+      ],
+      "sev": [
+       0.85,
+       1.0
+      ],
+      "dmg": [
+       0.85,
+       1.0
+      ]
+     }
     ],
     "boss": "lordlatency",
     "bossTitle": "Lord Latency's Old Lag, Unbuffered",
@@ -1151,12 +1523,69 @@
     "beat": "Past the third hill the Worldmap Wyrm keeps moving the smithy; behind it stands an anvil with a name card that says MAGNUS.",
     "map": "7",
     "fights": [
-     "stalepin",
-     "tilehoarder",
-     "detour"
+     {
+      "ids": [
+       "stalepin",
+       "detour"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     {
+      "ids": [
+       "tilehoarder",
+       "tilehoarder"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     "detour",
+     {
+      "ids": [
+       "stalepin",
+       "tilehoarder",
+       "detour"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "mimic"
+     "mimic",
+     {
+      "ids": [
+       "mimic",
+       "stalepin"
+      ],
+      "sev": [
+       0.85,
+       0.4
+      ],
+      "dmg": [
+       0.85,
+       0.4
+      ]
+     }
     ],
     "boss": "wyrm",
     "bossTitle": "The Worldmap Wyrm (Off Kenji's Map)",
@@ -1299,10 +1728,25 @@
     "fights": [
      "vanish",
      "twokings",
-     "avalanche"
+     "avalanche",
+     {
+      "ids": [
+       "vanish",
+       "avalanche"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
-     "basilisk"
+     "basilisk",
+     "knownissue"
     ],
     "boss": "rider",
     "bossTitle": "The Surge Rider (Load Test Day)",
@@ -1368,7 +1812,35 @@
     "fights": [
      "regress",
      "mirage",
-     "glutton"
+     "glutton",
+     {
+      "ids": [
+       "regress",
+       "staleflag"
+      ],
+      "sev": [
+       0.75,
+       1.0
+      ],
+      "dmg": [
+       0.75,
+       1.0
+      ]
+     },
+     {
+      "ids": [
+       "mirage",
+       "glutton"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "furnace"
@@ -1431,12 +1903,84 @@
     "beat": "The arena's centre ring at 11:59, danced on and blown up at once; the corner Nari danced on is the only part still standing, and she stays for the second verse.",
     "map": "8",
     "fights": [
-     "alertbanshee",
-     "cardhydra",
-     "lagwraith"
+     {
+      "ids": [
+       "alertbanshee",
+       "snoozed"
+      ],
+      "sev": [
+       0.8,
+       1.0
+      ],
+      "dmg": [
+       0.8,
+       1.0
+      ]
+     },
+     {
+      "ids": [
+       "cardhydra",
+       "lagwraith"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     "lagwraith",
+     {
+      "ids": [
+       "alertbanshee",
+       "cardhydra",
+       "lagwraith"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "powerspike"
+     "powerspike",
+     "flapper",
+     {
+      "ids": [
+       "flapper",
+       "snoozed"
+      ],
+      "sev": [
+       0.85,
+       1.0
+      ],
+      "dmg": [
+       0.85,
+       1.0
+      ]
+     },
+     {
+      "ids": [
+       "powerspike",
+       "dupepage"
+      ],
+      "sev": [
+       0.85,
+       1.0
+      ],
+      "dmg": [
+       0.85,
+       1.0
+      ]
+     }
     ],
     "boss": "scouter",
     "bossTitle": "The Scouter, Reading the Floor",
@@ -1492,7 +2036,21 @@
      "dih-scouter",
      "dih-gong",
      "dih-verse"
-    ]
+    ],
+    "bossPack": {
+     "ids": [
+      "scouter",
+      "snoozed"
+     ],
+     "sev": [
+      0.95,
+      0.8
+     ],
+     "dmg": [
+      0.95,
+      0.8
+     ]
+    }
    }
   ]
  },
@@ -1576,7 +2134,21 @@
     "fights": [
      "jobswarm",
      "avalanche",
-     "vanish"
+     "vanish",
+     {
+      "ids": [
+       "jobswarm",
+       "logspam"
+      ],
+      "sev": [
+       0.75,
+       1.0
+      ],
+      "dmg": [
+       0.75,
+       1.0
+      ]
+     }
     ],
     "elites": [
      "djinn"
@@ -1637,7 +2209,21 @@
     "fights": [
      "heralds",
      "alertbanshee",
-     "doublecount"
+     "doublecount",
+     {
+      "ids": [
+       "heralds",
+       "doublecount"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "powerspike"
@@ -1700,12 +2286,69 @@
     "beat": "Deep in the Abyss, in front of every S-rank candidate's name, Kaito explains a leaderboard to thirty eight-year-olds without saying Kubernetes once.",
     "map": "9",
     "fights": [
-     "rankrat",
+     {
+      "ids": [
+       "rankrat",
+       "hotshard"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
      "hotshard",
-     "orphanchunk"
+     {
+      "ids": [
+       "orphanchunk",
+       "logspam"
+      ],
+      "sev": [
+       0.8,
+       1.0
+      ],
+      "dmg": [
+       0.8,
+       1.0
+      ]
+     },
+     {
+      "ids": [
+       "rankrat",
+       "hotshard",
+       "orphanchunk"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "mailstorm"
+     "mailstorm",
+     {
+      "ids": [
+       "mailstorm",
+       "dupepage"
+      ],
+      "sev": [
+       0.85,
+       1.0
+      ],
+      "dmg": [
+       0.85,
+       1.0
+      ]
+     }
     ],
     "boss": "whistleboard",
     "bossTitle": "The S-Rank Leaderboard",
@@ -1852,7 +2495,21 @@
     "fights": [
      "cardhydra",
      "doublecount",
-     "lateclick"
+     "lateclick",
+     {
+      "ids": [
+       "doublecount",
+       "lateclick"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "powerspike"
@@ -1915,12 +2572,69 @@
     "beat": "Kyu pulls no punches and Hero #500 holds for four whole seconds, a record, and Sunny chalks it on the PR Club wall.",
     "map": "8",
     "fights": [
-     "doublecount",
+     {
+      "ids": [
+       "doublecount",
+       "lateclick"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
      "lateclick",
-     "heralds"
+     {
+      "ids": [
+       "heralds",
+       "heralds"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     {
+      "ids": [
+       "doublecount",
+       "lateclick",
+       "heralds"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "powerspike"
+     "powerspike",
+     {
+      "ids": [
+       "powerspike",
+       "heralds"
+      ],
+      "sev": [
+       0.85,
+       0.4
+      ],
+      "dmg": [
+       0.85,
+       0.4
+      ]
+     }
     ],
     "boss": "clicku",
     "bossTitle": "Majin Clicku (Replays the Final)",
@@ -1984,7 +2698,21 @@
      "rm-replay",
      "rm-tea",
      "rm-bookie"
-    ]
+    ],
+    "bossPack": {
+     "ids": [
+      "clicku",
+      "lateclick"
+     ],
+     "sev": [
+      0.95,
+      0.35
+     ],
+     "dmg": [
+      0.95,
+      0.35
+     ]
+    }
    }
   ]
  },
@@ -2075,7 +2803,21 @@
     "fights": [
      "forgedcoin",
      "chargeback",
-     "doublebook"
+     "doublebook",
+     {
+      "ids": [
+       "forgedcoin",
+       "forgedcoin"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "homunculus"
@@ -2138,12 +2880,69 @@
     "beat": "On Kwame's ferry through a sea of cloud, a wyrm offers read receipts; the letter arrives forty minutes late, Bitna hangs a new lantern, and Kwame drinks the second cup.",
     "map": "4",
     "fights": [
-     "driftclock",
-     "phantoms",
-     "vanish"
+     {
+      "ids": [
+       "driftclock",
+       "phantoms"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     {
+      "ids": [
+       "phantoms",
+       "vanish"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     "vanish",
+     {
+      "ids": [
+       "driftclock",
+       "phantoms",
+       "vanish"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "scribes"
+     "scribes",
+     {
+      "ids": [
+       "scribes",
+       "phantoms"
+      ],
+      "sev": [
+       0.85,
+       0.4
+      ],
+      "dmg": [
+       0.85,
+       0.4
+      ]
+     }
     ],
     "boss": "chatwyrm",
     "bossTitle": "The Chatterwyrm (Two Grey Ticks)",
@@ -2220,7 +3019,8 @@
      "orphanchunk"
     ],
     "elites": [
-     "mailstorm"
+     "mailstorm",
+     "flapper"
     ],
     "boss": "leviathan9",
     "bossTitle": "The Unread Leviathan (Auto-Replies Only)",
@@ -2286,7 +3086,21 @@
     "fights": [
      "bitrot",
      "orphanchunk",
-     "hotshard"
+     "hotshard",
+     {
+      "ids": [
+       "bitrot",
+       "orphanchunk"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "mailstorm"
@@ -2347,7 +3161,21 @@
     "fights": [
      "mirage",
      "staleindex",
-     "whisper"
+     "whisper",
+     {
+      "ids": [
+       "mirage",
+       "staleindex"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     }
     ],
     "elites": [
      "jester"
@@ -2408,10 +3236,39 @@
     "fights": [
      "doublebook",
      "chargeback",
-     "forgedcoin"
+     "forgedcoin",
+     {
+      "ids": [
+       "doublebook",
+       "doublebook"
+      ],
+      "sev": [
+       0.6,
+       0.6
+      ],
+      "dmg": [
+       0.6,
+       0.6
+      ]
+     },
+     {
+      "ids": [
+       "chargeback",
+       "dupepage"
+      ],
+      "sev": [
+       0.75,
+       1.0
+      ],
+      "dmg": [
+       0.75,
+       1.0
+      ]
+     }
     ],
     "elites": [
-     "homunculus"
+     "homunculus",
+     "escalation"
     ],
     "boss": "gluttony",
     "bossTitle": "Gluttony, Who Booked Kyu's Room",
@@ -2471,12 +3328,69 @@
     "beat": "At 4:59 on Friday every order in the realm arrives at once; the market settles, the pager goes quiet at five, and Kyu comes back to a handover note.",
     "map": "10",
     "fights": [
-     "orderflood",
-     "doublebook",
-     "forgedcoin"
+     {
+      "ids": [
+       "orderflood",
+       "dupepage"
+      ],
+      "sev": [
+       0.8,
+       1.0
+      ],
+      "dmg": [
+       0.8,
+       1.0
+      ]
+     },
+     {
+      "ids": [
+       "doublebook",
+       "forgedcoin"
+      ],
+      "sev": [
+       0.65,
+       0.65
+      ],
+      "dmg": [
+       0.65,
+       0.65
+      ]
+     },
+     "forgedcoin",
+     {
+      "ids": [
+       "orderflood",
+       "doublebook",
+       "forgedcoin"
+      ],
+      "sev": [
+       0.45,
+       0.45,
+       0.45
+      ],
+      "dmg": [
+       0.45,
+       0.45,
+       0.45
+      ]
+     }
     ],
     "elites": [
-     "homunculus"
+     "homunculus",
+     {
+      "ids": [
+       "escalation",
+       "snoozed"
+      ],
+      "sev": [
+       0.85,
+       1.0
+      ],
+      "dmg": [
+       0.85,
+       1.0
+      ]
+     }
     ],
     "boss": "marketopen",
     "bossTitle": "Market Open (Friday, 4:59 p.m.)",
@@ -2532,7 +3446,21 @@
      "ooo-friday",
      "ooo-line",
      "ooo-hero12"
-    ]
+    ],
+    "bossPack": {
+     "ids": [
+      "marketopen",
+      "dupepage"
+     ],
+     "sev": [
+      0.95,
+      0.8
+     ],
+     "dmg": [
+      0.95,
+      0.8
+     ]
+    }
    }
   ]
  }

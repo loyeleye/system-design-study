@@ -54,7 +54,7 @@
   const myStatus = () => ({ momentum: 0, prewarm: 0, carry: 0, fresh: 0, debt: 0, nextDraw: 0, brittle: 0, weakMe: 0, tax: 0, creep: 0 });
   // hardK: the kind Hardened patches; lastHit: the last kind that landed (Circuit Breaker, Hardened); turnSla: the SLA
   // at the start of the turn (Self-Healing); ease: Backpressure on the next hit; retry: load the Retry Budget replays.
-  const TEAM = ['hardened', 'regen', 'regenT', 'turnSla', 'ease', 'retry', 'intangible', 'artifact', 'thorns', 'buffer'];
+  const TEAM = ['hardened', 'regen', 'regenT', 'turnSla', 'retry', 'intangible', 'artifact', 'thorns', 'buffer'];
   const fightStatus = () => { const o = { hardK: null, lastHit: null, foes: [], fi: 0, lead: true }; TEAM.forEach(k => { o[k] = 0; }); return o; };
   const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
   const rnd = a => a[Math.floor(Math.random() * a.length)];
@@ -101,14 +101,27 @@
   const floorsOf = X => (X && Array.isArray(X.floors) ? X.floors : []).filter(f => f && okBoss(f.boss)).slice(0, 5);
   const xpOf = id => (SD.expeditions || []).find(x => x.id === id && floorsOf(x).length >= 2) || null;
   RD.expeditions = () => (SD.expeditions || []).filter(x => { try { return floorsOf(x).length >= 2 && x.opens(); } catch (e) { return false; } });
-  // The floor's own fights, or else its boss's region's.
-  const chOf = f => (SD.enemies[f.boss].ch || 1);
+  // A floor's chapter: the dungeon its map looks like, else its boss's.
+  const chOf = f => +f.map || SD.enemies[f.boss].ch || 1;
+  // A room's enemies (js/expeditions.js): an id, or a pack { ids, sev, dmg } with each member's Severity and load
+  // scales (0 or missing: the default for its size). An add whose minCh is above the floor's chapter stays home. In a
+  // boss's pack the boss comes first.
+  function packOf(x, ch, boss) {
+    const p = typeof x === 'string' ? { ids: [x] } : obj(x), out = { ids: [], sev: [], dmg: [] };
+    (Array.isArray(p.ids) ? p.ids.slice(0, 3) : []).forEach((id, i) => {
+      if (!(i === 0 && boss ? okBoss(id) : okFoe(id))) return;
+      if (SD.enemies[id].add && (SD.enemies[id].minCh || 1) > ch) return;
+      out.ids.push(id); out.sev.push(Math.max(0, +(p.sev || [])[i] || 0)); out.dmg.push(Math.max(0, +(p.dmg || [])[i] || 0));
+    });
+    return out.ids.length && (!boss || out.ids[0] === boss) ? out : null;
+  }
+  // The floor's own Incident (or Elite) rooms, or else its region's (never a raid-only enemy).
   function foes(f, elite) {
-    const own = (elite ? f.elites : f.fights) || [];
-    const list = own.filter(okFoe);
-    if (list.length) return list;
-    const ch = chOf(f), all = Object.keys(SD.enemies).filter(k => okFoe(k) && (SD.enemies[k].ch || 1) === ch);
-    return all.filter(k => !!SD.enemies[k].elite === !!elite).length ? all.filter(k => !!SD.enemies[k].elite === !!elite) : all;
+    const ch = chOf(f), own = ((elite ? f.elites : f.fights) || []).map(x => packOf(x, ch)).filter(Boolean);
+    if (own.length) return own;
+    const all = Object.keys(SD.enemies).filter(k => okFoe(k) && !SD.enemies[k].raid && (SD.enemies[k].ch || 1) === ch);
+    const tier = all.filter(k => !!SD.enemies[k].elite === !!elite);
+    return (tier.length ? tier : all).map(id => ({ ids: [id], sev: [0], dmg: [0] }));
   }
 
   RD.available = () => !!(SD.ui && SD.ui.cardHtml && SD.cards && SD.enemies && SD.intentText && SD.art && SD.art.enemy && SD.expeditions);
@@ -243,6 +256,7 @@
 .rd .opt b { display: block; }
 .rd-opt-say { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--muted); }
 .rd-peek { display: grid; gap: 4px; }
+.rd-inc { margin: 0; font-size: 13px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 4px 10px; }
 `;
     document.head.appendChild(st);
   }
@@ -280,8 +294,24 @@
   function intentOf(G) {
     const e = SD.enemies[G.boss];
     if (G.turn % 3 === 0 && G.lead) { const n = 8 + 2 * Math.floor(G.turn / 3); return { t: 'mixed', read: n, write: n, front: true }; }
-    return e.pattern[G.ii % e.pattern.length];
+    const s = e.pattern[G.ii % e.pattern.length];
+    return s.t === 'give' ? giveStep(G, e, s) : s;
   }
+  // Is this the expedition's last floor?
+  const lastFloor = G => { const X = xpOf(G.xp); return !!X && G.fl === floorsOf(X).length - 1; };
+  // A give step in a themed enemy's pattern ({t:'give', card, lvl, to, name, n}, new-enemies.json): its whole move,
+  // no damage, a Tech Debt or Pager Alert at lvl into the hand of whoever `to` names (least: whoever absorbed least
+  // this turn; random; two: two different players; all). On the last floor an elite's or boss's is one level higher
+  // (max 3) and an add's random becomes two. On floor 1 an add's give step is a plain hit of n instead.
+  function giveStep(G, e, s) {
+    const last = lastFloor(G);
+    if (e.add && !G.fl) return { t: 'hit', n: s.n || 8 };
+    const lvl = Math.min(3, Math.max(1, s.lvl | 0) + (last && !e.add ? 1 : 0));
+    const to = ['least', 'random', 'two', 'all'].includes(s.to) ? (last && e.add && s.to === 'random' ? 'two' : s.to) : 'least';
+    return { t: 'give', card: ADD[(s.card === 'page' ? 'pager' : 'techdebt') + (lvl > 1 ? lvl : '')], to, name: s.name || '' };
+  }
+  if (SD.intentText && !SD.intentText.hit) SD.intentText.hit = i => `Hit ${i.n}`;
+  const TO_TEXT = { least: 'whoever absorbs least', random: 'one of you', two: 'two of you', all: 'everyone' };
   // A floor boss's one move that also debuffs the team (the floor's `debuff`, js/expeditions.js), on that pattern step.
   function debuffNow(G) {
     const db = G.db, it = G.boss && intentOf(G);
@@ -293,7 +323,7 @@
     if (it.t === 'audit') shown.per = 3;
     if (it.t === 'escalate') shown.up = 3;
     const f = SD.intentText[it.t];
-    const t = f ? f(shown) : 'Something strange.';
+    const t = it.t === 'give' ? `${it.name ? it.name + ': ' : ''}${card(it.card).name} to ${TO_TEXT[it.to]}, in hand next turn (no damage)` : f ? f(shown) : 'Something strange.';
     const db = debuffNow(G);
     return (it.front ? 'Two fronts: ' : '') + t + (db ? ` Then ${db.kind === 'techdebt' || db.kind === 'pager' ? `a ${STATUS_ADD[db.kind]} card in every deck` : `${STATUS[db.kind][0]} ${db.n} on everyone`}.` : '');
   }
@@ -340,7 +370,8 @@
   //                                         Alert (1).
   // Only themed enemies hand the (2) and (3) versions out (Addendum 6): an enemy with `hands: 'debt'` or `'page'`. When
   // one of its attacks gets any SLA through, the player who absorbed least that turn (ties: random) gets one card: a
-  // floor boss's (3) version, a themed elite's (2).
+  // floor boss's (3) version, a themed elite's (2), or the one its handsLevel names (an add's (1), from floor 2), in
+  // their discard pile. Existing enemies never hand anything out.
   const STATUS = {
     leak: ['Memory Leak', 'Its leaked memory grows each turn. At 12 it is OOM-killed: -10 Severity and it skips its next move.'],
     degrade: ['Degraded', 'Nodes down: each takes 2 off every hit\'s load. One comes back at the end of each turn.'],
@@ -372,7 +403,13 @@
   const STATUS_ADD = {}; Object.keys(ADD).forEach(k => { STATUS_ADD[k] = SD.cards && SD.cards[ADD[k]] ? SD.cards[ADD[k]].name : k; });
   // What a debt-maker or a pager (an enemy with `hands: 'debt' | 'page'`) hands out when one of its attacks gets
   // through: a floor boss the (3) version, anyone else (a themed elite) the (2). G holds that enemy (withFoe).
-  const painCard = G => { const h = (SD.enemies[G.boss] || {}).hands; return h === 'debt' || h === 'page' ? ADD[(h === 'page' ? 'pager' : 'techdebt') + (G.tier === 'boss' && G.fi === 0 ? 3 : 2)] : null; };
+  // An enemy's handsLevel picks the version itself, and handsFromFloor keeps it quiet on the expedition's earlier
+  // floors (the adds: Tech Debt (1) or Pager Alert (1) from floor 2 on).
+  const painCard = G => {
+    const e = SD.enemies[G.boss] || {}, h = e.hands, n = [1, 2, 3].includes(e.handsLevel) ? e.handsLevel : G.tier === 'boss' && G.fi === 0 ? 3 : 2;
+    if ((h !== 'debt' && h !== 'page') || e.handMode === 'give' || G.fl + 1 < (e.handsFromFloor || 1)) return null;
+    return ADD[(h === 'page' ? 'pager' : 'techdebt') + (n > 1 ? n : '')];
+  };
   // A status chip: its name and count, with what it does in the tooltip.
   function stChip(o, k) {
     const n = o[k], txt = k === 'leak' ? `${o.leakM || 0}/12 (+${n})` : k === 'intangible' ? '' : k === 'hardened' ? `${n} vs ${o.hardK ? ((SD.intentName || {})[o.hardK] || o.hardK) : 'the next kind'}` : k === 'regen' ? `${n} (${o.regenT} turns)` : String(n);
@@ -382,6 +419,7 @@
   // The incident's load on one hit, after its escalation, De-escalate, Degraded nodes and Backpressure, times its
   // share in a pack (pw, from SD.groupFights.scale).
   const load = (G, v) => Math.max(0, Math.round((v + G.rage - G.deesc - 2 * G.degrade - G.ease) * (G.pw || 1)));
+  const hitLoad = load; // inside RD.play a save loader named load shadows this one
   // Stale goes up; each time it reaches 5, a de-escalated incident climbs back a level.
   function addStale(G, n) {
     if (n <= 0) return;
@@ -389,6 +427,8 @@
     G.stale += n;
     if (was < 5 && G.stale >= 5 && G.deesc) G.deesc--;
   }
+  // Read hits, for a pack's Incoming total.
+  const READS = ['read', 'hot', 'stampede', 'flood', 'scan', 'feed', 'celeb', 'nearby', 'lookup', 'connect'];
   // Write hits: the ones Read-Only Mode rejects.
   const WRITES = ['write', 'burst', 'upload', 'rush', 'stream', 'conflict', 'transcode', 'crawltrap', 'notifyflood'];
   // A hit's raw load, before shields: what a retried hit replays at half.
@@ -536,11 +576,13 @@
   // group fights. Statuses "on the incident" (Memory Leak, Degraded, Exposed, De-escalate) sit on the enemy a card
   // targets; the team's shields, Stale, infra and statuses are shared. Each living enemy acts in turn, in order, and
   // every third turn the first living one strikes on two fronts. The fight is won when every enemy is down.
-  const FOE = ['boss', 'sev', 'max', 'ii', 'rage', 'vuln', 'leak', 'leakM', 'skip', 'degrade', 'deesc', 'db', 'known', 'pw'];
-  const newFoe = (id, sev, pw) => ({ boss: id, sev, max: sev, ii: 0, rage: 0, vuln: 0, leak: 0, leakM: 0, skip: 0, degrade: 0, deesc: 0, db: null, known: [], pw });
+  // ease: Backpressure, which lightens the next hit of the enemy whose hit got through.
+  const FOE = ['boss', 'sev', 'max', 'ii', 'rage', 'vuln', 'leak', 'leakM', 'skip', 'degrade', 'deesc', 'db', 'known', 'pw', 'ease'];
+  const newFoe = (id, sev, pw) => ({ boss: id, sev, max: sev, ii: 0, rage: 0, vuln: 0, leak: 0, leakM: 0, skip: 0, degrade: 0, deesc: 0, db: null, known: [], pw, ease: 0 });
   const living = G => G.foes.map((f, i) => i).filter(i => G.foes[i].sev > 0);
   const front = G => (living(G)[0] == null ? -1 : living(G)[0]);
-  const allDown = G => !living(G).length;
+  // In an Elite or boss room the company leaves when the elite or boss falls: no mop-up.
+  const allDown = G => !living(G).length || (G.tier !== 'fight' && G.foes.length > 1 && G.foes[0].sev <= 0);
   const foeName = (G, i) => { const f = G.foes[i], e = SD.enemies[f.boss], same = G.foes.filter(o => o.boss === f.boss); return e.name + (same.length > 1 ? ' ' + 'ABC'[same.indexOf(f)] : ''); };
   function withFoe(G, i, fn) {
     const f = G.foes[i];
@@ -585,12 +627,14 @@
     if (d.xcost) p.cap = 0;
     const hit = () => {
       const e = SD.enemies[G.boss], who = multi && d.all ? foeName(G, G.fi) + ': ' : '';
-      if (d.reveal) { Object.keys(e.weak).forEach(t => G.known.push('w:' + t)); Object.keys(e.resist).forEach(t => G.known.push('r:' + t)); }
+      // An all-hit card's mitigation lands on every enemy; what it reveals or applies to "the incident" is the target's.
+      const aimed = !d.all || G.fi === ti;
+      if (d.reveal && aimed) { Object.keys(e.weak).forEach(t => G.known.push('w:' + t)); Object.keys(e.resist).forEach(t => G.known.push('r:' + t)); }
       if (d.xcost) mitigate(G, xn ? M((d.xmit || 0) + (up ? 2 : 0)) * xn : 0);
       if (d.slam) mitigate(G, slam);
       if (d.rca) mitigate(G, stale0 * 4);
       if (d.mit) log += `${who}Mitigated ${mitigate(G, M(d.mit + (up ? 3 : 0)))}. `;
-      if (d.vuln) G.vuln = Math.max(G.vuln, d.vuln);
+      if (d.vuln && aimed) G.vuln = Math.max(G.vuln, d.vuln);
       if (d.pow) {
         const tags = d.tags || [];
         const rs = tags.find(t => e.resist[t]), wk = d.wild ? Object.keys(e.weak)[0] : tags.find(t => e.weak[t]);
@@ -601,10 +645,10 @@
         } else if (rs) { log += `${who}RESISTED. ${e.resist[rs]} `; G.known.push('r:' + rs); }
         else { mitigate(G, Math.floor(M(d.pow) / 2)); log += `${who}Partial: it helps a little. `; }
       }
-      // Statuses on the incident. They stack.
-      if (d.leak) G.leak += d.leak;
-      if (d.degrade) G.degrade += d.degrade;
-      if (d.deesc) G.deesc += d.deesc;
+      // Statuses on the incident (the target). They stack.
+      if (d.leak && aimed) G.leak += d.leak;
+      if (d.degrade && aimed) G.degrade += d.degrade;
+      if (d.deesc && aimed) G.deesc += d.deesc;
       G.known = [...new Set(G.known)];
     };
     (d.all ? living(G) : [ti]).forEach(k => withFoe(G, k, hit));
@@ -645,6 +689,8 @@
   function newTurn(G) {
     G.turn++;
     G.eff = [];
+    // What each player adds to the shields this turn: their cards' Absorb and their infra's each-turn Absorb.
+    Object.values(G.players).forEach(p => { p.ab = 0; });
     G.intangible = 0;
     const multi = G.foes.length > 1;
     living(G).forEach(i => withFoe(G, i, () => {
@@ -660,7 +706,7 @@
     G.flags = {}; Object.keys(keep).forEach(k => { if (keep[k]) G.flags[k] = true; });
     G.infra.forEach(x => {
       const d = card(x.id), up = isUp(x.id) ? 2 : 0;
-      if (d.each) for (const k in d.each) G.sh[k] += d.each[k] + up;
+      if (d.each) { let t = 0; for (const k in d.each) { G.sh[k] += d.each[k] + up; t += d.each[k] + up; } if (G.players[x.by]) G.players[x.by].ab += t; }
       if (d.eachStale) addStale(G, d.eachStale);
       // An infra's own mitigation lands on the frontmost enemy.
       if (d.eachMit && front(G) >= 0) withFoe(G, front(G), () => mitigate(G, d.eachMit + up));
@@ -671,7 +717,7 @@
       G.sla -= dmg; G.taken += dmg;
       G.log = (G.log ? G.log + ' ' : '') + `Retried requests replayed at half load: ${dmg ? dmg + ' SLA' : 'the shields caught them'}.`;
       G.retry = 0;
-      if (G.sla <= 0) { G.sla = 0; G.ph = 'lost'; return; }
+      if (G.sla <= 0) { G.sla = 0; G.ph = 'lost'; delete G.gv; return; }
     }
     G.turnSla = G.sla;
     // Pinned cards stay in hand. Pre-Warmed Capacity arrives (and what wasn't spent last turn, once); Tightly
@@ -682,7 +728,7 @@
       p.cap = Math.max(0, 3 + st.prewarm + st.carry - st.debt);
       st.fresh = st.prewarm; st.prewarm = 0; st.carry = 0; st.debt = 0; st.tax = 0;
       if (st.weakMe) st.momentum = 0;
-      p.ready = false; p.played = []; p.ab = 0;
+      p.ready = false; p.played = [];
       drawN(p, 5);
       if (st.nextDraw) {
         const n = st.nextDraw, look = [];
@@ -696,7 +742,20 @@
         p.peek = look; p.take = Math.min(n, look.length);
       }
     });
+    // Last turn's give turns: the cards land in hand (a full hand: the discard pile).
+    (G.gv || []).forEach(([k, id]) => { const p = G.players[k]; if (p && card(id)) (p.hand.length < 10 ? p.hand : p.disc).push(id); });
+    delete G.gv;
     if (allDown(G)) G.ph = 'won';
+  }
+  // A give turn: the card goes into hands when the next turn's are dealt (G.gv, newTurn), so it's there to answer.
+  function give(G, it) {
+    const ps = Object.keys(G.players), nm = card(it.card).name;
+    let to;
+    if (it.to === 'all') to = ps;
+    else if (it.to === 'least') { const low = Math.min(...ps.map(k => G.players[k].ab || 0)); to = [rnd(ps.filter(k => (G.players[k].ab || 0) === low))]; }
+    else to = ps.slice().sort(() => Math.random() - 0.5).slice(0, it.to === 'two' ? 2 : 1);
+    G.gv = (G.gv || []).concat(to.map(k => [k, it.card]));
+    return `${it.name ? it.name + '! ' : ''}A ${nm} for ${it.to === 'all' ? 'everyone' : to.map(k => G.players[k].n).join(' and ')}${it.to === 'least' ? ' (absorbed least this turn)' : ''}. `;
   }
   // One enemy's move (G holds that enemy, withFoe). Returns the SLA it dealt and what happened.
   function foeActs(G) {
@@ -704,6 +763,7 @@
     let dmg = 0, note = '';
     const skipped = !!G.skip;
     if (skipped) { G.skip = 0; note = 'Still restarting after its OOM kill: it skips its move. '; }
+    else if (it.t === 'give') note = give(G, it);
     else if (G.artifact && kind === G.lastHit) { G.artifact--; note = 'The circuit breaker tripped: the same hit twice in a row, and the second was blocked. '; }
     else if (G.buffer && rawLoad(G, it) > 0) { G.buffer--; G.retry += Math.round(rawLoad(G, it) / 2); note = 'The retry budget caught it: those requests will replay next turn at half load. '; }
     else {
@@ -714,16 +774,15 @@
       }
       if (dmg > 0 && G.hardened && (!G.hardK || G.hardK === kind)) { dmg = Math.round(dmg / 2); G.hardened--; G.hardK = kind; note += 'Hardened: that kind of hit is patched, it dealt half. '; }
     }
-    if (!skipped) G.lastHit = kind;
-    // Backpressure: a hit that got through makes the next one lighter.
-    G.ease = dmg > 0 && G.thorns ? G.thorns : 0;
+    // A give turn isn't a hit: Circuit Breaker and Backpressure wait for the next one.
+    if (!skipped && it.t !== 'give') { G.lastHit = kind; G.ease = dmg > 0 && G.thorns ? G.thorns : 0; }
     if (dmg > 0) Object.values(G.players).forEach(p => { if (p.st.brittle) p.st.debt++; });
     // A debt-maker or a pager (its `hands`, Addendum 6): an attack that got through hands its card to whoever
     // absorbed least this turn.
     const pc = painCard(G);
     if (dmg > 0 && pc && card(pc)) {
       const ps = Object.values(G.players), low = Math.min(...ps.map(p => p.ab)), p = rnd(ps.filter(q => q.ab === low));
-      if (p) { p.draw.push(pc); note += `${p.n} absorbed least this turn and got a ${card(pc).name}. `; }
+      if (p) { p.disc.push(pc); note += `${p.n} absorbed least this turn and got a ${card(pc).name}. `; }
     }
     if (db && !skipped) {
       Object.values(G.players).forEach(p => { if (ADD[db.kind]) p.draw.push(ADD[db.kind]); else { p.st[db.kind] += db.n; if (db.kind === 'weakMe') p.st.momentum = 0; } });
@@ -741,15 +800,16 @@
     Object.values(G.players).forEach(p => { while (p.peek.length && take(p, 0)) { /* until done */ } });
     living(G).forEach(i => withFoe(G, i, () => { const r = foeActs(G); dmg += r.dmg; note += multi ? `${foeName(G, i)}: ${r.note}${r.dmg ? `-${r.dmg}. ` : r.note ? '' : 'no damage. '}` : r.note; }));
     // What's still in hand: Tech Debt charges interest, Pager Alerts go off, Scope Creep grows (the card's `held`).
-    Object.values(G.players).forEach(p => p.hand.forEach(id => {
+    // A card's `then` is for the turns after its first: two copies in one hand both cost the first amount.
+    Object.values(G.players).forEach(p => { const was = Object.assign({}, p.hd); p.hand.forEach(id => {
       const h = card(id).held, nm = card(id).name, k = base(id);
       if (!h) return;
       if (h.stale) { addStale(G, h.stale); note += `${p.n}'s ${nm}: +${h.stale} Stale. `; }
-      if (h.sla) { const n = h.then && p.hd[k] ? h.then : h.sla; p.hd[k] = Math.min(99, (p.hd[k] || 0) + 1); dmg += n; note += `${p.n}'s ${nm} went unanswered (-${n} SLA). `; }
+      if (h.sla) { const n = h.then && was[k] ? h.then : h.sla; p.hd[k] = Math.min(99, (p.hd[k] || 0) + 1); dmg += n; note += `${p.n}'s ${nm} went unanswered (-${n} SLA). `; }
       if (h.sev && front(G) >= 0) withFoe(G, front(G), () => { G.sev += h.sev; G.max = Math.max(G.max, G.sev); note += `${p.n}'s ${nm}: ${multi ? foeName(G, G.fi) : 'the incident'} gained ${h.sev} Severity. `; });
       if (h.grow) p.st.creep += h.grow;
       if (h.page && card(h.page)) { Object.values(G.players).forEach(q => q.draw.push(h.page)); note += `${p.n}'s ${nm} paged everyone: a ${card(h.page).name} each. `; }
-    }));
+    }); });
     G.sla -= dmg; G.taken += dmg;
     // Self-Healing: half this turn's loss comes back, up to N.
     if (G.regen && G.regenT) {
@@ -760,8 +820,8 @@
     // Tightly Coupled and Context Switching count down; Pre-Warmed Capacity that wasn't spent stays warm once.
     Object.values(G.players).forEach(p => { const st = p.st; if (st.brittle) st.brittle--; if (st.weakMe) st.weakMe--; st.carry = Math.min(p.cap, st.fresh); st.fresh = 0; });
     G.log = note + (dmg ? `The team took ${dmg} SLA damage.` : 'No damage.');
-    if (allDown(G)) { G.sla = Math.max(1, G.sla); G.ph = 'won'; return; }
-    if (G.sla <= 0) { G.sla = 0; G.ph = 'lost'; return; }
+    if (allDown(G)) { G.sla = Math.max(1, G.sla); G.ph = 'won'; delete G.gv; return; }
+    if (G.sla <= 0) { G.sla = 0; G.ph = 'lost'; delete G.gv; return; }
     newTurn(G);
   }
   // An event choice's effects (js/expeditions.js) for these players. The SLA, tapes and onWin are the team's, once per
@@ -882,16 +942,19 @@
       save();
     }
     function toMap() { Object.assign(G, { ph: 'map', room: null, votes: {}, boss: null, main: null, tier: null, foes: [] }); save(); }
-    // A room's enemies: one, a pack of 2 or 3 (Addendum 6), or a floor boss and its adds. Each scales with the
-    // players, as the raid always has: base severity × (0.4 + 0.6 × players). In a pack each takes its share of
-    // that and of the load, as in a dungeon run (SD.groupFights.scale): a pair 0.6 each, a trio about 0.4; an elite's
-    // or a boss's company is a minion (0.4), and an elite with company is 0.8 of itself.
-    function fight(ids, tier) {
-      const n = Math.max(1, seatsHere().length), k = ids.length, GS = obj(SD.groupFights && SD.groupFights.scale);
+    // A room's enemies (packOf): one, a pack of 2 or 3 (Addendum 6), or a floor boss and its add. Each scales with
+    // the players, as the raid always has: base severity (its sevAt for the floor's chapter) × (0.4 + 0.6 × players),
+    // then by its own share of the pack: the floor's sev and dmg scales, or by default as in a dungeon run
+    // (SD.groupFights.scale): a pair 0.6 each, a trio about 0.4, an elite with company 0.8 and its company 0.4.
+    function fight(spec, tier) {
+      const ids = spec.ids, n = Math.max(1, seatsHere().length), k = ids.length, ch = chOf(FL()), GS = obj(SD.groupFights && SD.groupFights.scale);
       const one = { sev: 1, dmg: 1 }, minion = GS.minion || { sev: 0.4, dmg: 0.45 };
       const share = i => (k < 2 ? one : tier === 'fight' ? GS[k] || GS[3] || { sev: 0.42, dmg: 0.45 } : i ? minion : tier === 'elite' ? GS.elite || { sev: 0.8, dmg: 0.8 } : one);
       Object.assign(G, fightStatus(), { ph: 'fight', room: null, main: ids[0], tier, turn: 0, stale: 0, taken: 0, sh: zero(), flags: {}, infra: [], eff: [] });
-      G.foes = ids.map((id, i) => { const g = share(i); return newFoe(id, Math.max(1, Math.round(SD.enemies[id].sev * (0.4 + 0.6 * n) * g.sev)), g.dmg); });
+      G.foes = ids.map((id, i) => {
+        const e = SD.enemies[id], g = share(i), sv = +obj(e.sevAt)[ch] || e.sev;
+        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * (spec.sev[i] || g.sev))), Math.min(1, spec.dmg[i] || g.dmg));
+      });
       // A floor boss's debuffing move: the floor's own, or Tightly Coupled 2 on its last pattern step.
       if (tier === 'boss') {
         const fd = obj(FL().debuff), m = SD.enemies[ids[0]].pattern.length;
@@ -904,23 +967,13 @@
       withFoe(G, 0, () => {});
       newTurn(G);
     }
-    // An Incident or Elite room's enemies: one of the floor's own, or one of its packs. With `packChance` (or
-    // `elitePackChance`) a pack comes up that often; without, every single and every pack is as likely.
-    function lineup(f, elite) {
-      const singles = foes(f, elite).map(id => [id]);
-      const packs = (Array.isArray(elite ? f.elitePacks : f.packs) ? elite ? f.elitePacks : f.packs : []).filter(a => Array.isArray(a) && a.length >= 2 && a.length <= 3 && a.every(okFoe));
-      const ch = elite ? f.elitePackChance : f.packChance;
-      if (!packs.length) return rnd(singles);
-      if (typeof ch === 'number') return rnd(Math.random() < ch ? packs : singles);
-      return rnd(singles.concat(packs));
-    }
     function enter(id) {
       const n = nodeOf(G, id), f = FL();
       if (!n || !f) return;
       G.pos = id; G.seen.push(id); G.votes = {};
-      if (n.type === 'fight' || n.type === 'elite') { G.k++; return fight(lineup(f, n.type === 'elite'), n.type); }
-      // A floor boss may bring an add or two (the floor's `adds`).
-      if (n.type === 'boss') { G.k++; return fight([f.boss].concat((Array.isArray(f.adds) ? f.adds : []).filter(okFoe).slice(0, 2)), 'boss'); }
+      if (n.type === 'fight' || n.type === 'elite') { G.k++; return fight(rnd(foes(f, n.type === 'elite')), n.type); }
+      // A floor boss may bring an add (the floor's bossPack).
+      if (n.type === 'boss') { G.k++; return fight(packOf(f.bossPack, chOf(f), f.boss) || { ids: [f.boss], sev: [0], dmg: [0] }, 'boss'); }
       Object.values(G.players).forEach(p => { p.o = []; p.sold = []; });
       if (n.type === 'board') {
         const c = SD.enemies[f.boss].concept, q = SD.state && SD.state.pickQuestion ? SD.state.pickQuestion(c, []) : null;
@@ -1135,7 +1188,7 @@
       Object.keys(S.players).forEach(k => { const p = S.players[k]; pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: p.o, s: p.sold, st: p.st, pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {} }; });
       // Each enemy goes as a list of its FOE fields; the copy swapped into G (withFoe) stays home.
       const out = Object.assign({}, S, { players: pl, foes: (S.foes || []).map(f => FOE.map(k => f[k])) });
-      FOE.concat(['fi', 'lead']).forEach(k => { delete out[k]; });
+      FOE.concat(['fi', 'lead', 'gv']).forEach(k => { delete out[k]; });
       return out;
     }
     const ROOMS = ['reward', 'cafe', 'camp', 'board', 'event'];
@@ -1171,7 +1224,7 @@
       const num = (v, hi) => Math.max(0, Math.min(hi, Number(v) || 0));
       S.foes = (Array.isArray(d.foes) ? d.foes : []).slice(0, 3).filter(a => Array.isArray(a) && SD.enemies[a[0]]).map(a => {
         const f = {}; FOE.forEach((k, i) => { f[k] = a[i]; });
-        ['sev', 'max', 'ii', 'rage', 'vuln', 'leak', 'leakM', 'skip', 'degrade', 'deesc'].forEach(k => { f[k] = Math.round(num(f[k], 99999)); });
+        ['sev', 'max', 'ii', 'rage', 'vuln', 'leak', 'leakM', 'skip', 'degrade', 'deesc', 'ease'].forEach(k => { f[k] = Math.round(num(f[k], 99999)); });
         f.max = Math.max(1, f.max); f.pw = Math.max(0.1, Math.min(1, Number(f.pw) || 1));
         f.known = Array.isArray(f.known) ? f.known.filter(x => typeof x === 'string').slice(0, 40) : [];
         const db = obj(f.db);
@@ -1496,8 +1549,9 @@
     const aimHere = () => aim(G, ui.tg);
     // One enemy's NEXT line (G holds it, withFoe), with what it hands out when a hit gets through in the tooltip.
     function intentHtml(i) {
-      const it = intentOf(G), pc = painCard(G), tip = pc ? `If any SLA gets through, whoever absorbed least this turn gets a ${card(pc).name}.` : '';
-      return `<div class="intent${it.front ? ' rd-front' : ''}"${tip ? ` title="${esc(tip)}"` : ''}><span class="lbl">${it.front ? 'TWO FRONTS' : 'NEXT'}</span> ${esc(intentText(G))}${pc ? ` <span class="chip rd-st stale" title="${esc(tip)}">${esc(card(pc).name)}</span>` : ''}</div>`;
+      const it = intentOf(G), gv = it.t === 'give', pc = gv ? it.card : painCard(G);
+      const tip = gv ? `Its whole move: no damage, a ${card(pc).name} into ${TO_TEXT[it.to]}'s hand next turn.` : pc ? `If any SLA gets through, whoever absorbed least this turn gets a ${card(pc).name}.` : '';
+      return `<div class="intent${it.front ? ' rd-front' : ''}"${tip ? ` title="${esc(tip)}"` : ''}><span class="lbl">${it.front ? 'TWO FRONTS' : 'NEXT'}</span> ${esc(intentText(G))}${pc && !gv ? ` <span class="chip rd-st stale" title="${esc(tip)}">${esc(card(pc).name)}</span>` : ''}</div>`;
     }
     function fightView(mine) {
       cue();
@@ -1527,6 +1581,18 @@
             ${stChips(G, FOE_ST) ? `<div class="chips">${stChips(G, FOE_ST)}</div>` : ''}
             ${intentHtml(0)}${tags}</div>`);
       }
+      // A pack's total for the turn, since the team plans its shields together: "Incoming: 22 read, 14 write, 1 audit".
+      let incoming = '';
+      if (n > 1) {
+        const tot = {}, add = (k, v) => { tot[k] = (tot[k] || 0) + v; };
+        living(G).forEach(i => withFoe(G, i, () => {
+          const it = intentOf(G);
+          if (it.read != null || it.write != null) { add('read', hitLoad(G, it.read || 0)); add('write', hitLoad(G, it.write || 0)); }
+          else if (it.n != null) add(WRITES.includes(it.t) ? 'write' : READS.includes(it.t) ? 'read' : it.t, hitLoad(G, it.n));
+          else add(it.t === 'give' ? card(it.card).name : it.t, 1);
+        }));
+        incoming = `<p class="rd-inc"><b>Incoming:</b> ${Object.keys(tot).map(k => `${tot[k]} ${esc(k)}`).join(', ')}</p>`;
+      }
       // Runbook Ready: the cards this player is looking at, to take some into hand.
       const peek = mine && mine.peek.length ? `<div class="rd-peek"><p class="muted small">Runbook Ready: take ${mine.take} of these. The rest go to the bottom.</p><div class="cardgrid pick">${mine.peek.map((id, i) => `<div ${mine.ready ? '' : sendAttr({ k: 'peek', i })} class="rd-pickc">${chtml(id, { i })}</div>`).join('')}</div></div>` : '';
       paint(`${hud()}<div class="combat${G.tier === 'boss' ? ' bossfight' : ''}">
@@ -1537,7 +1603,7 @@
         ${mine ? `<div class="hand-zone"><div class="hand-top"><div class="energy" aria-label="Capacity ${mine.cap}"><b>${mine.cap}</b><span>CAP</span></div>
             <span class="muted small">Turn ${G.turn} · Draw ${mine.draw.length} · Discard ${mine.disc.length}</span>${stChips(mine.st, ME_ST)}
             <button class="${mine.ready ? 'ghost' : 'primary'}" type="button" id="rd-ready">${mine.ready ? 'Not ready yet' : 'Ready'}</button></div>
-          ${mine.ready ? '<p class="rd-wait">Waiting for the others. The foe acts when everyone is ready.</p>' : ''}${peek}
+          ${mine.ready ? '<p class="rd-wait">Waiting for the others. The foe acts when everyone is ready.</p>' : ''}${incoming}${peek}
           <div class="hand">${mine.hand.map((id, i) => chtml(id, { i, cost: card(id).unplayable ? '–' : card(id).xcost ? undefined : costFor(mine, id), dim: mine.ready || card(id).unplayable || costFor(mine, id) > mine.cap })).join('')}</div></div>` : '<p class="muted small">You\'re watching this expedition.</p>'}
       </div>`);
       root.querySelectorAll('.hand .card').forEach(el => {

@@ -40,8 +40,8 @@
     const e = SD.enemies[id];
     return e.boss ? 'boss' : e.elite || eliteIds().has(id) ? 'elite' : 'incident';
   };
-  // Every enemy except the cold-open tutorial, by chapter.
-  B.ids = () => Object.keys(SD.enemies).filter(id => !SD.enemies[id].tutorial);
+  // Every enemy except the cold-open tutorial, by chapter. Expedition Raid's own (raid: true) only once met.
+  B.ids = () => Object.keys(SD.enemies).filter(id => !SD.enemies[id].tutorial && (!SD.enemies[id].raid || B.state(id) !== 'unseen'));
   B.byChapter = function () {
     const out = {};
     B.ids().forEach(id => { const ch = SD.enemies[id].ch || 1; (out[ch] = out[ch] || []).push(id); });
