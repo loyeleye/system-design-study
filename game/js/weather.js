@@ -8,6 +8,7 @@
 //   SD.weather.draw(ctx, t, vw, vh, kind)   draw it (kind defaults to now())
 //   SD.weather.sync(kind)   start or swap the weather sound for the music that is playing
 //   SD.weather.force        set to a kind (or 'clear') to override everything; the debug panel uses it
+//   SD.weather.pause(on)    no weather drawn or heard while on (the Guild Hall, js/guild.js); the music plays on
 (function () {
   const W = SD.weather = { force: null };
   const S = SD.state;
@@ -150,7 +151,16 @@
     }
   }
 
+  W.paused = false;
+  W.pause = function (on) {
+    W.paused = !!on;
+    if (SD.audio && SD.audio.hush) SD.audio.hush(W.paused);
+    // No thunderclap the moment you come back: the next bolt waits a few seconds.
+    if (!W.paused) nextBolt = 0;
+  };
+
   W.draw = function (ctx, t, vw, vh, kind) {
+    if (W.paused) return;
     kind = kind || W.now();
     ctx.save();
     const night = SD.clock ? SD.clock.block() === 'night' : false;
