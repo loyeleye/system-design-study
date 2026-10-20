@@ -30,6 +30,7 @@
 //     -> Promise of how the player left: undefined, 'full' or 'kicked'
 //   SD.raid.available()   -> whether this page has the game's cards and styles (the in-game Guild Hall does)
 //   SD.raid.expeditions() -> the expeditions open to this player
+//   SD.raid.level(x)      -> an expedition's difficulty by its floors: Easy (2), Medium (3), Hard (4) or Master (5)
 //   SD.raid.saved()       -> this browser's saved expeditions, newest first: [{ code, xp, name, fl, floors, at }]
 //   SD.raid.cardChoices(n, ch, champ, tier, rarity) -> this player's card reward (as js/run.js cardChoices)
 (function () {
@@ -120,6 +121,10 @@
   const floorsOf = X => (X && Array.isArray(X.floors) ? X.floors : []).filter(f => f && okBoss(f.boss)).slice(0, 5);
   const xpOf = id => (SD.expeditions || []).find(x => x.id === id && floorsOf(x).length >= 2) || null;
   RD.expeditions = () => (SD.expeditions || []).filter(x => { try { return floorsOf(x).length >= 2 && x.opens(); } catch (e) { return false; } });
+  // Difficulty goes with length (Ladi, 2026-10-20), and each expedition's sev and dmg tune it to its level.
+  const LEVELS = { 2: 'Easy', 3: 'Medium', 4: 'Hard', 5: 'Master' };
+  RD.level = x => LEVELS[floorsOf(x).length] || '';
+  const xpX = (x, k) => Math.max(0.5, Math.min(2, +(x || {})[k] || 1));
   // A floor's chapter: the dungeon its map looks like, else its boss's.
   const chOf = f => +f.map || SD.enemies[f.boss].ch || 1;
   // A room's enemies (js/expeditions.js): an id, or a pack { ids, sev, dmg } with each member's Severity and load
@@ -1214,13 +1219,14 @@
       const share = i => (k < 2 ? one : tier === 'fight' ? GS[k] || GS[3] || { sev: 0.42, dmg: 0.45 } : i ? minion : tier === 'elite' ? GS.elite || { sev: 0.8, dmg: 0.8 } : one);
       Object.assign(G, fightStatus(), { ph: 'fight', room: null, main: ids[0], tier, turn: 0, stale: 0, taken: 0, sh: zero(), flags: {}, infra: [], eff: [] });
       // Balance (Ladi, 2026-10-20): an elite has 20% more Severity, its load unchanged; a floor boss's Severity times
-      // the floor's bossSev (js/expeditions.js); and every enemy's Severity and load scale by the party's size (PARTY,
-      // bots count): 80% load for two seats, more Severity and load for three and four.
+      // the floor's bossSev (js/expeditions.js); every enemy's Severity and load scale by the party's size (PARTY,
+      // bots count): 80% load for two seats, more Severity and load for three and four; and by the expedition's own
+      // sev and dmg, which set its difficulty.
       const sevX = i => (i ? 1 : tier === 'elite' ? ELITE_SEV : tier === 'boss' ? Math.max(0.1, Math.min(2, +FL().bossSev || 1)) : 1);
-      const ps = PARTY[Math.min(4, n)] || { sev: 1, dmg: 1 };
+      const ps = PARTY[Math.min(4, n)] || { sev: 1, dmg: 1 }, xs = xpX(X(), 'sev'), xd = xpX(X(), 'dmg');
       G.foes = ids.map((id, i) => {
         const e = SD.enemies[id], g = share(i), sv = +obj(e.sevAt)[ch] || e.sev;
-        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * ps.sev * (spec.sev[i] || g.sev) * sevX(i))), Math.min(1, spec.dmg[i] || g.dmg) * ps.dmg);
+        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * ps.sev * xs * (spec.sev[i] || g.sev) * sevX(i))), Math.min(1, spec.dmg[i] || g.dmg) * ps.dmg * xd);
       });
       // A floor boss's debuffing move: the floor's own, or Tightly Coupled 2 on its last pattern step.
       if (tier === 'boss') {
@@ -1709,7 +1715,7 @@
       S.foes = (Array.isArray(d.foes) ? d.foes : []).slice(0, 3).filter(a => Array.isArray(a) && SD.enemies[a[0]]).map(a => {
         const f = {}; FOE.forEach((k, i) => { f[k] = a[i]; });
         ['sev', 'max', 'ii', 'rage', 'vuln', 'leak', 'leakM', 'skip', 'degrade', 'deesc', 'ease', 'dl'].forEach(k => { f[k] = Math.round(num(f[k], 99999)); });
-        f.max = Math.max(1, f.max); f.pw = Math.max(0.1, Math.min(1.5, Number(f.pw) || 1));
+        f.max = Math.max(1, f.max); f.pw = Math.max(0.1, Math.min(2.5, Number(f.pw) || 1));
         f.known = Array.isArray(f.known) ? f.known.filter(x => typeof x === 'string').slice(0, 40) : [];
         const db = obj(f.db);
         f.db = ['brittle', 'weakMe', 'techdebt', 'pager'].includes(db.kind) && Number.isInteger(db.move) ? { kind: db.kind, move: db.move, n: Math.max(1, Math.min(4, db.n | 0)) } : null;
@@ -2019,7 +2025,7 @@
       const open = RD.expeditions(), h = here();
       const kyu = kyuBoss();
       const fl = x ? floorsOf(x) : [];
-      const pickX = hosting && !G.rs ? (open.length ? `<label class="pt-lbl" for="rd-xp">Expedition<select id="rd-xp">${open.map(e => `<option value="${esc(e.id)}" ${e.id === G.xp ? 'selected' : ''}>${esc(e.name)} · ${floorsOf(e).length} floors</option>`).join('')}</select></label>` : '<span class="mi-tag">Expedition</span><small class="mi-muted">None open yet. Reach chapter 2 for the first.</small>')
+      const pickX = hosting && !G.rs ? (open.length ? `<label class="pt-lbl" for="rd-xp">Expedition<select id="rd-xp">${open.map(e => `<option value="${esc(e.id)}" ${e.id === G.xp ? 'selected' : ''}>${esc(e.name)} · ${RD.level(e)}, ${floorsOf(e).length} floors</option>`).join('')}</select></label>` : '<span class="mi-tag">Expedition</span><small class="mi-muted">None open yet. Reach chapter 2 for the first.</small>')
         : `<span class="mi-tag">Expedition${G.rs ? ' · resuming' : ''}</span><b>${esc(x ? x.name : 'None yet')}</b><small class="mi-muted">${G.rs ? `Floor ${G.fl + 1} of ${fl.length}. Seats come back by name, or tap yours.` : `${esc((G.players[G.host] || {}).n || 'The leader')} picks the expedition.`}</small>`;
       const floors = x ? `<b>${esc(x.name)}</b>: ${esc(x.blurb || '')} ${fl.map((f, i) => `${i + 1}. ${esc(f.name)} (${esc(SD.enemies[f.boss].name)})`).join(' · ')}` : '';
       // A resumed expedition: the saved seats, and a button for each empty one this player could be.

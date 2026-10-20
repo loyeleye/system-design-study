@@ -47,6 +47,14 @@ KEEP = ('debuff', 'bossSev')
 # Ladi approved that aren't in expeditions.json yet. A floor's own bossSev in the JSON wins.
 # Greed as Forty Minutes Late's floor 1 boss: 15% less Severity (Ladi, 2026-10-20). Greed elsewhere is unchanged.
 BOSS_SEV = {('forty-minutes-late', 1): 0.85}
+# Each expedition's difficulty (Ladi, 2026-10-20): every enemy's Severity (sev) and load (dmg) on it, so that its length
+# sets its level: 2 floors Easy (90%+ bot wins), 3 Medium (60-70%), 4 Hard (30-50%), 5 Master (Out of Office's 15%).
+# Fitted on 180 bot runs per setting (2 to 4 players); Weekends for Skeletons, Does It Hold and Out of Office need none.
+XP_DIFF = {
+    'every-time-you-die': {'sev': 0.88, 'dmg': 0.88}, 'geralds-anvil': {'sev': 0.88, 'dmg': 0.88},
+    'headcount': {'sev': 1.12, 'dmg': 1.12}, 'the-rematch': {'sev': 0.88, 'dmg': 0.88}, 'forty-minutes-late': {'sev': 0.87, 'dmg': 0.87},
+    's-rank-retake': {'sev': 0.96, 'dmg': 0.96}, 'best-of-five': {'sev': 1.27, 'dmg': 1.27},
+}
 
 # Decisions on the enemy design pass that Ladi may still change: one line each.
 # The Rota With No Saturdays replaces the Streamlord on Weekends for Skeletons floor 2 (with its two story lines).
@@ -258,7 +266,7 @@ def main():
                     room.append(e)
             floors.append(fl)
         assert 2 <= len(floors) <= 5, x['id']
-        xps.append({'id': x['id'], 'name': x['name'], 'who': x['who'], 'blurb': x['blurb'], 'opens': '@@' + opens_js(x['opens']) + '@@', 'floors': floors})
+        xps.append({'id': x['id'], 'name': x['name'], 'who': x['who'], 'blurb': x['blurb'], 'opens': '@@' + opens_js(x['opens']) + '@@', **XP_DIFF.get(x['id'], {}), 'floors': floors})
     curses = {}
     for c in d['curses']:
         if c['id'] in SAME:
@@ -316,8 +324,9 @@ HEAD = """// Expedition Raid's content (Ladi, 2026-10-20): the expeditions a Gui
 // Written by tools/expeditions_from_json.py from the writers' expeditions.json (expeditions.md is its human view).
 // Change the JSON and run the tool again, rather than editing this file by hand.
 //
-//   SD.expeditions = [{ id, name, who: [character ids it's about], blurb, opens() -> bool, floors: [floor, ...] }]
+//   SD.expeditions = [{ id, name, who: [character ids it's about], blurb, opens() -> bool, sev, dmg, floors: [floor, ...] }]
 //     2 to 5 floors. opens() reads this player's save (the leader's, since the leader picks).
+//     sev, dmg every enemy's Severity and load on this expedition (default 1), which tune it to its level by length
 //   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, bossPack, bossSev, debuff, intro, outro, events }
 //     gate    the title card shown on entering the floor; beat: what the floor is about
 //     map     the dungeon tileset: the chapter whose map art it uses ('1' to '10'), which is also the floor's chapter
