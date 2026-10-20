@@ -40,7 +40,8 @@
   // music (a song in js/audio.js, or a function that picks one or null), ambience (its PLACE sound, or null for quiet),
   // bell: a shop bell over the door. calm: nobody in it looks worried in the storm. front: [[x, y, w, h, row]], pieces
   // of the picture (in its pixels) drawn again over whoever stands behind them, as standing on that row: counters, tables.
-  // across: [[x, y, id]], tiles you talk to id from when they sit out of reach (on a sofa behind a table).
+  // across: [[x, y, id]], tiles you talk to id from when they sit out of reach (on a sofa behind a table): walk up
+  // into the tile from the one in front of it (below it), marked with an arrow while you're near.
   const ROOMS = I.ROOMS = {
     treehouse: {
       name: "MIO'S TREEHOUSE", door: 'H', owner: 'mio',
@@ -725,6 +726,24 @@
     for (let i = 0; i < 3; i++) ctx.fillRect(x + 4 * k, y + (3 + i * 6) * k, w - 8 * k, 3 * k);
   }
 
+  // An arrow on the furniture's edge in front of each across tile, pointing at whoever you'd talk to from there. It is
+  // drawn over the room's lighting so it shows at night, fades in as you come near, pulses gently, and fades out once
+  // you stand under it.
+  const clamp01 = v => Math.min(1, Math.max(0, v));
+  function acrossCue(ctx, r, ts, t) {
+    const P = sc && sc.P; if (!P) return;
+    r.across.forEach(([x, y, id]) => {
+      if (!sc.actors[id]) return;
+      const d = Math.hypot(P.px - x, P.py - y - 1), a = clamp01((3.2 - d) / 1.5) * clamp01((d - 0.25) / 0.5);
+      if (!a) return;
+      const k = 0.5 + 0.5 * Math.sin(t * 4), cx = (x + 0.5) * ts, ay = (y + 1.12) * ts - k * ts * 0.08;
+      ctx.save();
+      ctx.globalAlpha = a * (0.65 + 0.35 * k); ctx.fillStyle = '#ffe9a8';
+      ctx.beginPath(); ctx.moveTo(cx, ay - ts * 0.16); ctx.lineTo(cx + ts * 0.13, ay); ctx.lineTo(cx - ts * 0.13, ay); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    });
+  }
+
   // A doormat over the way out, for pictures drawn without a door.
   function mat(ctx, r, ts) {
     const y = r.map.length - 1, xs = [...r.map[y]].map((c, x) => c === 'D' ? x : -1).filter(x => x >= 0);
@@ -847,8 +866,10 @@
   const BIRD = () => birdPic || (birdPic = load('assets/img/village/coo.webp'));
   const looks = id => id === 'coo' ? { draw: bird } : {};
   // Worried villagers have a worried bubble now and then, in the storm.
-  function fx(ctx, t) {
+  // And the arrows at the spots you talk to people across furniture from.
+  function fx(ctx, t, ts) {
     Object.values(sc.actors).forEach(a => { if (a.worried && (t * 0.6 + a.x * 0.37) % 4 < 2.2) sc.emote(a.id, 'dots', 0.1); });
+    if (ROOMS[cur].across) acrossCue(ctx, ROOMS[cur], ts, t);
   }
 
   function go(key, at) {
