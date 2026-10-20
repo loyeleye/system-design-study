@@ -1343,6 +1343,7 @@
       const p = G.players[peer], r = G.room;
       if (d.k === 'claim') return claim(peer, d.seat);
       if (d.k === 'bot') { if (peer === G.host && addBot()) push(); return; }
+      if (d.k === 'botc') { if (peer === G.host && botChamp(d.b, d.c)) push(); return; }
       if (!p) return;
       if (d.k === 'play' && Number.isInteger(d.i) && d.i >= 0 && d.i < 10) { if (play(G, peer, d.i, d.t, d.w, d.q)) { settle(); push(); check(); } return; }
       // An answer to a rare's question: [right, band, sure, rubric points, late] from the answering player's own page.
@@ -1447,6 +1448,15 @@
       if (n > 9) return false;
       G.players['~b' + n] = Object.assign(newSeat('Bot ' + n, null, []), { bot: true });
       fixBots();
+      return true;
+    }
+    // The leader picks a bot's champion: any unlocked one nobody else holds (not Kyu against her own boss).
+    function botChamp(k, c) {
+      const CH = SD.champions;
+      if (!CH || G.ph !== 'lobby' || G.rs || !isBot(k) || typeof c !== 'string' || !CH.get(c) || !CH.unlocked(c) || CH.bossConflict(c, kyuBoss())) return false;
+      const used = Object.keys(G.players).filter(j => j !== k).map(j => G.players[j].c).concat(party ? party.members().map(m => m.champ) : []);
+      if (used.includes(c)) return false;
+      G.players[k].c = c; G.players[k].deck = botDeck(c);
       return true;
     }
     // A bot gives way: a champion a human holds (or one locked on this page, or Kyu against her own boss) is swapped for
@@ -2017,6 +2027,7 @@
         settings: pickX,
         note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café. No shards; this one is for practice.${seats}`,
         addBot: hosting && !G.rs && all().length < MAX_PLAYERS ? () => send({ k: 'bot' }) : null,
+        botChamp: hosting && !G.rs ? (k, c) => send({ k: 'botc', b: k, c }) : null,
         startWhy: () => (!x ? 'No expedition is open yet.' : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
         start,
         bind: rt => {
