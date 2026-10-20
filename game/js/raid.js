@@ -857,7 +857,7 @@
   // sure: false or sureSpeed leaves it out. Wrong (or out of time) applies `wrong`, twice if the player was sure on a
   // card that bets on it. A typed card pays perPoint for every rubric point whatever happened; passing is right.
   // A pair card pays each right answer by its own player's band; solo, a "counts twice" card (solo2) counts the one
-  // answer twice. slowCost: the team loses that much SLA if anyone answered slow or ran out of time. Lord Latency
+  // answer twice. wrongCost: the team loses that much SLA if anyone answered wrong or ran out of time. Lord Latency
   // answering for a teammate's card always counts as Fast (his own rares pay the same at every speed anyway).
   const RQ = { fast: 'right, fast', steady: 'right, steady', slow: 'right, but slow' };
   function resolveQ(G, e) {
@@ -901,7 +901,7 @@
       if (ln > 0 && G.lt.length < 12) G.lt.push([aim(G, t), ln, 0]);
       log += `CRITICAL! x${Math.round(crit * 100) / 100}: mitigated ${more} more${ln ? `, and ${ln} more next turn` : ''}. `;
     }
-    if (d.slowCost && ans.some(x => x.late || x.band === 'slow')) { G.sla = Math.max(1, G.sla - d.slowCost); log += `Someone was slow: the team loses ${d.slowCost} SLA. `; }
+    if (d.wrongCost && ans.some(x => x.late || !x.ok)) { G.sla = Math.max(1, G.sla - d.wrongCost); log += `Someone missed: the team loses ${d.wrongCost} SLA. `; }
     p.ab += Math.max(0, Math.round(shSum(G) - sh0));
     G.log = `${d.name}: ${log}`.trim();
     if (allDown(G)) { G.ph = 'won'; G.qs = []; }
