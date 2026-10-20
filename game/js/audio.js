@@ -181,10 +181,12 @@
     map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5',
     // The newer places' own themes (OpenGameArt, credited in CREDITS.md): the Eventual Isles, the PR Club and its
     // yoga studio, Aigerim's card shop, and Kagemaru's cave (a music box). Rooms otherwise keep the music from outside.
-    isles: 'm-isles', gym: 'm-gym', studio: 'm-studio', shop: 'm-shop', cave: 'm-cave' };
+    isles: 'm-isles', gym: 'm-gym', studio: 'm-studio', shop: 'm-shop', cave: 'm-cave',
+    // The Guild Hall's lobbies and party rooms (an upbeat Celtic folk tune, js/guild.js).
+    hall: 'm-hall' };
   // Songs without a synth version fall back to this one if the file fails to load.
   const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore',
-    isles: 'explore', gym: 'explore', studio: 'heaven', shop: 'town', cave: 'isles' };
+    isles: 'explore', gym: 'explore', studio: 'heaven', shop: 'town', cave: 'isles', hall: 'town' };
   // Per-song loudness: the piano is gentle on purpose, and the chapter maps are mastered hotter than explore.
   const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65, studio: 0.8, shop: 0.85, cave: 0.8 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
