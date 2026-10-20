@@ -120,6 +120,7 @@
   // with the storm.
   if (NR && NR.onGo) NR.onGo.push((map, sc) => {
     Object.entries(SHELTERS[map] || {}).forEach(([key, sh]) => {
+      if (!sh.knock) return;                     // a shelter you can walk into (the bookie's cellar, js/arena-booth.js)
       const id = knockId(key);
       if (!sc.actors[id]) sc.addActor(id, { x: sh.knock[0], y: sh.knock[1], draw() {}, home: sh.knock.slice(), nextStroll: Infinity, knock: key });
       sc.hide(id, !storm());

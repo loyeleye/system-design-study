@@ -186,7 +186,7 @@
     // the ring; they are actors (solid: false, they can't be talked to) so people are drawn in front of or behind
     // them by row. Where each one is comes from the time alone, set in under() before anything is drawn.
     const TW = [[0.9, 2.3, 'ar-tumbleweed', 0], [0.75, 1.8, 'ar-tumbleweed2', 13], [1, 2.8, 'ar-tumbleweed', 29]];   // size, speed, art, start
-    const LANES = [11, 24, 30, 26, 31, 12], RUN = 37, GAP = 30;   // a run across the sand, then a while off it
+    const LANES = [13, 24, 30, 26, 31, 12], RUN = 37, GAP = 30;   // a run across the sand, then a while off it
     const tumble = {};
     TW.forEach(([k, speed, art], j) => {
       tumble['tumble' + j] = { x: 3, y: 11, solid: false, talk: false, home: [3, 11], nextStroll: Infinity, hidden: true,
