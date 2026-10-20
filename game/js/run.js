@@ -345,7 +345,7 @@
     };
     if (hook('node', n, done)) return;
     const pools = chap().pools;
-    if (n.type === 'fight') return fight(rnd(pools[n.f < 2 ? 1 : n.f < 5 ? 2 : 3]), { diagnose: Math.random() < 0.45 }, done);
+    if (n.type === 'fight') return fight(rnd(pools[n.f < 2 ? 1 : n.f < 5 ? 2 : 3]), { diagnose: rel('pipeye') || Math.random() < 0.45 }, done);
     if (n.type === 'elite') return fight(rnd(pools.elite), { diagnose: true, elite: true }, done);
     if (n.type === 'boss') return boss(done);
     if (n.type === 'board') return whiteboard(done);
@@ -388,10 +388,10 @@
     run.bits += bits; S.save.shards += shards; S.save.stats.fights++; run.log.fights++;
     if (rel('postnotes')) run.sla = Math.min(S.maxSla(), run.sla + 5);
     R.gainXp(xp);
-    // Grandma's Feather Duster sweeps a basic card out of the deck after every incident and elite.
+    // Grandma's Feather Duster dusts off (Refactors) a basic card after every incident and elite.
     if (!opts.boss && rel('duster')) {
-      const basics = run.deck.filter(c => SD.cards[c.id].rarity === 'basic');
-      if (basics.length) { const c = basics[Math.floor(Math.random() * basics.length)]; run.deck.splice(run.deck.indexOf(c), 1); U.system('DUSTED', U.esc(SD.cards[c.id].name) + ' swept out of your deck.'); }
+      const basics = run.deck.filter(c => SD.cards[c.id].rarity === 'basic' && !c.up);
+      if (basics.length) { const c = basics[Math.floor(Math.random() * basics.length)]; c.up = true; U.system('DUSTED OFF', U.esc(SD.cards[c.id].name) + '+'); }
     }
     if (opts.boss) return done();
     const n = S.save.relics.includes('satchel') ? 4 : 3;
@@ -472,19 +472,18 @@
         <button class="opt" id="g-rest"><b>Rest</b> · Recover ${heal} SLA</button>
         <button class="opt" id="g-forge"><b>Refactor</b> · Upgrade a card (+3 to its numbers)</button>
         <button class="opt" id="g-reflect"><b>Reflect</b> · Connect two ideas for XP and a notebook link</button>
-        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Refactor 2 cards and gain 5 max SLA this run</button>` : ''}
+        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Rest, Refactor a card and gain 5 max SLA this run</button>` : ''}
       </div>`, { title: 'BREAK ROOM', noClose: true });
     b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); AU.sfx('heal'); S.persist(); U.closePanel(); done(); };
     b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => campfire(done, second), c => !c.up && SD.cards[c.id].rarity);
     b.querySelector('#g-reflect').onclick = () => reflect(done);
     if (b.querySelector('#g-clear')) b.querySelector('#g-clear').onclick = () => {
-      // The max SLA comes at once; either Refactor can be skipped.
-      run.maxPlus = (run.maxPlus || 0) + 5; run.sla = Math.min(S.maxSla(), run.sla + 5); S.persist();
-      const end = () => { U.closePanel(); U.system('BOOKS CLEARED', '+5 max SLA for this run.', 'gold'); done(); };
+      // Rest, +5 max SLA and a Refactor, all at once; the Refactor can be skipped.
+      run.maxPlus = (run.maxPlus || 0) + 5; run.sla = Math.min(S.maxSla(), run.sla + heal + 5); AU.sfx('heal'); S.persist();
+      const end = () => { U.closePanel(); U.system('BOOKS CLEARED', `+${heal} SLA and +5 max SLA for this run.`, 'gold'); done(); };
       const can = c => !c.up && SD.cards[c.id].rarity;
-      const up = c => { c.up = true; S.persist(); };
       if (!run.deck.some(can)) return end();
-      pickCard('Refactor which card? (1 of 2)', c => { up(c); run.deck.some(can) ? pickCard('Refactor which card? (2 of 2)', c2 => { up(c2); end(); }, end, can) : end(); }, end, can);
+      pickCard('Refactor which card?', c => { c.up = true; S.persist(); end(); }, end, can);
     };
   }
   async function reflect(done) {
@@ -645,9 +644,8 @@
     const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight', hideOne: S.save.relics.includes('pipeye') });
     if (r.ok) {
       // The Unindexed Stacks curse: you know what it is, but you can't find the fix in time.
-      const bonus = curse('stacks') ? 0 : (dev('bookmark') ? 2 : 1) + (rel('pipeye') ? 1 : 0);
+      const bonus = curse('stacks') ? 0 : dev('bookmark') ? 2 : 1;
       C.diagBonus += bonus;
-      if (rel('pipeye')) C.diagDraw = 1;
       Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t));
       saveKnown();
       U.system('DIAGNOSIS CORRECT', bonus ? `+${bonus} Capacity this turn. Weaknesses revealed.` : 'Weaknesses revealed. The Unindexed Stacks hide the fix: no Capacity bonus.');
@@ -712,7 +710,7 @@
       if (d.eachMit) mitigate(d.eachMit + (c.up ? 2 : 0), '', 'hit');
     });
     if (settle()) return;
-    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + ((C.elite || C.boss) && rel('satchel') ? 1 : 0) + (C.turn === 1 && C.diagDraw ? 1 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0) + metro);
+    drawN((C.turn === 1 && sv.spec === 'shard' ? 4 : 5) + (C.turn === 1 && dev('cluster') ? 1 : 0) + (C.turn === 1 && rel('runbook') ? 2 : 0) + ((C.elite || C.boss) && rel('satchel') ? 1 : 0) + (C.turn === 1 && C.boss && dev('eraser') ? 1 : 0) + (rel('marketdepth') ? 1 : 0) + metro);
     if (metro) C.log = (C.log ? C.log + ' ' : '') + 'The Metronome ticks: a quiet turn, so 3 extra cards.';
     renderCombat();
     if (C.tutorial && C.turn === 2) return tutorialGary();

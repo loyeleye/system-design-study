@@ -533,7 +533,9 @@
     name: 'the Promised Day', rank: 'EX', boss: 'gluttony', bosses: ['gluttony', 'greed', 'envy', 'marketopen', 'pride', 'kyuburnout'], win: 'c10Win',
     gate: 'THE PROMISED DAY...',
     blurb: 'Dawn. The Cloud is down, Pingsby is grey, and Gary is missing. Four floors to Kyu\'s Exchange. No rescues, no Last Uptime. One backup tape.',
-    sevMult: 1.85, clearShards: 300, music: { map: 'ch10' }, curses: [], latency: true, death: 'tape', healDrop: 0.05,
+    // Eased from 1.85 so the bot clears about 35% at Escalation 0 (Ladi, 2026-10-20). Its rules, the missing Gary
+    // and Pip's save, and the three-boss finale carry the difficulty.
+    sevMult: 1.0, clearShards: 300, music: { map: 'ch10' }, curses: [], latency: true, death: 'tape', healDrop: 0.05,
     noGary: true, noMercy: true,
     pools: { 1: ['doublebook', 'shadowhero'], 2: ['chargeback', 'doublebook', 'shadowhero'], 3: ['forgedcoin', 'chargeback', 'shadowhero', 'orderflood'], elite: ['homunculus'] },
     plan: [['fight', 'sighting', 'event'], ['fight', 'elite', 'cafe'], ['sighting', 'fight', 'camp'], ['fight', 'event', 'fight']],
