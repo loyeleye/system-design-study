@@ -25,6 +25,7 @@
 // The leader's page saves the expedition after every room (localStorage, by party code). Forming a party from a save
 // resumes it under the same code: returning players get their seats and decks back, matched by name or by tapping
 // their seat. Nobody new joins mid-expedition; they can watch.
+// The leader can fill seats with bots (below, "Bots"), which the host's page plays, so one person can raid alone.
 //   SD.raid.play(root, hub, code, { create, settings: { xp, resume }, status, vis, bind })
 //     -> Promise of how the player left: undefined, 'full' or 'kicked'
 //   SD.raid.available()   -> whether this page has the game's cards and styles (the in-game Guild Hall does)
@@ -35,6 +36,9 @@
   const RD = SD.raid = {};
   const net = SD.net;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const BOT_KEY = /^~b[1-9]$/;
+  // Balance (Ladi, 2026-10-20): an elite's Severity, and the enemies' load in a party of two seats.
+  const ELITE_SEV = 1.2, DUO_DMG = 0.8;
   const BEAT = 3000, MAX_PLAYERS = 4, SLOTS = 6, TAG_TEAM = 8, SLA = 100, ROWS = 8, BITS = 20, TAPE = 90;
   const FLAGS = ['throttle', 'backoff', 'chunk', 'sketch', 'shed', 'hb', 'merge', 'handoff', 'failover', 'killswitch', 'streaming', 'sandbox', 'steplimit'];
   const FLAG_NAME = { jitter: 'Jitter ready', throttle: 'Throttled', backoff: 'Backing off', chunk: 'Chunked', sketch: 'Sketch ready', shed: 'Shedding', hb: 'Heartbeats on', merge: 'Merging', handoff: 'Handoff ready', failover: 'Failover ready', killswitch: 'Kill switch armed', streaming: 'Streaming', sandbox: 'Tools sandboxed', steplimit: 'Step limit' };
@@ -1137,7 +1141,10 @@
     const savedHere = () => (store.get()[net.cleanCode(code)] || null);
     if (o.create && o.settings && o.settings.resume && savedHere()) load(savedHere());
     const players = () => room.peers().filter(p => p.presence && p.presence.kind === 'raid');
-    const here = () => new Set(players().map(p => p.peer));
+    // Bots (below) are seats that are never peers: they count as here.
+    const isBot = k => !!(G.players[k] && G.players[k].bot);
+    const botKeys = () => Object.keys(G.players).filter(isBot);
+    const here = () => new Set(players().map(p => p.peer).concat(botKeys()));
     const seatsHere = () => { const h = here(); return Object.keys(G.players).filter(k => h.has(k)); };
     let party = null, sentP = '';
     // Presence goes out only when it changes (a room's own presence change calls onPeers, which redraws).
@@ -1147,15 +1154,17 @@
       if (j !== sentP) { sentP = j; room.presence(v); }
     };
     let left = false;
-    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); clearInterval(iv); clearTimeout(lone); room.leave(); done(typeof why === 'string' ? why : undefined); };
+    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); clearInterval(iv); clearInterval(bt); clearTimeout(lone); room.leave(); done(typeof why === 'string' ? why : undefined); };
     if (o.bind) o.bind(leave);
     const X = () => xpOf(G.xp), FL = () => floorsOf(X())[G.fl] || null;
+    // Kyu can't fight her own raid boss (js/champions.js bossConflict).
+    const kyuBoss = () => (X() && floorsOf(X()).some(f => f.boss === 'kyuburnout') ? 'kyuburnout' : null);
     // For the Guild Hall's Quest Board (js/guild.js): open while the table is in its party room (a resumed one isn't).
-    if (o.status) o.status(() => ({ players: Math.max(1, players().length), max: MAX_PLAYERS, open: G.ph === 'lobby' && !G.rs, lead: hosting, champ: party && party.champ(), info: X() ? X().name + (G.rs ? ` · floor ${G.fl + 1}` : '') : '' }));
+    if (o.status) o.status(() => ({ players: Math.max(1, players().length + botKeys().length), max: MAX_PLAYERS, open: G.ph === 'lobby' && !G.rs, lead: hosting, champ: party && party.champ(), info: X() ? X().name + (G.rs ? ` · floor ${G.fl + 1}` : '') : '' }));
     const unsub = [];
 
     // ---------- Host ----------
-    function push() { G.v++; G.host = me.peer; room.emit('state', pack(G)); render(); }
+    function push() { G.v++; G.host = me.peer; room.emit('state', pack(G, true)); render(); }
     // The expedition after every room, on this (the leader's) page. It ends with the expedition.
     function save() {
       if (G.ph !== 'map' || !X()) return;
@@ -1185,12 +1194,11 @@
       enterFloor(0); push();
     }
     // The snapshot Seymour's tape restores: every deck and purse, the SLA and the map, as the floor began.
+    function snapNow() { const p = {}; all().forEach(k => { p[k] = { d: enc(G.players[k].deck, true), b: G.players[k].bits }; }); return { sla: Math.max(1, G.sla), map: G.map, p }; }
     function enterFloor(f) {
       Object.assign(G, { fl: f, onWin: [], map: genMap(), pos: null, seen: [], votes: {}, room: null, ph: 'map', boss: null, main: null, tier: null, foes: [] });
       G.k++;
-      const p = {};
-      all().forEach(k => { p[k] = { d: enc(G.players[k].deck, true), b: G.players[k].bits }; });
-      G.snap = { sla: G.sla, map: G.map, p };
+      G.snap = snapNow();
       FL().boss && SD.state && SD.state.seeConcept && SD.enemies[FL().boss].concept && SD.state.seeConcept(SD.enemies[FL().boss].concept);
       save();
     }
@@ -1204,9 +1212,12 @@
       const one = { sev: 1, dmg: 1 }, minion = GS.minion || { sev: 0.4, dmg: 0.45 };
       const share = i => (k < 2 ? one : tier === 'fight' ? GS[k] || GS[3] || { sev: 0.42, dmg: 0.45 } : i ? minion : tier === 'elite' ? GS.elite || { sev: 0.8, dmg: 0.8 } : one);
       Object.assign(G, fightStatus(), { ph: 'fight', room: null, main: ids[0], tier, turn: 0, stale: 0, taken: 0, sh: zero(), flags: {}, infra: [], eff: [] });
+      // Balance (Ladi, 2026-10-20): an elite has 20% more Severity, its load unchanged; a floor boss's Severity times
+      // the floor's bossSev (js/expeditions.js); and a party of two seats (bots count) takes 80% of every enemy's load.
+      const sevX = i => (i ? 1 : tier === 'elite' ? ELITE_SEV : tier === 'boss' ? Math.max(0.1, Math.min(2, +FL().bossSev || 1)) : 1);
       G.foes = ids.map((id, i) => {
         const e = SD.enemies[id], g = share(i), sv = +obj(e.sevAt)[ch] || e.sev;
-        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * (spec.sev[i] || g.sev))), Math.min(1, spec.dmg[i] || g.dmg));
+        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * (spec.sev[i] || g.sev) * sevX(i))), Math.min(1, spec.dmg[i] || g.dmg) * (n === 2 ? DUO_DMG : 1));
       });
       // A floor boss's debuffing move: the floor's own, or Tightly Coupled 2 on its last pattern step.
       if (tier === 'boss') {
@@ -1224,10 +1235,11 @@
       const n = nodeOf(G, id), f = FL();
       if (!n || !f) return;
       G.pos = id; G.seen.push(id); G.votes = {};
+      // The last room's café stock or card picks don't follow anyone in, a fight included.
+      Object.values(G.players).forEach(p => { p.o = []; p.sold = []; });
       if (n.type === 'fight' || n.type === 'elite') { G.k++; return fight(rnd(foes(f, n.type === 'elite')), n.type); }
       // A floor boss may bring an add (the floor's bossPack).
       if (n.type === 'boss') { G.k++; return fight(packOf(f.bossPack, chOf(f), f.boss) || { ids: [f.boss], sev: [0], dmg: [0] }, 'boss'); }
-      Object.values(G.players).forEach(p => { p.o = []; p.sold = []; });
       if (n.type === 'board') {
         const c = SD.enemies[f.boss].concept, q = SD.state && SD.state.pickQuestion ? SD.state.pickQuestion(c, []) : null;
         if (!q || !q.id) { G.note = 'The whiteboard was wiped clean. Nothing to answer.'; return toMap(); }
@@ -1253,6 +1265,8 @@
           p.bits += gain[k];
         });
         G.infra = [];
+        // The last floor's boss ends the expedition: no card to pick, since nothing carries over.
+        if (tier === 'boss' && lastFloor(G)) return cleared();
         newRoom('reward', { tier, gain });
         // What the floor's events promised for beating its boss (an event choice's onWin: SLA, bits, tapes).
         if (tier === 'boss') { G.onWin.forEach(fx => applyFx(G, fx, all(), true)); G.onWin = []; }
@@ -1328,6 +1342,7 @@
       if (!d || typeof d !== 'object') return;
       const p = G.players[peer], r = G.room;
       if (d.k === 'claim') return claim(peer, d.seat);
+      if (d.k === 'bot') { if (peer === G.host && addBot()) push(); return; }
       if (!p) return;
       if (d.k === 'play' && Number.isInteger(d.i) && d.i >= 0 && d.i < 10) { if (play(G, peer, d.i, d.t, d.w, d.q)) { settle(); push(); check(); } return; }
       // An answer to a rare's question: [right, band, sure, rubric points, late] from the answering player's own page.
@@ -1405,7 +1420,172 @@
         push();
       }
     }
-    function become() { hosting = true; pres(); push(); check(); }
+    // The floor's entry snapshot stays on the host (its own state and save), never on the wire, so a host who takes
+    // over has none: they take one as they take over, and a tape then restarts the floor from there (the same map,
+    // the decks, bits and SLA of that moment).
+    // A page that came back mid-fight never got the decks (they stay off the wire in a fight): a missing one is rebuilt
+    // from that player's piles and infra, without the fight's own Tech Debt and Pager Alert cards.
+    function become() {
+      hosting = true;
+      if (G.ph === 'fight') Object.keys(G.players).forEach(k => { const p = G.players[k]; if (!p.deck.length) p.deck = p.hand.concat(p.draw, p.disc, p.played, G.infra.filter(x => x.by === k).map(x => x.id)).map(id => String(id).replace(/\^$/, '')).filter(id => !Object.values(ADD).includes(base(id))); });
+      if (!G.snap && G.map && G.ph !== 'lobby') G.snap = snapNow();
+      pres(); push(); check();
+    }
+
+    // ---------- Bots: computer-controlled teammates, so one person can raid alone ----------
+    // A bot is a seat like any other, flagged (G.players[k].bot) and keyed '~b1' to '~b3', never a peer in the room.
+    // The leader adds them in the party room; each takes a free champion and that champion's starter deck, and is
+    // always Ready. Only the host's page runs them: a few times a second it asks each bot for its next move (botMove)
+    // and, after a pause of 0.6 to 1.5 s (for a question, the time its speed band takes), feeds it through act() with
+    // the bot's key, so every rule and check a human's move meets applies. A host who takes over runs them from the
+    // state. Bots answer right 70% of the time, 25% fast, 50% steady and 25% slow, as the balance assumes.
+    const botDeck = c => (SD.champions && c ? SD.champions.deck(c, (SD.starterDeck || []).slice()) : (SD.starterDeck || []).slice()).filter(id => card(id));
+    function addBot() {
+      if (G.ph !== 'lobby' || G.rs || all().length >= MAX_PLAYERS) return false;
+      const names = new Set(Object.values(G.players).map(p => p.n.toLowerCase()).concat(party ? party.members().map(m => m.nick.toLowerCase()) : []));
+      let n = 1; while (G.players['~b' + n] || names.has('bot ' + n)) n++;
+      if (n > 9) return false;
+      G.players['~b' + n] = Object.assign(newSeat('Bot ' + n, null, []), { bot: true });
+      fixBots();
+      return true;
+    }
+    // A bot gives way: a champion a human holds (or one locked on this page, or Kyu against her own boss) is swapped for
+    // the first free one, with that champion's deck. Returns whether anything changed.
+    function fixBots() {
+      const CH = SD.champions;
+      if (!CH || G.ph !== 'lobby' || G.rs) return false;
+      const used = new Set(Object.keys(G.players).filter(k => !isBot(k)).map(k => G.players[k].c).concat(party ? party.members().map(m => m.champ) : []));
+      let changed = false;
+      botKeys().forEach(k => {
+        const b = G.players[k], ok = id => CH.get(id) && CH.unlocked(id) && !used.has(id) && !CH.bossConflict(id, kyuBoss());
+        if (!ok(b.c)) {
+          const c = CH.list.find(x => ok(x.id) && !botKeys().some(j => j !== k && G.players[j].c === x.id));
+          b.c = c ? c.id : null; b.deck = botDeck(b.c); changed = true;
+        }
+        used.add(b.c);
+      });
+      return changed;
+    }
+    const RANK = { basic: 0, common: 1, uncommon: 2, rare: 3 };
+    const rankOf = id => (card(id).curse ? -1 : RANK[card(id).rarity] || 0);
+    // A reward or a café card: the bot's own champion's first, then the rarest.
+    const bestOf = (p, ids) => ids.map((id, i) => [(card(id).champ === p.c ? 10 : 0) + rankOf(id) + Math.random() / 10, i]).sort((a, b) => b[0] - a[0]).map(x => x[1])[0];
+    let pace = 1;
+    const span = (a, b) => (a + Math.random() * (b - a)) * pace;
+    // A bot's answer to a question, rolled once: right or not, its band, and when it lands (inside that band's time).
+    const botQ = {};
+    function botAnswer(key) {
+      if (botQ[key]) return botQ[key];
+      const r = Math.random(), band = r < 0.25 ? 'fast' : r < 0.75 ? 'steady' : 'slow', t = { fast: [4, 15], steady: [22, 40], slow: [47, 57] }[band];
+      return (botQ[key] = { ok: Math.random() < 0.7, band, at: Date.now() + span(t[0], t[1]) * 1000 });
+    }
+    // The leader's pick if a human made one, else the first human's: what bots follow on the map and in events.
+    const humanPick = votes => { const hs = Object.keys(votes).filter(j => G.players[j] && !isBot(j)); const j = hs.includes(G.host) ? G.host : hs[0]; return j == null ? null : votes[j]; };
+    // How long bots give the humans to vote before they pick at random.
+    const PATIENCE = 10000;
+    let sit = '', sitAt = 0;
+    // The bot's fight move: the best affordable card (Absorb first when the incoming load is well over the shields,
+    // else Mitigate), at the lowest-Severity enemy for a single-target hit and the frontmost for anything else; an
+    // all-enemies card counts once per enemy. Curses that cost the team in hand are paid off first, an X card goes
+    // last. Nothing left to play: Ready.
+    function botFight(k, p) {
+      if (p.ready) return null;
+      const up = living(G);
+      if (p.peek.length) return { d: { k: 'peek', i: bestOf(p, p.peek) } };
+      let inc = 0;
+      up.forEach(i => withFoe(G, i, () => { inc += rawLoad(G, intentOf(G)); }));
+      const defend = inc - shSum(G) >= 10;
+      const val = id => {
+        const d = card(id), L = lvlOf(id);
+        if (d.held) return 99;
+        if (d.xcost) return 0;
+        const ab = sum(d.abs) + sum(d.each) + 3 * L * Object.keys(obj(d.abs)).length, mt = (d.mit ? d.mit + 3 * L : 0) + (d.pow || 0) + (d.eachMit || 0);
+        return (defend ? 2 : 1) * ab + (defend ? 1 : 2) * mt * (d.all && up.length > 1 ? up.length : 1) - (d.selfDmg || 0) + 1;
+      };
+      const ok = p.hand.map((id, i) => i).filter(i => { const d = card(p.hand[i]); return !d.unplayable && costFor(p, p.hand[i]) <= p.cap && !(d.xcost && !p.cap); });
+      if (!ok.length) return { d: { k: 'ready' } };
+      const i = ok.sort((a, b) => val(p.hand[b]) - val(p.hand[a]))[0], d = card(p.hand[i]);
+      const low = up.slice().sort((a, b) => G.foes[a].sev - G.foes[b].sev)[0];
+      const t = d.mit || d.pow || d.xcost || d.slam || d.rca ? low : front(G);
+      // A card that names a teammate names one at random (a cleanse picks whoever needs it most on its own).
+      const mates = seatsHere().filter(j => j !== k), w = namesMate(d) && obj(d.cleanse).who !== 'one' && mates.length ? rnd(mates) : undefined;
+      return { d: { k: 'play', i, t, w } };
+    }
+    // What bot k does next: { d, at } (at: a question's answer, when it lands) or { d } (after the usual pause), or
+    // null while it waits on the others. d can be a function, for a move that rolls cards when it's made.
+    function botMove(k) {
+      const p = G.players[k], r = G.room, waited = Date.now() - sitAt > PATIENCE * pace;
+      const ans = (key, d) => { const a = botAnswer(key); return { at: a.at, d: Object.assign({ ok: a.ok, band: a.band }, d) }; };
+      if (G.ph === 'fight') {
+        const e = G.qs.find(x => x.a.includes(k) && !x.r[k]);
+        // Never past the question's deadline, even for a host who took over and rolled the answer late.
+        const q = e && (() => { const a = botAnswer(G.k + ':' + e.k), typed = obj(card(dec(e.c, 1)[0]).ask).type === 'explain'; a.at = Math.min(a.at, e.d - 2000); return ans(G.k + ':' + e.k, { k: 'qa', id: e.k, sure: a.ok && a.band === 'fast', pts: typed ? (a.ok ? 3 + (a.band === 'fast') : Math.floor(Math.random() * 3)) : 0 }); })();
+        if (q && Date.now() >= q.at) return q;
+        return botFight(k, p) || q || null;
+      }
+      if (G.ph === 'map') {
+        if (G.votes[k]) return null;
+        const can = reach(G), h = humanPick(G.votes);
+        if (h && can.includes(h)) return { d: { k: 'vote', n: h } };
+        return waited && can.length ? { d: { k: 'vote', n: rnd(can) } } : null;
+      }
+      if (!r || !r.wait[k]) return null;
+      const roll = (rar, tier) => () => ({ k: 'offer', ids: RD.cardChoices(3, chOf(FL()), p.c, tier, rar) });
+      if (r.t === 'reward') return { d: p.o.length ? { k: 'take', i: bestOf(p, p.o) } : roll(null, r.tier) };
+      if (r.t === 'cafe') {
+        if (!p.o.length) return { d: roll(null, null) };
+        const can = p.o.map((id, i) => i).filter(i => !p.sold.includes(i) && p.bits >= (PRICE[SD.cards[p.o[i]].rarity] || 30));
+        return { d: !p.sold.length && can.length ? { k: 'buy', i: can[bestOf(p, can.map(i => p.o[i]))] } : { k: 'done' } };
+      }
+      // The Break Room: rest while the team's SLA is under 60%, else refactor the rarest card that can take it.
+      if (r.t === 'camp') {
+        const ups = p.deck.map((id, i) => i).filter(i => upOk(p.deck[i]));
+        return { d: G.sla < SLA * 0.6 || !ups.length ? { k: 'rest' } : { k: 'up', i: ups[bestOf(p, ups.map(i => p.deck[i]))] } };
+      }
+      if (r.t === 'board') return r.res[k] == null ? ans('b' + r.k, { k: 'ans' }) : null;
+      if (r.t !== 'event') return null;
+      const ev = SD.expeditionEvents[r.ev];
+      if (!ev) return { d: { k: 'done' } };
+      const chosen = ev.per ? r.votes[k] : r.ch;
+      if (chosen == null) {
+        if (r.votes[k] != null) return null;
+        const price = i => +obj(ev.choices[i].fx).cost || 0;
+        const can = ev.choices.map((c, i) => i).filter(i => (ev.per ? [k] : seatsHere()).every(j => G.players[j].bits >= price(i)));
+        const h = humanPick(r.votes);
+        if (h != null && can.includes(h)) return { d: { k: 'evote', i: h } };
+        return waited && can.length ? { d: { k: 'evote', i: rnd(can) } } : null;
+      }
+      if (!ev.per && needsOne(ev.choices[r.ch].fx) && !r.one) {
+        if (r.wv[k] != null) return null;
+        const h = humanPick(r.wv);
+        if (h && seatsHere().includes(h)) return { d: { k: 'wvote', p: h } };
+        return waited ? { d: { k: 'wvote', p: rnd(seatsHere()) } } : null;
+      }
+      const todo = r.todo[k] || [], t0 = todo[0];
+      if (t0 === 'ask') return ans('e' + r.k + ':' + todo.length, { k: 'ans' });
+      if (typeof t0 === 'string' && t0.startsWith('pc:')) return { d: p.o.length ? { k: 'take', i: bestOf(p, p.o) } : roll(t0.slice(3), null) };
+      // An event's removal takes the bot's worst card (a curse, else a basic one); its refactor, the rarest.
+      if (t0 === 'rm') { const i = p.deck.map((id, j) => j).sort((a, b) => rankOf(p.deck[a]) - rankOf(p.deck[b]))[0]; return { d: p.deck.length > 5 ? { k: 'rm', i } : { k: 'skip' } }; }
+      if (t0 === 'up') { const ups = p.deck.map((id, i) => i).filter(i => upOk(p.deck[i])); return { d: ups.length ? { k: 'up', i: ups[bestOf(p, ups.map(i => p.deck[i]))] } : { k: 'skip' } }; }
+      const asking = Object.keys(r.todo).some(j => G.players[j] && (r.todo[j] || []).includes('ask'));
+      return todo.length || asking ? null : { d: { k: 'done' } };
+    }
+    // The host's bot loop. A move waits its pause from when it became possible (or from the bot's last move).
+    const botAt = {};
+    function bots() {
+      if (!hosting || left || G.ph === 'lobby') return;
+      const now = Date.now(), s = [G.ph, G.k, G.pos, G.room && G.room.k, G.room && G.room.ch].join(':');
+      if (s !== sit) { sit = s; sitAt = now; }
+      botKeys().forEach(k => {
+        if (!G.players[k]) return;
+        const m = botMove(k);
+        if (!m) { delete botAt[k]; return; }
+        if (m.at ? now < m.at : (botAt[k] = botAt[k] || now + span(600, 1500)) > now) return;
+        act(k, typeof m.d === 'function' ? m.d() : m.d);
+        botAt[k] = Date.now() + span(600, 1500);
+      });
+    }
+    const bt = setInterval(bots, 150);
 
     // ---------- Seats ----------
     // A seat keeps its deck and bits by peer label. A returning player (a reload, or a resumed expedition) has a new
@@ -1428,6 +1608,7 @@
       if (G.players[peer] || typeof seat !== 'string' || !free().includes(seat)) return;
       rekey(seat, peer); push(); check();
     }
+    const newSeat = (n, c, deck) => ({ n, c, deck, bits: BITS, draw: [], disc: [], hand: [], cap: 3, ready: false, played: [], o: [], sold: [], st: myStatus(), peek: [], take: 0, ab: 0, hd: {} });
     // In the party room a new hello (another champion, a new name) replaces the deck. Once the expedition exists, a
     // hello only finds a returning player's seat, by name; nobody new joins.
     function addPlayer(peer, nick, deck, champ) {
@@ -1437,7 +1618,7 @@
       if (G.ph === 'lobby' && !G.rs) {
         if (cur) { Object.assign(cur, { n: n || cur.n, c, deck: ids.length >= 5 ? ids : (SD.starterDeck || []).slice() }); return; }
         if (all().length >= MAX_PLAYERS) return;
-        G.players[peer] = { n: n || 'A hero', c, deck: ids.length >= 5 ? ids : (SD.starterDeck || []).slice(), bits: BITS, draw: [], disc: [], hand: [], cap: 3, ready: false, played: [], o: [], sold: [], st: myStatus(), peek: [], take: 0, ab: 0, hd: {} };
+        G.players[peer] = newSeat(n || 'A hero', c, ids.length >= 5 ? ids : (SD.starterDeck || []).slice());
         return;
       }
       if (cur || !n) return;
@@ -1446,12 +1627,26 @@
     }
 
     // ---------- The state on the wire ----------
-    function pack(S) {
+    // wire: for the room, where every message must stay under 4 KiB. Empty and zero fields stay home (unpack reads a
+    // missing one as empty or 0), and so do the floor's entry snapshot (only the host's own state and save keep it),
+    // a player's café or reward cards once they're done with the room, and in a fight the decks, which can't change
+    // there (each page keeps the decks it had). A player's statuses go as a list in myStatus() order.
+    const SK = Object.keys(myStatus());
+    const stList = st => { const a = SK.map(k => st[k] | 0); while (a.length && !a[a.length - 1]) a.pop(); return a; };
+    const slim = o => { Object.keys(o).forEach(k => { const v = o[k]; if (v == null || v === 0 || v === '' || (typeof v === 'object' && !Object.keys(v).length)) delete o[k]; }); return o; };
+    function pack(S, wire) {
       const pl = {};
-      Object.keys(S.players).forEach(k => { const p = S.players[k]; pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: p.o, s: p.sold, st: p.st, pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {} }; });
+      Object.keys(S.players).forEach(k => {
+        const p = S.players[k], owes = !wire || !!(S.room && S.room.wait[k]);
+        pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: owes ? p.o : [], s: owes ? p.sold : [], st: stList(p.st), pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {}, bt: p.bot ? 1 : 0 };
+        if (wire && S.ph === 'fight') delete pl[k].d;
+        if (wire) slim(pl[k]);
+      });
       // Each enemy goes as a list of its FOE fields; the copy swapped into G (withFoe) stays home.
       const out = Object.assign({}, S, { players: pl, foes: (S.foes || []).map(f => FOE.map(k => f[k])) });
-      FOE.concat(['fi', 'lead', 'gv']).forEach(k => { delete out[k]; });
+      FOE.concat(['fi', 'lead', 'gv'], wire ? ['snap'] : []).forEach(k => { delete out[k]; });
+      // The log and the note as long as a page keeps them (unpack).
+      if (wire) { out.log = net.clean(S.log, 400); out.note = net.clean(S.note, 200); }
       return out;
     }
     const ROOMS = ['reward', 'cafe', 'camp', 'board', 'event'];
@@ -1464,10 +1659,15 @@
       const pl = {};
       Object.keys(d.players).slice(0, MAX_PLAYERS).forEach(k => {
         const x = obj(d.players[k]);
-        pl[k] = { n: net.clean(x.n, 24) || 'A hero', c: SD.champions && SD.champions.get(x.c) ? x.c : null, deck: dec(x.d, 80), bits: Math.max(0, Math.min(9999, x.b | 0)), draw: dec(x.dr, 80), disc: dec(x.di, 80), hand: dec(x.h, 10), played: dec(x.pl, 20), cap: Math.max(0, x.cap | 0), ready: !!x.r,
+        // A fight's state leaves the decks out: keep the one this page has.
+        const was = x.d == null && d.ph === 'fight' && G.players[k];
+        pl[k] = { n: net.clean(x.n, 24) || 'A hero', c: SD.champions && SD.champions.get(x.c) ? x.c : null, deck: was ? was.deck.slice() : dec(x.d, 80), bits: Math.max(0, Math.min(9999, x.b | 0)), draw: dec(x.dr, 80), disc: dec(x.di, 80), hand: dec(x.h, 10), played: dec(x.pl, 20), cap: Math.max(0, x.cap | 0), ready: !!x.r,
           o: (Array.isArray(x.o) ? x.o : []).filter(id => typeof id === 'string' && SD.cards[id]).slice(0, 4), sold: (Array.isArray(x.s) ? x.s : []).filter(Number.isInteger).slice(0, 4), st: myStatus(),
           peek: dec(x.pk, 8), take: Math.max(0, Math.min(8, x.tk | 0)), ab: Math.max(0, Math.min(999, x.ab | 0)), hd: {} };
-        Object.keys(pl[k].st).forEach(s => { pl[k].st[s] = Math.max(0, Math.min(99, obj(x.st)[s] | 0)); });
+        // Only a bot's own kind of key can be a bot, so no page is ever played for its person.
+        if (x.bt && BOT_KEY.test(k)) pl[k].bot = true;
+        const sx = Array.isArray(x.st) ? x.st : SK.map(s => obj(x.st)[s]);
+        SK.forEach((s, i) => { pl[k].st[s] = Math.max(0, Math.min(99, sx[i] | 0)); });
         Object.keys(obj(x.hd)).forEach(id => { if (SD.cards[id]) pl[k].hd[id] = Math.max(0, Math.min(99, x.hd[id] | 0)); });
       });
       const r = d.room && typeof d.room === 'object' ? d.room : null;
@@ -1788,7 +1988,7 @@
           <p>${G.ph === 'done' ? `You cleared all ${fs.length} floors of ${esc(x.name)}, ${G.rooms} fights in, with ${G.sla} SLA left.` : `The team went down on floor ${(e.fl | 0) + 1} of ${fs.length} (${esc(fs[e.fl | 0] ? fs[e.fl | 0].name : '')}), after ${e.rooms | 0} fight${(e.rooms | 0) === 1 ? '' : 's'}.${foe ? ` ${esc(foe.short || foe.name)} held on with ${e.sev | 0} severity left.` : ''}`}</p>
           <p class="muted small">Talk through the room that hurt most: which card, or which path, would have covered it?</p>
           ${hosting ? '<div class="row" style="justify-content:center"><button class="primary" type="button" id="rd-again">Back to the party room</button></div>' : ''}</div>`);
-        const ag = root.querySelector('#rd-again'); if (ag) ag.onclick = () => { const xp = G.xp; G = fresh(); G.xp = xp; hello(); push(); };
+        const ag = root.querySelector('#rd-again'); if (ag) ag.onclick = () => { const xp = G.xp, bs = botKeys().map(k => [k, G.players[k].n, G.players[k].c]); G = fresh(); G.xp = xp; bs.forEach(([k, n, c]) => { G.players[k] = Object.assign(newSeat(n, c, botDeck(c)), { bot: true }); }); hello(); push(); };
         return;
       }
       if (G.ph === 'map') return mapView(x, mine);
@@ -1804,7 +2004,7 @@
     function lobby(x) {
       pres();
       const open = RD.expeditions(), h = here();
-      const kyu = x && floorsOf(x).some(f => f.boss === 'kyuburnout') ? 'kyuburnout' : null;
+      const kyu = kyuBoss();
       const fl = x ? floorsOf(x) : [];
       const pickX = hosting && !G.rs ? (open.length ? `<label class="pt-lbl" for="rd-xp">Expedition<select id="rd-xp">${open.map(e => `<option value="${esc(e.id)}" ${e.id === G.xp ? 'selected' : ''}>${esc(e.name)} · ${floorsOf(e).length} floors</option>`).join('')}</select></label>` : '<span class="mi-tag">Expedition</span><small class="mi-muted">None open yet. Reach chapter 2 for the first.</small>')
         : `<span class="mi-tag">Expedition${G.rs ? ' · resuming' : ''}</span><b>${esc(x ? x.name : 'None yet')}</b><small class="mi-muted">${G.rs ? `Floor ${G.fl + 1} of ${fl.length}. Seats come back by name, or tap yours.` : `${esc((G.players[G.host] || {}).n || 'The leader')} picks the expedition.`}</small>`;
@@ -1816,10 +2016,11 @@
         what: 'the expedition', startLabel: G.rs ? 'Resume the expedition' : 'Start the expedition', boss: kyu, deck: !G.rs,
         settings: pickX,
         note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café. No shards; this one is for practice.${seats}`,
+        addBot: hosting && !G.rs && all().length < MAX_PLAYERS ? () => send({ k: 'bot' }) : null,
         startWhy: () => (!x ? 'No expedition is open yet.' : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
         start,
         bind: rt => {
-          const sl = rt.querySelector('#rd-xp'); if (sl) sl.onchange = () => { G.xp = sl.value; push(); };
+          const sl = rt.querySelector('#rd-xp'); if (sl) sl.onchange = () => { G.xp = sl.value; fixBots(); push(); };
           rt.querySelectorAll('[data-send]').forEach(b => { b.onclick = () => send(JSON.parse(b.dataset.send)); });
         }
       });
@@ -2027,7 +2228,7 @@
     function hello() {
       const champ = party ? party.champ() : null, d = { deck: RD.myDeck(champ), nick: me.nick, champ };
       helloSent = me.nick + '|' + champ; helloAt = Date.now();
-      if (hosting) { addPlayer(me.peer, me.nick, d.deck, champ); push(); } else room.emit('hello', d);
+      if (hosting) { addPlayer(me.peer, me.nick, d.deck, champ); fixBots(); push(); } else room.emit('hello', d);
     }
     unsub.push(room.on('state', msg => {
       if (msg.isMe) return;
@@ -2050,28 +2251,28 @@
       if (!hosting || msg.isMe) return;
       const d = msg.data || {};
       addPlayer(msg.peer, (players().find(x => x.peer === msg.peer) || { presence: {} }).presence.nick || d.nick, d.deck, d.champ);
-      push(); check();
+      fixBots(); push(); check();
     }));
     unsub.push(room.onPeers(list => {
       const ps = list.filter(p => p.presence && p.presence.kind === 'raid');
-      if (hosting) { check(); render(); return; }
+      if (hosting) { if (fixBots()) push(); check(); render(); return; }
       const host = ps.find(p => p.presence.host);
       if (!host && G.host && ps.length) { const first = ps.map(p => p.peer).sort()[0]; if (first === me.peer) { become(); return; } }
       render();
     }));
     // The host's beat: questions whose time ran out are settled (a page that left never answers), then the state goes out.
-    const iv = setInterval(() => { if (!hosting) return; if (G.ph === 'fight' && G.qs.length && resolveDue(G)) { settle(); push(); check(); } else room.emit('state', pack(G)); }, BEAT);
+    const iv = setInterval(() => { if (!hosting) return; if (G.ph === 'fight' && G.qs.length && resolveDue(G)) { settle(); push(); check(); } else room.emit('state', pack(G, true)); }, BEAT);
     // Joining a code nobody hosts: if this browser led that expedition, it picks it up from its save.
     const lone = setTimeout(() => { if (!hosting && !G.host && savedHere()) { load(savedHere()); pres(); hello(); push(); } }, 2500);
 
     // The leader's Remove: the host takes the player's seat away too, before the expedition starts.
     unsub.push(room.on('kick', msg => { const d = msg.data || {}; if (hosting && msg.peer === me.peer && typeof d.peer === 'string' && G.ph === 'lobby' && !G.rs) { delete G.players[d.peer]; push(); } }));
     party = SD.party.join(hub, room, 'raid', {
-      leader: () => G.host, max: MAX_PLAYERS, onKick: () => leave('kicked'), onFull: () => { if (G.ph === 'lobby' && !G.rs) leave('full'); },
+      leader: () => G.host, max: MAX_PLAYERS, bots: () => botKeys().map(k => ({ peer: k, nick: G.players[k].n, champ: G.players[k].c })), onKick: () => leave('kicked'), onFull: () => { if (G.ph === 'lobby' && !G.rs) leave('full'); },
       onChange: () => { pres(); if (G.ph === 'lobby' && helloSent !== me.nick + '|' + party.champ()) hello(); render(); }
     });
     // Debug start only (js/debug.js, testing): this page's view of the expedition and the host's moves, for test scripts.
-    if (SD.debug) SD.debug.raid = { G: () => G, act: (peer, d) => { act(peer, d); }, me: () => me.peer, hosting: () => hosting, push: () => push(), fight: (ids, tier) => { G.k++; fight({ ids, sev: ids.map(() => 0), dmg: ids.map(() => 0) }, tier || 'fight'); push(); } };
+    if (SD.debug) SD.debug.raid = { G: () => G, act: (peer, d) => { act(peer, d); }, me: () => me.peer, hosting: () => hosting, push: () => push(), pace: f => { pace = Math.max(0.05, +f || 1); }, fight: (ids, tier) => { G.k++; fight({ ids, sev: ids.map(() => 0), dmg: ids.map(() => 0) }, tier || 'fight'); push(); } };
     pres();
     hello();
     render();

@@ -6,7 +6,7 @@
 //
 //   SD.expeditions = [{ id, name, who: [character ids it's about], blurb, opens() -> bool, floors: [floor, ...] }]
 //     2 to 5 floors. opens() reads this player's save (the leader's, since the leader picks).
-//   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, bossPack, debuff, intro, outro, events }
+//   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, bossPack, bossSev, debuff, intro, outro, events }
 //     gate    the title card shown on entering the floor; beat: what the floor is about
 //     map     the dungeon tileset: the chapter whose map art it uses ('1' to '10'), which is also the floor's chapter
 //     fights  Incident rooms, elites: Elite rooms, each picked at random from its list. An entry is an enemy id or a
@@ -15,6 +15,7 @@
 //             first, and its company leaves when it falls.
 //     boss    the floor boss's enemy id (never one of the story bosses, pager and shadowarmy); bossTitle: what it is
 //             called on this floor; bossPack: { ids: [boss, add], sev, dmg } when it brings an add
+//     bossSev the floor boss's Severity times this (default 1), when a floor's boss needs tuning on that floor alone
 //     debuff  the boss's one move that also debuffs the team: { move: its pattern step (default the last),
 //             kind: 'brittle' (Tightly Coupled) | 'weakMe' (Context Switching) | 'techdebt' | 'pager'
 //             (a Tech Debt (1) or Pager Alert (1) in every deck), n: turns }
@@ -2793,7 +2794,8 @@
      "fl-kindly",
      "fl-stamp",
      "fl-hari"
-    ]
+    ],
+    "bossSev": 0.85
    },
    {
     "name": "The Hall of Mirrors",

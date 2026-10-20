@@ -35,7 +35,8 @@
   // ---------- claude.ai rooms ----------
   function wrapClaude(r, me) {
     return {
-      emit: (topic, data) => r.emit(topic, data).catch(() => {}),
+      // A refused message (one over the room's 4 KiB limit, say) is lost: say so in the console.
+      emit: (topic, data) => r.emit(topic, data).catch(e => { console.warn('Guild Hall: a "' + topic + '" message was not sent:', e && e.message ? e.message : e); }),
       on: (topic, fn) => r.on(topic, m => fn({ topic: m.topic, data: m.data, peer: m.peer, isMe: m.isMe && m.sameTab })),
       presence: patch => r.presence(patch).catch(() => {}),
       peers: () => r.peers().map(p => ({ peer: p.peer, presence: p.presence || {}, isMe: p.isMe && p.sameTab, guest: p.guest, kind: p.kind })).filter(p => p.kind !== 'agent'),
