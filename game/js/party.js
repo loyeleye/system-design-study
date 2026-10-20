@@ -10,8 +10,9 @@
 //     P.members()           -> present players of this kind: [{ peer, nick, champ, ready, isMe }]
 //     P.champ()             -> this player's champion id
 //     P.render(root, ctx)   -> draws the room; ctx: { mode, code, leader, max, min, settings, bind, chip, start,
-//                              startLabel, startWhy, boss, deck, vis, leave, note, addBot }  addBot: the leader's
-//                              Add a bot, in the open seat
+//                              startLabel, startWhy, boss, deck, vis, leave, note, addBot, botChamp }  addBot: the
+//                              leader's Add a bot, in the open seat; botChamp(peer, champ): the leader picks a bot's
+//                              champion (its card's Change champion turns the roster into that bot's picker)
 //     P.leave()             -> stops listening
 //
 // Names: you arrive as the first free "Player N" (N counts from your seat), or as the name you saved last time
@@ -56,6 +57,10 @@
 .pt-chip.ok { background: #dff4ea; border-color: #1f8a57; color: #1f6b46; } .pt-chip.wait { background: #fff; color: var(--mi-muted); }
 .pt-rename { display: flex; gap: 6px; width: 100%; flex-wrap: wrap; }
 .pt-rename input { flex: 1 1 90px; min-width: 0; font: 600 15px var(--f-head, system-ui); padding: 4px 8px; border: 2.5px solid var(--mi-ink); border-radius: 10px; }
+.pt-mem.editing { outline: 3px solid var(--mi-sun); outline-offset: 2px; }
+.pt-chg[aria-pressed="true"] { background: var(--mi-sun); }
+.pt-lbl .pt-for { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pt-champ.held::after { content: attr(data-by); position: absolute; top: 4px; right: 4px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 9px var(--f-body, system-ui); background: var(--mi-muted); color: #fff; border-radius: 6px; padding: 1px 4px; }
 .pt-kick { font: 600 12px var(--f-body, system-ui); background: none; border: 0; color: var(--mi-muted); text-decoration: underline; cursor: pointer; padding: 0; }
 .pt-lbl { font: 700 13px var(--f-body, system-ui); display: grid; gap: 6px; }
 .pt-lbl small { font-weight: 600; color: var(--mi-muted); }
@@ -105,6 +110,8 @@
     opts = opts || {};
     const me = hub.me;
     let champ = null, ready = false, named = false, warm = false;
+    // The leader's page only: the bot whose champion the roster is picking right now (its peer key), else null.
+    let editing = null, refocus = null;
     // When this player arrived: in a clash of names or champions, whoever came later gives way.
     const since = Date.now();
     const unsub = [];
@@ -167,28 +174,34 @@
       const list = members().concat(bots()), mine = list.find(m => m.isMe);
       const leaderPeer = ctx.leader, iLead = leaderPeer === me.peer;
       const lead = list.find(m => m.peer === leaderPeer) || mine;
+      const ed = iLead && ctx.botChamp && editing ? list.find(m => m.bot && m.peer === editing) : null;
+      if (!ed) editing = null;
+      const pick = ed ? ed.champ : champ;
       const max = ctx.max || 2;
       const sorted = list.slice().sort((a, b) => (b.peer === leaderPeer) - (a.peer === leaderPeer));
       const seats = sorted.map(m => {
         const c = CH.get(m.champ);
         const chips = (ctx.chip ? ctx.chip(m) : '') + (m.peer === leaderPeer ? '' : `<span class="pt-chip ${m.ready ? 'ok' : 'wait'}">${m.ready ? 'Ready' : 'Not ready'}</span>`);
-        return `<div class="pt-mem${m.ready || m.peer === leaderPeer ? ' ready' : ''}" data-peer="${esc(m.peer)}"><div class="pt-stage" data-spr="${esc(m.champ || '')}"></div>
+        return `<div class="pt-mem${m.ready || m.peer === leaderPeer ? ' ready' : ''}${ed === m ? ' editing' : ''}" data-peer="${esc(m.peer)}"><div class="pt-stage" data-spr="${esc(m.champ || '')}"></div>
           ${m.isMe ? '<span class="pt-badge you">YOU</span>' : m.bot ? '<span class="pt-badge bot" title="A computer-controlled teammate, run by the leader\'s page">BOT</span>' : ''}${m.peer === leaderPeer ? '<span class="pt-badge lead">LEADER</span>' : ''}
           ${m.isMe ? `<div class="pt-rename"><input id="pt-nick" maxlength="24" value="${esc(m.nick)}" aria-label="Your name" autocomplete="off"><button class="mi-btn sm" type="button" id="pt-save">Save</button></div>` : `<b>${esc(m.nick)}</b>`}
-          <span class="as">${c ? 'as ' + esc(c.name) : 'No champion yet'}</span><div class="pt-chips">${chips}</div>
+          <span class="as">${c ? 'as ' + esc(c.name) : 'No champion yet'}</span>${m.bot && iLead && ctx.botChamp ? `<button class="mi-btn sm pt-chg" type="button" data-edit="${esc(m.peer)}" aria-pressed="${ed === m}">${ed === m ? 'Done' : 'Change champion'}</button>` : ''}<div class="pt-chips">${chips}</div>
           ${iLead && !m.isMe ? `<button class="pt-kick" type="button" data-kick="${esc(m.peer)}">Remove</button>` : ''}</div>`;
       });
       if (list.length < max) seats.push(`<div class="pt-mem empty"><div class="pt-stage"></div><b>Open seat</b><span class="as">${max - list.length > 1 ? `${max - list.length} seats free. ` : ''}Share the code${ctx.listed ? ', or wait for the Quest Board' : ''}${iLead && ctx.addBot ? ', or fill it with a bot' : ''}.</span>${iLead && ctx.addBot ? '<button class="mi-btn sm" type="button" id="pt-bot">Add a bot</button>' : ''}</div>`);
-      const taken = {}; list.forEach(m => { if (!m.isMe && m.champ) taken[m.champ] = m.nick; });
+      // Who holds what. A bot's champion stays open to people (the bot moves to a free one); picking for a bot,
+      // every champion someone else holds is off.
+      const taken = {}, heldBot = {};
+      list.forEach(m => { if (!m.champ || m === ed || (!ed && m.isMe)) return; if (m.bot && !ed) heldBot[m.champ] = m.nick; else taken[m.champ] = m.nick; });
       const regions = CH.regions.map(r => {
         const cs = CH.list.filter(c => c.region === r);
         return `<div class="pt-region"><span>${esc(r)}</span>${cs.map(c => {
-          const lock = !CH.unlocked(c.id), boss = CH.bossConflict(c.id, ctx.boss), by = taken[c.id];
+          const lock = !CH.unlocked(c.id), boss = CH.bossConflict(c.id, ctx.boss), by = taken[c.id], hb = !by && heldBot[c.id];
           const off = lock || by || boss;
-          return `<button type="button" class="pt-champ${c.id === champ ? ' sel' : ''}${lock ? ' lock' : ''}${by || boss ? ' taken' : ''}" data-ch="${c.id}" ${by ? `data-by="${esc(by)}"` : boss ? 'data-by="BOSS"' : ''} ${off ? 'aria-disabled="true"' : ''} aria-pressed="${c.id === champ}"><span class="pic" data-spr="${lock ? 'lock:' : ''}${c.id}"></span><b>${lock ? '???' : esc(c.short)}</b>${lock ? `<small>${esc(c.how)}</small>` : boss ? '<small>She\'s the boss</small>' : ''}</button>`;
+          return `<button type="button" class="pt-champ${c.id === pick ? ' sel' : ''}${lock ? ' lock' : ''}${by || boss ? ' taken' : ''}${hb ? ' held' : ''}" data-ch="${c.id}" ${by ? `data-by="${esc(by)}"` : boss ? 'data-by="BOSS"' : hb ? `data-by="${esc(hb)}" title="${esc(hb)} will switch to a free champion"` : ''} ${off ? 'aria-disabled="true"' : ''} aria-pressed="${c.id === pick}"><span class="pic" data-spr="${lock ? 'lock:' : ''}${c.id}"></span><b>${lock ? '???' : esc(c.short)}</b>${lock ? `<small>${esc(c.how)}</small>` : boss ? '<small>She\'s the boss</small>' : ''}</button>`;
         }).join('')}</div>`;
       }).join('');
-      const sig = ctx.deck && champ && CH.cards[champ] ? `<div class="pt-deck"><span class="mi-tag">${esc(CH.get(champ).name)}'s signature cards · ${esc(CH.get(champ).style)}</span><div class="pt-minis">${CH.cards[champ].map(id => { const d = SD.cards[id]; return `<div class="pt-mini ${d.kind}"><span class="cost">${d.cost}</span><b>${esc(d.name)}</b><small>${esc(d.text)}</small></div>`; }).join('')}</div></div>` : '';
+      const sig = ctx.deck && pick && CH.cards[pick] ? `<div class="pt-deck"><span class="mi-tag">${ed ? esc(ed.nick) + ': ' : ''}${esc(CH.get(pick).name)}'s signature cards · ${esc(CH.get(pick).style)}</span><div class="pt-minis">${CH.cards[pick].map(id => { const d = SD.cards[id]; return `<div class="pt-mini ${d.kind}"><span class="cost">${d.cost}</span><b>${esc(d.name)}</b><small>${esc(d.text)}</small></div>`; }).join('')}</div></div>` : '';
       const why = ctx.startWhy ? ctx.startWhy() : null;
       const notReady = list.filter(m => m.peer !== leaderPeer && !m.ready).length;
       const bossClash = list.some(m => CH.bossConflict(m.champ, ctx.boss));
@@ -200,6 +213,8 @@
         : `<button class="mi-btn go${ready ? ' done' : ''}" type="button" id="pt-ready" aria-pressed="${ready}" ${CH.bossConflict(champ, ctx.boss) ? 'disabled' : ''}>${ready ? 'Ready ✓' : 'I\'m ready'}</button>`;
       const vis = ctx.vis && iLead ? `<div class="pt-vis" role="group" aria-label="Who can find the party"><button type="button" data-vis="1" class="${ctx.vis.get() ? 'on' : ''}">Open</button><button type="button" data-vis="" class="${ctx.vis.get() ? '' : 'on'}">Private</button></div>` : '';
       const a = document.activeElement, focusNick = a && a.id === 'pt-nick', draft = focusNick ? a.value : null;
+      // A redraw keeps keyboard focus on the same champion or button.
+      const keep = a && root.contains(a) ? (a.dataset.ch ? `[data-ch="${a.dataset.ch}"]` : a.dataset.edit ? `[data-edit="${CSS.escape(a.dataset.edit)}"]` : a.id && a.id !== 'pt-nick' ? '#' + a.id : null) : null;
       root.innerHTML = `<div class="mi"><div class="mi-card pt">
         <div class="pt-top"><button class="pt-back" type="button" id="pt-leave">← Leave the party</button>
           <div class="pt-share"><span class="mi-tag">Code</span><span class="pt-code">${esc(net.cleanCode(ctx.code).toUpperCase())}</span><button class="mi-btn sm" type="button" id="pt-copy">Copy code</button><button class="mi-btn sm" type="button" id="pt-link">Copy link</button></div></div>
@@ -207,7 +222,7 @@
           ${ctx.settings || vis ? `<div class="pt-set">${ctx.settings || ''}${vis}</div>` : ''}</div>
         ${ctx.note ? `<p class="pt-note">${ctx.note}</p>` : ''}
         <div class="pt-members">${seats.join('')}</div>
-        <div class="pt-lbl">Your champion <small>${ctx.deck ? 'Each brings three signature cards to the raid. ' : ''}Two players can't pick the same one. Reach more of them in the game to unlock them.</small><div class="pt-roster">${regions}</div></div>
+        <div class="pt-lbl" id="pt-lbl">${ed ? `<span class="pt-for" aria-live="polite">Choosing for ${esc(ed.nick)} <button class="mi-btn sm pt-chg" type="button" id="pt-done">Done</button></span><small>Tap a champion for ${esc(ed.nick)}, or Done to keep this one.</small>` : `<span aria-live="polite">Your champion</span><small>${ctx.deck ? 'Each brings three signature cards to the raid. ' : ''}Two players can't pick the same one; a bot moves aside for you. Reach more of them in the game to unlock them.</small>`}<div class="pt-roster">${regions}</div></div>
         ${sig}
         <div class="pt-bar"><p>${status}</p>${btn}</div></div></div>`;
       root.querySelectorAll('[data-spr]').forEach(el => {
@@ -217,17 +232,31 @@
         el.appendChild(CH.sprite(id, big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h), big || (!lock && id === champ)));
       });
       if (focusNick) { const i = root.querySelector('#pt-nick'); if (i) { i.focus(); i.value = draft; } }
+      else if (keep) { const k = root.querySelector(keep); if (k) k.focus(); }
       const nick = root.querySelector('#pt-nick');
       const saveNick = () => { const v = net.clean(nick.value, 24); if (!v) { nick.value = me.nick; return; } if (others().some(m => m.nick.toLowerCase() === v.toLowerCase())) { nick.value = me.nick; nick.setCustomValidity('Someone here already has that name'); nick.reportValidity(); return; } hub.setNick(v); if (opts.onChange) opts.onChange(); };
       if (nick) { root.querySelector('#pt-save').onclick = saveNick; nick.onkeydown = e => { if (e.key === 'Enter') saveNick(); }; nick.oninput = () => nick.setCustomValidity(''); }
       root.querySelector('#pt-leave').onclick = ctx.leave;
       root.querySelector('#pt-copy').onclick = e => PT.copy(net.cleanCode(ctx.code).toUpperCase(), e.target);
       root.querySelector('#pt-link').onclick = e => PT.copy(PT.link(ctx.code), e.target);
+      const redraw = () => P.render(root, ctx);
       root.querySelectorAll('[data-ch]').forEach(b => b.onclick = () => {
         const id = b.dataset.ch;
-        if (b.getAttribute('aria-disabled') === 'true' || id === champ) return;
+        if (b.getAttribute('aria-disabled') === 'true') return;
+        if (ed) { const k = ed.peer; editing = null; refocus = k; if (id !== ed.champ) ctx.botChamp(k, id); redraw(); return; }
+        if (id === champ) return;
         champ = id; CH.setMine(id); if (opts.onChange) opts.onChange();
       });
+      const stopEdit = () => { refocus = editing; editing = null; redraw(); };
+      root.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+        if (editing === b.dataset.edit) return stopEdit();
+        editing = b.dataset.edit; redraw();
+        const s = root.querySelector('.pt-champ.sel') || root.querySelector('.pt-champ:not([aria-disabled])');
+        if (s) { s.focus({ preventScroll: true }); s.scrollIntoView({ block: 'center' }); }
+      });
+      const done = root.querySelector('#pt-done'); if (done) done.onclick = stopEdit;
+      if (ed) root.querySelector('.pt').onkeydown = e => { if (e.key === 'Escape') { e.stopPropagation(); stopEdit(); } };
+      if (refocus) { const b = root.querySelector(`[data-edit="${CSS.escape(refocus)}"]`); refocus = null; if (b) b.focus(); }
       root.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => room.emit('kick', { peer: b.dataset.kick }));
       root.querySelectorAll('[data-vis]').forEach(b => b.onclick = () => { ctx.vis.set(!!b.dataset.vis); if (opts.onChange) opts.onChange(); });
       const ab = root.querySelector('#pt-bot'); if (ab) ab.onclick = () => ctx.addBot();
