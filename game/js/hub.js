@@ -906,8 +906,12 @@
       case 'laptop':
         return { face: 'south', dy: k % 0.5 < 0.08 ? 0.02 : 0, bub: every(n, t, 8, ['dots', 'cash', 'sweat', 'idea']), fx: (x, y) => laptop(x, y - ts * 0.34, k) };
       case 'sweep': {
-        const side = Math.floor(k / 0.7) % 2 ? 'east' : 'west';
-        return { face: side, anim: true, bub: every(n, t, 10, ['music', 'happy']), fx: (x, y, f) => broom(x, y, f, k) };
+        // Sweeping stands still and strokes the broom slowly; every 50 s cycle splits into a stretch of sweeping and one
+        // of standing idle, each 20 to 30 s long and picked per cycle, so the switch never looks like a timer.
+        const cyc = Math.floor(k / 50);
+        if (k % 50 >= 20 + hash(cyc + 1, n.id.length * 31 + 7) % 11) return { face: 'south', bub: every(n, t, 12, ['happy', 'music']) };
+        const side = cyc % 2 ? 'east' : 'west', ph = k * Math.PI * 2 / 1.8;
+        return { face: side, dy: Math.max(0, Math.sin(ph)) * 0.012, bub: every(n, t, 10, ['music', 'happy']), fx: (x, y, f) => broom(x, y, f, ph) };
       }
       case 'sleep': return { face: 'south', dy: Math.sin(k * 1.5) * 0.015, bub: k % 4 < 2.6 ? 'zz' : 'sleep' };
       case 'sell': return { face: 'south', dy: k % 6 < 0.5 ? -Math.abs(Math.sin(k * 12)) * 0.06 : 0, bub: every(n, t, 6, ['cash', 'star', 'heart', 'talk']) };
@@ -968,13 +972,14 @@
     ctx.fillRect(x + 4 * s, y, 5 * s, 8 * s); ctx.strokeRect(x + 4 * s, y, 5 * s, 8 * s);
     ctx.beginPath(); ctx.moveTo(x + 8 * s, y); ctx.lineTo(x + 8 * s, y - 5 * s); ctx.stroke();
   }
-  function broom(x, y, f, k) {
-    const s = ts / 32, dir = f === 'east' ? 1 : -1, sw = Math.sin(k * 9) * 3 * s;
+  // ph: the stroke's phase, one push out and one draw back per turn of 2π.
+  function broom(x, y, f, ph) {
+    const s = ts / 32, dir = f === 'east' ? 1 : -1, sw = dir * Math.sin(ph) * 3 * s;
     ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(x + dir * 2 * s, y - 16 * s); ctx.lineTo(x + dir * 11 * s + sw, y - 1 * s); ctx.stroke();
     ctx.fillStyle = '#e8c36a'; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
     ctx.fillRect(x + dir * 11 * s + sw - 3 * s, y - 3 * s, 6 * s, 4 * s); ctx.strokeRect(x + dir * 11 * s + sw - 3 * s, y - 3 * s, 6 * s, 4 * s);
-    if (k % 0.7 < 0.25) { ctx.fillStyle = 'rgba(240,230,210,.7)'; ctx.beginPath(); ctx.arc(x + dir * 15 * s + sw, y - s, 2.5 * s, 0, Math.PI * 2); ctx.fill(); }
+    if (Math.sin(ph) > 0.8) { ctx.fillStyle = 'rgba(240,230,210,.7)'; ctx.beginPath(); ctx.arc(x + dir * 15 * s + sw, y - s, 2.5 * s, 0, Math.PI * 2); ctx.fill(); }
   }
   // The plaza bench, drawn in code: two planks on stubby legs, in the village's ink outline.
   function drawBench(x, y) {
