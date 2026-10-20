@@ -2,10 +2,11 @@
 
 usage: wen_sweep_art.py [FRAMES_DIR]   (FRAMES_DIR: /mnt/project-files/wen-sweep-raw)
 Without FRAMES_DIR it asks PixelLab (needs PIXELLAB_API_KEY): her east rotation (npc-anim-raw/wen) goes on a 96x96
-canvas at (14, 20), edit-image-pixen puts a broom in both her hands (hold.png), and animate-with-text-v3 makes eight
+canvas at (14, 20), edit-image-pixen puts a broom in both her hands and bows her head to watch it (hold.png), and animate-with-text-v3 makes eight
 frames of one stroke, the broom drawn in from ahead of her to her feet (f0.png-f7.png). FRAMES_DIR holds those files.
 Writes assets/img/village/sw-wen.webp: the frames cut to one box, east on the top row and mirrored west below, and
-prints the numbers for SWEEP in js/hub.js. The game plays the stroke forward and back (0-7-1), so it loops smoothly.
+prints the numbers for SWEEP in js/hub.js. PixelLab smears black under the bristles on some frames: near-black
+pixels below her feet (y >= 79) are cleared. The game plays the stroke forward and back (0-7-1), so it loops smoothly.
 """
 import base64, io, json, os, sys, time, urllib.request
 from PIL import Image
@@ -14,9 +15,10 @@ GAME = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = '/mnt/project-files/npc-anim-raw/wen/rotations/east.png'
 C, AT, SEED, N = 96, (14, 20), 37, 8
 HOLD = ('the same old woman, now holding a long wooden broom in both hands in front of her, one hand high on the handle '
-        'and one hand lower, the broom angled down and forward with its straw bristles resting on the ground ahead of her feet')
+        'and one hand lower, the broom angled down and forward with its straw bristles resting on the ground ahead of her feet, '
+        'her head tilted down and her eyes looking down at the bristles on the floor')
 ACTION = ('old woman sweeping the floor with a long broom held in both hands, one hand high on the handle and one hand low, '
-          'bristles on the ground in front of her, slow smooth push and pull strokes, feet stay planted and still, seamless loop')
+          'bristles on the ground in front of her, she keeps her head bowed looking down at the floor she is sweeping, slow smooth push and pull strokes, feet stay planted and still, seamless loop')
 
 def call(url, data=None):
     for k in range(6):
@@ -51,6 +53,11 @@ def pixellab():
     return [unb64(x) for x in a['images'][:N]]
 
 frames = [Image.open(os.path.join(sys.argv[1], 'f%d.png' % i)).convert('RGBA') for i in range(N)] if len(sys.argv) > 1 else pixellab()
+for f in frames:
+    P = f.load()
+    for y in range(79, C):
+        for x in range(C):
+            if P[x, y][3] and sum(P[x, y][:3]) < 90: P[x, y] = (0, 0, 0, 0)
 box = None
 for f in frames:
     b = f.getbbox(); box = b if box is None else (min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3]))

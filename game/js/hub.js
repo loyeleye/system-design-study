@@ -810,7 +810,7 @@
   }
   // Wen's sweep (tools/wen_sweep_art.py): a w x h frame per step of the stroke, east on the top row, west below, with
   // her feet where person() puts them: the bottom of the frame on the ts * 0.95 line, centred on the tile.
-  const SWEEP = { w: 64, h: 52, n: 8 };
+  const SWEEP = { w: 62, h: 67, n: 8 };
   function sweeping(n, col, face) {
     const w = SWEEP.w * ts / 32, h = SWEEP.h * ts / 32, X = xx(n) * ts + ts / 2, Y = yy(n) * ts + ts * 0.95;
     ctx.fillStyle = 'rgba(43,35,64,0.22)';
@@ -869,7 +869,7 @@
       // Uptima's idle gags (js/uptima-idle.js): a spin on the spot, or a frame of her gag sheet instead of her own.
       gag = n.id === 'uptima' && SD.uptimaIdle ? SD.uptimaIdle.pose(n, t, { still: !going && face === 'south' && yawn < 0 }) : null;
       if (gag && gag.im) cell(gag.im, gag.col, gag.row, ART().chars.uptima, xx(n), yy(n));
-      else if (a && a.sweep != null && face === a.face && ok(pic('sw-' + n.id))) sweeping(n, a.sweep, face);
+      else if (a && a.sweep != null && !near && ok(pic('sw-' + n.id))) sweeping(n, a.sweep, face);
       else person(n.id, xx(n), yy(n), t, gag ? gag.face : face, going, false, n.moving ? pace(n) : 1, yawn, SD.art.turned(n, gag ? gag.face : face, going, t));
       ctx.restore();
       if (a && a.fx && !gag) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
