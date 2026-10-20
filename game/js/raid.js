@@ -31,7 +31,8 @@
 //   SD.raid.available()   -> whether this page has the game's cards and styles (the in-game Guild Hall does)
 //   SD.raid.expeditions() -> the expeditions open to this player
 //   SD.raid.level(x)      -> an expedition's difficulty by its floors: Easy (2), Medium (3), Hard (4) or Master (5)
-//   SD.raid.saved()       -> this browser's saved expeditions, newest first: [{ code, xp, name, fl, floors, at }]
+//   SD.raid.saved()       -> this browser's saved expeditions, newest first: [{ code, xp, name, fl, floors, at, expired }]
+//                            (expired: from an older version, so it can't be resumed)
 //   SD.raid.cardChoices(n, ch, champ, tier, rarity) -> this player's card reward (as js/run.js cardChoices)
 (function () {
   const RD = SD.raid = {};
@@ -218,7 +219,10 @@
   // ---------- Saves (the leader's page, after every room) ----------
   const KEY = 'sd-guild-expeditions';
   const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { /* private mode */ } } };
-  RD.saved = () => { const all = store.get(); return Object.keys(all).map(code => Object.assign({ code }, all[code])).filter(s => xpOf(s.xp) && s.state).sort((a, b) => b.at - a.at); };
+  // A save from an older version can't be read: its decks name cards by their place in a list that has since changed
+  // (cv). It stays listed as expired (Ladi, 2026-10-20) until this browser saves that expedition again.
+  const expired = s => !s || !s.state || typeof s.state !== 'object' || s.state.cv !== index().length || !s.state.players || typeof s.state.players !== 'object';
+  RD.saved = () => { const all = store.get(); return Object.keys(all).map(code => Object.assign({ code, expired: expired(all[code]) }, all[code])).filter(s => xpOf(s.xp)).sort((a, b) => b.at - a.at); };
 
   // ---------- The map: three lanes, eight rows, then the boss ----------
   // Every row is shuffled, and the last is all café and camp, so every path rests before the boss.
@@ -1143,7 +1147,7 @@
     let G = fresh();
     G.host = o.create ? me.peer : null;
     let hosting = !!o.create;
-    const savedHere = () => (store.get()[net.cleanCode(code)] || null);
+    const savedHere = () => { const s = store.get()[net.cleanCode(code)]; return s && !expired(s) ? s : null; };
     const players = () => room.peers().filter(p => p.presence && p.presence.kind === 'raid');
     // Bots (below) are seats that are never peers: they count as here.
     const isBot = k => !!(G.players[k] && G.players[k].bot);
@@ -1177,6 +1181,8 @@
       if (G.ph !== 'map' || !X()) return;
       const all = store.get();
       all[net.cleanCode(code)] = { at: Date.now(), xp: G.xp, name: X().name, fl: G.fl, floors: floorsOf(X()).length, state: pack(G) };
+      // A new save of an expedition replaces its expired ones.
+      Object.keys(all).forEach(c => { if (all[c].xp === G.xp && expired(all[c])) delete all[c]; });
       // The five newest saves are kept.
       Object.keys(all).sort((a, b) => all[b].at - all[a].at).slice(5).forEach(c => { delete all[c]; });
       store.set(all);
