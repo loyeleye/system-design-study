@@ -1162,7 +1162,7 @@
     const unsub = [];
 
     // ---------- Host ----------
-    function push() { G.v++; G.host = me.peer; room.emit('state', pack(G)); render(); }
+    function push() { G.v++; G.host = me.peer; room.emit('state', pack(G, true)); render(); }
     // The expedition after every room, on this (the leader's) page. It ends with the expedition.
     function save() {
       if (G.ph !== 'map' || !X()) return;
@@ -1192,12 +1192,11 @@
       enterFloor(0); push();
     }
     // The snapshot Seymour's tape restores: every deck and purse, the SLA and the map, as the floor began.
+    function snapNow() { const p = {}; all().forEach(k => { p[k] = { d: enc(G.players[k].deck, true), b: G.players[k].bits }; }); return { sla: Math.max(1, G.sla), map: G.map, p }; }
     function enterFloor(f) {
       Object.assign(G, { fl: f, onWin: [], map: genMap(), pos: null, seen: [], votes: {}, room: null, ph: 'map', boss: null, main: null, tier: null, foes: [] });
       G.k++;
-      const p = {};
-      all().forEach(k => { p[k] = { d: enc(G.players[k].deck, true), b: G.players[k].bits }; });
-      G.snap = { sla: G.sla, map: G.map, p };
+      G.snap = snapNow();
       FL().boss && SD.state && SD.state.seeConcept && SD.enemies[FL().boss].concept && SD.state.seeConcept(SD.enemies[FL().boss].concept);
       save();
     }
@@ -1413,7 +1412,17 @@
         push();
       }
     }
-    function become() { hosting = true; pres(); push(); check(); }
+    // The floor's entry snapshot stays on the host (its own state and save), never on the wire, so a host who takes
+    // over has none: they take one as they take over, and a tape then restarts the floor from there (the same map,
+    // the decks, bits and SLA of that moment).
+    // A page that came back mid-fight never got the decks (they stay off the wire in a fight): a missing one is rebuilt
+    // from that player's piles and infra, without the fight's own Tech Debt and Pager Alert cards.
+    function become() {
+      hosting = true;
+      if (G.ph === 'fight') Object.keys(G.players).forEach(k => { const p = G.players[k]; if (!p.deck.length) p.deck = p.hand.concat(p.draw, p.disc, p.played, G.infra.filter(x => x.by === k).map(x => x.id)).map(id => String(id).replace(/\^$/, '')).filter(id => !Object.values(ADD).includes(base(id))); });
+      if (!G.snap && G.map && G.ph !== 'lobby') G.snap = snapNow();
+      pres(); push(); check();
+    }
 
     // ---------- Bots: computer-controlled teammates, so one person can raid alone ----------
     // A bot is a seat like any other, flagged (G.players[k].bot) and keyed '~b1' to '~b3', never a peer in the room.
@@ -1610,12 +1619,26 @@
     }
 
     // ---------- The state on the wire ----------
-    function pack(S) {
+    // wire: for the room, where every message must stay under 4 KiB. Empty and zero fields stay home (unpack reads a
+    // missing one as empty or 0), and so do the floor's entry snapshot (only the host's own state and save keep it),
+    // a player's café or reward cards once they're done with the room, and in a fight the decks, which can't change
+    // there (each page keeps the decks it had). A player's statuses go as a list in myStatus() order.
+    const SK = Object.keys(myStatus());
+    const stList = st => { const a = SK.map(k => st[k] | 0); while (a.length && !a[a.length - 1]) a.pop(); return a; };
+    const slim = o => { Object.keys(o).forEach(k => { const v = o[k]; if (v == null || v === 0 || v === '' || (typeof v === 'object' && !Object.keys(v).length)) delete o[k]; }); return o; };
+    function pack(S, wire) {
       const pl = {};
-      Object.keys(S.players).forEach(k => { const p = S.players[k]; pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: p.o, s: p.sold, st: p.st, pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {}, bt: p.bot ? 1 : undefined }; });
+      Object.keys(S.players).forEach(k => {
+        const p = S.players[k], owes = !wire || !!(S.room && S.room.wait[k]);
+        pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: owes ? p.o : [], s: owes ? p.sold : [], st: stList(p.st), pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {}, bt: p.bot ? 1 : 0 };
+        if (wire && S.ph === 'fight') delete pl[k].d;
+        if (wire) slim(pl[k]);
+      });
       // Each enemy goes as a list of its FOE fields; the copy swapped into G (withFoe) stays home.
       const out = Object.assign({}, S, { players: pl, foes: (S.foes || []).map(f => FOE.map(k => f[k])) });
-      FOE.concat(['fi', 'lead', 'gv']).forEach(k => { delete out[k]; });
+      FOE.concat(['fi', 'lead', 'gv'], wire ? ['snap'] : []).forEach(k => { delete out[k]; });
+      // The log and the note as long as a page keeps them (unpack).
+      if (wire) { out.log = net.clean(S.log, 400); out.note = net.clean(S.note, 200); }
       return out;
     }
     const ROOMS = ['reward', 'cafe', 'camp', 'board', 'event'];
@@ -1628,12 +1651,15 @@
       const pl = {};
       Object.keys(d.players).slice(0, MAX_PLAYERS).forEach(k => {
         const x = obj(d.players[k]);
-        pl[k] = { n: net.clean(x.n, 24) || 'A hero', c: SD.champions && SD.champions.get(x.c) ? x.c : null, deck: dec(x.d, 80), bits: Math.max(0, Math.min(9999, x.b | 0)), draw: dec(x.dr, 80), disc: dec(x.di, 80), hand: dec(x.h, 10), played: dec(x.pl, 20), cap: Math.max(0, x.cap | 0), ready: !!x.r,
+        // A fight's state leaves the decks out: keep the one this page has.
+        const was = x.d == null && d.ph === 'fight' && G.players[k];
+        pl[k] = { n: net.clean(x.n, 24) || 'A hero', c: SD.champions && SD.champions.get(x.c) ? x.c : null, deck: was ? was.deck.slice() : dec(x.d, 80), bits: Math.max(0, Math.min(9999, x.b | 0)), draw: dec(x.dr, 80), disc: dec(x.di, 80), hand: dec(x.h, 10), played: dec(x.pl, 20), cap: Math.max(0, x.cap | 0), ready: !!x.r,
           o: (Array.isArray(x.o) ? x.o : []).filter(id => typeof id === 'string' && SD.cards[id]).slice(0, 4), sold: (Array.isArray(x.s) ? x.s : []).filter(Number.isInteger).slice(0, 4), st: myStatus(),
           peek: dec(x.pk, 8), take: Math.max(0, Math.min(8, x.tk | 0)), ab: Math.max(0, Math.min(999, x.ab | 0)), hd: {} };
         // Only a bot's own kind of key can be a bot, so no page is ever played for its person.
         if (x.bt && BOT_KEY.test(k)) pl[k].bot = true;
-        Object.keys(pl[k].st).forEach(s => { pl[k].st[s] = Math.max(0, Math.min(99, obj(x.st)[s] | 0)); });
+        const sx = Array.isArray(x.st) ? x.st : SK.map(s => obj(x.st)[s]);
+        SK.forEach((s, i) => { pl[k].st[s] = Math.max(0, Math.min(99, sx[i] | 0)); });
         Object.keys(obj(x.hd)).forEach(id => { if (SD.cards[id]) pl[k].hd[id] = Math.max(0, Math.min(99, x.hd[id] | 0)); });
       });
       const r = d.room && typeof d.room === 'object' ? d.room : null;
@@ -2227,7 +2253,7 @@
       render();
     }));
     // The host's beat: questions whose time ran out are settled (a page that left never answers), then the state goes out.
-    const iv = setInterval(() => { if (!hosting) return; if (G.ph === 'fight' && G.qs.length && resolveDue(G)) { settle(); push(); check(); } else room.emit('state', pack(G)); }, BEAT);
+    const iv = setInterval(() => { if (!hosting) return; if (G.ph === 'fight' && G.qs.length && resolveDue(G)) { settle(); push(); check(); } else room.emit('state', pack(G, true)); }, BEAT);
     // Joining a code nobody hosts: if this browser led that expedition, it picks it up from its save.
     const lone = setTimeout(() => { if (!hosting && !G.host && savedHere()) { load(savedHere()); pres(); hello(); push(); } }, 2500);
 
