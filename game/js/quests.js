@@ -653,9 +653,8 @@
       AU.music('town'); SD.main.hud(); return;
     }
     s.step++;
-    // A finished quest step is time well spent: the clock moves on a block (js/clock.js).
-    if (SD.clock) SD.clock.advance('quest');
-    if (s.step >= q.steps.length) await complete(q, s);
+    // A finished quest is time well spent: the clock moves on a block (js/clock.js). A single step doesn't.
+    if (s.step >= q.steps.length) { await complete(q, s); if (SD.clock) SD.clock.advance('quest'); }
     else U.system('QUEST UPDATED', `${esc(q.title)}: ${esc(q.steps[s.step].hint)}`);
     S.persist();
     AU.music('town');

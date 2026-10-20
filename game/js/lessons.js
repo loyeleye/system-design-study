@@ -486,7 +486,6 @@
         if (ok) doneSet()[id] = true;
         l.concepts.forEach(c => S.seeConcept(c));
         if (first) { SD.run.gainXp(15); U.system('LESSON LEARNED!', `${esc(l.title)}: +15 XP. These ideas will feel familiar in the dungeon.`, 'gold'); }
-        if (ok && SD.clock) SD.clock.advance('lesson');
         S.persist();
         res();
       });
