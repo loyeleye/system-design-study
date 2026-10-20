@@ -159,7 +159,9 @@
       name: 'THE PR CLUB', mat: true, ambience: 'gym', map: ['############', '############', '############', '#.###...####', '#.###...####',
         '#.###...####', '#.......####', '###.....####', '#####DD#####'],
       enter: [5, 7, 'north'],
-      spots: { sunny: [6, 3, 'south'], leon: [1, 6, 'east'], thea: [7, 6, 'east'], rico: [9, 4, 'south'] },
+      // Leon beside the squat rack, Rico just inside the ring's ropes, where you can talk to him over them. The
+      // strip left of the rack is reached only from its bottom tile, so nobody stands there to block it.
+      spots: { sunny: [6, 3, 'south'], leon: [1, 4, 'east'], thea: [7, 6, 'east'], rico: [8, 4, 'west'] },
       lights: [{ x: 3.4, y: 1.4, r: 2.6 }, { x: 8.6, y: 1.4, r: 2.6 }],
       windows: [{ r: [100, 34, 26, 36] }, { r: [266, 34, 26, 36] }],
       props: [
