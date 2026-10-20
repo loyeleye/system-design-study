@@ -1034,7 +1034,6 @@ SD.metaShop = [
   // A-Rank
   { id: 'membercard', name: 'Guild Membership Card', cost: 395, rank: 'A', text: 'Shops inside dungeons charge 40% fewer bits.' },   // Membership Card
   { id: 'stamp', name: 'Rubber Stamp of Approval', cost: 475, rank: 'A', text: 'Every 5th card that mitigates in a run mitigates double.' },   // Pen Nib
-  { id: 'badge', name: "Principal Engineer's Badge", cost: 515, rank: 'A', text: 'Every card that mitigates mitigates 3 more.' },   // Vajra, generously
   // S-Rank
   { id: 'pinned', name: 'Pinned Tabs', cost: 1130, rank: 'S', text: 'Your hand is no longer discarded at the end of your turn.' },   // Runic Pyramid
   { id: 'croissant', name: 'Leftover Croissant', cost: 1500, rank: 'S', text: 'Capacity you don\'t spend carries over to your next turn.' },   // Ice Cream, the strongest here
