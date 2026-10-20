@@ -345,12 +345,13 @@
     const tape = c.death === 'tape';
     const b = U.panel(`<div class="verdict bad">DOWN ON FLOOR ${r.arc.floor + 1}</div>
       <p>${U.esc(incident || 'An incident')} took you down.</p>
-      <p>${tape ? `Seymour's backup tape, on Ayo's drive, puts you back at the start of this floor with the state you entered it with. Each tape plays once. ${A.tapesLeft(r) > 1 ? `You have ${A.tapesLeft(r)} left.` : 'This is your last one: another death ends the run.'}` : 'Uptima\'s snapshot puts you back at the very start of this floor, with your deck, SLA and bits as you entered it.'}</p>
+      <p>${tape ? `Seymour's backup tape, on Ayo's drive, puts you back at the start of this floor with the deck you entered it with, fully healed. Each tape plays once. ${A.tapesLeft(r) > 1 ? `You have ${A.tapesLeft(r)} left.` : 'This is your last one: another death ends the run.'}` : 'Uptima\'s snapshot puts you back at the very start of this floor, with your deck, SLA and bits as you entered it.'}</p>
       <div class="row"><button class="primary" id="arc-retry">${tape ? 'Play the tape' : 'Retry the floor'}</button><button class="ghost" id="arc-home">Go home</button></div>`, { title: tape ? 'RESTORE FROM TAPE' : 'RESTORE FROM SNAPSHOT', noClose: true });
     b.querySelector('#arc-retry').onclick = () => {
       U.closePanel();
       const s = r.arc.snap;
-      r.deck = clone(s.deck); r.sla = s.sla; r.bits = s.bits; r.map = clone(s.map); r.gary = s.gary; r.mercy = s.mercy;
+      // A tape also restores you fully healed (Ladi, 2026-10-20); a snapshot keeps the SLA you entered with.
+      r.deck = clone(s.deck); r.sla = tape ? S.maxSla() : s.sla; r.bits = s.bits; r.map = clone(s.map); r.gary = s.gary; r.mercy = s.mercy;
       r.pos = null; r.visited = []; r.pending = null; r.floor = -1;
       if (tape) { r.arc.tapesUsed = (r.arc.tapesUsed || 0) + 1; r.arc.tapeUsed = true; }
       S.persist();
