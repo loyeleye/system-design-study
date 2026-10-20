@@ -1152,6 +1152,9 @@
     const botKeys = () => Object.keys(G.players).filter(isBot);
     const here = () => new Set(players().map(p => p.peer).concat(botKeys()));
     const seatsHere = () => { const h = here(); return Object.keys(G.players).filter(k => h.has(k)); };
+    // Who votes on the map and on an event (Ladi, 2026-10-20): the humans here. Bots get no vote; they go with the result.
+    const votersHere = () => { const s = seatsHere(), h = s.filter(k => !isBot(k)); return h.length ? h : s; };
+    const theirs = votes => { const v = votersHere(), o = {}; Object.keys(votes).forEach(k => { if (v.includes(k)) o[k] = votes[k]; }); return o; };
     let party = null, sentP = '';
     // Presence goes out only when it changes (a room's own presence change calls onPeers, which redraws).
     const pres = () => {
@@ -1320,8 +1323,9 @@
       // The foes act once everyone is Ready and every rare's question is answered.
       if (G.ph === 'fight') { if (!G.qs.length && seats.every(k => G.players[k].ready)) { bossActs(G); settle(); push(); } return; }
       if (G.ph === 'map') {
-        if (!seats.every(k => G.votes[k])) return;
-        const id = tally(G, G.votes), n = nodeOf(G, id), who = Object.keys(G.votes).filter(k => G.votes[k] === id).map(k => G.players[k].n);
+        const vs = theirs(G.votes);
+        if (!votersHere().every(k => vs[k])) return;
+        const id = tally(G, vs), n = nodeOf(G, id), who = Object.keys(vs).filter(k => vs[k] === id).map(k => G.players[k].n);
         G.note = `${who.join(' and ')} picked ${n && n.type === 'boss' ? 'the boss' : 'the ' + label(n ? n.type : '')}.`;
         enter(id); settle(); push(); check(); return;
       }
@@ -1329,8 +1333,9 @@
       if (!r) return;
       const ev = r.t === 'event' && SD.expeditionEvents[r.ev];
       if (ev && !ev.per && r.ch == null) {
-        if (!seats.every(k => r.votes[k] != null)) return;
-        r.ch = +tally(G, r.votes);
+        const vs = theirs(r.votes);
+        if (!votersHere().every(k => vs[k] != null)) return;
+        r.ch = +tally(G, vs);
         const fx = ev.choices[r.ch].fx;
         // With one player in the room, they're the one; otherwise the party votes on who.
         if (needsOne(fx) && seats.length === 1) r.one = seats[0];
@@ -1338,8 +1343,9 @@
         push();
       }
       if (ev && !ev.per && r.ch != null && needsOne(ev.choices[r.ch].fx) && !r.one) {
-        if (!seats.every(k => r.wv[k] != null)) return;
-        r.one = tally(G, r.wv);
+        const vs = theirs(r.wv);
+        if (!votersHere().every(k => vs[k] != null)) return;
+        r.one = tally(G, vs);
         G.note = `The party picked ${G.players[r.one].n}.`;
         runChoice(G, ev.choices[r.ch].fx, all(), r.one);
         push();
@@ -1498,11 +1504,8 @@
       const r = Math.random(), band = r < 0.25 ? 'fast' : r < 0.75 ? 'steady' : 'slow', t = { fast: [4, 15], steady: [22, 40], slow: [47, 57] }[band];
       return (botQ[key] = { ok: Math.random() < 0.7, band, at: Date.now() + span(t[0], t[1]) * 1000 });
     }
-    // The leader's pick if a human made one, else the first human's: what bots follow on the map and in events.
+    // The leader's pick if a human made one, else the first human's: what a bot follows in an each-their-own event.
     const humanPick = votes => { const hs = Object.keys(votes).filter(j => G.players[j] && !isBot(j)); const j = hs.includes(G.host) ? G.host : hs[0]; return j == null ? null : votes[j]; };
-    // How long bots give the humans to vote before they pick at random.
-    const PATIENCE = 10000;
-    let sit = '', sitAt = 0;
     // The bot's fight move: the best affordable card (Absorb first when the incoming load is well over the shields,
     // else Mitigate), at the lowest-Severity enemy for a single-target hit and the frontmost for anything else; an
     // all-enemies card counts once per enemy. Curses that cost the team in hand are paid off first, an X card goes
@@ -1533,7 +1536,7 @@
     // What bot k does next: { d, at } (at: a question's answer, when it lands) or { d } (after the usual pause), or
     // null while it waits on the others. d can be a function, for a move that rolls cards when it's made.
     function botMove(k) {
-      const p = G.players[k], r = G.room, waited = Date.now() - sitAt > PATIENCE * pace;
+      const p = G.players[k], r = G.room;
       const ans = (key, d) => { const a = botAnswer(key); return { at: a.at, d: Object.assign({ ok: a.ok, band: a.band }, d) }; };
       if (G.ph === 'fight') {
         const e = G.qs.find(x => x.a.includes(k) && !x.r[k]);
@@ -1542,12 +1545,8 @@
         if (q && Date.now() >= q.at) return q;
         return botFight(k, p) || q || null;
       }
-      if (G.ph === 'map') {
-        if (G.votes[k]) return null;
-        const can = reach(G), h = humanPick(G.votes);
-        if (h && can.includes(h)) return { d: { k: 'vote', n: h } };
-        return waited && can.length ? { d: { k: 'vote', n: rnd(can) } } : null;
-      }
+      // Bots get no vote on the map, or on an event the party shares (votersHere).
+      if (G.ph === 'map') return null;
       if (!r || !r.wait[k]) return null;
       const roll = (rar, tier) => () => ({ k: 'offer', ids: RD.cardChoices(3, chOf(FL()), p.c, tier, rar) });
       if (r.t === 'reward') return { d: p.o.length ? { k: 'take', i: bestOf(p, p.o) } : roll(null, r.tier) };
@@ -1567,19 +1566,16 @@
       if (!ev) return { d: { k: 'done' } };
       const chosen = ev.per ? r.votes[k] : r.ch;
       if (chosen == null) {
-        if (r.votes[k] != null) return null;
+        if (r.votes[k] != null || !ev.per) return null;
         const price = i => +obj(ev.choices[i].fx).cost || 0;
         const can = ev.choices.map((c, i) => i).filter(i => (ev.per ? [k] : seatsHere()).every(j => G.players[j].bits >= price(i)));
+        // An each-their-own event: a bot never picks first (Ladi, 2026-10-20), since its pick would give a choice away.
+        // It goes with the human's pick, or a random one it can pay for when it can't pay for that one.
         const h = humanPick(r.votes);
-        if (h != null && can.includes(h)) return { d: { k: 'evote', i: h } };
-        return waited && can.length ? { d: { k: 'evote', i: rnd(can) } } : null;
+        if (h == null) return null;
+        return can.length ? { d: { k: 'evote', i: can.includes(h) ? h : rnd(can) } } : null;
       }
-      if (!ev.per && needsOne(ev.choices[r.ch].fx) && !r.one) {
-        if (r.wv[k] != null) return null;
-        const h = humanPick(r.wv);
-        if (h && seatsHere().includes(h)) return { d: { k: 'wvote', p: h } };
-        return waited ? { d: { k: 'wvote', p: rnd(seatsHere()) } } : null;
-      }
+      if (!ev.per && needsOne(ev.choices[r.ch].fx) && !r.one) return null;
       const todo = r.todo[k] || [], t0 = todo[0];
       if (t0 === 'ask') return ans('e' + r.k + ':' + todo.length, { k: 'ans' });
       if (typeof t0 === 'string' && t0.startsWith('pc:')) return { d: p.o.length ? { k: 'take', i: bestOf(p, p.o) } : roll(t0.slice(3), null) };
@@ -1593,8 +1589,7 @@
     const botAt = {};
     function bots() {
       if (!hosting || left || G.ph === 'lobby') return;
-      const now = Date.now(), s = [G.ph, G.k, G.pos, G.room && G.room.k, G.room && G.room.ch].join(':');
-      if (s !== sit) { sit = s; sitAt = now; }
+      const now = Date.now();
       botKeys().forEach(k => {
         if (!G.players[k]) return;
         const m = botMove(k);
@@ -2046,7 +2041,7 @@
       });
     }
     function mapView(x, mine) {
-      const f = FL(), seats = seatsHere(), votes = seats.filter(k => G.votes[k]).length;
+      const f = FL(), seats = votersHere(), votes = seats.filter(k => G.votes[k]).length;
       paint(`<div class="mi-card">${hud()}
         <div class="map-wrap"><div class="map-title">${esc(x.name.toUpperCase())} · ${esc(f.name)} <span class="muted">${mine ? 'Tap a room to vote.' : 'You\'re watching.'} ${esc(f.bossTitle || SD.enemies[f.boss].name)} waits at the end.</span></div>
         ${f.beat ? `<p class="muted small" style="margin:0">${esc(f.beat)}</p>` : ''}
@@ -2205,7 +2200,7 @@
       let body;
       if (chosen == null) {
         body = `<div class="opts">${ev.choices.map((c, i) => `<button class="opt${mine && r.votes[me.peer] === i ? ' on' : ''}" type="button" ${mine && can(i) ? sendAttr({ k: 'evote', i }) : 'disabled'}><b>${esc(c.label)}</b>${c.out ? `<span class="rd-opt-say">${esc(c.out)}</span>` : ''}${!can(i) ? '<span class="rd-opt-say">Not everyone can pay for this.</span>' : ''}${voters(i).length && !ev.per ? `<span class="rd-opt-v rd-votes" style="justify-content:flex-start;max-width:none">${voters(i).map(n => `<i>${esc(n)}</i>`).join('')}</span>` : ''}</button>`).join('')}</div>
-          <p class="rd-wait">${ev.per ? 'Each of you picks your own.' : `Vote: ${seats.filter(k => r.votes[k] != null).length} of ${seats.length}. The most votes win; ${lead} breaks ties.`}</p>`;
+          <p class="rd-wait">${ev.per ? 'Each of you picks your own.' : `Vote: ${votersHere().filter(k => r.votes[k] != null).length} of ${votersHere().length}. The most votes win; ${lead} breaks ties.${votersHere().length < seats.length ? ' Bots go with the vote.' : ''}`}</p>`;
       } else {
         const c = ev.choices[chosen], fx = obj(c.fx);
         body = `<div class="verdict ok" style="font-size:18px">${esc(c.label)}</div>${c.out ? `<p>${esc(c.out)}</p>` : ''}`;
@@ -2228,8 +2223,10 @@
       const tag = k => {
         if (ev.per && r.votes[k] != null) return [ev.choices[r.votes[k]].label.split(' (')[0], r.wait[k] ? '' : 'ok'];
         if (!r.wait[k]) return ['done', 'ok'];
+        const voting = chosen == null || (!ev.per && needsOne(ev.choices[chosen].fx) && !r.one);
+        if (voting && !ev.per && !votersHere().includes(k)) return ['goes with the vote'];
         if (chosen == null) return [r.votes[k] != null ? 'voted' : 'deciding'];
-        if (!ev.per && needsOne(ev.choices[chosen].fx) && !r.one) return [r.wv[k] != null ? 'voted' : 'deciding'];
+        if (voting) return [r.wv[k] != null ? 'voted' : 'deciding'];
         const t = (r.todo[k] || [])[0];
         return [t === 'ask' ? 'answering' : t ? 'choosing' : 'busy'];
       };
