@@ -22,6 +22,13 @@
   const num = x => Number(x).toLocaleString('en-US');
   const esc = s => U.esc(String(s));
   SH.state = o => o.sold ? 'sold' : o.owned ? 'owned' : o.locked ? 'locked' : o.have < o.cost ? 'short' : 'buy';
+  // Which rank-gated shelves to show: every open one, plus the next shelf up (locked, as a preview). "Next" is the
+  // next shelf the shop actually has, not the next rank, so Wen's C-Rank shelf shows at E-Rank (she has no D shelf).
+  //   SD.shop.shown(opens, mine) -> open => bool, where opens are every shelf's rank index and mine is yours
+  SH.shown = (opens, mine) => {
+    const next = Math.min(...opens.filter(o => o > mine));
+    return o => o <= mine || o === next;
+  };
 
   // Icons for keepsakes and relics, from the Game-icons.net subset (assets/game-icons.js).
   const ICONS = {

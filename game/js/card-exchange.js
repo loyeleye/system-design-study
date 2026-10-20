@@ -50,7 +50,7 @@
     return P && P.ANCIENT && (P.ANCIENT.includes(id) || Object.values(SD.chapters).some(c => c.rareCard === id)) ? P.shelfPrice(id) : null;
   };
   const SHELF = { A: 'A', S: 'S', Floor: 'S' };   // the Guild rank each shelf opens at
-  // Only shelves open now or at the next rank show; ones two or more ranks up are hidden.
+  // Only open shelves and the next shelf up show; the ones after it are hidden (SD.shop.shown).
   const LABEL = { A: 'A-Rank shelf · 2 Capacity', S: 'S-Rank shelf · 3 Capacity', Floor: 'The trading floor · Ancient' };
 
   Object.assign(SD.cast, {
@@ -85,7 +85,8 @@
       let shopped = false;
       const owned = id => S.cardPool().includes(id);
       const render = () => {
-        const shelves = ['A', 'S', 'Floor'].filter(r => rankAt(SHELF[r]) <= mine + 1).map(r => {
+        const shown = SD.shop.shown(Object.values(SHELF).map(rankAt), mine);
+        const shelves = ['A', 'S', 'Floor'].filter(r => shown(rankAt(SHELF[r]))).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
           return { label: LABEL[r], lock: ok ? null : SHELF[r] + '-Rank', items: SD.cardExchange.filter(it => it.rank === r).map(it => ({
             id: it.id, card: it.id, name: SD.cards[it.id].name, cost: it.cost, lock: SHELF[r] + '-Rank', label: 'Unlocked',

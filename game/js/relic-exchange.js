@@ -24,7 +24,7 @@
     { id: 'clearing', name: 'The Clearing House', cost: 2000, rank: 'Ancient', text: 'Break rooms let you Clear the Books: remove 2 cards from your deck and gain 5 max SLA for the run.' }   // Peace Pipe, twice, with a meal
   ];
   const SHELF = { A: 'A', S: 'S', Ancient: 'S' };   // the Guild rank each shelf opens at
-  // Only shelves open now or at the next rank show; ones two or more ranks up are hidden.
+  // Only open shelves and the next shelf up show; the ones after it are hidden (SD.shop.shown).
 
   // Resolves true if you shopped, false to let the trader just chat.
   function open() {
@@ -32,7 +32,8 @@
     return new Promise(res => {
       let shopped = false;
       const render = () => {
-        const shelves = ['A', 'S', 'Ancient'].filter(r => rankAt(SHELF[r]) <= mine + 1).map(r => {
+        const shown = SD.shop.shown(Object.values(SHELF).map(rankAt), mine);
+        const shelves = ['A', 'S', 'Ancient'].filter(r => shown(rankAt(SHELF[r]))).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
           return { label: r === 'Ancient' ? 'Under the counter: Ancient' : `${r}-Rank shelf`, lock: ok ? null : SHELF[r] + '-Rank',
             items: SD.exchangeShop.filter(it => it.rank === r).map(it => ({ id: it.id, name: it.name, text: it.text, cost: it.cost, lock: SHELF[r] + '-Rank',
