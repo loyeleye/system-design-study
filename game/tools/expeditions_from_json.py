@@ -42,7 +42,11 @@ CURSE = {
     'missedbeat': {'cost': 0, 'art': 'heart-beats', 'unplayable': True, 'onDraw': {'tax': 1}},
 }
 RARITY = ('common', 'uncommon', 'rare')
-KEEP = ('debuff',)
+KEEP = ('debuff', 'bossSev')
+# A floor boss's Severity multiplier on one floor ((expedition id, floor number): multiplier), for balance changes
+# Ladi approved that aren't in expeditions.json yet. A floor's own bossSev in the JSON wins.
+# Greed as Forty Minutes Late's floor 1 boss: 15% less Severity (Ladi, 2026-10-20). Greed elsewhere is unchanged.
+BOSS_SEV = {('forty-minutes-late', 1): 0.85}
 
 # Decisions on the enemy design pass that Ladi may still change: one line each.
 # The Rota With No Saturdays replaces the Streamlord on Weekends for Skeletons floor 2 (with its two story lines).
@@ -214,6 +218,8 @@ def main():
             fl = {'name': f['name'], 'gate': f['name'].upper() + '...', 'beat': f['beat'], 'map': m.group(1),
                   'fights': list(f['fights']), 'elites': list(f['elites']), 'boss': f['boss'], 'bossTitle': f['bossTitle'],
                   'debuff': {'kind': DEBUFF.get(f['boss'], 'brittle'), 'n': 2}, 'intro': f['intro'], 'outro': f['outro'], 'events': ids}
+            if (x['id'], fi + 1) in BOSS_SEV:
+                fl['bossSev'] = BOSS_SEV[(x['id'], fi + 1)]
             for k in KEEP:
                 if k in f:
                     fl[k] = f[k]
@@ -312,7 +318,7 @@ HEAD = """// Expedition Raid's content (Ladi, 2026-10-20): the expeditions a Gui
 //
 //   SD.expeditions = [{ id, name, who: [character ids it's about], blurb, opens() -> bool, floors: [floor, ...] }]
 //     2 to 5 floors. opens() reads this player's save (the leader's, since the leader picks).
-//   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, bossPack, debuff, intro, outro, events }
+//   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, bossPack, bossSev, debuff, intro, outro, events }
 //     gate    the title card shown on entering the floor; beat: what the floor is about
 //     map     the dungeon tileset: the chapter whose map art it uses ('1' to '10'), which is also the floor's chapter
 //     fights  Incident rooms, elites: Elite rooms, each picked at random from its list. An entry is an enemy id or a
@@ -321,6 +327,7 @@ HEAD = """// Expedition Raid's content (Ladi, 2026-10-20): the expeditions a Gui
 //             first, and its company leaves when it falls.
 //     boss    the floor boss's enemy id (never one of the story bosses, pager and shadowarmy); bossTitle: what it is
 //             called on this floor; bossPack: { ids: [boss, add], sev, dmg } when it brings an add
+//     bossSev the floor boss's Severity times this (default 1), when a floor's boss needs tuning on that floor alone
 //     debuff  the boss's one move that also debuffs the team: { move: its pattern step (default the last),
 //             kind: 'brittle' (Tightly Coupled) | 'weakMe' (Context Switching) | 'techdebt' | 'pager'
 //             (a Tech Debt (1) or Pager Alert (1) in every deck), n: turns }

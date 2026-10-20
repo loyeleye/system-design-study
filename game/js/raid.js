@@ -37,6 +37,8 @@
   const net = SD.net;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const BOT_KEY = /^~b[1-9]$/;
+  // Balance (Ladi, 2026-10-20): an elite's Severity, and the enemies' load in a party of two seats.
+  const ELITE_SEV = 1.2, DUO_DMG = 0.8;
   const BEAT = 3000, MAX_PLAYERS = 4, SLOTS = 6, TAG_TEAM = 8, SLA = 100, ROWS = 8, BITS = 20, TAPE = 90;
   const FLAGS = ['throttle', 'backoff', 'chunk', 'sketch', 'shed', 'hb', 'merge', 'handoff', 'failover', 'killswitch', 'streaming', 'sandbox', 'steplimit'];
   const FLAG_NAME = { jitter: 'Jitter ready', throttle: 'Throttled', backoff: 'Backing off', chunk: 'Chunked', sketch: 'Sketch ready', shed: 'Shedding', hb: 'Heartbeats on', merge: 'Merging', handoff: 'Handoff ready', failover: 'Failover ready', killswitch: 'Kill switch armed', streaming: 'Streaming', sandbox: 'Tools sandboxed', steplimit: 'Step limit' };
@@ -1210,9 +1212,12 @@
       const one = { sev: 1, dmg: 1 }, minion = GS.minion || { sev: 0.4, dmg: 0.45 };
       const share = i => (k < 2 ? one : tier === 'fight' ? GS[k] || GS[3] || { sev: 0.42, dmg: 0.45 } : i ? minion : tier === 'elite' ? GS.elite || { sev: 0.8, dmg: 0.8 } : one);
       Object.assign(G, fightStatus(), { ph: 'fight', room: null, main: ids[0], tier, turn: 0, stale: 0, taken: 0, sh: zero(), flags: {}, infra: [], eff: [] });
+      // Balance (Ladi, 2026-10-20): an elite has 20% more Severity, its load unchanged; a floor boss's Severity times
+      // the floor's bossSev (js/expeditions.js); and a party of two seats (bots count) takes 80% of every enemy's load.
+      const sevX = i => (i ? 1 : tier === 'elite' ? ELITE_SEV : tier === 'boss' ? Math.max(0.1, Math.min(2, +FL().bossSev || 1)) : 1);
       G.foes = ids.map((id, i) => {
         const e = SD.enemies[id], g = share(i), sv = +obj(e.sevAt)[ch] || e.sev;
-        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * (spec.sev[i] || g.sev))), Math.min(1, spec.dmg[i] || g.dmg));
+        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * (spec.sev[i] || g.sev) * sevX(i))), Math.min(1, spec.dmg[i] || g.dmg) * (n === 2 ? DUO_DMG : 1));
       });
       // A floor boss's debuffing move: the floor's own, or Tightly Coupled 2 on its last pattern step.
       if (tier === 'boss') {
