@@ -808,14 +808,14 @@
     ctx.beginPath(); ctx.ellipse(px * ts + ts / 2, py * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
     ctx.drawImage(im, col * c.w, row * c.h, c.w, c.h, px * ts + ts / 2 - w / 2, py * ts + ts * 0.95 - h, w, h);
   }
-  // Wen's sweep (tools/wen_sweep_art.py): a w x h frame per step of the stroke, east on the top row, west below, with
-  // her feet where person() puts them: the bottom of the frame on the ts * 0.95 line, centred on the tile.
-  const SWEEP = { w: 62, h: 67, n: 8 };
+  // Wen's sweep (tools/wen_sweep_art.py): a w x h frame per step of the stroke, east on the top row, west below,
+  // centred on the tile with row `foot` (where her feet stand) on the ts * 0.95 line, as person() puts them.
+  const SWEEP = { w: 54, h: 61, n: 8, foot: 60 };
   function sweeping(n, col, face) {
-    const w = SWEEP.w * ts / 32, h = SWEEP.h * ts / 32, X = xx(n) * ts + ts / 2, Y = yy(n) * ts + ts * 0.95;
+    const s = ts / 32, X = xx(n) * ts + ts / 2, Y = yy(n) * ts + ts * 0.95;
     ctx.fillStyle = 'rgba(43,35,64,0.22)';
     ctx.beginPath(); ctx.ellipse(X, yy(n) * ts + ts * 0.9, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.drawImage(pic('sw-' + n.id), col * SWEEP.w, (face === 'west' ? 1 : 0) * SWEEP.h, SWEEP.w, SWEEP.h, X - w / 2, Y - h, w, h);
+    ctx.drawImage(pic('sw-' + n.id), col * SWEEP.w, (face === 'west' ? 1 : 0) * SWEEP.h, SWEEP.w, SWEEP.h, X - SWEEP.w * s / 2, Y - SWEEP.foot * s, SWEEP.w * s, SWEEP.h * s);
   }
   const headY = y => (y - 0.55) * ts;
   function drawPlayer(t) {
@@ -920,9 +920,8 @@
         // of standing idle, each 20 to 30 s long and picked per cycle, so the switch never looks like a timer.
         const cyc = Math.floor(k / 50);
         if (k % 50 >= 20 + hash(cyc + 1, n.id.length * 31 + 7) % 11) return { face: 'south', bub: every(n, t, 12, ['happy', 'music']) };
-        // The stroke plays forward and back (0 to 7 and back to 1), about 1.75 s for each pull and push.
-        const f = Math.floor(k * 8) % (SWEEP.n * 2 - 2);
-        return { face: cyc % 2 ? 'east' : 'west', sweep: f < SWEEP.n ? f : SWEEP.n * 2 - 2 - f, bub: every(n, t, 10, ['music', 'happy']) };
+        // One loop of the stroke, a pull and a push, is 8 frames at 5 a second.
+        return { face: cyc % 2 ? 'east' : 'west', sweep: Math.floor(k * 5) % SWEEP.n, bub: every(n, t, 10, ['music', 'happy']) };
       }
       case 'sleep': return { face: 'south', dy: Math.sin(k * 1.5) * 0.015, bub: k % 4 < 2.6 ? 'zz' : 'sleep' };
       case 'sell': return { face: 'south', dy: k % 6 < 0.5 ? -Math.abs(Math.sin(k * 12)) * 0.06 : 0, bub: every(n, t, 6, ['cash', 'star', 'heart', 'talk']) };
