@@ -4,8 +4,9 @@
 // Written by tools/expeditions_from_json.py from the writers' expeditions.json (expeditions.md is its human view).
 // Change the JSON and run the tool again, rather than editing this file by hand.
 //
-//   SD.expeditions = [{ id, name, who: [character ids it's about], blurb, opens() -> bool, floors: [floor, ...] }]
+//   SD.expeditions = [{ id, name, who: [character ids it's about], blurb, opens() -> bool, sev, dmg, floors: [floor, ...] }]
 //     2 to 5 floors. opens() reads this player's save (the leader's, since the leader picks).
+//     sev, dmg every enemy's Severity and load on this expedition (default 1), which tune it to its level by length
 //   floor = { name, gate, beat, map, fights, elites, boss, bossTitle, bossPack, bossSev, debuff, intro, outro, events }
 //     gate    the title card shown on entering the floor; beat: what the floor is about
 //     map     the dungeon tileset: the chapter whose map art it uses ('1' to '10'), which is also the floor's chapter
@@ -168,6 +169,8 @@
   ],
   "blurb": "Uptima's paperwork chute has emptied into Prod since the first hero died, and somewhere in the pile is Kaito's summoning form, the one that says he is the chosen one. In pencil.",
   "opens": () => cleared(2),
+  "sev": 0.88,
+  "dmg": 0.88,
   "floors": [
    {
     "name": "The Lost Forms Office",
@@ -373,6 +376,8 @@
   ],
   "blurb": "Bru's five brothers and sisters came north on the Sunday wagon to surprise her, and the youngest, Lupita, signed up at the Guild and followed a quest addressed to \"undefined\" into the dungeon. Bru knows where every adventurer is, except this one, and Seymour has prepared to prepare.",
   "opens": () => cleared(3),
+  "sev": 1.12,
+  "dmg": 1.12,
   "floors": [
    {
     "name": "Prod, Front Door",
@@ -674,6 +679,8 @@
   ],
   "blurb": "Ploy and Nok's rivalry stands at forty-nine all, or fifty to forty-nine, because the chalkboard got rained on. Ploy calls an away series to settle it, best of three, in the dungeons, with the whole Game Club along. Then she changes the rules.",
   "opens": () => cleared(4),
+  "sev": 1.27,
+  "dmg": 1.27,
   "floors": [
    {
     "name": "Game One: Tide Pool Rules",
@@ -1456,6 +1463,8 @@
   ],
   "blurb": "Imani's ledger lists every tool Magnus's teacher Gerald left behind except one: the anvil he could lift by himself. Ayo, who names every hammer he owns, can't bear an anvil with no name card, and Kenji knows the hills.",
   "opens": () => reached(8),
+  "sev": 0.88,
+  "dmg": 0.88,
   "floors": [
    {
     "name": "The Statue Road",
@@ -2064,6 +2073,8 @@
   ],
   "blurb": "Kaito keeps a framed rejection letter from the Guild's S-rank committee. This year he's retaking the practical, four stations deep, livestreamed to Mio's class, with Robert E.O. Hypewagon on commentary.",
   "opens": () => cleared(9),
+  "sev": 0.96,
+  "dmg": 0.96,
   "floors": [
    {
     "name": "Station One: What Are We Building?",
@@ -2418,6 +2429,8 @@
   ],
   "blurb": "Hero #500 met Kyu in the bracket once, charged, and was no longer in the ring. He has trained ever since for one more match, a fair one. Kyu says okay. Rico referees from a sealed pit, with the scorecards out of his reach, and the party is Hero #500's corner.",
   "opens": () => cleared(10),
+  "sev": 0.88,
+  "dmg": 0.88,
   "floors": [
    {
     "name": "Round One: The Qualifier",
@@ -2726,6 +2739,8 @@
   ],
   "blurb": "Neel has written Bitna a letter. She lives upstairs. He has chosen the longest route in the realm, by Captain Kwame's ferry, so it arrives exactly forty minutes late and he has time to change his mind, and Kwame understands completely.",
   "opens": () => cleared(10),
+  "sev": 0.87,
+  "dmg": 0.87,
   "floors": [
    {
     "name": "The Counting House",
