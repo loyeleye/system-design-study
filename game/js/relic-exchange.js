@@ -34,20 +34,24 @@
       const render = () => {
         const shelves = ['A', 'S', 'Ancient'].filter(r => rankAt(SHELF[r]) <= mine + 1).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
-          return `<p class="q-ctx">${r === 'Ancient' ? 'Under the counter: Ancient' : `${r}-Rank shelf`}${ok ? '' : ` · unlocks at ${SHELF[r]}-Rank`}</p><div class="opts">${SD.exchangeShop.filter(it => it.rank === r).map(it => {
-            const own = sv.relics.includes(it.id);
-            return `<button class="opt" data-r="${it.id}" ${own || !ok || sv.shards < it.cost ? 'disabled' : ''}><b>${U.esc(it.name)}</b> · ${own ? 'Owned' : it.cost + ' shards'}<br><span class="small">${U.esc(it.text)}</span></button>`;
-          }).join('')}</div>`;
-        }).join('') || `<p class="muted small">Nothing for a ${S.rank()}-Rank yet. Come back when your Guild rank is higher.</p>`;
-        const b = U.panel(`<div class="shopkeep">${SD.art.portrait('trader', 72)}<p>"Everything in the Exchange is down. Except these. These only go up. Mostly the price."</p></div>
-          <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
-          ${shelves}<div class="row"><button class="ghost" id="rx-chat">Just chat</button></div>`, { title: 'THE EXCHANGE · RELICS', onClose: () => res(shopped || 'closed') });
-        b.querySelector('#rx-chat').onclick = () => { U.closePanel(); res(false); };
-        b.querySelectorAll('[data-r]').forEach(el => el.onclick = () => {
-          const it = SD.exchangeShop.find(x => x.id === el.dataset.r);
-          if (sv.relics.includes(it.id) || sv.shards < it.cost || rankAt(SHELF[it.rank]) > mine) return;
-          sv.shards -= it.cost; sv.relics.push(it.id); S.persist(); shopped = true;
-          U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
+          return { label: r === 'Ancient' ? 'Under the counter: Ancient' : `${r}-Rank shelf`, lock: ok ? null : SHELF[r] + '-Rank',
+            items: SD.exchangeShop.filter(it => it.rank === r).map(it => ({ id: it.id, name: it.name, text: it.text, cost: it.cost, lock: SHELF[r] + '-Rank',
+              state: SD.shop.state({ owned: sv.relics.includes(it.id), locked: !ok, cost: it.cost, have: sv.shards }) })) };
+        });
+        SD.shop.panel({
+          title: 'THE EXCHANGE · RELICS', keeper: 'trader', line: 'Everything in the Exchange is down. Except these. These only go up. Mostly the price.',
+          wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' }, rank: true, sections: shelves,
+          extra: shelves.length ? '' : `<p class="muted small">Nothing for a ${S.rank()}-Rank yet. Come back when your Guild rank is higher.</p>`,
+          footer: '<div class="row"><button class="ghost" id="rx-chat">Just chat</button></div>',
+          onClose: () => res(shopped || 'closed'),
+          wire: b => { b.querySelector('#rx-chat').onclick = () => { U.closePanel(); res(false); }; },
+          onBuy: x => {
+            const it = SD.exchangeShop.find(y => y.id === x.id);
+            if (!it || sv.relics.includes(it.id) || sv.shards < it.cost || rankAt(SHELF[it.rank]) > mine) return;
+            sv.shards -= it.cost; sv.relics.push(it.id); S.persist(); shopped = true;
+            if (SD.audio) SD.audio.sfx('coin');
+            U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
+          }
         });
       };
       render();

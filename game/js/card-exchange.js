@@ -87,22 +87,24 @@
       const render = () => {
         const shelves = ['A', 'S', 'Floor'].filter(r => rankAt(SHELF[r]) <= mine + 1).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
-          return `<p class="q-ctx">${LABEL[r]}${ok ? '' : ` · unlocks at ${SHELF[r]}-Rank`}</p><div class="cardgrid pick">${SD.cardExchange.filter(it => it.rank === r).map(it => {
-            const have = owned(it.id);
-            return `<div class="buy">${U.cardHtml({ id: it.id }, { i: it.id, dim: have || !ok || sv.shards < it.cost })}<span class="price">${have ? 'Unlocked' : it.cost + ' shards'}</span></div>`;
-          }).join('')}</div>`;
-        }).join('') || `<p class="muted small">Nothing for a ${S.rank()}-Rank yet. Come back when your Guild rank is higher.</p>`;
-        const b = U.panel(`<div class="shopkeep">${SD.art.portrait('toro', 72)}<p>"${U.esc(pitch)}"</p></div>
-          <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
-          <p class="muted small">Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on. Replay: the card goes again, free. Retain: it stays in your hand when your turn ends.</p>
-          ${shelves}<div class="row"><button class="ghost" id="cx-chat">Just chat</button></div>`, { title: "THE EXCHANGE · TORO'S CARDS", cls: 'wide', onClose: () => res(shopped || 'closed') });
-        b.querySelector('#cx-chat').onclick = () => { U.closePanel(); res(false); };
-        b.querySelectorAll('.card').forEach(el => el.onclick = () => {
-          const it = SD.cardExchange.find(x => x.id === el.dataset.i);
-          if (!it || owned(it.id) || sv.shards < it.cost || rankAt(SHELF[it.rank]) > mine) return;
-          sv.shards -= it.cost; S.cardPool().push(it.id); S.persist(); shopped = true;
-          if (AU) AU.sfx('coin');
-          U.system('CARD UNLOCKED!', `${U.esc(SD.cards[it.id].name)} can turn up as a card reward from your next run. "${U.esc(pick(BUY))}"`, 'gold'); render();
+          return { label: LABEL[r], lock: ok ? null : SHELF[r] + '-Rank', items: SD.cardExchange.filter(it => it.rank === r).map(it => ({
+            id: it.id, card: it.id, name: SD.cards[it.id].name, cost: it.cost, lock: SHELF[r] + '-Rank', label: 'Unlocked',
+            state: SD.shop.state({ owned: owned(it.id), locked: !ok, cost: it.cost, have: sv.shards }) })) };
+        });
+        SD.shop.panel({
+          title: "THE EXCHANGE · TORO'S CARDS", keeper: 'toro', line: pitch, wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' }, rank: true,
+          note: 'Bought cards unlock for good: they can turn up as card rewards after any fight, from your next run on. Replay: the card goes again, free. Retain: it stays in your hand when your turn ends.',
+          sections: shelves, extra: shelves.length ? '' : `<p class="muted small">Nothing for a ${S.rank()}-Rank yet. Come back when your Guild rank is higher.</p>`,
+          footer: '<div class="row"><button class="ghost" id="cx-chat">Just chat</button></div>',
+          onClose: () => res(shopped || 'closed'),
+          wire: b => { b.querySelector('#cx-chat').onclick = () => { U.closePanel(); res(false); }; },
+          onBuy: x => {
+            const it = SD.cardExchange.find(y => y.id === x.id);
+            if (!it || owned(it.id) || sv.shards < it.cost || rankAt(SHELF[it.rank]) > mine) return;
+            sv.shards -= it.cost; S.cardPool().push(it.id); S.persist(); shopped = true;
+            if (AU) AU.sfx('coin');
+            U.system('CARD UNLOCKED!', `${U.esc(SD.cards[it.id].name)} can turn up as a card reward from your next run. "${U.esc(pick(BUY))}"`, 'gold'); render();
+          }
         });
       };
       render();

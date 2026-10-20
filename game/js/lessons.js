@@ -457,11 +457,17 @@
   };
   // A tab bar for a building whose panel has lessons: its own tab ('main', called label) and 'lessons'. Empty when the
   // building has no lessons yet, so the panel shows just its own content.
-  L.tabBar = function (b, tab, label) {
+  // L.tabs gives the same two tabs as [key, label] pairs (null with no lessons), for a shop's pinned header.
+  L.tabs = function (b, label) {
     const list = avail(b);
-    if (!list.length) return '';
+    if (!list.length) return null;
     const n = list.filter(l => !doneSet()[l.id]).length;
-    return `<div class="tabs" role="tablist">${[['main', label], ['lessons', n ? `Lessons · ${n} new` : 'Lessons']].map(([k, l]) => `<button role="tab" class="tab${k === tab ? ' on' : ''}" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
+    return [['main', label], ['lessons', n ? `Lessons · ${n} new` : 'Lessons']];
+  };
+  L.tabBar = function (b, tab, label) {
+    const tabs = L.tabs(b, label);
+    if (!tabs) return '';
+    return `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" class="tab${k === tab ? ' on' : ''}" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
   };
   L.wireTabs = function (panel, onTab) {
     panel.querySelectorAll('.tabs [data-tab]').forEach(el => el.onclick = () => onTab(el.dataset.tab));

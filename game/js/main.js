@@ -405,25 +405,25 @@
     const render = () => {
       // Gifts (gift: true) are never for sale: they sit on their own shelf once a friend has given you one.
       const sale = SD.metaShop.filter(it => !it.gift), gifts = SD.metaShop.filter(it => it.gift && sv.relics.includes(it.id));
-      const shelves = SD.ranks.filter(r => rankAt(r) <= mine + 1 && sale.some(it => it.rank === r)).map(r => {
+      const item = (it, open) => ({ id: it.id, name: it.name, text: it.text, cost: it.cost, lock: it.rank + '-Rank',
+        state: SD.shop.state({ owned: sv.relics.includes(it.id), locked: !open, cost: it.cost, have: sv.shards }) });
+      const shelves = tab === 'lessons' ? [] : SD.ranks.filter(r => rankAt(r) <= mine + 1 && sale.some(it => it.rank === r)).map(r => {
         const open = rankAt(r) <= mine;
-        return `<p class="q-ctx">${r === 'E' ? 'On the counter' : `${r}-Rank shelf`}${open ? '' : ` · unlocks at ${r}-Rank`}</p><div class="opts">${sale.filter(it => it.rank === r).map(it => {
-          const own = sv.relics.includes(it.id);
-          return `<button class="opt" data-r="${it.id}" ${own || !open || sv.shards < it.cost ? 'disabled' : ''}><b>${U.esc(it.name)}</b> · ${own ? 'Owned' : it.cost + ' shards'}<br><span class="small">${U.esc(it.text)}</span></button>`;
-        }).join('')}</div>`;
-      }).join('') + (gifts.length ? `<p class="q-ctx">Gifts from friends</p><div class="opts">${gifts.map(it =>
-        `<button class="opt" disabled><b>${U.esc(it.name)}</b> · Owned<br><span class="small">${U.esc(it.text)}</span></button>`).join('')}</div>` : '');
-      const b = U.panel(`<div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"Shards spend the same in every loop, dear. Croissants don't. Gary bought them all."</p></div>
-        ${SD.lessons.tabBar('C', tab, 'Keepsakes')}
-        ${tab === 'lessons' ? SD.lessons.buttons('C') : `<div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>${S.rank()}-Rank</span></div>
-        ${shelves}`}`, { title: 'CACHE CAFÉ · KEEPSAKES' });
-      SD.lessons.wireTabs(b, t => { tab = t; render(); });
-      SD.lessons.wire(b, id => { lesson = id; });
-      b.querySelectorAll('[data-r]').forEach(el => el.onclick = () => {
-        const it = SD.metaShop.find(x => x.id === el.dataset.r);
-        if (!it || it.gift || sv.shards < it.cost || rankAt(it.rank) > mine) return;
-        sv.shards -= it.cost; sv.relics.push(it.id); S.persist();
-        U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
+        return { label: r === 'E' ? 'On the counter' : `${r}-Rank shelf`, lock: open ? null : r + '-Rank', items: sale.filter(it => it.rank === r).map(it => item(it, open)) };
+      }).concat(gifts.length ? [{ label: 'Gifts from friends', items: gifts.map(it => Object.assign(item(it, true), { label: 'Gift' })) }] : []);
+      SD.shop.panel({
+        title: 'CACHE CAFÉ · KEEPSAKES', keeper: 'wen', line: "Shards spend the same in every loop, dear. Croissants don't. Gary bought them all.",
+        wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' }, rank: true,
+        tabs: SD.lessons.tabs('C', 'Keepsakes'), tab, onTab: t => { tab = t; render(); },
+        sections: shelves, extra: tab === 'lessons' ? SD.lessons.buttons('C') : '',
+        wire: b => SD.lessons.wire(b, id => { lesson = id; }),
+        onBuy: x => {
+          const it = SD.metaShop.find(y => y.id === x.id);
+          if (!it || it.gift || sv.relics.includes(it.id) || sv.shards < it.cost || rankAt(it.rank) > mine) return;
+          sv.shards -= it.cost; sv.relics.push(it.id); S.persist();
+          if (SD.audio) SD.audio.sfx('coin');
+          U.system('KEEPSAKE GET!', U.esc(it.name), 'gold'); render();
+        }
       });
     };
     let lesson = null, tab = 'main';
