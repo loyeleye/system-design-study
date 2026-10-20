@@ -146,8 +146,10 @@
       // Someone waiting at a relationship scene's place starts it when you talk to them (js/folk-scenes.js).
       const sc = n && SD.folkScenes && SD.folkScenes.talk(id);
       if (sc) return doorHandler('scene:' + sc.id);
-      // Found away from their usual spot, a villager just chats (js/folk.js) instead of opening their building.
-      if (n && !fixture(n) && !n.roam && SD.folk && (n.x !== n.stand[0] || n.y !== n.stand[1])) return doorHandler('away:' + id);
+      // Found away from their usual spot, a villager just chats (js/folk.js) instead of opening their building, unless
+      // they have quest business: then it's the same as at their spot (Ayo, still at his anvil with a marker).
+      const marked = n && ((SD.quests && SD.quests.marks()[id]) || (H.npcMarks && H.npcMarks[id]) || (n.mark && n.mark()));
+      if (n && !fixture(n) && !n.roam && SD.folk && !marked && (n.x !== n.stand[0] || n.y !== n.stand[1])) return doorHandler('away:' + id);
       doorHandler(n && n.door ? n.door : id);
     };
     if (SD.clock) SD.clock.onChange(() => { if (active) placeFolk(); });

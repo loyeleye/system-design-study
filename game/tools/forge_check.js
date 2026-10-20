@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Checks in a real browser that every villager hammering in town (act 'smith') stands next to an anvil in the forge
-// yard, and that Ayo works his anvil whenever his schedule has him in the yard, quest marker or not. Debug starts for each chapter
+// yard, that Ayo works his anvil whenever his schedule has him in the yard, quest marker or not, and that talking to him there offers his quest. Debug starts for each chapter
 // and time of day, at the town (js/debug.js), so every quest giver has a marker.
 //
 //   node tools/forge_check.js        needs Playwright (npm i -g playwright) and a Chromium it can launch
@@ -49,6 +49,20 @@ const server = http.createServer((req, res) => {
       else if (ayo.at && (ayo.at[0] !== ayo.x || ayo.at[1] !== ayo.y)) fails.push(`ch${ch} ${time}: Ayo is planned at his anvil but stands at (${ayo.at})`);
     }
     console.log(`ch${ch} ${time}: Ayo ${ayo ? `${ayo.spot} (${ayo.x}, ${ayo.y}) ${ayo.act}${ayo.mark ? ', with a quest marker' : ''}` : 'away'}`);
+  }
+  // Talking to Ayo at his anvil, with his quest waiting, offers the quest, not just a line about what he's doing.
+  for (const ch of [1, 3]) {
+    await page.goto(`http://localhost:${port}/index.html?debug&ch=${ch}&time=morning&at=town`);
+    await page.waitForFunction(() => window.SD && SD.hub && SD.hub.actorAt && SD.hub.actorAt('ayo'), null, { timeout: 15000 });
+    await page.waitForTimeout(800);
+    const pend = await page.evaluate(() => { const a = SD.hub.actorAt('ayo'); SD.hub.placeAt(a[0], a[1] + 1); return SD.quests.pending('ayo').map(q => q.title); });
+    await page.waitForTimeout(500);
+    await page.keyboard.press('ArrowUp'); await page.waitForTimeout(400);
+    await page.keyboard.press('e'); await page.waitForTimeout(1200);
+    const shown = await page.evaluate(() => document.body.innerText);
+    if (!pend.length) fails.push(`ch${ch} morning: Ayo has no quest waiting, so talking to him was not checked`);
+    else if (!shown.includes(pend[0])) fails.push(`ch${ch} morning: talking to Ayo at his anvil does not offer "${pend[0]}"`);
+    else console.log(`ch${ch} morning: talking to Ayo at his anvil offers "${pend[0]}"`);
   }
   await browser.close(); server.close();
   if (fails.length) { console.log('\nFAIL\n' + fails.join('\n')); process.exit(1); }
