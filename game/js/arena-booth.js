@@ -61,6 +61,18 @@
     'Two hundred bets today, and every one written twice: once in the ledger, once on the board. If they ever disagree, the ledger wins. Always.',
     'Quiet down here. I can hear myself count. Upstairs I can only hear the gong.'
   ];
+  // The bookie at his desk, writing in the ledger (tools/bookie_work_anim.py: nine 64x64 frames, his feet at 32, 60):
+  // he lifts the quill, writes three lines and puts it down, then stands over the page a moment before the next.
+  const WORK = new Image(); WORK.src = 'assets/img/arc/c-v4-work.webp';
+  const STEPS = [0, 1, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7, 4, 5, 6, 7, 8], FPS = 7, REST = 1.6;
+  function working(ctx, x, y, ts, t) {
+    const k = ts / 32, px = x + ts * 0.4, cycle = STEPS.length / FPS + REST, u = t % cycle;
+    ctx.fillStyle = 'rgba(43,35,64,0.22)';
+    ctx.beginPath(); ctx.ellipse(px, y - ts * 0.05, ts * 0.32, ts * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+    if (!WORK.complete || !WORK.naturalWidth) return;
+    const f = u < STEPS.length / FPS ? STEPS[Math.floor(u * FPS)] : 0;
+    ctx.drawImage(WORK, f * 64, 0, 64, 64, px - 32 * k, y - 60 * k, 64 * k, 64 * k);
+  }
   const turn = {};
   async function talk(id) {
     for (const f of NR.onTalk || []) if (await f('arena', id)) return;
@@ -80,6 +92,8 @@
     // Clear of the way from the ladder to everyone, and off the bed, the table and the desk.
     spots: { v4: [7, 4, 'east'], v1: [4, 4, 'south'], v2: [3, 6, 'east'], v3: [7, 6, 'west'] },
     names: { v1: 'FAN', v2: 'FAN', v3: 'FAN', v4: 'BOOKIE' },
+    // Drawn a little east of his tile, so his hands reach the desk.
+    looks: { v4: { draw: working, tall: 51 } },
     lights: [{ x: 4.5, y: 2.1, r: 2.6 }, { x: 7.9, y: 2.1, r: 2.6 }, { x: 1.4, y: 4.4, r: 2 }, { x: 10.7, y: 4.4, r: 2 }],
     props: [
       { x: 5, y: 3, t: () => ['The odds board, in chalk. Every hero has a number next to them. Next to KYU, someone has written "NO BETS" and underlined it twice.'] },
