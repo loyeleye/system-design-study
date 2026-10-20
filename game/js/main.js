@@ -28,7 +28,7 @@
       ${SD.journal ? SD.journal.button() : ''}
       <button class="ghost" id="hud-codex">Cheat sheet</button>
       <button class="ghost" id="hud-snd" aria-label="Sound on or off">${sndIcon()}</button>
-      <button class="ghost" id="hud-menu" aria-label="Menu">☰</button>`;
+      <button class="ghost" id="hud-menu" aria-label="Menu (M)" title="Menu (M)">☰</button>`;
     $('#hud-codex').onclick = () => U.codex();
     $('#hud-quests').onclick = () => SD.quests.log();
     SD.hub.npcMarks = marks;
@@ -42,6 +42,17 @@
     };
   };
   const today = () => new Date().toDateString();
+  // M opens and closes the menu in game. Not Escape: in Claude, Escape closes the whole artifact window.
+  window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() !== 'm' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+    const t = e.target;
+    if (t && t.closest && (t.isContentEditable || t.closest('input, textarea, select'))) return;
+    const head = $('#panel').hidden ? null : $('#panel .win-h span');
+    if (head && head.textContent === 'MENU') { e.preventDefault(); U.closePanel(); return; }
+    const btn = $('#hud-menu');
+    if (head || !btn || !btn.offsetParent || !$('#dialog').hidden) return;
+    e.preventDefault(); menu();
+  });
 
   function menu() {
     const p = AU.prefs;
@@ -125,7 +136,7 @@
   }
   function help() {
     U.panel(`<ul class="links">
-      <li><b>Village.</b> Walk with WASD or arrow keys, or tap where you want to go. Walk into doors to enter, and into people to talk.</li>
+      <li><b>Village.</b> Walk with WASD or arrow keys, or tap where you want to go. Walk into doors to enter, and into people to talk. Press M to open or close the menu.</li>
       <li><b>Runs.</b> The Dungeon gate takes you down into Prod: a branching path of incidents, whiteboards, cafés and break rooms, ending at a boss. A run takes about 20 minutes.</li>
       <li><b>Combat.</b> Each turn you get 3 Capacity. Cards absorb load (Cache, Replica, Read, Write, Any) or mitigate the incident's Severity. The incident shows its next move: read it and answer with the right component.</li>
       <li><b>Matchups.</b> Cards that fit the incident are EFFECTIVE and mitigate hard. Wrong components are RESISTED, and the game tells you why. That reason is the lesson.</li>
