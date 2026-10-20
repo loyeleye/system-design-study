@@ -633,7 +633,7 @@
     const has = id => !!(SD.arcArt && SD.arcArt.chars[id]);
     add('arena', 'suzu', { x: 14, y: 16, face: 'east', name: 'SUZU', sprite: has('suzu') ? 'suzu' : 'v1' });
     add('arena', 'zen', { x: 28, y: 22, face: 'west', name: 'ZEN', sprite: has('zen') ? 'zen' : 'v3' });
-    add('road', 'explodia', { x: 23, y: 19, face: 'west', name: 'EXPLODIA', sprite: has('explodia') ? 'explodia' : 'v2', scale: 0.84,
+    add('road', 'explodia', { x: 23, y: 19, face: 'west', name: 'EXPLODIA', sprite: has('explodia') ? 'explodia' : 'v2',
       under: (...a) => SD.explodia && SD.explodia.under(...a), over: (...a) => SD.explodia && SD.explodia.over(...a) });
     add('camp', 'hypewagon', { x: 19, y: 13, face: 'south', name: 'HYPEWAGON', sprite: has('hypewagon') ? 'hypewagon' : 'v4' });
     add('camp', 'akane', { x: 24, y: 11, face: 'west', name: 'PRESIDENT AKANE', sprite: has('akane') ? 'akane' : 'v1' });
