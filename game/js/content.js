@@ -1012,12 +1012,11 @@ SD.specs = {
   warden: { name: 'Reliability Warden', rank: 3, text: '+15 max SLA and Crash intents deal half. Weakness: flat mitigation is 2 lower.' }
 };
 
-// Meta shop (Grandma Wen, paid in Memory Shards that survive every loop). Keepsakes past the first four
+// Meta shop (Grandma Wen, paid in Memory Shards that survive every loop). Keepsakes past the first three
 // unlock with your Guild rank; most borrow an idea from a Slay the Spire relic (named in the comment).
 SD.metaShop = [
   { id: 'pipeye', name: "Pip's Monocle", cost: 100, rank: 'E', text: 'Every incident opens with a diagnosis, and diagnoses show one wrong answer crossed out.' },
   { id: 'teapot', name: 'Bottomless Teapot', cost: 115, rank: 'E', text: 'Break rooms heal 15% more.' },
-  { id: 'lantern', name: 'Lucky Rubber Duck', cost: 125, rank: 'E', text: '+10 max SLA. You explain your bugs to it.' },
   { id: 'thermos', name: "Grandma's Thermos", cost: 150, rank: 'E', text: '+1 Capacity on the first turn of every fight.' },
   // C-Rank
   { id: 'luckybit', name: 'Lucky Bit', cost: 140, rank: 'C', text: 'At the start of every fight, flip the bit: heads gives 1 more Capacity on the first turn.' },
@@ -1033,6 +1032,7 @@ SD.metaShop = [
   { id: 'duster', name: "Grandma's Feather Duster", cost: 280, rank: 'B', text: 'After every second fight you resolve, Grandma dusts off one basic card: it is Refactored.' },
   { id: 'membercard', name: 'Guild Membership Card', cost: 250, rank: 'B', text: 'Lounge access: every break room lets you choose two options instead of one.' },   // Membership Card, for the break room
   // A-Rank
+  { id: 'lantern', name: 'Lucky Rubber Duck', cost: 450, rank: 'A', text: '+10 max SLA, and you explain every bug to it first: effective cards mitigate 4 more, and nothing resists you (a resisted card still helps a little).' },   // was only +10 max SLA, on the counter
   { id: 'stamp', name: 'Rubber Stamp of Approval', cost: 475, rank: 'A', text: 'Every 5th card that mitigates in a run mitigates double.' },   // Pen Nib
   // S-Rank
   { id: 'pinned', name: 'Pinned Tabs', cost: 1130, rank: 'S', text: 'Your hand is no longer discarded at the end of your turn.' },   // Runic Pyramid

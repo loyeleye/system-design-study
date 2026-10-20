@@ -472,15 +472,15 @@
         <button class="opt" id="g-rest"><b>Rest</b> · Recover ${heal} SLA</button>
         <button class="opt" id="g-forge"><b>Refactor</b> · Upgrade a card (+3 to its numbers)</button>
         <button class="opt" id="g-reflect"><b>Reflect</b> · Connect two ideas for XP and a notebook link</button>
-        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Rest, Refactor a card and gain 5 max SLA this run</button>` : ''}
+        ${clear ? `<button class="opt" id="g-clear"><b>Clear the Books</b> · Rest, Refactor a card and gain 10 max SLA this run</button>` : ''}
       </div>`, { title: 'BREAK ROOM', noClose: true });
     b.querySelector('#g-rest').onclick = () => { run.sla = Math.min(S.maxSla(), run.sla + heal); AU.sfx('heal'); S.persist(); U.closePanel(); done(); };
     b.querySelector('#g-forge').onclick = () => pickCard('Refactor which card?', c => { c.up = true; S.persist(); U.closePanel(); U.system('CARD REFACTORED', U.esc(SD.cards[c.id].name) + '+'); done(); }, () => campfire(done, second), c => !c.up && SD.cards[c.id].rarity);
     b.querySelector('#g-reflect').onclick = () => reflect(done);
     if (b.querySelector('#g-clear')) b.querySelector('#g-clear').onclick = () => {
       // Rest, +5 max SLA and a Refactor, all at once; the Refactor can be skipped.
-      run.maxPlus = (run.maxPlus || 0) + 5; run.sla = Math.min(S.maxSla(), run.sla + heal + 5); AU.sfx('heal'); S.persist();
-      const end = () => { U.closePanel(); U.system('BOOKS CLEARED', `+${heal} SLA and +5 max SLA for this run.`, 'gold'); done(); };
+      run.maxPlus = (run.maxPlus || 0) + 10; run.sla = Math.min(S.maxSla(), run.sla + heal + 10); AU.sfx('heal'); S.persist();
+      const end = () => { U.closePanel(); U.system('BOOKS CLEARED', `+${heal} SLA and +10 max SLA for this run.`, 'gold'); done(); };
       const can = c => !c.up && SD.cards[c.id].rarity;
       if (!run.deck.some(can)) return end();
       pickCard('Refactor which card?', c => { c.up = true; S.persist(); end(); }, end, can);
@@ -808,8 +808,9 @@
         const rs = tags.find(t => C.e.resist[t]);
         // The Oracle's rare card is always effective: it names the incident's first weakness.
         const wk = d.wild ? Object.keys(C.e.weak)[0] : tags.find(t => C.e.weak[t]);
-        if (wk) { mitigate(boost(d.pow + up), 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake(foeSel()); AU.sfx('crit'); }
-        else if (rs) {
+        // The Lucky Rubber Duck: explaining the bug out loud finds the right angle (+4 when effective, and no resists).
+        if (wk) { mitigate(boost(d.pow + up + (rel('lantern') ? 4 : 0)), 'EFFECTIVE! ' + C.e.weak[wk], 'crit'); C.known.add('w:' + wk); U.shake(foeSel()); AU.sfx('crit'); }
+        else if (rs && !rel('lantern')) {
           C.log = 'RESISTED. ' + C.e.resist[rs]; C.known.add('r:' + rs); U.float(foeEl(), 'RESISTED', 'res'); AU.sfx('resist');
           // Wen's Bottomless Mug: once a fight, a resisted card hands its Capacity back.
           if (dev('mug') && !C.mugUsed) { C.energy += cost; C.mugUsed = true; C.log += ' The mug refilled your Capacity.'; }
