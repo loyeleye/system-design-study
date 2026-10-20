@@ -605,7 +605,7 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 #stage .fall .bit { position: absolute; top: 0; padding: 2px 9px; border: 2px solid var(--ink); border-radius: 8px; background: rgba(255,255,255,.85); color: #2b4f86; font: 700 clamp(12px, 2.3vw, 17px) ui-monospace, monospace; white-space: nowrap; animation: rushUp linear infinite; }
 #stage .fall .bit.e { padding: 0; border: 0; background: none; font-size: clamp(26px, 5vw, 42px); }
 #stage .fall .cloud.rush { top: 0; animation: rushUp 1.5s linear infinite; }
-#stage .fall .faller { position: absolute; left: 50%; top: 34%; width: 110px; height: 250px; margin-left: -55px; background: url(assets/img/village/c-you.webp) 0 0 / 500% 400% no-repeat; image-rendering: pixelated; filter: drop-shadow(0 4px 0 rgba(43,35,64,.35)); animation: fallIn .7s cubic-bezier(.2, 1.4, .4, 1), tumble .55s ease-in-out infinite alternate; }
+#stage .fall .faller { position: absolute; left: 50%; top: 34%; width: 120px; height: 250px; margin-left: -60px; background: url(assets/img/village/c-you.webp) 0 0 / 900% 400% no-repeat; image-rendering: pixelated; filter: drop-shadow(0 4px 0 rgba(43,35,64,.35)); animation: fallIn .7s cubic-bezier(.2, 1.4, .4, 1), tumble .55s ease-in-out infinite alternate; }
 @keyframes rushUp { from { translate: 0 110vh; } to { translate: 0 -45vh; } }
 @keyframes fallIn { from { top: -40%; } }
 @keyframes tumble { from { rotate: -9deg; translate: -8px 0; } to { rotate: 9deg; translate: 8px 6px; } }
@@ -1036,6 +1036,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/card-dealer.js"></script>
 <script src="js/npc-arcs.js"></script>
 <script src="js/exchange-rooms.js"></script>
+<script src="js/arena-booth.js"></script>
 <!-- Expedition Raid's content (js/raid.js): after every chapter file, so their enemies and cards are there -->
 <script src="js/expeditions.js"></script>
 <!-- Debug start (testing only; remove before release) -->

@@ -65,6 +65,31 @@
       step();
     });
   }
+  // Two chevrons on the lower steps pointing up them, so you can tell the stairs go somewhere: they fade in as you come
+  // near the foot of the stairs, drift up the steps on a loop, and fade out once you're standing there (or on the way up).
+  const clamp01 = v => Math.min(1, Math.max(0, v));
+  const UP = Math.atan2(143 - 171, 63 - 28);   // the stairs' slope on the picture, bottom step to top
+  function stairsCue(ctx, t, ts) {
+    const sc = NR.scene(), P = sc && sc.P;
+    if (!P || P.front || NR.where() !== 'club' || !I.room('prloft')) return;
+    const [bx, by] = yard.back.L, d = Math.hypot(P.px - bx, P.py - by), a = clamp01((5 - d) / 2) * clamp01((d - 0.25) / 0.5);
+    if (!a) return;
+    const k = ts / 32, X = px => (studio.x + 0.5) * ts + (px - 84) * k, Y = py => (studio.y + 1) * ts + (py - 182) * k;
+    const w = 9 * k, h = 5.5 * k;
+    for (let i = 0; i < 2; i++) {
+      // Each chevron climbs from the bottom step halfway up, fading in and out, half a beat apart.
+      const f = (t * 0.7 + i / 2) % 1, along = (6 + f * 22) * k;
+      ctx.save();
+      ctx.translate(X(28) + Math.cos(UP) * along, Y(166) + Math.sin(UP) * along); ctx.rotate(UP + Math.PI / 2);
+      ctx.globalAlpha = a * Math.sin(f * Math.PI); ctx.lineCap = ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(-w, h); ctx.lineTo(0, -h); ctx.lineTo(w, h);
+      ctx.strokeStyle = 'rgba(40,24,10,.75)'; ctx.lineWidth = 6 * k; ctx.stroke();
+      ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 3 * k; ctx.stroke();
+      ctx.restore();
+    }
+  }
+  yard.fx = (yard.fx || []).concat([stairsCue]);
+
   L.climb = async function () {
     const sc = NR.scene(), P = sc && sc.P;
     if (!P || !I.room('prloft')) return true;
@@ -99,7 +124,7 @@
   // ---------- Sitting on the sofa ----------
   // Leon and Thea sit on the sofa when they're up here (c-<id>-sit, made by tools/club_art.py from their rotations):
   // breathing while you're far off or right in front of them, and turning their heads to look at you when you're off
-  // to one side, after a moment, as people do. You talk to them across the coffee table (or past the sofa's arm).
+  // to one side, after a moment, as people do. You talk to them across the coffee table.
   const SEATS = SD.clubArt.seated || {};
   const sitPic = {};
   const pic = id => sitPic[id] || (sitPic[id] = Object.assign(new Image(), { src: 'assets/img/arc/c-' + id + '-sit.webp' }));
@@ -126,36 +151,38 @@
 
   // ---------- The lounge ----------
   // The sofa along the back wall, the kettle on the sideboard on the left, the armchairs either side of the coffee
-  // table on the rug, and Imani's desk by the right wall. All of it is solid, chairs included.
-  const SOFA = { x: 4, y: 3, t: () => storm() ? ['The sofa, with four wet towels drying along its back. Somebody has made a fort out of the cushions. Nobody admits to the fort.']
+  // table on the rug, and Imani's desk by the right wall. All of it is solid, chairs included, and so is the floor at
+  // the sofa's end, so you never stand over it.
+  const SOFA = { x: 4, y: 4, t: () => storm() ? ['The sofa, with four wet towels drying along its back. Somebody has made a fort out of the cushions. Nobody admits to the fort.']
     : ['A long leather sofa, cracked in the shape of everyone who has sat on it after leg day. One cushion is labelled "LEON\'S. GENEROUSLY."'] };
+  const MUGS = { x: 5, y: 4, t: () => ['Four mugs on the coffee table, each with a name in chalk. One just says GERALD. Gerald is a hammer.'] };
   const PROPS = [
     { x: 3, y: 3, t: () => ['A coat rack holding two capes, a jump rope and one very small hat. Nobody admits to the hat.'] },
     { x: 1, y: 4, t: () => storm() ? ['The kettle has been on since the thunder started. Somebody keeps topping it up. It\'s the warmest thing up here.']
       : ['A kettle and a tin of tea. A chalk note on the sideboard: KETTLE PRs. FASTEST BOIL: 3:12. SUNNY.'] },
-    { x: 5, y: 4, t: () => ['Four mugs on the coffee table, each with a name in chalk. One just says GERALD. Gerald is a hammer.'] },
     { x: 10, y: 5, t: () => storm() ? ['The cash tin labelled ROOF sits on the desk under a towel, next to a mug catching a drip from the ceiling. Imani has logged the drip.']
       : ['Imani\'s desk: a cash tin labelled ROOF and an oil lamp. Her ledger is wherever she is. Every line in it has been added up twice. Some three times.'] }
   ];
   const looks = {};
   if (SD.arcArt && SD.arcArt.chars['imani-books']) looks.imani = { sprite: 'imani-books' };
-  // Paz times the rain with her stopwatch: no splits tonight, the track's a river (her lines in js/ch10-folk.js).
+  // Paz times the rain with her stopwatch: no splits tonight, the track's a river (her lines in js/ch10-folk.js). She
+  // stands in the gap between the sideboard and the left armchair, so the way round past the coat rack is closed.
   if (SD.arcArt && SD.arcArt.chars['paz-stopwatch']) looks.paz = { sprite: 'paz-stopwatch' };
   ['leon', 'thea'].forEach(id => { if (sat(id)) looks[id] = { draw: sitting(id), tall: SEATS[id].h }; });
   I.ROOMS.prloft = {
     name: 'THE LOUNGE', mat: true, ambience: null,
-    map: ['############', '############', '############', '############', '##...#######',
+    map: ['############', '############', '############', '############', '##..########',
       '##.##..##.##', '#..........#', '#..........#', '#####DD#####'],
     enter: [5, 7, 'north'],
-    spots: { imani: [10, 6, 'south'], leon: sat('leon') ? seat(165) : [4, 4, 'south'], thea: sat('thea') ? seat(195) : [8, 6, 'west'], paz: [1, 6, 'south'] },
+    spots: { imani: [10, 6, 'south'], leon: sat('leon') ? seat(176) : [7, 7, 'north'], thea: sat('thea') ? seat(208) : [8, 6, 'west'], paz: [2, 5, 'south'] },
     looks,
-    // Leon from beside the sofa's arm, Thea across the table (Leon across it is the mugs).
-    across: [sat('leon') && [4, 3, 'leon'], sat('thea') && [6, 4, 'thea']].filter(Boolean),
+    // Both of them across the coffee table, each sitting right behind their half of it.
+    across: [sat('leon') && [5, 4, 'leon'], sat('thea') && [6, 4, 'thea']].filter(Boolean),
     lights: [{ x: 2.6, y: 0.8, r: 2.4 }, { x: 9.4, y: 0.8, r: 2.4 }, { x: 0.4, y: 2.2, r: 2 }, { x: 11.5, y: 2.4, r: 2 },
       { x: 11.2, y: 4.4, r: 1.4, rgb: '255,170,80' }],
     windows: [{ r: [98, 14, 32, 49] }, { r: [180, 14, 32, 50] }, { r: [264, 14, 31, 49] }],
-    // The sofa's end is where you talk to Leon from, when he's sitting there.
-    get props() { return this.spots.leon && sat('leon') ? PROPS : [SOFA].concat(PROPS); },
+    // Leon's half of the table is where you talk to him from, when he's sitting there; otherwise it's the mugs.
+    get props() { return [SOFA].concat(PROPS, this.spots.leon && sat('leon') ? [] : [MUGS]); },
     under(ctx, ts, t, sc) { room = sc; },
     talk: id => C.talk(id, 'prloft')
   };

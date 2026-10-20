@@ -18,7 +18,8 @@ SRC = sys.argv[1]
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'assets/img/arc')
 OBJECTS = ['ar-pillar', 'ar-gong', 'ar-brazier', 'ar-banner', 'ar-weapons', 'ar-crates', 'ar-foodcart',
-           'ar-tumbleweed', 'ar-tumbleweed2', 'ar-dust', 'ar-dust2']   # the last four blow about (js/northroad-arena.js)
+           'ar-tumbleweed', 'ar-tumbleweed2', 'ar-dust', 'ar-dust2',   # these four blow about (js/northroad-arena.js)
+           'ar-tarpbooth']   # the bookie's booth, with a trapdoor down to its cellar (js/arena-booth.js)
 
 def save(im, name):
     im.save(os.path.join(OUT, name + '.webp'), lossless=True, quality=100, method=6)

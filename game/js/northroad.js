@@ -414,6 +414,8 @@
       scenes[key].onDoor = door; scenes[key].onTalk = talk;
       if (key === 'road') scenes[key].fx.push(candle);
       if (key === 'camp') scenes[key].fx.push(campfire);
+      // A map's own effects drawn over everything, after the lighting (def.fx: [f(ctx, t, ts)]).
+      (def.fx || []).forEach(f => scenes[key].fx.push(f));
       if (def.critters && SD.critters) SD.critters.add(scenes[key], def.critters);
       const [x, y, f] = def.enter || def.back.S;
       scenes[key].player(x, y, f);
@@ -428,9 +430,30 @@
     NR.onGo.forEach(f => f(key, sc));
   }
 
-  // The candle in the pilgrim's shrine: a small flame that flickers, with a warm glow around it.
+  // Rain puts out every open flame on the North Road's maps: the shrine's candle, the camp's campfire and the arena's
+  // braziers and torches (js/northroad-arena.js). doused(place) is whether it's raining there now (a map's own weather);
+  // smoke() draws the smoke curling up off whatever went out, at (x0, y0) in world pixels, k times the campfire's size.
+  NR.doused = place => ['drizzle', 'rain', 'storm'].includes(SD.weather ? SD.weather.now(place) : '');
+  NR.smoke = function (ctx, t, ts, x0, y0, k, n) {
+    k *= ts / 32; n = n || 12;
+    // Darker at night, so the smoke doesn't shine through the dark.
+    const v = Math.round(160 - 50 * (SD.clock ? SD.clock.dark() : 0));
+    for (let i = 0; i < n; i++) {
+      const p = (t * 0.32 + i / n + x0 * 0.013) % 1;
+      const x = x0 + Math.sin(p * 3.2 + i * 1.7) * 5 * k + p * 14 * k, y = y0 - p * 64 * k;
+      const r = (2.5 + p * 8) * k, a = Math.min(1, p * 6) * (1 - p) * 0.7;
+      ctx.fillStyle = `rgba(${v},${v},${v + 6},${a})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  };
+
+  // The candle in the pilgrim's shrine: a small flame that flickers, with a warm glow around it. In the rain it's out:
+  // no flame, no glow (js/scene.js skips a dark object's light), just a thin thread of smoke off the wick.
+  const SHRINE = road.objects.find(o => o.name === 'o-shrine');
   function candle(ctx, t, ts) {
     const k = ts / 32, x = (15.6 + 0.5) * ts + 6.5 * k, y = 33 * ts - 28 * k;
+    SHRINE.dark = NR.doused(road.weather);
+    if (SHRINE.dark) return NR.smoke(ctx, t, ts, x, y - 2 * k, 0.28, 6);
     const f = 0.75 + 0.15 * Math.sin(t * 13) + 0.1 * Math.sin(t * 29 + 1.3);
     const g = ctx.createRadialGradient(x, y, 0, x, y, 9 * k * f);
     g.addColorStop(0, 'rgba(255,200,110,.55)'); g.addColorStop(1, 'rgba(255,160,60,0)');
@@ -444,22 +467,13 @@
   // with smoke curling up off them, and no crackle.
   SD.arcArt.objects['cp-fire-out'] = [55, 60];
   const FIRE = camp.objects.find(o => o.name === 'cp-fire');
-  const fireOut = () => ['drizzle', 'rain', 'storm'].includes(SD.weather ? SD.weather.now(camp.weather) : '');
+  const fireOut = () => NR.doused(camp.weather);
   camp.ambience = () => fireOut() ? null : 'fire';
   function fireName() { FIRE.name = fireOut() ? 'cp-fire-out' : 'cp-fire'; }
   function campfire(ctx, t, ts) {
     fireName();
     if (FIRE.name !== 'cp-fire-out') return;
-    const k = ts / 32, x0 = (FIRE.x + 0.5) * ts, y0 = (FIRE.y + 1) * ts - 20 * k;
-    // Darker at night, so the smoke doesn't shine through the dark.
-    const v = Math.round(160 - 50 * (SD.clock ? SD.clock.dark() : 0));
-    for (let i = 0; i < 12; i++) {
-      const p = (t * 0.32 + i / 12) % 1;
-      const x = x0 + Math.sin(p * 3.2 + i * 1.7) * 5 * k + p * 14 * k, y = y0 - p * 64 * k;
-      const r = (2.5 + p * 8) * k, a = Math.min(1, p * 6) * (1 - p) * 0.7;
-      ctx.fillStyle = `rgba(${v},${v},${v + 6},${a})`;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    }
+    NR.smoke(ctx, t, ts, (FIRE.x + 0.5) * ts, (FIRE.y + 1) * ts - 20 * ts / 32, 1);
   }
 
   NR.enter = async function (fromRun) {

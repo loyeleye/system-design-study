@@ -10,7 +10,7 @@
       v: 1, econ: 2, name: 'Ash', loop: 1, xp: 0, level: 1, shards: 0,
       relics: [], spec: 'none', concepts: {}, pages: [], links: [], pickups: [],
       flags: {}, stats: { runs: 0, wins: 0, fights: 0, answered: 0, correct: 0 },
-      chapter: 1, drawings: 0, mioVisitLoop: 0, run: null, lastRun: null, updatedAt: Date.now()
+      chapter: 1, drawings: 0, mioVisitLoop: 0, run: null, lastRun: null, updatedAt: 0
     };
   }
 
@@ -25,10 +25,13 @@
     return Object.assign(fresh(), d);
   }
 
+  // Whether this browser had a save of its own when the game opened. Without one, the cloud's save always wins:
+  // a fresh start is never newer than real progress, even after a few seconds of play stamped it.
+  let hadLocal = false;
   S.load = function () {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) S.save = revive(raw);
+      if (raw) { S.save = revive(raw); hadLocal = true; }
     } catch (e) { /* storage blocked: play without a local save */ }
     // Saves from before a chapter existed: clearing the chapter before it opens it.
     S.syncChapter();
@@ -73,9 +76,10 @@
     try {
       const cloud = (await claudeStore().catch(() => null)) || (await codeStore());
       if (!cloud) return;
-      S.cloud = cloud;
+      // Read the cloud's save before anything can write to it: a persist while this waits stays local.
       const d = await cloud.get();
-      if (d && d.json && d.updatedAt > (S.save.updatedAt || 0)) {
+      S.cloud = cloud;
+      if (d && d.json && (!hadLocal || (d.updatedAt || 0) > (S.save.updatedAt || 0))) {
         S.save = revive(d.json);
         try { localStorage.setItem(KEY, d.json); } catch (e) { /* ignore */ }
         if (SD.onCloudLoad) SD.onCloudLoad();

@@ -29,7 +29,9 @@ ROOMS = {'treehouse': 'treehouse1', 'bunker': 'bunker1', 'cafe': 'cafe1', 'flat'
          # room, the diner and the bakery.
          'xtoro': 'i-xtoro', 'xpawn': 'i-xpawn', 'xback': 'i-xback', 'xdiner': 'i-xdiner2', 'xbakery': 'i-xbakery',
          # The Coffee Diner's two floors upstairs: the dining room up its spiral stair, and the lounge at the top.
-         'xupper': 'i-xupper', 'xlounge': 'i-xlounge'}
+         'xupper': 'i-xupper', 'xlounge': 'i-xlounge',
+         # The cellar under the bookie's booth at the arena (js/arena-booth.js), down its trapdoor.
+         'arenaCellar': 'i-arena-cellar'}
 # Residential row doors (js/hub.js): X Lexi, Y Kaito, D Doug, Q Coo, M Bru, O Ayo. Each house faces the middle of the
 # cul-de-sac, so it uses the direction pointing there from where it stands ('south' faces the camera). The two on the
 # sides turn three-quarters, like their neighbours, since a house seen straight side-on hides its door.

@@ -42,7 +42,7 @@
       v1: { evening: [30, 29, 'north', 'star'], night: ['in', 21, 34] },
       v2: { evening: [12, 29, 'north', 'star'], night: ['in', 21, 34] },
       v3: { night: ['in', 21, 34] },
-      v4: { night: [36, 12, 'north', 'dots'] },   // the bookie counts the day's bets at the booth
+      v4: { night: ['in', 35, 11] },   // the bookie counts the day's bets in the cellar under his booth (js/arena-booth.js)
       suzu: { night: ['in', 21, 34] },
       zen: { night: ['in', 21, 34] }
     },
