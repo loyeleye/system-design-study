@@ -8,7 +8,7 @@
   // ---- Dialogue with typewriter text ----
   let dq = [], dDone = null, typing = null, full = '';
   // Each speaker gets a typewriter blip pitch, the way classic JRPGs give characters a voice.
-  const VOICE = { uptima: 900, pip: 1250, gary: 210, seymour: 480, mio: 1100, wen: 720, chad: 430, latency: 150, system: 620, you: 660, bru: 980, bram: 260, coo: 1400, lexi: 820, cron: 330, kaito: 560, doug: 390 };
+  const VOICE = { uptima: 900, pip: 1250, gary: 210, seymour: 480, mio: 1100, wen: 720, chad: 430, latency: 150, system: 620, you: 660, bru: 980, ayo: 260, coo: 1400, lexi: 820, cron: 330, kaito: 560, doug: 390, aigerim: 1050 };
   U.dialog = function (lines, done) {
     return new Promise(res => {
       dq = lines.slice(); dDone = () => { if (done) done(); res(); };
@@ -27,6 +27,8 @@
     const who = l.s, c = SD.cast[who];
     if (l.slide && U.slide) U.slide(l.slide);
     if (l.fx && U.onFx) U.onFx(l.fx);
+    // A line can stage something as it appears (a step, a wince); it runs alongside the typing.
+    if (typeof l.cue === 'function') l.cue();
     // During cutscenes the speaker stands centre stage, visual-novel style.
     const st = $('#stage');
     const mood = SD.art.mood(who, l.t, l.e);
@@ -79,7 +81,7 @@
     const st = $('#stage');
     document.body.classList.toggle('cut', !!scene);
     document.body.classList.remove('slides');
-    delete st.dataset.slide;
+    delete st.dataset.slide; delete st.dataset.glow; delete st.dataset.crumbs;
     if (!scene) { st.hidden = true; st.innerHTML = ''; return; }
     st.dataset.scene = scene; st.hidden = false;
     st.innerHTML = scene === 'office' ? '' : Array.from({ length: 5 }, (_, i) => `<div class="cloud" style="top:${8 + i * 14}%;animation-delay:${-i * 6}s;transform:scale(${0.6 + (i % 3) * 0.3})"></div>`).join('');
@@ -115,10 +117,11 @@
     opts = opts || {};
     const p = $('#panel');
     p.innerHTML = `<div class="win ${opts.cls || ''}" role="dialog" aria-modal="true">
-      <div class="win-h"><span>${U.esc(opts.title || 'SYSTEM')}</span>${opts.noClose ? '' : '<button class="x" id="panel-x" aria-label="Close">✕</button>'}</div>
+      <div class="win-h"><span>${U.esc(opts.title || 'SYSTEM')}</span>${opts.noClose ? (U.quitGame ? '<button class="x quit" id="panel-quit" aria-label="Leave the mini-game">✕ Leave</button>' : '') : '<button class="x" id="panel-x" aria-label="Close">✕</button>'}</div>
       <div class="win-b">${html}</div></div>`;
     p.hidden = false;
     if (!opts.noClose) $('#panel-x').onclick = () => { U.closePanel(); if (opts.onClose) opts.onClose(); };
+    else if (U.quitGame) $('#panel-quit').onclick = () => U.quitGame();
     return p.querySelector('.win-b');
   };
   U.closePanel = function () { $('#panel').hidden = true; $('#panel').innerHTML = ''; };
@@ -126,7 +129,8 @@
   // ---- Cards ----
   U.cardDef = function (c) { return SD.cards[c.id || c]; };
   U.cardNums = function (c) {
-    const d = U.cardDef(c), up = c.up ? 3 : 0;
+    // c.up: true for a refactored card (+3), or how many +3s it has (Expedition Raid's Temper stacks on a Refactor).
+    const d = U.cardDef(c), up = c.up ? 3 * (+c.up || 1) : 0;
     const n = {};
     if (d.abs) for (const k in d.abs) n[k] = d.abs[k] + up;
     if (d.mit) n.mit = d.mit + up;
@@ -139,10 +143,10 @@
     const tagHue = { cache: 190, replica: 160, cdn: 210, shard: 280, lb: 45, hscale: 45, stateless: 45, salting: 190, coalesce: 320, ttl: 320, invalidate: 0, cp: 0, ap: 120, idgen: 260, nosql: 280, sql: 30, '302': 210, vscale: 30 };
     const tag = (d.tags || [])[0];
     const hue = tag != null && tagHue[tag] != null ? tagHue[tag] : 220;
-    const cost = opts.cost != null ? opts.cost : d.cost;
+    const cost = d.xcost ? 'X' : opts.cost != null ? opts.cost : d.cost;
     return `<div class="card ${d.kind} r-${d.rarity}${opts.dim ? ' dim' : ''}" style="--h:${hue}" data-i="${opts.i != null ? opts.i : ''}" tabindex="0" role="button" aria-label="${U.esc(d.name)}, cost ${cost}. ${U.esc(text)}">
       <div class="c-cost">${cost}</div>
-      <div class="c-name">${U.esc(d.name)}${c.up ? '+' : ''}</div>
+      <div class="c-name">${U.esc(d.name)}${c.up && c.plus !== false ? '+' : ''}${c.replay ? ` <b title="Replay ${c.replay}">⟳${c.replay}</b>` : ''}</div>
       <div class="c-art">${SD.art.glyph(d.art, `hsl(${hue},70%,38%)`)}</div>
       <div class="c-kind">${d.kind === 'infra' ? 'INFRA' : 'ACTION'}${d.concept ? ' · ' + U.esc(SD.concepts[d.concept].name) : ''}</div>
       <div class="c-text">${U.esc(text)}</div></div>`;
@@ -157,7 +161,8 @@
     if (tab === 'concepts') {
       body += '<div class="cx-list">';
       for (const id in SD.concepts) {
-        if (SD.concepts[id].zone > (sv.chapter || 1)) continue;
+        // Side quests' concepts (zone 98) join the cheat sheet once you've met them.
+        if (SD.concepts[id].zone > (sv.chapter || 1) && !(SD.concepts[id].zone === 98 && (sv.concepts[id] || {}).seen)) continue;
         const c = SD.concepts[id], st = SD.state.concept(id), m = SD.state.mastery(id);
         const page = sv.pages.includes(id);
         const due = st.seen && st.due <= Date.now();
@@ -170,7 +175,7 @@
       body += '</div>';
     } else if (tab === 'map') {
       body += U.mindMap();
-      body += `<p class="muted small">Lines are connections you have reflected on at a Campfire. Relating ideas, not repeating them, is what makes them stick.</p>`;
+      body += `<p class="muted small">Lines are connections you have reflected on in a Break Room. Relating ideas, not repeating them, is what makes them stick.</p>`;
       const known = SD.links.filter(l => sv.links.includes(l.id));
       body += known.length ? `<ul class="links">${known.map(l => `<li><b>${U.esc(SD.concepts[l.a].name)} ↔ ${U.esc(SD.concepts[l.b].name)}</b>: ${U.esc(l.text)}</li>`).join('')}</ul>` : '<p class="muted">No connections yet.</p>';
     } else if (tab === 'questions') {

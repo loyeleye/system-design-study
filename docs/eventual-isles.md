@@ -1,0 +1,140 @@
+# The Eventual Isles
+
+The east map: an archipelago reached by ferry down Pingsby's east road past the Forge, opening in waves after chapters 3, 4,
+5 and 8. It teaches the deeper *Designing Data-Intensive Applications* material the chapters only touch, plus five
+Hello Interview problems as optional commissions. Design doc: "Isekai'd Into Prod: The Eventual Isles" (Claude Doc).
+
+Everything lives in new files under `game/js/isles/`, so it doesn't touch the files the main game is changing. Until
+it's hooked up (below), play it on the dev page.
+
+## Play it now
+
+```sh
+cd game
+python3 tools/isles_page.py          # writes isles.html: index.html plus the Isles scripts and a dev helper
+python3 -m http.server 8765          # then open http://localhost:8765/isles.html?all&isles
+```
+
+Dev page parameters (`js/isles/isles-dev.js`, never loaded by `index.html`):
+
+| Parameter | What it does |
+| --- | --- |
+| `?all` | Opens every wave, whatever chapter the save is on |
+| `?fresh` | Starts from an empty save |
+| `?isles` | Opens the Isles map |
+| `?game=anomalyHunt` | Plays one mini-game with the def its quest uses |
+| `?chain=ledger` | Plays a quest chain from the start |
+| `?commission=auction`, `?bridge=landing-ledger`, `?tide=ledger`, `?ferry` | Runs one of those directly |
+| `?sunday` | Treats today as Sunday (Gary fishes on Sundays until chapter 9) |
+
+`window.__isles` becomes `{ done, result }` or `{ done, error }` when a run finishes, for Playwright.
+
+## Files and load order
+
+Load after `quests.js` (and after any chapter files such as `ch4.js`), before `main.js`:
+
+| File | What's in it |
+| --- | --- |
+| `isles-kit.js` | `SD.isles`, the registration helpers (`addConcepts`, `addQuestions`, `addChain`...), the mini-game kit, waves |
+| `isles-data.js` | The islanders (`SD.cast` entries and looks), code-drawn portraits hooked into `SD.art.portrait`, the islands |
+| `landing.js` `ledger.js` `twins.js` `mill.js` `tower.js` `lighthouse.js` `fish.js` `carto.js` | One island each: concepts, questions, ELI5, glossary, idle lines, mini-games and quest chains |
+| `commissions.js` | The five Hello Interview commissions |
+| `bridges.js` | The eight bridges (the concept map) |
+| `isles-story.js` | Scenes: the letter, arrival, wave openings, crossings, the festival |
+| `isles-engine.js` | Quest chains, the school teach-back, tides, the ferry round, shells, bridges, commissions, the Isles log |
+| `isles-map.js` | The walkable archipelago, the ferry, `SD.isles.open()` and `close()` |
+
+`tools/isles_page.py` holds the same list in order.
+
+## Hook-up steps for the main game
+
+Done on 2026-10-18 (steps 1, 2, 3 with the tide marker, and both step 6 follow-ups): the pier is a `ferry` entry in `hub.js`'s villager list at (46, 16), drawn as a jetty, and `main.js` opens the Isles from it.
+Since then the pier has moved: the ferry is the `E` exit at (47, 7), the end of the east road under the Forge. A barricade whose sign flips between ROAD OPEN and ROAD CLOSED stands on (46, 7) until `SD.isles.unlocked()`; `SD.hub.exitOpen('E')` says which, and `main.js` opens the Isles when you step on the exit.
+
+1. **Scripts.** In `index.html`, add the files above, in that order, just before `<script src="js/main.js"></script>`
+   (the same tags `tools/isles_page.py` inserts, without `isles-dev.js`). Rebuild the artifact page as usual.
+2. **The letter.** After chapter 3, the first time the player is back in town, call `SD.isles.maybeLetter()`
+   (it plays Coo's letter once and returns `true`; it does nothing before chapter 3 or after it has played).
+   `M.toHub` is a natural place, after the run summary.
+3. **The ferry entry.** Add a pier past Cron's farm in `hub.js` (for example a tile at the east edge of the farm
+   row) that's only shown when `SD.isles.unlocked()` is true, and make stepping on it or tapping it call
+   `SD.isles.open()`. The Isles take over the screen (`#screen-isles`, created on first open) and
+   `SD.isles.close()` (the "← Pingsby" button, or walking off the west edge) hides it and calls
+   `SD.main.show('hub')`. A hub marker on the pier when `Object.keys(SD.isles.ISLANDS).some(SD.isles.tideLow)` would
+   tell players an island is at low tide.
+4. **Wave unlocks.** Nothing to do: waves read `S.save.flags.ch3`, `ch4`, `ch5` and `ch8`, which chapter clears
+   already set (`SD.isles.WAVES = { 1: 3, 2: 4, 3: 5, 4: 8 }`). New-wave scenes play on the next visit.
+5. **Saves.** Everything is under `S.save.isles` (`chains`, `commissions`, `bridges`, `shells`, `keepsakes`,
+   `tides`, `ferry`, `pos`, scene flags). Old saves need no migration: the object is created on first use.
+   Rewards that touch the main save are XP (`SD.run.gainXp`) and Memory Shards (`S.save.shards`). Shard amounts
+   live in one table, `SD.isles.REWARD` in `isles-kit.js`, sized for the shard economy (quests 65 to 350, the
+   quest board 100, Wen's keepsakes 80 to 400, Ayo's cards 150 to 400): 120 per quest chain, 250 for a
+   commission's first clear, 50 for the daily ferry round, 40 per bridge, 300 for the festival, and 25 for every
+   10 shells. The Isles keep no shard balance of their own (shells are separate), so the one-time ×20 migration of
+   old shard balances doesn't touch them. Retune them there.
+6. **Spaced review.** Isles concepts are normal entries in `SD.concepts` with `zone: 99`, so they use the same
+   review boxes (`S.recordAnswer`) but stay out of the dungeon's question pools, the Cheat Sheet and the mind map
+   (which filter by `zone <= chapter`). The Isles review them on their own tide posts and in the Isles log's Ideas
+   tab. Two small follow-ups in shared files, whenever convenient:
+   - `S.dueCount()` counts every seen concept, so the town HUD's "reviews due" includes Isles concepts that the
+     town's daily quest won't ask. Filter it to `zone <= chapter` or label the extra ones "low tide in the Isles".
+   - `run.js` `cardChoices` calls `S.pickConcepts(5)` with no pool, so unseen Isles concepts can take focus slots
+     that no card matches. Passing the chapter pool keeps card weighting as it was.
+7. **Portraits and voices.** `isles-data.js` wraps `SD.art.portrait` and `SD.art.mood` for the islanders. The
+   typewriter pitch map in `ui.js` is private, so islanders use the default pitch; `SD.isles.VOICE` lists the
+   intended pitches if that map is ever exposed.
+
+## Art
+
+The islanders, their portraits and the landmarks are PixelLab art in `assets/img/isles`, drawn in
+the village's style (low top-down, black outline; map objects as 3/4 front-view buildings). The islanders were
+redrawn in October 2026 with PixelLab's v3 characters (96px, more detail), with a breathing idle, a walk and one
+action each; `k` in their `I.ART` entry scales them to stand as tall as the first sprites did.
+`tools/isles_v3_prep.py V3 SRC/chars` lays the v3 downloads out (the raw files are in the project's shared folder under
+`isles-art-raw/v3/`), then `tools/isles_art.py SRC` builds the sheets, objects and portraits and rewrites the `I.ART`
+sizes block in `isles-data.js`; the rest of the raw files are under `isles-art-raw/`.
+
+| What | Files | Drawn by |
+| --- | --- | --- |
+| Islander sheets: rows face south, west, east, north; column 0 stands, then that direction's breathing idle (`n`), then its walk cycle (`wk`). Islanders face the way they walk and turn back to you at their spot. `node tools/isles_walk_check.js` checks both | `c-<id>.webp` (the school is `c-kid1` to `c-kid3`) | `sprite()` and `islander()` in `isles-map.js`, scaled to the villagers' height; `SD.art.sheetCol` picks the frame |
+| Islanders' actions at their spot (`ac`, after the walk frames: Saule's sweep, the school's kick and cheer...); `BUSY` in `isles-map.js` says who does what and when, and the school's football is drawn by `football()` | `c-<id>.webp` | `sprite()` and `doing()` in `isles-map.js` |
+| Portraits in `neutral`, `happy`, `angry`, `confused` (the Keeper is the note), made from each islander's v3 sprite; the school has a group bust and one each for Tunde, Maisie and Malia (`kid1` to `kid3`), who talk on their own when the class has no quest for you | `portraits/<id>-<mood>.webp` | `I.portrait` in `isles-data.js` |
+| Wildlife: gulls in the air (`gullfly`, drawn by `gulls()`) and on the docks, crabs, and the North Road's small animals (`WILD`) | `assets/img/critters/` | `js/critters.js`, `isles-map.js` |
+| Landmarks: office, school, bank, mill (with `sails` turning on it and `planks`), tower, three fish stalls, shop, the twin halls, the lighthouse (its beam is drawn in code) | `<name>.webp` | `PIXEL` in `isles-map.js` |
+| Props: Kwame's `ferry`, the harbour queue's `boat`s and `pilings`, dock `bollard`s, the `tide` post, the Keeper's `note` | `<name>.webp` | `isles-map.js` |
+| Ploy's cove: the Game Club house, the game `gtable` and Arjun's `umbrella` | `club.webp`, `gtable.webp`, `umbrella.webp` | `PIXEL` in `isles-map.js` |
+| Dieynaba's (id `valentin`) and Ren's town sheets (village scale, ~50px), copied where Pingsby and the North Road look | `assets/img/village/c-valentin.webp`, `assets/img/arc/c-ren.webp` | `hub.js`, `scene.js` |
+
+The ground is Pingsby's own terrain (textured grass, brown dirt paths, plaza stones and water from `SD.villageArt`), so the Isles match the town and the North Road.
+
+The code-drawn versions stay as fallbacks while an image loads, and for any new islander until their art exists.
+Bridges and their building sites are still drawn in code.
+
+**Music**: the Isles play the existing `explore` track; a calmer seaside track would suit the crossings.
+
+## Ploy's cove and Game Night of the Gods
+
+The mainland runs south past the mill to a cove (rows 38 to 49) with the Tide Pool Game Club. It is part of Ferry
+Landing, so it opens with the Isles after chapter 3.
+
+- **Ploy** (after Kaguya-sama's Chika) runs the club. Talking to her offers the solo mock interview
+  (`SD.mock.solo({ title })`) and the Guild Hall (`SD.guild.play()`), each shown only when that code is loaded. Her
+  first meeting plays an intro (`S.save.isles.ployMet`); she has a "!" until then.
+- **Nok** (Naruto's Might Guy), **Kai** (Saiki K.), **Arjun** (Demon Slayer's Zenitsu) and **Meron** (The Apothecary
+  Diaries' Maomao) are the club's members and stand in the cove, with idle lines in `landing.js` about each other, and new
+  ones once the quest is done. Meron is Ethiopian, the club's deadpan referee and herbalist: she reads every rule Ploy
+  invents, brews Nok bitter training tea, tries to keep Arjun awake with coffee, and Kai stands by her because her head
+  is quiet. Ploy's first meeting introduces all four. They haven't signed the club charter, which is what the quest is for.
+- **Saule Apai** (`js/saule-quest.js`) stands outside the Isles School. Her PixelLab art is drawn after Fullmetal
+  Alchemist's Izumi Curtis, the strict, warm teacher. Her busts are listed in `isles-data.js`'s `BUSTS`, because her
+  looks are added after that file loads.
+- **Game Night of the Gods** (`js/ploy-quest.js`, after chapter 5) is a town quest (`js/quests.js`) with steps on the
+  Isles, in Pingsby and on the North Road: Ploy, Nok, Kai, Arjun, Meron, Uptima, **Dieynaba** (Pingsby, outside the Cache
+  Café; Haven't You Heard? I'm Sakamoto), Aigerim, Ploy, **Ren** (North Road, by the courier post; Death Note's L),
+  Uptima and Ploy. It teaches event sourcing and CQRS (concept `eventsrc`, zone 98). The Isles map sends its
+  islanders' talk to `SD.quests` first and shows the town quests' markers.
+- **Reward**: 400 shards, 220 XP and a pick of one of three rare cards (`gnDance`, `gnLog`, `gnAsleep`), added to
+  `S.save.cardLib` so it starts in the deck on every run (bench it in Aigerim's shop). They are in no reward pool.
+- Shared-file hooks: one `NPCS` entry in `hub.js` (Dieynaba, shown from chapter 5 via `SD.cove.inTown`), one line in
+  `main.js`'s `door()` for his idle talk, and the `js/ploy-quest.js` script tag in `index.html` after
+  `sidequests.js`. Ren is added to `SD.northRoad.maps.road.actors` from `ploy-quest.js`, as `sidequests.js` does.

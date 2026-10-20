@@ -7,11 +7,33 @@
   // Painted busts with expressions. Gary stays code-drawn on purpose: like Saitama, he's drawn plainly. That is the joke.
   const PAINTED = {
     uptima: ['neutral', 'happy', 'sad', 'angry', 'blush', 'confused'], seymour: ['neutral', 'happy', 'smug', 'angry'],
-    wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral'],
-    bru: ['neutral', 'happy', 'angry', 'confused'], bram: ['neutral'], lexi: ['neutral', 'happy', 'angry', 'blush', 'smug'],
-    kaito: ['neutral'], doug: ['neutral', 'smug', 'happy', 'angry']
+    wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral', 'confused', 'happy'],
+    bru: ['neutral', 'happy', 'angry', 'confused', 'sad'], ayo: ['neutral', 'smug', 'happy', 'confused', 'sad'], lexi: ['neutral', 'happy', 'angry', 'blush', 'smug'],
+    kaito: ['neutral'], doug: ['neutral', 'smug', 'happy', 'angry'], aigerim: ['neutral', 'happy', 'blush', 'yandere', 'sad']
   };
   A.painted = who => !!PAINTED[who];
+  // PixelLab sheets: rows face south, west, east and north; column 0 stands, then c.n[row] frames (walk frames when
+  // the sheet is marked walk, otherwise idle frames). Sheets with c.wk keep both: c.n[row] idle frames, then
+  // c.wk[row] walk frames after them. Runners (c.rn) have c.rn[row] running frames after those, played when run is
+  // set. sheetCol picks the column for one frame; walks() says whether a row has steps.
+  // Turning on the spot (to face you, say) into a row with walk frames but no idle frames takes one step round with
+  // the walk frames before standing: turn is the seconds since the turn (A.turned), or null.
+  A.walks = (c, row) => !!(c.n[row] || (c.wk && c.wk[row]));
+  A.sheetCol = (c, row, going, t, pace, run, turn) => {
+    const n = c.n[row] || 0, k = c.wk ? c.wk[row] || 0 : 0, r = run && c.rn ? c.rn[row] || 0 : 0;
+    if (going && r) return 1 + n + k + Math.floor(t * 12 * (pace || 1)) % r;
+    if (going && k) return 1 + n + Math.floor(t * 8 * (pace || 1)) % k;
+    const steps = c.walk ? n : k, at = c.walk ? 1 : 1 + n;
+    if (!going && turn != null && (c.walk || !n) && steps && turn < steps / 8) return at + Math.floor(turn * 8);
+    return n && (going || !c.walk) ? 1 + Math.floor(t * (going ? 8 * (pace || 1) : 5)) % n : 0;
+  };
+  // Call each frame with who's drawn (any object to keep notes on), the way they face, whether they're walking, and
+  // the time: the seconds since they last turned on the spot, for sheetCol's turn.
+  A.turned = (a, face, going, t) => {
+    if (a.turnFace !== face) { a.turnT = going || !a.turnFace ? null : t; a.turnFace = face; }
+    if (going) a.turnT = null;
+    return a.turnT == null ? null : t - a.turnT;
+  };
   // Guess a mood from the line when the script doesn't give one.
   A.mood = function (who, text, e) {
     const m = PAINTED[who]; if (!m) return 'neutral';
@@ -133,7 +155,7 @@
       mouth = `<path d="M54 86 Q60 94 66 86Z" fill="#ff6b8a" stroke="${INK}" stroke-width="2"/>`;
       body = `<path d="M16 140 Q20 108 48 102 L72 102 Q100 108 104 140Z" fill="#2f4a8a" ${stroke}/><path d="M48 102 L60 118 L72 102" fill="#fff" ${stroke} stroke-width="2"/><circle cx="84" cy="122" r="6" fill="#ffd257" ${stroke} stroke-width="1.8"/>`;
     } else if (c.hair === 'beard') {
-      // Bram: one anvil, one man, one magnificent beard.
+      // Ayo: one anvil, one man, one booming laugh.
       front = `<path d="M38 52 Q40 30 60 30 Q80 30 82 52 Q72 40 60 40 Q48 40 38 52Z" fill="#c9764a" ${stroke}/><path d="M42 58 L56 60 M64 60 L78 58" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
       extra = `<path d="M36 72 Q36 118 60 122 Q84 118 84 72 Q78 92 60 92 Q42 92 36 72Z" fill="${hairCol}" ${stroke}/><path d="M48 86 Q60 80 72 86" stroke="${INK}" stroke-width="2.5" fill="none"/>`;
       mouth = ''; blush = '';
@@ -193,7 +215,13 @@
   const ICON = { wrench: 'spanner', box: 'cube', copy: 'files', bolt: 'lightning-helix', bolt2: 'lightning-frequency', server: 'server-rack', key: 'key', split: 'split-arrows', globe: 'globe', grid: 'cubes', salt: 'salt-shaker', funnel: 'funnel', dice: 'perspective-dice-six-faces-random', eraser: 'broom', lock: 'padlock', open: 'padlock-open', note: 'notebook', eye: 'magnifying-glass', undo: 'anticlockwise-rotation', tree: 'family-tree', cols: 'stack', cyl: 'database', hash: 'ticket', calc: 'abacus', arrow: 'return-arrow',
     bucket: 'full-wood-bucket', clock: 'stopwatch', gate: 'medieval-gate', atom: 'atom', queue: 'mailbox', upload: 'cloud-upload', hourglass: 'hourglass', puzzle: 'puzzle',
     btree: 'pine-tree', lsm: 'book-pile', invindex: 'open-book', fanout: 'radio-tower', hybrid: 'megaphone', hold: 'armchair',
-    waitroom: 'closed-doors', stream: 'river', sketch: 'histogram', heap: 'podium-winner', quorum: 'pie-chart', shed: 'dam' };
+    waitroom: 'closed-doors', stream: 'river', sketch: 'histogram', heap: 'podium-winner', quorum: 'pie-chart', shed: 'dam',
+    geo: 'position-marker', quad: 'checkbox-tree', socket: 'electrical-socket', pulse: 'heart-beats', vclock: 'cuckoo-clock', merge: 'linked-rings',
+    king: 'chess-king', fence: 'wooden-fence', saga: 'scroll-quill', ring: 'globe-ring', handoff: 'divert', gossip: 'conversation', calendar: 'calendar', stack: 'stack',
+    signs: 'direction-signs', phonebook: 'rotary-phone', earth: 'earth-asia-oceania', earth2: 'earth-america', canary: 'bird-cage', toggles: 'toggles',
+    film: 'film-strip', ladder: 'stairs', satellite: 'satellite-communication', web: 'spider-web', hashprint: 'digital-trace', radar: 'radar-sweep', trace: 'path-distance', bell: 'ringing-bell',
+    aigpu: 'cpu', aikv: 'microchip', aibubble: 'chat-bubble', airouter: 'compass', aishelf: 'bookshelf', aichunk: 'tied-scroll', airank: 'podium',
+    aieval: 'checklist', aijudge: 'scales', aiguard: 'checked-shield', aicage: 'cage', aibrain: 'brain', aicoins: 'coins', aistop: 'stop-sign', aioracle: 'all-seeing-eye' };
   A.icon = function (name, color) {
     const body = SD.icons && SD.icons[name];
     if (!body) return null;
@@ -218,12 +246,24 @@
     scroll: { col: '#8fe6f2', anim: 'squish' }, snatcher: { col: '#ff9a9a', anim: 'shake' },
     clicker: { col: '#ffd86b', anim: 'shake' }, oracle: { col: '#f2f2f2', anim: 'float' },
     kraken: { col: '#8fe6f2', anim: 'squish' }, wraith: { col: '#c9a0ff', anim: 'float' },
-    scalper: { col: '#ffd86b', anim: 'float' }, leviathan: { col: '#8fdcff', anim: 'float' }
+    scalper: { col: '#ffd86b', anim: 'float' }, leviathan: { col: '#8fdcff', anim: 'float' },
+    gremlin: { col: '#a6e070', anim: 'shake' }, phantom: { col: '#c9f2d8', anim: 'float' }, kings: { col: '#ffd86b', anim: 'shake' },
+    vanish: { col: '#b9c4d6', anim: 'float' }, avalanche: { col: '#cfeeff', anim: 'squish' }, jobswarm: { col: '#ffb27a', anim: 'shake' },
+    djinn: { col: '#8fb8ff', anim: 'float' }, basilisk: { col: '#a6e070', anim: 'float' }, scribes: { col: '#efeaff', anim: 'float' },
+    rider: { col: '#ff9a6b', anim: 'shake' }, chatwyrm: { col: '#8fdcff', anim: 'float' }, colossus: { col: '#c9b39a', anim: 'float' },
+    signpost: { col: '#c9a07a', anim: 'shake' }, wheel: { col: '#ff8fb0', anim: 'float' }, wisp: { col: '#dff4ff', anim: 'float' },
+    banshee: { col: '#ff8fa0', anim: 'shake' }, bigbang: { col: '#ff7a5a', anim: 'shake' }, spiders: { col: '#c9c9c9', anim: 'shake' },
+    pushimp: { col: '#ff6b6b', anim: 'shake' }, regioneater: { col: '#b98fff', anim: 'float' }, calendar: { col: '#b98fff', anim: 'float' },
+    revenant: { col: '#8fdcff', anim: 'float' }, streamer: { col: '#ff6b6b', anim: 'shake' }, crawlqueen: { col: '#ffd86b', anim: 'float' },
+    glutton: { col: '#b98bff', anim: 'shake' }, mirage: { col: '#ffd9a0', anim: 'float' }, whisper: { col: '#ff8f8f', anim: 'float' }, regress: { col: '#a8b8a0', anim: 'shake' },
+    looper: { col: '#ffc46b', anim: 'shake' }, billgoblin: { col: '#9fe08a', anim: 'shake' }, staleindex: { col: '#c9a07a', anim: 'shake' }, jester: { col: '#ff7ad9', anim: 'float' },
+    furnace: { col: '#ff9a4d', anim: 'shake' }, judge: { col: '#c8b48a', anim: 'float' }, crystalhead: { col: '#7ef0e0', anim: 'float' }, helpdesk: { col: '#ffcf6b', anim: 'shake' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   A.enemy = function (sprite, boss, hue) {
     const f = FOE[sprite] ? FOE[sprite] : FOE.slime;
-    const crown = boss ? `<path d="M42 16 L48 0 L56 12 L62 -4 L68 12 L76 0 L82 16Z" fill="#ffd23f" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '';
+    // PixelLab monsters (tools/battle_art.py) already wear their own crowns.
+    const crown = boss && !(SD.battleArt && SD.battleArt.monsters[sprite]) ? `<path d="M42 16 L48 0 L56 12 L62 -4 L68 12 L76 0 L82 16Z" fill="#ffd23f" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` : '';
     return `<svg viewBox="0 0 120 120" aria-hidden="true">
       <ellipse cx="60" cy="113" rx="36" ry="6" fill="rgba(43,35,64,.18)"/>
       <g class="${f.anim}">

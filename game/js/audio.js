@@ -29,6 +29,7 @@
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     Object.values(SAMPLE).concat(Object.values(JING)).forEach(loadBuf);
     if (want) { const w = want; want = null; A.music(w); }
+    [wxL, placeL].forEach(l => { if (l.want !== undefined) { const w = l.want; l.want = undefined; l.set(w); } });
   };
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, A.unlock, { passive: true }));
   document.addEventListener('visibilitychange', () => {
@@ -133,6 +134,13 @@
     defeat: { bpm: 76, once: true, ch: [
       { wave: 'sawtooth', vol: 0.18, lp: 1300, vib: true, n: 'G3 - F#3 - F3 - E3 - - - - - . .' }
     ] },
+    // The cold open's heavens: harp arpeggios over a slow-swelling pad (Cmaj7, Am7, Fmaj7, G).
+    heaven: { bpm: 72, ch: [
+      { wave: 'triangle', vol: 0.09, n: 'C5 E5 G5 B5 C6 B5 G5 E5 A4 C5 E5 G5 A5 G5 E5 C5 F4 A4 C5 E5 F5 E5 C5 A4 G4 B4 D5 G5 B5 G5 D5 B4' },
+      { wave: 'sine', vol: 0.07, a: 0.9, r: 0.8, n: 'E4 - - - - - - - E4 - - - - - - - C4 - - - - - - - D4 - - - - - - -' },
+      { wave: 'sine', vol: 0.06, a: 0.9, r: 0.8, n: 'G4 - - - - - - - C5 - - - - - - - A4 - - - - - - - B4 - - - - - - -' },
+      { wave: 'sine', vol: 0.16, a: 0.4, r: 0.6, n: 'C3 - - - - - - - A2 - - - - - - - F2 - - - - - - - G2 - - - - - - -' }
+    ] },
     gary: { bpm: 92, once: true, ch: [
       { wave: 'sawtooth', vol: 0.12, lp: 1600, n: 'D3 . D3 . D3 - - - - - . . . . . .' },
       { wave: 'sawtooth', vol: 0.1, lp: 1600, n: 'A3 . A3 . A3 - - - - - . . . . . .' },
@@ -168,13 +176,20 @@
 
   // ---------- Recorded music and samples ----------
   const BASE = 'assets/audio/';
-  const SONG = { title: 'm-opening', office: 'm-office', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild' };
+  // mapN is chapter N's dungeon map; chapters without one use explore.
+  const SONG = { title: 'm-opening', goddess: 'm-goddess', town: 'm-village', explore: 'm-explore', battle: 'm-battle', boss: 'm-boss', quest: 'm-quest', story: 'm-story', guild: 'm-guild', journey: 'm-journey',
+    map2: 'm-ch2', map3: 'm-ch3', map4: 'm-ch4', map5: 'm-ch5',
+    // The newer places' own themes (OpenGameArt, credited in CREDITS.md): the Eventual Isles, the PR Club and its
+    // yoga studio, Aigerim's card shop, and Kagemaru's cave (a music box). Rooms otherwise keep the music from outside.
+    isles: 'm-isles', gym: 'm-gym', studio: 'm-studio', shop: 'm-shop', cave: 'm-cave' };
   // Songs without a synth version fall back to this one if the file fails to load.
-  const FALLBACK = { quest: 'town', story: 'town', guild: 'town' };
-  // Per-song loudness: the piano is gentle on purpose.
-  const SONG_VOL = { story: 0.75 };
+  const FALLBACK = { journey: 'title', quest: 'town', story: 'town', guild: 'town', map2: 'explore', map3: 'explore', map4: 'explore', map5: 'explore',
+    isles: 'explore', gym: 'explore', studio: 'heaven', shop: 'town', cave: 'isles' };
+  // Per-song loudness: the piano is gentle on purpose, and the chapter maps are mastered hotter than explore.
+  const SONG_VOL = { story: 0.75, map2: 0.6, map3: 0.7, map4: 0.65, map5: 0.65, studio: 0.8, shop: 0.85, cave: 0.8 };
   const JING = { victory: 'j-victory', defeat: 'j-defeat', gary: 'j-gary' };
-  const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door' };
+  const SAMPLE = { blip: 's-blip', ok: 's-ok', cancel: 's-cancel', card: 's-card', hit: 's-hit', crit: 's-crit', resist: 's-resist', hurt: 's-hurt', shield: 's-shield', coin: 's-coin', right: 's-right', wrong: 's-wrong', door: 's-door',
+    doorclose: 's-doorclose', shopbell: 's-shopbell', steps: 's-steps' };
   const SONG_GAIN = 1.5;  // recorded tracks are mastered quieter than the synth
   const bufs = {}, failed = new Set();
   function loadBuf(file) {
@@ -227,7 +242,7 @@
         T.ch.forEach(c => {
           if (c.drums) { const k = c.drums[step % c.drums.length]; if (k !== '.') drum(k, next, gain); return; }
           const e = c.ev[step % c.len];
-          if (e && e.f) tone({ wave: c.wave, f: e.f, t: next, dur: e.len * stepDur * 0.92, vol: c.vol, bus: gain, lp: c.lp, vib: c.vib, r: 0.04 });
+          if (e && e.f) tone({ wave: c.wave, f: e.f, t: next, dur: e.len * stepDur * 0.92, vol: c.vol, bus: gain, lp: c.lp, vib: c.vib, a: c.a, r: c.r || 0.04 });
         });
         step++; next += stepDur;
       }
@@ -237,9 +252,11 @@
   }
 
   // Loop a track. Asking for the track already playing does nothing.
+  A.has = name => !!(SONG[name] || TRACKS[name]);
   A.music = function (name) {
     A.loopName = name;
-    if (!ctx) { want = name; return; }
+    [wxL, placeL].forEach(l => { if (l.me && l.me.song !== name) l.set(null); });
+    if (!ctx) { want = name; wxL.want = placeL.want = undefined; return; }
     if (cur && cur.name === name) return;
     stopCur();
     if (name) play(name);
@@ -253,7 +270,12 @@
     if (JING[name] && playBuf(JING[name], musicBus, 1.6, () => setTimeout(resume, 250))) return;
     play(name, resume);
   };
-  A.stop = function () { A.loopName = null; want = null; if (ctx) stopCur(0.3); };
+  A.stop = function () { A.loopName = null; want = null; A.weather(null); A.place(null); if (ctx) stopCur(0.3); };
+  // Later chapters bring their own recordings (js/arc.js): { songs: {name: file}, samples: {...}, jingles: {...} }.
+  A.add = function (o) {
+    Object.assign(SONG, o.songs || {}); Object.assign(SAMPLE, o.samples || {}); Object.assign(JING, o.jingles || {});
+    if (ctx) Object.values(o.samples || {}).concat(Object.values(o.jingles || {})).forEach(loadBuf);
+  };
 
   // ---------- Sound effects ----------
   const FX = {
@@ -272,20 +294,27 @@
     right: t => ['E5', 'G5', 'C6'].forEach((n, i) => tone({ wave: 'square', f: freq(n), t: t + i * 0.07, dur: 0.1, vol: 0.07 })),
     wrong: t => { tone({ wave: 'square', f: 150, t, dur: 0.12, vol: 0.09 }); tone({ wave: 'square', f: 140, t: t + 0.15, dur: 0.2, vol: 0.09 }); },
     door: t => { hiss({ t, dur: 0.12, vol: 0.25, type: 'lowpass', f: 500 }); tone({ wave: 'triangle', f: 110, f2: 70, t, dur: 0.15, vol: 0.3 }); },
+    // Walking a path to the next place (doors keep the door): four soft footfalls.
+    steps: t => [0, 0.3, 0.6, 0.9].forEach((d, i) => hiss({ t: t + d, dur: 0.07, vol: 0.2 - i * 0.03, type: 'lowpass', f: 700, f2: 250 })),
     gate: t => { tone({ wave: 'sawtooth', f: 110, f2: 880, t, dur: 0.9, vol: 0.08, lp: 2000, r: 0.3 }); hiss({ t, dur: 1, vol: 0.16, type: 'bandpass', f: 400, f2: 4000 }); },
     punch: t => {
       drum('k', t, sfxBus); drum('k', t + 0.06, sfxBus);
       hiss({ t, dur: 0.9, vol: 0.6, type: 'lowpass', f: 3000, f2: 120 });
       tone({ wave: 'square', f: 90, f2: 30, t, dur: 0.6, vol: 0.18, r: 0.4 });
     },
-    truck: t => {
-      [233, 277].forEach(f => tone({ wave: 'square', f, t, dur: 0.7, vol: 0.08, vib: true, lp: 2200, r: 0.05 }));
-      hiss({ t: t + 0.75, dur: 0.8, vol: 0.7, type: 'lowpass', f: 4000, f2: 100 });
-      drum('k', t + 0.75, sfxBus);
-    },
-    enter: t => { hiss({ t, dur: 0.03, vol: 0.3, f: 3000 }); tone({ wave: 'square', f: 1200, t, dur: 0.02, vol: 0.04 }); },
     alarm: t => [0, 1, 2].forEach(i => { tone({ wave: 'square', f: 880, t: t + i * 0.28, dur: 0.13, vol: 0.07 }); tone({ wave: 'square', f: 660, t: t + i * 0.28 + 0.14, dur: 0.13, vol: 0.07 }); }),
-    whoosh: t => hiss({ t, dur: 0.35, vol: 0.2, type: 'bandpass', f: 300, f2: 3000 })
+    whoosh: t => hiss({ t, dur: 0.35, vol: 0.2, type: 'bandpass', f: 300, f2: 3000 }),
+    // The cold open's drop out of The Cloud: a falling slide-whistle whoosh, then a soft poof as you land.
+    drop: t => { tone({ wave: 'sine', f: 1500, f2: 380, t, dur: 1.25, vol: 0.08, vib: true, r: 0.25 }); hiss({ t, dur: 1.2, vol: 0.1, type: 'bandpass', f: 2600, f2: 500 }); },
+    // A slime landing: a wet little plop.
+    splat: t => { tone({ wave: 'sine', f: 420, f2: 120, t, dur: 0.16, vol: 0.14 }); hiss({ t, dur: 0.12, vol: 0.12, type: 'lowpass', f: 1200, f2: 200 }); },
+    // Nari vanishing in golden stardust (js/nari.js): a rising shimmer of high bells over a breath of air.
+    sparkle: t => { [2093, 2637, 3136, 3951, 4699].forEach((f, i) => tone({ wave: 'sine', f, t: t + i * 0.07, dur: 0.4, vol: 0.035, r: 0.3 })); hiss({ t, dur: 0.7, vol: 0.05, f: 6000, f2: 9000 }); },
+    poof: t => { hiss({ t, dur: 0.3, vol: 0.16, type: 'lowpass', f: 1800, f2: 300 }); tone({ wave: 'sine', f: 520, f2: 880, t: t + 0.03, dur: 0.12, vol: 0.06 }); },
+    // Explodia's blast: a crack, a low thump and a long rolling rumble.
+    boom: t => { hiss({ t, dur: 0.12, vol: 0.5, f: 2500 }); tone({ wave: 'sine', f: 120, f2: 30, t, dur: 0.6, vol: 0.9, r: 0.4 }); hiss({ t: t + 0.03, dur: 1.6, vol: 0.55, type: 'lowpass', f: 900, f2: 60 }); },
+    // Synth thunder for when the recorded claps haven't loaded.
+    thunder: t => { hiss({ t, dur: 0.08, vol: 0.35, f: 3000 }); hiss({ t: t + 0.05, dur: 2.2, vol: 0.45, type: 'lowpass', f: 500, f2: 50 }); }
   };
   // `pitch` lets each speaker have their own typewriter voice, as in classic JRPGs.
   A.sfx = function (name, pitch) {
@@ -297,6 +326,83 @@
       if (name === 'crit') [1047, 1319, 1568, 2093].forEach((f, i) => tone({ wave: 'square', f, t: t + 0.04 + i * 0.045, dur: 0.07, vol: 0.05 }));
       return;
     }
+    // Thunder prefers a recorded clap (the storm's, loaded on first use) over the synth.
+    if (name === 'thunder') {
+      const clap = AMB['clap' + (1 + Math.floor(Math.random() * 3))];
+      loadBuf(AMB.clap1); loadBuf(AMB.clap2); loadBuf(AMB.clap3);
+      if (playBuf(clap, sfxBus, 0.9)) return;
+    }
     if (FX[name]) FX[name](t);
   };
+
+  // ---------- Weather and places ----------
+  // Two looping beds that play under the music, each with occasional one-shots on top. The weather: birdsong and
+  // leaves in the sun, crickets on a clear night, rain with distant thunder in storms (and wind gusts in the Sky
+  // Harbour), and a thunderstorm at the end. The place: what the spot itself sounds like (waves and gulls on the
+  // Isles, a campfire, the Forge's anvil, the library's clock). Each belongs to the song playing when it starts and
+  // stops when the music changes; the maps set them again every frame. Pixabay and OpenGameArt sounds, credited in
+  // CREDITS.md.
+  const AMB = { birds: 'a-birds', leaves: 'a-leaves', rain: 'a-rain', storm: 'a-storm', wind: 'a-wind', rumble: 'a-rumble', clap1: 'a-thunder1', clap2: 'a-thunder2', clap3: 'a-thunder3',
+    crickets: 'a-crickets', sea: 'a-sea', fire: 'a-fire', clock: 'a-clock', gull1: 's-gull1', gull2: 's-gull2', gull3: 's-gull3',
+    anvil1: 's-anvil1', anvil2: 's-anvil2', chime1: 's-chime1', chime2: 's-chime2', clank1: 's-clank1', clank2: 's-clank2', thud: 's-thud', page: 's-page' };
+  // bed (or none) and its volume, then extras: [sounds to pick from, volume, min and max seconds between them].
+  const SKY = {
+    sun: { bed: 'birds', vol: 0.35, extra: [[['leaves'], 0.4, 12, 28]] },
+    night: { bed: 'crickets', vol: 0.3, extra: [] },
+    rain: { bed: 'rain', vol: 1.5, extra: [[['rumble'], 0.3, 30, 60]] },
+    wind: { bed: 'rain', vol: 1.3, extra: [[['wind'], 0.3, 10, 22], [['rumble'], 0.25, 30, 60]] },
+    storm: { bed: 'storm', vol: 0.4, extra: [[['clap1', 'clap2', 'clap3'], 0.5, 10, 25], [['wind'], 0.35, 14, 30]] }
+  };
+  const PLACE = {
+    sea: { bed: 'sea', vol: 0.55, extra: [[['gull1', 'gull2', 'gull3'], 0.22, 8, 20]] },
+    fire: { bed: 'fire', vol: 0.45, extra: [] },
+    forge: { bed: 'fire', vol: 0.4, extra: [[['anvil1', 'anvil2'], 0.35, 2.5, 7]] },
+    library: { bed: 'clock', vol: 0.22, extra: [[['page'], 0.3, 9, 22]] },
+    post: { extra: [[['page'], 0.28, 8, 20]] },
+    temple: { extra: [[['chime1', 'chime2'], 0.22, 9, 20]] },
+    gym: { extra: [[['clank1', 'clank2', 'thud'], 0.3, 1.8, 5]] },
+    yard: { extra: [[['clank1', 'clank2', 'thud'], 0.12, 4, 10]] }
+  };
+  function bedLayer(table) {
+    const L = { me: null, want: undefined };
+    L.set = function (kind) {
+      if (!ctx) { L.want = kind; return; }
+      kind = kind || null;
+      if (L.me && L.me.kind === kind) return;
+      if (L.me) {
+        const old = L.me; L.me = null;
+        old.timers.forEach(clearTimeout);
+        old.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
+        setTimeout(() => { if (old.src) old.src.stop(); old.gain.disconnect(); }, 2500);
+      }
+      const W = table[kind];
+      if (!W) return;
+      const vol = W.bed ? W.vol : 1;
+      (W.bed ? [W.bed] : []).concat(...W.extra.map(e => e[0])).forEach(k => loadBuf(AMB[k]));
+      const gain = ctx.createGain(); gain.gain.value = W.bed ? 0 : 1; gain.connect(sfxBus);
+      const me = L.me = { kind, song: A.loopName, gain, src: null, timers: [] };
+      const later = (fn, ms) => me.timers.push(setTimeout(() => { if (L.me === me) fn(); }, ms));
+      const startBed = () => {
+        const b = bufs[AMB[W.bed]];
+        if (!b || b === 'loading') { if (!failed.has(AMB[W.bed])) later(startBed, 400); return; }
+        const src = me.src = ctx.createBufferSource();
+        src.buffer = b; src.loop = true; src.connect(gain); src.start();
+        gain.gain.setTargetAtTime(W.vol, ctx.currentTime, 0.8);
+      };
+      if (W.bed) startBed();
+      W.extra.forEach(([names, v, lo, hi]) => {
+        const go = () => {
+          playBuf(AMB[names[Math.floor(Math.random() * names.length)]], gain, v / vol);
+          later(go, (lo + Math.random() * (hi - lo)) * 1000);
+        };
+        later(go, (lo / 2 + Math.random() * (hi - lo) / 2) * 1000);
+      });
+    };
+    return L;
+  }
+  const wxL = bedLayer(SKY), placeL = bedLayer(PLACE);
+  A.weather = kind => wxL.set(kind);
+  // A place's own sound (PLACE above), or null for none. A.placeName() is the one playing (or asked for).
+  A.place = kind => placeL.set(kind);
+  A.placeName = () => placeL.want !== undefined ? placeL.want : placeL.me ? placeL.me.kind : null;
 })();
