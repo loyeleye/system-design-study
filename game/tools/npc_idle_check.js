@@ -5,7 +5,7 @@
 //   node tools/npc_idle_check.js [--shots DIR]
 //
 // Serves the game in a debug save (chapter 10, afternoon) and checks:
-//   - every character sheet in SD.arcArt, SD.villageArt and SD.isles.ART (but the player's, and the dance sheets, which
+//   - every character sheet in SD.arcArt, SD.villageArt and SD.isles.ART (the player's too, but not the dance sheets, which
 //     are a dance on their own) has idle frames (n) and walk frames (wk) in all four rows, and its image holds them
 //   - on the North Road, the Exchange and the arena, people standing still are drawn on their idle frames, more than
 //     one of them, and nobody is drawn past the end of their row
@@ -15,8 +15,8 @@ const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..');
 const shots = process.argv.includes('--shots') ? process.argv[process.argv.indexOf('--shots') + 1] : null;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg' };
-// The player; Kagemaru's sheets are his moods (js/card-dealer.js); Uptima is being redrawn whole in Pingsby's revamp.
-const SKIP = /^(you|kagemaru|uptima)$|-dance$/;
+// Kagemaru's sheets are his moods (js/card-dealer.js); Uptima is being redrawn whole in Pingsby's revamp.
+const SKIP = /^(kagemaru|uptima)$|-dance$/;
 
 const server = http.createServer((req, res) => {
   const f = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
