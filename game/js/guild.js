@@ -382,16 +382,18 @@ select.gh-field { font-size: 15px; }
     } else draw();
   }
 
-  // In a game panel. Pair Mock rounds pay the same rewards as a solo mock. `after` is the music to go back to.
+  // In a game panel. Pair Mock rounds pay the same rewards as a solo mock. `after` is the music to go back to
+  // (by default whatever was playing when the hall opened). The hall has its own tune, even in chapter 10's storm.
   G.play = async function (o) {
     o = o || {};
     const U = SD.ui, AU = SD.audio;
     if (!U) return;
+    const before = AU && AU.loopName;
     const b = U.panel('<div id="gh-root"></div>', { title: 'THE GUILD HALL', cls: 'wide' });
     const h = G.open(b.querySelector('#gh-root'), { inGame: true, onMock: res => { if (SD.mock && SD.mock.reward) SD.mock.reward(res); } });
-    if (AU && AU.music) AU.music('quest');
+    if (AU && AU.music) AU.music('hall');
     await (SD.mock && SD.mock.panelClosed ? SD.mock.panelClosed() : Promise.resolve());
     h.close();
-    if (AU && AU.music) AU.music(o.after || 'town');
+    if (AU && AU.music) AU.music(o.after || (before && before !== 'hall' ? before : 'town'));
   };
 })();
