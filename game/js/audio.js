@@ -330,6 +330,7 @@
     }
     // Thunder prefers a recorded clap (the storm's, loaded on first use) over the synth.
     if (name === 'thunder') {
+      if (hushed) return;
       const clap = AMB['clap' + (1 + Math.floor(Math.random() * 3))];
       loadBuf(AMB.clap1); loadBuf(AMB.clap2); loadBuf(AMB.clap3);
       if (playBuf(clap, sfxBus, 0.9)) return;
@@ -365,10 +366,15 @@
     gym: { extra: [[['clank1', 'clank2', 'thud'], 0.3, 1.8, 5]] },
     yard: { extra: [[['clank1', 'clank2', 'thud'], 0.12, 4, 10]] }
   };
+  // While hushed (the Guild Hall, js/guild.js) both layers stay silent: the maps under it keep asking every frame,
+  // so each layer remembers what was last asked for and A.hush(false) brings it back.
+  let hushed = false;
   function bedLayer(table) {
-    const L = { me: null, want: undefined };
+    const L = { me: null, want: undefined, asked: null };
     L.set = function (kind) {
-      if (!ctx) { L.want = kind; return; }
+      L.asked = kind || null;
+      if (hushed) kind = null;
+      if (!ctx) { L.want = hushed ? undefined : kind; return; }
       kind = kind || null;
       if (L.me && L.me.kind === kind) return;
       if (L.me) {
@@ -406,5 +412,13 @@
   A.weather = kind => wxL.set(kind);
   // A place's own sound (PLACE above), or null for none. A.placeName() is the one playing (or asked for).
   A.place = kind => placeL.set(kind);
-  A.placeName = () => placeL.want !== undefined ? placeL.want : placeL.me ? placeL.me.kind : null;
+  A.placeName = () => hushed ? placeL.asked : placeL.want !== undefined ? placeL.want : placeL.me ? placeL.me.kind : null;
+  // Silence the weather and place sounds (and the storm's thunder) until A.hush(false). The music is untouched.
+  A.hush = function (on) {
+    on = !!on;
+    if (on === hushed) return;
+    hushed = on;
+    [wxL, placeL].forEach(l => { const k = l.asked; l.set(on ? null : k); l.asked = k; });
+  };
+  A.hushed = () => hushed;
 })();

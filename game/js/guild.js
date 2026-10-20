@@ -392,7 +392,8 @@ select.gh-field { font-size: 15px; }
   }
 
   // In a game panel. Pair Mock rounds pay the same rewards as a solo mock. `after` is the music to go back to
-  // (by default whatever was playing when the hall opened). The hall has its own tune, even in chapter 10's storm.
+  // (by default whatever was playing when the hall opened). The hall has its own tune, even in chapter 10's storm,
+  // and no weather: the rain, thunder, birdsong and place sounds of the map underneath stop until you leave.
   G.play = async function (o) {
     o = o || {};
     const U = SD.ui, AU = SD.audio;
@@ -400,11 +401,15 @@ select.gh-field { font-size: 15px; }
     const before = AU && AU.loopName;
     const b = U.panel('<div id="gh-root"></div>', { title: 'THE GUILD HALL', cls: 'wide gh-win' });
     document.body.classList.add('gh-scene');
+    if (SD.weather && SD.weather.pause) SD.weather.pause(true);
+    else if (AU && AU.hush) AU.hush(true);
     const h = G.open(b.querySelector('#gh-root'), { inGame: true, onMock: res => { if (SD.mock && SD.mock.reward) SD.mock.reward(res); } });
     if (AU && AU.music) AU.music('hall');
     await (SD.mock && SD.mock.panelClosed ? SD.mock.panelClosed() : Promise.resolve());
     h.close();
     document.body.classList.remove('gh-scene');
     if (AU && AU.music) AU.music(o.after || (before && before !== 'hall' ? before : 'town'));
+    if (SD.weather && SD.weather.pause) SD.weather.pause(false);
+    else if (AU && AU.hush) AU.hush(false);
   };
 })();
