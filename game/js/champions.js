@@ -7,7 +7,8 @@
 //   SD.champions.deck(id, base)       -> base deck (default the starter deck) with that champion's signature cards
 //   SD.champions.sprite(id, scale, animate) -> a div showing their south-facing idle, from their map sheet
 //   SD.champions.mine() / setMine(id) -> this browser's last pick
-//   SD.champions.rewards(id)          -> extra cards that champion can find in Expedition Raid rewards (none yet)
+//   SD.champions.rewards(id)          -> the 20 cards only that champion can find in Expedition Raid rewards
+//                                        (js/champion-cards.js)
 (function () {
   const C = SD.champions = {};
   const KEY = 'sd-guild-champ';
@@ -148,7 +149,7 @@
     });
   });
   // Cards only this champion can find in an Expedition Raid's card rewards (js/raid.js weights them by rarity:
-  // common 2, uncommon 0.75, rare 0.1, against 1 for a regular card). Empty while the champion cards are in review.
+  // common 2, uncommon 0.75, rare 0.1, against 1 for a regular card). js/champion-cards.js fills it in.
   C.rewards = () => [];
   // The starter deck with this champion's three cards in place of one Hotfix and two Bigger Boxes.
   C.deck = function (id, base) {
