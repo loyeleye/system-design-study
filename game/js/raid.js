@@ -1143,9 +1143,7 @@
     let G = fresh();
     G.host = o.create ? me.peer : null;
     let hosting = !!o.create;
-    // A saved expedition under this code (this browser was its leader): the party room resumes it.
     const savedHere = () => (store.get()[net.cleanCode(code)] || null);
-    if (o.create && o.settings && o.settings.resume && savedHere()) load(savedHere());
     const players = () => room.peers().filter(p => p.presence && p.presence.kind === 'raid');
     // Bots (below) are seats that are never peers: they count as here.
     const isBot = k => !!(G.players[k] && G.players[k].bot);
@@ -2284,6 +2282,9 @@
 
     // The leader's Remove: the host takes the player's seat away too, before the expedition starts.
     unsub.push(room.on('kick', msg => { const d = msg.data || {}; if (hosting && msg.peer === me.peer && typeof d.peer === 'string' && G.ph === 'lobby' && !G.rs) { delete G.players[d.peer]; push(); } }));
+    // A saved expedition under this code (this browser was its leader): the party room resumes it. Here, once
+    // everything load() and unpack() use is declared.
+    if (o.create && o.settings && o.settings.resume && savedHere()) load(savedHere());
     party = SD.party.join(hub, room, 'raid', {
       leader: () => G.host, max: MAX_PLAYERS, bots: () => botKeys().map(k => ({ peer: k, nick: G.players[k].n, champ: G.players[k].c })), onKick: () => leave('kicked'), onFull: () => { if (G.ph === 'lobby' && !G.rs) leave('full'); },
       onChange: () => { pres(); if (G.ph === 'lobby' && helloSent !== me.nick + '|' + party.champ()) hello(); render(); }
