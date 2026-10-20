@@ -1,0 +1,5 @@
+# Response headers for the Cloudflare build's static files (cloudflare/wrangler.jsonc).
+# js/cloud.js looks for this Server-Timing mark on the page's own response, so only the Worker build ever calls
+# api/hello. The claude.ai artifact and a local copy make no request and log no 404.
+/*
+  Server-Timing: sd-cloud
