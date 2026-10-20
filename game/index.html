@@ -115,6 +115,80 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .win-b { padding: 16px; overflow-y: auto; min-height: 0; }
 .win-b p { margin: 0 0 10px; }
 .q-ctx { font-family: var(--f-head); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--blue-d); margin-bottom: 6px; }
+/* The question timer (js/quiz.js opts.timer): a burning fuse after Explodia's (.ex-fuse), in the colours of the
+   champion being played (.champ-<id>): --qf fill, --qb the burnt-out track, --qh the lit band, and a tip on the
+   fuse's burning end (.qt-burn::after). Gradients and pseudo-elements only. Under 10 s it pulses. */
+.q-timer { --qf: linear-gradient(90deg, #ffb703, #ffd23f); --qb: #3a2b2b; --qh: #ffd23f; display: grid; gap: 4px; margin: 2px 0 12px; }
+.qt-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.qt-sec { font: 800 26px/1 var(--f-head); font-variant-numeric: tabular-nums; }
+.qt-sec small { font-size: 14px; margin-left: 1px; }
+.qt-now { font: 800 12px var(--f-body); letter-spacing: .08em; text-transform: uppercase; padding: 1px 8px; border: 2px solid var(--ink); border-radius: 999px; background: var(--qh); }
+.qt-fuse { position: relative; height: 22px; border: 3px solid var(--ink); border-radius: 12px; background: var(--qb); box-shadow: 0 3px 0 var(--ink); }
+.qt-burn { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 9px 0 0 9px; background: var(--qf); transition: width .25s linear; }
+.qt-burn::after { content: ''; position: absolute; right: -9px; top: 50%; width: 18px; height: 18px; margin-top: -9px; border-radius: 50%; background: #fff3a0; box-shadow: 0 0 8px 4px #ff9a3c; }
+.qt-tick { position: absolute; top: -6px; bottom: -6px; width: 3px; margin-left: -1.5px; background: var(--ink); border-radius: 2px; }
+.qt-bands { position: relative; height: 18px; }
+.qt-b { position: absolute; top: 0; text-align: center; font: 700 11px/16px var(--f-body); color: var(--muted); border-radius: 8px; white-space: nowrap; overflow: hidden; }
+.qt-b.on { color: var(--ink); background: var(--qh); box-shadow: inset 0 0 0 2px var(--ink); }
+.q-timer.low .qt-fuse { animation: qt-pulse .7s ease-in-out infinite; }
+.q-timer.low .qt-sec { color: var(--red); }
+@keyframes qt-pulse { 50% { transform: scale(1.025); box-shadow: 0 3px 0 var(--ink), 0 0 0 4px rgba(230, 57, 70, .45); } }
+@keyframes qt-shimmer { to { background-position: -200% 0; } }
+@keyframes qt-blink { 50% { opacity: .15; } }
+@keyframes qt-flicker { 50% { box-shadow: 0 0 12px 6px #ff7a1a; } }
+@keyframes qt-fall { 0% { transform: translateY(-10px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(10px); opacity: 0; } }
+/* Uptima: a gold halo that shimmers; the tip a halo ring. */
+.champ-uptima { --qf: linear-gradient(90deg, #d99a00, #fff3b0, #e6ad00, #fff3b0, #d99a00); --qb: #4a3b14; --qh: #ffe27a; }
+.champ-uptima .qt-burn { background-size: 200% 100%; animation: qt-shimmer 2.4s linear infinite; }
+.champ-uptima .qt-burn::after { background: transparent; border: 4px solid #ffd23f; box-shadow: 0 0 8px 2px #fff3b0; width: 20px; height: 12px; margin-top: -10px; top: 0; }
+/* Sir Seymour: steel shield plates; the tip a shield. */
+.champ-seymour { --qf: repeating-linear-gradient(90deg, #d5dbe3 0 16px, #8a94a3 16px 18px), #c5ccd6; --qb: #2c3440; --qh: #c5ccd6; }
+.champ-seymour .qt-burn::after { border-radius: 0; width: 18px; height: 22px; margin-top: -11px; background: linear-gradient(90deg, #9aa4b3 50%, #e6ebf1 50%); box-shadow: 0 0 0 2px var(--ink); clip-path: polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%); }
+/* Mio: a pink crayon scribble; the tip a crayon. */
+.champ-mio { --qf: repeating-linear-gradient(60deg, #ff7eb6 0 3px, #ffc2dc 3px 5px, #ff5fa2 5px 8px); --qb: #fff4f8; --qh: #ffc2dc; }
+.champ-mio .qt-burn::after { border-radius: 2px; width: 24px; height: 12px; margin-top: -6px; right: -20px; background: linear-gradient(90deg, #ff5fa2 0 70%, #f3d9b0 70%); box-shadow: none; clip-path: polygon(0 0, 70% 0, 100% 50%, 70% 100%, 0 100%); }
+/* Ayo: forge heat, ember to white-hot; the tip a spark. */
+.champ-ayo { --qf: linear-gradient(90deg, #6b1500, #c2410c 45%, #fb923c 80%, #ffe08a); --qb: #2a1a12; --qh: #fdba74; }
+.champ-ayo .qt-burn::after { background: radial-gradient(circle, #fff 0 25%, #ffd166 45%, transparent 70%); box-shadow: 0 0 10px 4px #ff7a1a; animation: qt-flicker .5s ease-in-out infinite; }
+/* Bru: stitched leather from his ledger; the tip a compass needle. */
+.champ-bru { --qf: linear-gradient(90deg, #f3e0c0 50%, transparent 0) 0 3px / 8px 2px repeat-x, linear-gradient(90deg, #f3e0c0 50%, transparent 0) 0 calc(100% - 3px) / 8px 2px repeat-x, #a86b3c; --qb: #4a2f1b; --qh: #e7c08f; }
+.champ-bru .qt-burn::after { border-radius: 0; width: 12px; height: 26px; margin-top: -13px; right: -6px; background: linear-gradient(180deg, #d62828 50%, #f1f1f1 50%); box-shadow: none; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+/* Kaito: a power gauge, blue to violet; the tip an energy flare. */
+.champ-kaito { --qf: linear-gradient(90deg, #1d4ed8, #6d28d9, #a855f7); --qb: #14122e; --qh: #c4b5fd; }
+.champ-kaito .qt-burn::after { background: radial-gradient(circle, #fff 0 20%, #c4b5fd 40%, transparent 70%); box-shadow: 0 0 12px 6px #8b5cf6; }
+/* Ploy: chalk tally marks on a green board; the tip a stick of chalk. */
+.champ-ploy { --qf: repeating-linear-gradient(90deg, rgba(255,255,255,.9) 0 2px, transparent 2px 7px), #2e6b4c; --qb: #173a29; --qh: #bfe8cf; }
+.champ-ploy .qt-burn::after { border-radius: 3px; width: 8px; height: 22px; margin-top: -11px; right: -4px; background: #fbfbf2; box-shadow: 0 0 0 2px var(--ink); transform: rotate(18deg); }
+/* Captain Kwame: teal tide waves; the tip a little ferry. */
+.champ-kwame { --qf: radial-gradient(circle at 50% 0, transparent 5px, #14b8a6 5.5px) 0 0 / 12px 100%, linear-gradient(180deg, #5eead4, #0f766e); --qb: #0b3b3a; --qh: #99f6e4; }
+.champ-kwame .qt-burn { animation: qt-shimmer 6s linear infinite; }
+.champ-kwame .qt-burn::after { border-radius: 2px 2px 8px 8px; width: 22px; height: 12px; margin-top: -12px; right: -11px; background: linear-gradient(180deg, #fff 0 45%, #b91c1c 45%); box-shadow: 0 0 0 2px var(--ink); clip-path: polygon(0 0, 100% 0, 85% 100%, 15% 100%); }
+/* Explodia: her own rope fuse and spark, unchanged. */
+.champ-explodia { --qf: repeating-linear-gradient(45deg, #c98b4a 0 6px, #a8703a 6px 12px); --qb: #3a2b2b; --qh: #ffb36b; }
+/* Lord Latency: sand trickling through an hourglass; the tip a falling grain. */
+.champ-latency { --qf: linear-gradient(180deg, #f8dfa8, #c99a52); --qb: #2e2440; --qh: #e9d5ff; }
+.champ-latency .qt-burn::after { width: 6px; height: 6px; margin-top: -3px; right: -3px; background: #f8dfa8; box-shadow: 0 0 0 1px #7a5a2a; animation: qt-fall 1.2s linear infinite; }
+/* Imani: green counted ticks; the tip a gavel. */
+.champ-imani { --qf: repeating-linear-gradient(90deg, #15803d 0 5px, #86efac 5px 7px); --qb: #0f2b1c; --qh: #bbf7d0; }
+.champ-imani .qt-burn::after { border-radius: 2px; width: 20px; height: 20px; margin-top: -10px; right: -10px; background: linear-gradient(90deg, transparent 40%, #7c4a1e 40% 60%, transparent 60%) 0 8px / 100% 12px no-repeat, linear-gradient(#a16207, #7c4a1e) 0 0 / 100% 9px no-repeat; box-shadow: none; }
+/* Rico: red ring ropes; the tip a glove. */
+.champ-rico { --qf: linear-gradient(180deg, #c0392b 0 22%, #fff 22% 34%, #c0392b 34% 60%, #fff 60% 72%, #c0392b 72%); --qb: #2b1414; --qh: #fca5a5; }
+.champ-rico .qt-burn::after { border-radius: 45% 55% 50% 50%; width: 20px; height: 18px; background: radial-gradient(circle at 35% 35%, #ff6b6b, #b91c1c 70%); box-shadow: 0 0 0 2px var(--ink); }
+/* Nari: a yellow stage spotlight; the tip a canary. */
+.champ-nari { --qf: radial-gradient(ellipse at 100% 50%, #fffbe0, #ffd23f 55%, #d9a400); --qb: #1f1a33; --qh: #fff0a0; }
+.champ-nari .qt-burn::after { width: 16px; height: 14px; margin-top: -7px; background: radial-gradient(circle at 70% 35%, #222 0 2px, transparent 2.5px), #ffd60a; box-shadow: 0 0 0 2px var(--ink), 0 0 10px 3px #fff3a0; border-radius: 50% 50% 45% 45%; }
+/* Hypewagon: an ON AIR marquee in pink; the tip a mic. */
+.champ-hypewagon { --qf: radial-gradient(circle, #fff 0 1.5px, transparent 2px) 0 1px / 8px 5px repeat-x, radial-gradient(circle, #fff 0 1.5px, transparent 2px) 4px calc(100% - 1px) / 8px 5px repeat-x, #ec4899; --qb: #3b0d27; --qh: #fbcfe8; }
+.champ-hypewagon .qt-burn::before { content: 'ON AIR'; position: absolute; left: 8px; top: 50%; translate: 0 -50%; font: 800 10px var(--f-body); letter-spacing: .1em; color: #fff; text-shadow: 0 1px 0 #9d174d; }
+.champ-hypewagon .qt-burn::after { border-radius: 8px 8px 3px 3px; width: 12px; height: 22px; margin-top: -11px; right: -6px; background: radial-gradient(circle at 50% 30%, #d4d4d8 0 5px, transparent 5.5px), linear-gradient(90deg, transparent 35%, #27272a 35% 65%, transparent 65%); box-shadow: none; }
+/* Neel: a navy ink line on paper; the tip a pen nib. */
+.champ-neel { --qf: linear-gradient(180deg, transparent 38%, #1b2a5c 38% 62%, transparent 62%); --qb: #eef1f8; --qh: #c7d2fe; }
+.champ-neel .qt-burn::after { border-radius: 0; width: 14px; height: 18px; margin-top: -9px; right: -12px; background: linear-gradient(90deg, #1b2a5c, #3b4f91); box-shadow: none; clip-path: polygon(0 0, 100% 50%, 0 100%, 25% 50%); }
+/* Kyu: purple pager LCD segments; the tip a blinking dot. */
+.champ-kyu { --qf: repeating-linear-gradient(90deg, #c4a5ff 0 8px, transparent 8px 11px); --qb: #1d1030; --qh: #ddd6fe; }
+.champ-kyu .qt-burn::after { width: 10px; height: 10px; margin-top: -5px; right: -12px; background: #f0abfc; box-shadow: 0 0 6px 2px #c084fc; animation: qt-blink 1s steps(1) infinite; }
+@media (max-width: 520px) { .qt-sec { font-size: 22px; } .qt-fuse { height: 18px; } .qt-b { font-size: 10px; } }
+@media (prefers-reduced-motion: reduce) { .q-timer .qt-burn, .q-timer .qt-burn::after, .q-timer.low .qt-fuse { animation: none !important; } }
 .q-q { font-size: 17px; font-weight: 700; text-wrap: balance; }
 .opts { display: grid; gap: 8px; margin: 12px 0; }
 .opt { text-align: left; padding: 11px 13px; background: #fff; border: 2px solid var(--ink); border-radius: 12px; line-height: 1.4; box-shadow: 0 3px 0 rgba(43,35,64,.85); transition: transform .08s; }
@@ -963,6 +1037,8 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/npc-arcs.js"></script>
 <script src="js/exchange-rooms.js"></script>
 <script src="js/arena-booth.js"></script>
+<!-- Expedition Raid's content (js/raid.js): after every chapter file, so their enemies and cards are there -->
+<script src="js/expeditions.js"></script>
 <!-- Debug start (testing only; remove before release) -->
 <script src="js/debug.js"></script>
 <!-- @page-end -->

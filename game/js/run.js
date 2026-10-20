@@ -632,7 +632,7 @@
   async function diagnose(go) {
     const e = C.e;
     const ch = (S.save.run && S.save.run.ch) || 1;
-    const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss && !SD.enemies[k].tutorial && (SD.enemies[k].ch || 1) <= ch)).slice(0, 3);
+    const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss && !SD.enemies[k].tutorial && !SD.enemies[k].raid && (SD.enemies[k].ch || 1) <= ch)).slice(0, 3);
     const optsIds = Q.shuffle([C.eid, ...others]);
     const q = { c: e.concept, type: 'mc', q: `Symptoms: ${e.symptom} Which incident is this?`, opts: optsIds.map(k => SD.enemies[k].name), a: optsIds.indexOf(C.eid), why: Object.values(e.weak)[0] };
     const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight', hideOne: S.save.relics.includes('pipeye') });
