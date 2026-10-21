@@ -244,11 +244,17 @@
         if (ok && conf === 0) h += `<p class="muted small">A lucky guess is not knowledge yet. It will come back soon.</p>`;
         if (!ok && concept) {
           const rel = SD.links.filter(l => l.a === q.c || l.b === q.c).map(l => SD.concepts[l.a === q.c ? l.b : l.a].name);
-          const prompts = [
-            `When would ${concept.name.toLowerCase()} be the wrong choice?`,
-            rel.length ? `How is ${concept.name.toLowerCase()} different from ${rel[0].toLowerCase()}?` : `What problem does ${concept.name.toLowerCase()} solve?`,
-            `What breaks first if load grows 10x, and how does ${concept.name.toLowerCase()} help?`
-          ];
+          // Questions about this miss: why your pick fails, when the answer is the move, and the concept next door.
+          const clip = t => t.length > 80 ? t.slice(0, 78).replace(/\s+\S*$/, '') + '…' : t;
+          const mine = q.type === 'mc' && pick !== null && pick !== q.a ? q.opts[pick]
+            : q.type === 'multi' ? ([...multi].map(i => q.items[i]).find(it => !it.ok) || {}).t : null;
+          const nm = concept.name;
+          const prompts = [...new Set([
+            mine ? `Why doesn't "${clip(mine)}" work here?` : 'Which detail in the question points to the answer?',
+            q.type === 'mc' ? `When is "${clip(right)}" the right move?` : `What is ${nm} for, and when do I reach for it?`,
+            rel.length ? `What's the difference between ${nm} and ${rel[0]}?` : `What is ${nm} for, and when do I reach for it?`,
+            `What breaks first if load grows 10x, and how does ${nm} help?`
+          ])].slice(0, 3);
           h += `<div class="compass"><div class="q-ctx">Confusion compass</div><p class="small">Turn the confusion into a question. Pick the one closest to what tripped you up; it goes in your notebook.</p>
             <div class="opts">${prompts.map((p, i) => `<button class="opt" data-p="${i}">${U.esc(p)}</button>`).join('')}</div>${huhBlock}</div>`;
           h += `<button class="primary" id="q-next" disabled>Continue</button>`;
