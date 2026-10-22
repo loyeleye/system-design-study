@@ -61,14 +61,28 @@
     if (document.hidden) ctx.suspend(); else ctx.resume().catch(() => { /* next tap */ });
   });
 
-  A.set = function (kind, on) {
+  function setBus(kind, on) {
     prefs[kind] = on; savePrefs();
     if (!ctx) return;
     const bus = kind === 'music' ? musicBus : sfxBus;
     bus.gain.setTargetAtTime(on ? (kind === 'music' ? 0.34 : 0.55) : 0, ctx.currentTime, 0.05);
-  };
+  }
+  // A switch flipped by hand forgets what the mute key would bring back.
+  A.set = function (kind, on) { delete prefs.unmute; setBus(kind, on); };
   A.muted = () => !prefs.music && !prefs.sfx;
   A.toggleAll = function () { const on = A.muted(); A.set('music', on); A.set('sfx', on); return on; };
+  // The mute key (V, js/main.js): mutes everything, and pressed again brings back what was on before, music only or
+  // sound effects only. If everything was already muted when you pressed it, it turns everything on.
+  A.toggleMute = function () {
+    if (A.muted()) {
+      const u = prefs.unmute && (prefs.unmute.music || prefs.unmute.sfx) ? prefs.unmute : { music: true, sfx: true };
+      delete prefs.unmute; setBus('music', !!u.music); setBus('sfx', !!u.sfx);
+      return true;
+    }
+    prefs.unmute = { music: prefs.music, sfx: prefs.sfx };
+    setBus('music', false); setBus('sfx', false);
+    return false;
+  };
 
   // ---------- Voices ----------
   const NOTE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
