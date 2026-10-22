@@ -13,8 +13,15 @@
   let want = null;          // track requested before audio was unlocked
   let cur = null;           // { name, gain, timer }
 
+  // Every tap and key press also wakes audio that stalled: a context the browser suspended or interrupted (iOS does
+  // that after a call, a reload or another app's sound), and a song whose play() was refused for want of a tap.
   A.unlock = function () {
-    if (ctx) { if (ctx.state === 'suspended' && !document.hidden) ctx.resume(); return; }
+    if (ctx) {
+      if (document.hidden) return;
+      if (ctx.state !== 'running') ctx.resume().catch(() => { /* next tap */ });
+      if (cur && cur.el && cur.el.paused) cur.el.play().catch(() => { /* next tap */ });
+      return;
+    }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
@@ -34,7 +41,7 @@
   ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, A.unlock, { passive: true }));
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
-    if (document.hidden) ctx.suspend(); else ctx.resume();
+    if (document.hidden) ctx.suspend(); else ctx.resume().catch(() => { /* next tap */ });
   });
 
   A.set = function (kind, on) {
