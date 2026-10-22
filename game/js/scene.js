@@ -57,7 +57,9 @@
   //   own sound under the music (js/audio.js PLACE, or a function returning it; null for none) }
   // Walkable maps (ones with a player) show the time of day and the weather; cutscenes only show weather they ask for.
   SC.create = function (canvas, def) {
-    const sc = { def, actors: {}, P: null, active: false, onTalk: null, onDoor: null, follow: null, fx: [] };
+    // hold: true while something else moves the player (the PR Club's outside stairs, js/club-loft.js): keys and taps
+    // do nothing, and the player takes no steps of their own.
+    const sc = { def, actors: {}, P: null, active: false, hold: false, onTalk: null, onDoor: null, follow: null, fx: [] };
     const ctx = canvas.getContext('2d');
     const MAP = def.map, W = MAP[0].length, HT = MAP.length;
     let dpr = 1, ts = 32, raf = 0, t0 = 0;
@@ -136,7 +138,7 @@
       return null;
     }
     function onKey(e) {
-      if (!sc.active || !sc.P || e.defaultPrevented) return;
+      if (!sc.active || !sc.P || sc.hold || e.defaultPrevented) return;
       if (!document.getElementById('dialog').hidden || !document.getElementById('panel').hidden) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { if (!e.repeat && !keys[k]) fresh = true; keys[k] = true; sc.P.path = []; e.preventDefault(); }
@@ -144,7 +146,7 @@
     }
     function onKeyUp(e) { keys[e.key.toLowerCase()] = false; }
     function onTap(e) {
-      if (!sc.active || !sc.P) return;
+      if (!sc.active || !sc.P || sc.hold) return;
       const r = canvas.getBoundingClientRect(), { cx, cy } = cam();
       let tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
       if (ISO) {
@@ -228,7 +230,7 @@
         } else if (a.arrive) { const r = a.arrive; a.arrive = null; r(); }
       });
       const P = sc.P;
-      if (!P || !sc.active) return;
+      if (!P || !sc.active || sc.hold) return;
       stepT -= dt;
       if (P.moving || stepT > 0) return;
       let nx = P.x, ny = P.y, face = null;

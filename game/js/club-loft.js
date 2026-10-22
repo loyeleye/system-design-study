@@ -40,16 +40,15 @@
     ctx.clip('evenodd');
   }
   const wait = ms => new Promise(res => setTimeout(res, ms));
-  // Walk the player to (x, y), facing face, along a straight line at CLIMB tiles a second; taps and keys do nothing
-  // on the way. The scene moves people across and down at the same pace (js/scene.js), so the pace is set for the
-  // longer of the two to come out at CLIMB along the line.
+  // Walk the player to (x, y), facing face, along a straight line at CLIMB tiles a second (the climb holds the scene,
+  // so taps and keys do nothing on the way). The scene moves people across and down at the same pace (js/scene.js),
+  // so the pace is set for the longer of the two to come out at CLIMB along the line.
   const CLIMB = 3.2;   // about 55% of the hero's walk (5.9 tiles a second, with the pauses between steps)
   function glide(sc, [x, y], face) {
     const P = sc.P, dx = Math.abs(x - P.px), dy = Math.abs(y - P.py), d = Math.hypot(dx, dy);
     P.x = x; P.y = y; P.face = face; P.speed = d ? CLIMB * Math.max(dx, dy) / d : CLIMB;
     return new Promise(res => {
       const t = setInterval(() => {
-        sc.pause();
         if (!sc.active || (Math.abs(P.px - x) < 1e-3 && Math.abs(P.py - y) < 1e-3)) { clearInterval(t); res(); }
       }, 30);
     });
@@ -96,6 +95,13 @@
     const pip = sc.actors.pip, speed = P.speed;
     // Over the building while on its stairs, with the railing over you.
     const outside = up => { P.front = up; if (pip) pip.front = up; if (rail) rail.hidden = !up; };
+    // Keys and taps do nothing the whole way up and back down, fades included: on the stairs you stand between
+    // tiles, and a step from there (the down arrow, still held from walking out of the lounge) is off the map's grid,
+    // which stops the yard drawing and leaves a blank green screen.
+    sc.pause(); sc.hold = true;
+    try { return await climb(sc, P, outside); } finally { sc.hold = false; outside(false); P.clip = null; P.alpha = null; P.speed = speed; }
+  };
+  async function climb(sc, P, outside) {
     outside(true);
     await glide(sc, PATH[0], 'east');
     P.clip = under;
@@ -116,10 +122,8 @@
     await glide(sc, PATH[0], 'west');
     P.clip = null;
     await glide(sc, yard.back.L, 'south');
-    outside(false);
-    P.alpha = null; P.speed = speed;
     return true;
-  };
+  }
 
   // ---------- Sitting on the sofa ----------
   // Leon and Thea sit on the sofa when they're up here (c-<id>-sit, made by tools/club_art.py from their rotations):

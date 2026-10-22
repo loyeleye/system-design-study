@@ -12,6 +12,8 @@
 //     to each of them from the door (nobody stands in the way, the furniture and the sofa's end are solid, and Paz
 //     closes the way round past the coat rack), Leon and Thea sitting on the sofa and turning their heads to look at
 //     the hero off to one side, Paz timing the rain with her stopwatch
+//   - holding the down arrow from the lounge's door takes the hero down the stairs and on into the yard, with no
+//     step of their own on the way (a step between tiles used to stop the yard drawing: a blank green screen)
 // With --shots it saves screenshots of the climb, the lounge and the way down. Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -140,6 +142,22 @@ const server = http.createServer((req, res) => {
     ['leon', 'thea'].forEach(id => { if (look[id] !== want[id]) bad(`from ${x},${y} ${id} looks ${look[id]}, not ${want[id]} (0 ahead, 1 left, 2 right)`); });
     if (x === 2) await shot('sofa-looking');
   }
+
+  // ---------- Holding the down arrow out of the lounge ----------
+  // Key repeat keeps pressing it all the way down the stairs: the hero must still come down them (no steps of their
+  // own between tiles, which used to stop the yard drawing and leave a green screen) and walk on once at the foot.
+  await page.evaluate(() => { const sc = SD.clubLoft.lounge(); sc.place('you', 5, 7); sc.face('you', 'south'); });
+  await page.waitForTimeout(200);
+  const before = errors.length;
+  for (const t0 = Date.now(); Date.now() - t0 < 3000;) { await page.keyboard.down('ArrowDown'); await page.waitForTimeout(33); }
+  await page.keyboard.up('ArrowDown');
+  await page.waitForTimeout(800);
+  const held = await page.evaluate(() => { const P = SD.northRoad.scene().P; return { room: !document.getElementById('room-canvas').hidden, x: P.x, y: P.y, front: !!P.front }; });
+  console.log(`held down out of the lounge: ended at ${held.x}, ${held.y}`);
+  if (held.room) bad('holding the down arrow did not walk out of the lounge');
+  if (errors.length > before) bad('holding the down arrow down the stairs threw: ' + errors.slice(before).join(' | '));
+  if (held.front || !Number.isInteger(held.x) || !Number.isInteger(held.y) || held.y < 9) bad(`holding the down arrow left the hero at ${held.x}, ${held.y}, not on the yard below the stairs`);
+  await shot('held-down');
 
   if (errors.length) bad('page errors: ' + errors.join(' | '));
   await browser.close(); server.close();
