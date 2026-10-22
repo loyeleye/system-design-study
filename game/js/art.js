@@ -9,7 +9,7 @@
     uptima: ['neutral', 'happy', 'sad', 'angry', 'blush', 'confused'], seymour: ['neutral', 'happy', 'smug', 'angry'],
     wen: ['neutral', 'happy', 'confused', 'angry'], chad: ['neutral', 'blank'], mio: ['neutral'], you: ['neutral', 'confused', 'happy'],
     bru: ['neutral', 'happy', 'angry', 'confused', 'sad'], ayo: ['neutral', 'smug', 'happy', 'confused', 'sad'], lexi: ['neutral', 'happy', 'angry', 'blush', 'smug'],
-    kaito: ['neutral'], doug: ['neutral', 'smug', 'happy', 'angry'], aigerim: ['neutral', 'happy', 'blush', 'yandere', 'sad']
+    kaito: ['neutral'], coo: ['neutral', 'happy', 'angry', 'confused'], doug: ['neutral', 'smug', 'happy', 'angry'], aigerim: ['neutral', 'happy', 'blush', 'yandere', 'sad']
   };
   A.painted = who => !!PAINTED[who];
   // PixelLab sheets: rows face south, west, east and north; column 0 stands, then c.n[row] frames (walk frames when
@@ -84,15 +84,6 @@
         ${eyes('normal', '#1d6fd1', 76)}
         <path d="M55 88 Q60 92 65 88" stroke="${INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
         <ellipse cx="40" cy="86" rx="5" ry="3" fill="#ff8fb8" opacity=".6"/><ellipse cx="80" cy="86" rx="5" ry="3" fill="#ff8fb8" opacity=".6"/></svg>`;
-    }
-    if (c.hair === 'pigeon') {
-      return `${open}${bg}
-        <path d="M22 132 Q16 84 46 70 Q40 40 62 34 Q86 32 88 58 Q92 72 84 82 Q106 96 100 132Z" fill="#a9b4c8" ${stroke}/>
-        <path d="M46 84 Q60 98 82 84 Q86 96 76 104 Q60 110 48 100Z" fill="#6fcf97" opacity=".85"/><path d="M50 92 Q64 102 80 92" stroke="#b36bdb" stroke-width="4" fill="none" opacity=".7"/>
-        <path d="M84 56 L104 62 L86 68Z" fill="#ffb347" ${stroke} stroke-width="2"/>
-        <circle cx="72" cy="54" r="7" fill="#ff9f1c" ${stroke} stroke-width="2"/><circle cx="73" cy="54" r="3" fill="${INK}"/><circle cx="71" cy="52" r="1.3" fill="#fff"/>
-        <path d="M40 40 Q62 18 88 38 L84 44 Q62 32 44 46Z" fill="#23318f" ${stroke}/><path d="M42 44 H90 Q94 48 88 50 H44Z" fill="#1b2470" ${stroke} stroke-width="2"/><circle cx="64" cy="32" r="4" fill="#ffd257" ${stroke} stroke-width="1.5"/>
-        <path d="M30 112 Q44 104 52 116" stroke="${INK}" stroke-width="2" fill="none"/><rect x="58" y="112" width="26" height="18" rx="2" fill="#fff" ${stroke} stroke-width="2"/><path d="M58 112 L71 122 L84 112" fill="none" stroke="${INK}" stroke-width="1.8"/></svg>`;
     }
     if (c.hair === 'none') {
       return `${open}<rect x="18" y="30" width="84" height="76" rx="12" fill="#3d5bd8" ${stroke}/><rect x="18" y="30" width="84" height="16" rx="8" fill="#23318f" ${stroke}/>
