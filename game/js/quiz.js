@@ -209,6 +209,34 @@
           `<p><b>${U.esc(name(i))}</b><br>${U.esc(why(i))}</p>`).join('')}</div>` : ''}${rest.length
           ? `<details><summary class="q-ctx">Why not the others (${rest.length})</summary><ul>${rest.map(li).join('')}</ul></details>` : ''}</div>`;
       }
+      // The question again, folded under the verdict: its full text and what you answered against the right answer.
+      function recap(right) {
+        let body = '';
+        if (q.type === 'mc') {
+          body = `<ul class="qr-opts">${optOrder.map(i => {
+            const isA = i === q.a, mine = i === pick;
+            const tag = isA ? (mine ? 'Your pick · right' : 'Right answer') : mine ? 'Your pick' : hidden === i ? 'Struck out' : '';
+            return `<li class="qr-o${isA ? ' right' : ''}${mine && !isA ? ' wrong' : ''}${hidden === i ? ' struck' : ''}"><span class="qr-m" aria-hidden="true">${isA ? '✓' : mine ? '✗' : ''}</span><span>${U.esc(q.opts[i])}${tag ? ` <em class="qr-tag">${tag}</em>` : ''}</span></li>`;
+          }).join('')}</ul>`;
+          if (pick === null) body += '<p class="muted small">No answer: time ran out.</p>';
+        } else if (q.type === 'multi') {
+          body = `<ul class="qr-opts">${optOrder.map(i => {
+            const it = q.items[i], mine = multi.has(i);
+            const tag = mine ? (it.ok ? 'You picked · belongs' : 'You picked · doesn\'t belong') : it.ok ? 'Belongs · you missed it' : '';
+            return `<li class="qr-o${it.ok ? (mine ? ' right' : ' missed') : mine ? ' wrong' : ''}"><span class="qr-m" aria-hidden="true">${it.ok ? '✓' : mine ? '✗' : ''}</span><span>${U.esc(it.t)}${tag ? ` <em class="qr-tag">${tag}</em>` : ''}</span></li>`;
+          }).join('')}</ul>`;
+        } else if (q.type === 'order') {
+          body = order.length ? `<p class="qr-lbl">Your order</p><ol class="qr-opts">${order.map((v, k) =>
+            `<li class="qr-o${v === k ? ' right' : ' wrong'}"><span class="qr-m" aria-hidden="true">${v === k ? '✓' : '✗'}</span><span>${U.esc(q.items[v])}${v !== k ? ` <em class="qr-tag">should be step ${v + 1}</em>` : ''}</span></li>`).join('')}</ol>`
+            : '<p class="muted small">No answer: time ran out.</p>';
+        } else if (q.type === 'num') {
+          body = `<p><b>You said:</b> ${pick != null && pick !== '' ? U.esc(String(pick)) + ' ' + U.esc(q.unit || '') : 'nothing'}<br><b>Accepted:</b> ${U.esc(String(q.lo))} to ${U.esc(String(q.hi))} ${U.esc(q.unit || '')}</p>`;
+        } else if (q.type === 'explain') {
+          body = typed ? `<p class="qr-lbl">You wrote</p><blockquote class="typed">${U.esc(typed)}</blockquote>` : '<p class="muted small">No answer this time.</p>';
+        }
+        return `<details class="q-recap"><summary><span class="qr-lbl">The question</span><span class="qr-peek">${U.esc(q.q)}</span></summary>
+          <div class="qr-body"><p class="q-q">${U.esc(q.q)}</p>${body}</div></details>`;
+      }
       function feedback(ok, conf, ms, page, score) {
         let right = '';
         if (q.type === 'mc') right = q.opts[q.a];
@@ -221,9 +249,10 @@
         let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : late ? 'TIME\'S UP!' : 'NOT QUITE!'}</div>`;
         if (over) h += `<p class="warn small">You were sure and it was wrong. That gap is the most valuable thing you found today, so this comes back first.</p>`;
         if (ok && conf === 0) h += `<p class="muted small">A lucky guess is not knowledge yet. It will come back soon.</p>`;
+        h += recap(right);
         if (q.type === 'explain') h += `<p class="muted small">You covered ${score} of ${q.points.length} points.</p>`;
-        else if ((!ok || conf === 0) && !q.tiers) h += `<p><b>Answer:</b> ${U.esc(right)}</p>`;
-        h += `<p class="why">${U.esc(q.why || '')}</p>`;
+        const showAns = q.type !== 'explain' && (!ok || conf === 0) && !q.tiers;
+        h += `<div class="why">${showAns ? `<p class="why-a"><span class="q-ctx">Answer</span><b>${U.esc(right)}</b></p>` : ''}<p>${U.esc(q.why || '')}</p></div>`;
         // A ranking can name each rung (bad, good, great) and say why it sits there: the ranking is the lesson.
         if (q.type === 'order' && q.tiers) {
           h += `<div class="nots tiers"><div class="q-ctx">The ranking, weakest first</div><ol>${q.items.map((t, i) =>
