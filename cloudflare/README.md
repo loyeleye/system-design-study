@@ -36,6 +36,21 @@ To deploy a new build later, run `npx wrangler deploy` again from this folder.
 - **Your own domain:** Cloudflare dashboard > Workers & Pages > isekaid-into-prod > Settings > Domains & Routes > Add > Custom domain. The domain must be on your Cloudflare account.
 - **Deploy on every push:** Workers & Pages > isekaid-into-prod > Settings > Builds > Connect to the GitHub repo. Set the root directory to `cloudflare` and the deploy command to `npx wrangler deploy`.
 
+## An anonymous copy
+
+To share the game without your name on it (Reddit, Discord), deploy it from a **separate free Cloudflare account** whose email isn't tied to you, with a `workers.dev` subdomain that doesn't name you either:
+
+```sh
+cd cloudflare
+npx wrangler logout     # if you're signed in to your main account
+npx wrangler login      # sign in to the separate account
+npm run deploy:anon
+```
+
+`anon-build.js` copies `game/` to `dist-anon/` and replaces the author's first name (code comments, the credits files, the journal preview's save) and the links to the author's claude.ai pages. It stops the deploy if any of them is left. `wrangler.anon.jsonc` is `wrangler.jsonc` serving that copy. Don't connect this account's Builds to the GitHub repo; deploy it by hand like this.
+
+What it can't hide: the repository is public, so searching the game's title or its dialogue finds it. Players never see commit authors, the account's email, or how it was deployed.
+
 ## Try it locally first
 
 ```sh

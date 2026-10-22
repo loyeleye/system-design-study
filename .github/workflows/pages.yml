@@ -1,0 +1,33 @@
+# GitHub Pages: the game, served from game/ at https://loyeleye.github.io/system-design-study/ on every push to main.
+# One-time setup: repo Settings > Pages > Build and deployment > Source: GitHub Actions.
+# Pages has no backend, so saves stay in the browser and online multiplayer is off (cloudflare/README.md has the
+# Worker build that adds both).
+name: Pages
+on:
+  push:
+    branches: [main]
+    paths: ['game/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # Build tools aren't served (as in game/.assetsignore).
+      - run: rm -rf game/tools && find game -name __pycache__ -type d -prune -exec rm -rf {} +
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: game
+      - id: deploy
+        uses: actions/deploy-pages@v4
