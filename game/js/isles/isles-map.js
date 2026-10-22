@@ -384,8 +384,11 @@
     SD.hub && SD.hub.stop();
     document.getElementById('screen-isles').hidden = false;
     const st = I.st();
-    const back = st.pos && walkable(st.pos[0], st.pos[1]) ? st.pos : [9, 21];
+    // The first time, you walk in off the Pingsby road at the map's left edge (one step in from the exit); after that,
+    // you come back where you left.
+    const back = st.pos && walkable(st.pos[0], st.pos[1]) ? st.pos : st.intro ? [9, 21] : [EXIT[0] + 1, EXIT[1]];
     place(back[0], back[1]);
+    if (!st.pos && !st.intro) P.face = 'east';
     plan(true);
     active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
     AU.music('isles');
