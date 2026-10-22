@@ -302,8 +302,9 @@
       '###.....####', '###......###', '#####DD#####', '############'],
     enter: [5, 6, 'north'],
     clerk: 'xbaker', counter: [5, 3.42, 'south'], over: [[4, 4], [5, 4], [6, 4]],
-    // The counter in front of Mabel, and the front wall and door frame in front of you on the way out.
-    front: [[97, 117, 68, 56, 4], [165, 130, 142, 43, 4], [0, 238, 167, 50, 7], [230, 238, 154, 50, 7], [160, 236, 77, 14, 7]],
+    // The counter in front of Mabel, the front wall and door frame in front of you on the way out, and the round table.
+    front: [[97, 117, 68, 56, 4], [165, 130, 142, 43, 4], [0, 238, 167, 50, 7], [230, 238, 154, 50, 7], [160, 236, 77, 14, 7],
+      [268, 180, 45, 67, 6, [[268, 200], [272, 190], [283, 186], [292, 180], [305, 182], [313, 192], [313, 247], [268, 247]]]],
     people: () => ['xbaker'], spots: {}, names: { xbaker: 'MABEL' }, looks: { xbaker: { sprite: 'folk2' } },
     lights: [{ x: 4.1, y: 1.5, r: 3 }, { x: 8.2, y: 3.1, r: 3, rgb: '255,140,60' }, { x: 9.3, y: 5.9, r: 1.6 }],
     props: [

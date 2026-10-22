@@ -229,6 +229,8 @@
       windows: [{ r: [131, 39, 32, 34] }, { r: [229, 39, 32, 34] }],
       lights: [{ x: 5.16, y: 0.73, r: 1.4 }, { x: 9.75, y: 1.2, r: 1.4 }, { x: 3.38, y: 3.08, r: 1.2 }, { x: 4.31, y: 3.08, r: 1.2 },
         { x: 6.19, y: 3.08, r: 1.2 }, { x: 7.81, y: 3.08, r: 1.2 }, { x: 10.84, y: 6.25, r: 1 }],
+      // The stove in the corner hides the legs of whoever stands behind it.
+      front: [[329, 178, 44, 58, 5, [[331, 186], [345, 186], [345, 178], [373, 178], [373, 236], [331, 236]]]],
       props: [
         { x: 6, y: 2, t: () => ['The lantern wall. Four hundred paper lanterns, each with a tag in Bitna\'s hand: OPENING NIGHT, NEW STEP (BAR 9), RAIN VERSION.', done('showover') ? 'Most of the hooks are empty now. The lanterns left are the ones the show actually uses.' : 'Three hundred and eighty of them haven\'t been lit in years. Nobody remembers what they\'re for, and nobody dares take them down.'] },
         { x: 4, y: 2, t: () => ['Through the window, the canal bridge and the lamps along it. Bitna lit every one of them.'] },

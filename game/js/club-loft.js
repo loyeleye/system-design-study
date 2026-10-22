@@ -180,6 +180,8 @@
     across: [sat('leon') && [5, 4, 'leon'], sat('thea') && [6, 4, 'thea']].filter(Boolean),
     lights: [{ x: 2.6, y: 0.8, r: 2.4 }, { x: 9.4, y: 0.8, r: 2.4 }, { x: 0.4, y: 2.2, r: 2 }, { x: 11.5, y: 2.4, r: 2 },
       { x: 11.2, y: 4.4, r: 1.4, rgb: '255,170,80' }],
+    // The left armchair hides the legs of whoever goes round behind it.
+    front: [[104, 146, 59, 47, 4, [[104, 152], [112, 146], [134, 146], [162, 158], [162, 192], [104, 192]]]],
     windows: [{ r: [98, 14, 32, 49] }, { r: [180, 14, 32, 50] }, { r: [264, 14, 31, 49] }],
     // Leon's half of the table is where you talk to him from, when he's sitting there; otherwise it's the mugs.
     get props() { return [SOFA].concat(PROPS, this.spots.leon && sat('leon') ? [] : [MUGS]); },
