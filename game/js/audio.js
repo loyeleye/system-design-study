@@ -13,6 +13,23 @@
   let want = null;          // track requested before audio was unlocked
   let cur = null;           // { name, gain, timer }
 
+  // Only the tab you tapped last makes sound: a tap or key press claims it, and the other tabs of the game fade out
+  // until you tap them again (handy when two tabs play each other in the Guild Hall).
+  const MASTER = 0.9;
+  let owner = false;
+  const tabs = typeof BroadcastChannel === 'function' ? new BroadcastChannel('isekai-audio') : null;
+  if (tabs) tabs.onmessage = e => {
+    if (!e.data || e.data.claim !== true) return;
+    owner = false;
+    if (ctx) master.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+  };
+  const claim = () => {
+    if (owner) return;
+    owner = true;
+    if (tabs) tabs.postMessage({ claim: true });
+    if (ctx) master.gain.setTargetAtTime(MASTER, ctx.currentTime, 0.1);
+  };
+
   // Every tap and key press also wakes audio that stalled: a context the browser suspended or interrupted (iOS does
   // that after a call, a reload or another app's sound), and a song whose play() was refused for want of a tap.
   A.unlock = function () {
@@ -27,7 +44,7 @@
     ctx = new AC();
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -16; comp.ratio.value = 3;
-    master = ctx.createGain(); master.gain.value = 0.9;
+    master = ctx.createGain(); master.gain.value = owner ? MASTER : 0;
     master.connect(comp); comp.connect(ctx.destination);
     musicBus = ctx.createGain(); musicBus.gain.value = prefs.music ? 0.34 : 0; musicBus.connect(master);
     sfxBus = ctx.createGain(); sfxBus.gain.value = prefs.sfx ? 0.55 : 0; sfxBus.connect(master);
@@ -38,7 +55,7 @@
     if (want) { const w = want; want = null; A.music(w); }
     [wxL, placeL].forEach(l => { if (l.want !== undefined) { const w = l.want; l.want = undefined; l.set(w); } });
   };
-  ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, A.unlock, { passive: true }));
+  ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => { if (!document.hidden) claim(); A.unlock(); }, { passive: true }));
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
     if (document.hidden) ctx.suspend(); else ctx.resume().catch(() => { /* next tap */ });
