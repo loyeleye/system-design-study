@@ -727,9 +727,12 @@
       }).join('');
       if (open.length) body += '<p class="q-ctx">Available</p>' + open.map(q => row(q, `<p class="small">${esc(q.blurb)}</p><p class="muted small">Talk to ${esc(who(q.giver))} at ${esc(HOME[q.giver])}. Teaches: ${esc(q.teaches)}.</p>`)).join('');
       if (!active.length && !open.length) body += '<p class="muted">No quests right now. More post as you clear dungeons.</p>';
-      if (locked.length) {
+      // Only quests still waiting on a chapter clear are counted. The rest (Explodia's, which have no chapter, and
+      // ones waiting on another quest) stay unmentioned rather than naming the wrong thing to clear.
+      const waiting = locked.filter(q => q.unlock && SD.chapters[q.unlock] && !S.save.flags['ch' + q.unlock]);
+      if (waiting.length) {
         const groups = {};
-        locked.forEach(q => { groups[q.unlock] = (groups[q.unlock] || 0) + 1; });
+        waiting.forEach(q => { groups[q.unlock] = (groups[q.unlock] || 0) + 1; });
         body += `<p class="muted small">${Object.entries(groups).map(([ch, n]) => `${n} more quest${n > 1 ? 's' : ''} post after you clear ${esc(SD.chapters[ch].name.replace(/^the /, 'the '))}`).join('. ')}.</p>`;
       }
       if (done.length) body += '<p class="q-ctx">Completed</p><ul class="links">' + done.map(q => `<li>✓ <b>${esc(q.title)}</b> · ${q.device ? esc(SD.devices[q.device].name) : (q.shards || '') + ' shards'}</li>`).join('') + '</ul>';
