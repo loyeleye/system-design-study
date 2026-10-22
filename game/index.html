@@ -217,13 +217,23 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .verdict.ok { color: var(--mint); text-shadow: 2px 2px 0 var(--ink); }
 .verdict.bad { color: var(--red); text-shadow: 2px 2px 0 var(--ink); }
 .why { border-left: 4px solid var(--blue); padding: 6px 10px; background: #eef5ff; border-radius: 0 10px 10px 0; }
-.compass { margin-top: 14px; padding: 12px; border: 2px dashed #d39a00; background: #fff7d6; border-radius: 12px; }
+.compass { margin-top: 12px; padding: 8px 10px; border: 2px dashed #d39a00; background: #fff7d6; border-radius: 12px; }
 .compass .q-ctx { color: #a06a00; }
-.help-b { display: inline-block; margin: 10px 8px 0 0; padding: 6px 14px; font-size: 14px; }
+.help-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.help-row .help-b { flex: 1 1 0; white-space: nowrap; }
+.help-b { display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 6px 14px; font-size: 14px; min-height: 44px; }
+.nots details summary { cursor: pointer; min-height: 32px; display: list-item; }
+.compass .opts .opt { padding: 8px 10px; font-size: 13px; text-align: left; }
+.q-foot { position: sticky; bottom: -16px; z-index: 1; margin: 12px -16px -16px; padding: 10px 16px 14px; background: var(--cream); border-top: 2px solid rgba(43, 35, 64, .15); }
+.q-foot #q-next { width: 100%; }
+a.help-b { text-decoration: none; color: var(--ink); }
 .nots { margin-top: 8px; font-size: 0.92em; }
 .nots ul { margin: 4px 0 0; padding-left: 18px; }
 .nots li { margin: 4px 0; }
-.nots li.mine { background: #fff1f1; border-radius: 8px; padding: 2px 6px; }
+.nots .mypick { background: #fff1f1; border-left: 4px solid var(--red); border-radius: 0 10px 10px 0; padding: 6px 10px; }
+.nots .mypick .q-ctx { color: #b23b3b; }
+.nots .mypick p { margin: 2px 0 0; }
+.nots details { margin-top: 6px; }
 .nots .tag { font-size: 0.8em; color: #b23b3b; font-weight: 700; }
 .tiers ol { margin: 4px 0 0; padding-left: 20px; }
 .tier { display: inline-block; font-size: 0.78em; font-weight: 800; padding: 0 6px; border-radius: 6px; background: #eee; }

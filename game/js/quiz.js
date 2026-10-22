@@ -201,6 +201,14 @@
         late = true;
         feedback(false, 0, ms, null, null);
       }
+      // Why each wrong option is wrong: the ones you picked stay open, the rest fold under "Why not the others".
+      function notsBlock(idx, mine, name, why) {
+        const li = i => `<li><b>${U.esc(name(i))}</b><br>${U.esc(why(i))}</li>`;
+        const own = idx.filter(mine), rest = idx.filter(i => !mine(i));
+        return `<div class="nots">${own.length ? `<div class="mypick"><div class="q-ctx">Why your pick doesn't fit</div>${own.map(i =>
+          `<p><b>${U.esc(name(i))}</b><br>${U.esc(why(i))}</p>`).join('')}</div>` : ''}${rest.length
+          ? `<details><summary class="q-ctx">Why not the others (${rest.length})</summary><ul>${rest.map(li).join('')}</ul></details>` : ''}</div>`;
+      }
       function feedback(ok, conf, ms, page, score) {
         let right = '';
         if (q.type === 'mc') right = q.opts[q.a];
@@ -211,6 +219,8 @@
         const over = !ok && conf === 2;
         if (SD.audio) SD.audio.sfx(ok ? 'right' : 'wrong');
         let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : late ? 'TIME\'S UP!' : 'NOT QUITE!'}</div>`;
+        if (over) h += `<p class="warn small">You were sure and it was wrong. That gap is the most valuable thing you found today, so this comes back first.</p>`;
+        if (ok && conf === 0) h += `<p class="muted small">A lucky guess is not knowledge yet. It will come back soon.</p>`;
         if (q.type === 'explain') h += `<p class="muted small">You covered ${score} of ${q.points.length} points.</p>`;
         else if ((!ok || conf === 0) && !q.tiers) h += `<p><b>Answer:</b> ${U.esc(right)}</p>`;
         h += `<p class="why">${U.esc(q.why || '')}</p>`;
@@ -222,36 +232,50 @@
         // Why each wrong option is wrong here (and, for real techniques, when it would be right).
         if (q.type === 'mc' && Array.isArray(q.no)) {
           const nots = optOrder.filter(i => i !== q.a && q.no[i]);
-          if (nots.length) {
-            h += `<div class="nots"><div class="q-ctx">Why not the others</div><ul>${nots.map(i =>
-              `<li${i === pick ? ' class="mine"' : ''}><b>${U.esc(q.opts[i])}</b>${i === pick ? ' <span class="tag">your pick</span>' : ''}<br>${U.esc(q.no[i])}</li>`).join('')}</ul></div>`;
-          }
+          if (nots.length) h += notsBlock(nots, i => i === pick, i => q.opts[i], i => q.no[i]);
+        }
+        // Select-all: why each item that doesn't belong is wrong, marking the ones you picked.
+        if (q.type === 'multi' && q.items.some(it => !it.ok && it.no)) {
+          const nots = optOrder.filter(i => !q.items[i].ok && q.items[i].no);
+          h += notsBlock(nots, i => multi.has(i), i => q.items[i].t, i => q.items[i].no);
         }
         // Plain-language help: a game analogy for this answer, then the whole idea plus jargon on "Huh???".
         const eli = (q.id && SD.eli5[q.id]) || (SD.huh[q.c] || '');
         const text = [q.q, right, q.why].concat(q.opts || []).join(' ');
         const words = SD.glossary.filter(g => g[1].test(text)).slice(0, 8);
-        const huhBlock = `<button class="ghost help-b" id="q-huh" aria-expanded="false">Huh???</button>
-          <div class="helpbox huh" id="q-huh-box" hidden><div class="q-ctx">Pip explains it in game terms</div>
+        // Search: the question (and its options) as a Google search in AI Mode (udm=50), in a new tab. Plain link, no logo.
+        const ask = 'System design interview question: ' + q.q + (q.type === 'mc' && q.opts ? ' Options: ' + q.opts.join(' | ') : '') + ' Which answer is right, and why?';
+        h += `<div class="help-row">${eli ? '<button class="ghost help-b" id="q-eli5" aria-expanded="false">ELI5 🎮</button>' : ''}<button class="ghost help-b" id="q-huh" aria-expanded="false">Huh???</button><a class="ghost help-b" id="q-search" href="https://www.google.com/search?udm=50&q=${encodeURIComponent(ask.slice(0, 1500))}" target="_blank" rel="noopener noreferrer" title="Opens Google in a new tab">Search 🔍</a></div>`;
+        if (eli) h += `<div class="helpbox" id="q-eli5-box" hidden><p>${U.esc(eli)}</p></div>`;
+        h += `<div class="helpbox huh" id="q-huh-box" hidden><div class="q-ctx">Pip explains it in game terms</div>
           ${SD.huh[q.c] ? `<p>${U.esc(SD.huh[q.c])}</p>` : ''}
           ${words.length ? `<p class="q-ctx">Words in this question</p><dl class="gloss">${words.map(g => `<dt>${U.esc(g[0])}</dt><dd>${U.esc(g[2])}</dd>`).join('')}</dl>` : ''}</div>`;
-        if (eli) h += `<button class="ghost help-b" id="q-eli5" aria-expanded="false">ELI5 🎮</button><div class="helpbox" id="q-eli5-box" hidden><p>${U.esc(eli)}</p></div>`;
+        // Opening one help box closes the other.
         const help = b => ['eli5', 'huh'].forEach(k => {
           const btn = b.querySelector('#q-' + k), box = b.querySelector('#q-' + k + '-box');
-          if (btn) btn.onclick = () => { box.hidden = !box.hidden; btn.setAttribute('aria-expanded', String(!box.hidden)); if (!box.hidden) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
+          if (btn) btn.onclick = () => {
+            const show = box.hidden;
+            ['eli5', 'huh'].forEach(o => { const ob = b.querySelector('#q-' + o + '-box'), on = b.querySelector('#q-' + o); if (ob) ob.hidden = true; if (on) on.setAttribute('aria-expanded', 'false'); });
+            box.hidden = !show; btn.setAttribute('aria-expanded', String(show));
+            if (show) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          };
         });
-        if (over) h += `<p class="warn">You were sure and it was wrong. That gap is the most valuable thing you found today, so this comes back first.</p>`;
-        if (ok && conf === 0) h += `<p class="muted small">A lucky guess is not knowledge yet. It will come back soon.</p>`;
         if (!ok && concept) {
           const rel = SD.links.filter(l => l.a === q.c || l.b === q.c).map(l => SD.concepts[l.a === q.c ? l.b : l.a].name);
-          const prompts = [
-            `When would ${concept.name.toLowerCase()} be the wrong choice?`,
-            rel.length ? `How is ${concept.name.toLowerCase()} different from ${rel[0].toLowerCase()}?` : `What problem does ${concept.name.toLowerCase()} solve?`,
-            `What breaks first if load grows 10x, and how does ${concept.name.toLowerCase()} help?`
-          ];
-          h += `<div class="compass"><div class="q-ctx">Confusion compass</div><p class="small">Turn the confusion into a question. Pick the one closest to what tripped you up; it goes in your notebook.</p>
-            <div class="opts">${prompts.map((p, i) => `<button class="opt" data-p="${i}">${U.esc(p)}</button>`).join('')}</div>${huhBlock}</div>`;
-          h += `<button class="primary" id="q-next" disabled>Continue</button>`;
+          // Questions about this miss: why your pick fails, when the answer is the move, and the concept next door.
+          const clip = t => t.length > 48 ? t.slice(0, 46).replace(/\s+\S*$/, '') + '…' : t;
+          const mine = q.type === 'mc' && pick !== null && pick !== q.a ? q.opts[pick]
+            : q.type === 'multi' ? ([...multi].map(i => q.items[i]).find(it => !it.ok) || {}).t : null;
+          const nm = concept.name;
+          const prompts = [...new Set([
+            mine ? `Why doesn't "${clip(mine)}" work here?` : 'Which detail in the question points to the answer?',
+            q.type === 'mc' ? `When is "${clip(right)}" the right move?` : `What is ${nm} for, and when do I reach for it?`,
+            rel.length ? `What's the difference between ${nm} and ${rel[0]}?` : `What is ${nm} for, and when do I reach for it?`,
+            `Which rule of ${nm} would I forget under pressure?`
+          ])].slice(0, 3);
+          h += `<div class="compass"><div class="q-ctx">Confusion compass <span class="muted small">(optional)</span></div><p class="small">What tripped you up? Tap one to save it to your notebook.</p>
+            <div class="opts">${prompts.map((p, i) => `<button class="opt" data-p="${i}">${U.esc(p)}</button>`).join('')}</div></div>`;
+          h += `<div class="q-foot"><button class="primary" id="q-next">Continue</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
           const nx = b.querySelector('#q-next');
@@ -261,12 +285,10 @@
             if (sv.openQs.length > 40) sv.openQs.shift();
             SD.state.persist();
             b.querySelectorAll('[data-p]').forEach(x => x.classList.toggle('on', x === el));
-            nx.disabled = false;
           });
-          setTimeout(() => { nx.disabled = false; }, 2500);
           nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
         } else {
-          h += huhBlock + `<button class="primary" id="q-next">Continue</button>`;
+          h += `<div class="q-foot"><button class="primary" id="q-next">Continue</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
           b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
