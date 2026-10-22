@@ -12,7 +12,7 @@
   // The speaker button (title and HUD) opens a small sound menu: music and sound effects switch on and off separately,
   // with one button for all. The icon says what is on: 🔊 both, 🔉 one, 🔇 neither.
   const sndIcon = () => AU.muted() ? '🔇' : AU.prefs.music && AU.prefs.sfx ? '🔊' : '🔉';
-  const sndLabel = () => 'Sound: ' + (AU.muted() ? 'all muted' : AU.prefs.music && AU.prefs.sfx ? 'on' : AU.prefs.music ? 'sound effects muted' : 'music muted');
+  const sndLabel = () => 'Sound: ' + (AU.muted() ? 'all muted' : AU.prefs.music && AU.prefs.sfx ? 'on' : AU.prefs.music ? 'sound effects muted' : 'music muted') + ' (V mutes)';
   const sndSync = () => ['#t-snd', '#hud-snd'].forEach(id => { const b = $(id); if (b) { b.textContent = sndIcon(); b.setAttribute('aria-label', sndLabel()); b.title = sndLabel(); } });
   let sndPop = null;
   function sndClose(refocus) {
@@ -105,6 +105,19 @@
     e.preventDefault(); menu();
   });
 
+  // V (for volume) is the mute key, everywhere, quizzes and dialogue included: it mutes everything and brings back
+  // what was on before (js/audio.js). Not while you type in a text field.
+  const typing = t => t && t.closest && (t.isContentEditable || t.closest('textarea, select') ||
+    (t.closest('input') && !/^(checkbox|radio|button|submit|reset|range|color|file|image)$/.test(t.closest('input').type)));
+  window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() !== 'v' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || typing(e.target)) return;
+    e.preventDefault();
+    const on = AU.toggleMute();
+    sndClose(false); sndSync();
+    if (!$('#panel').hidden && $('#panel .win-h span').textContent === 'MENU') menu();
+    if (on && AU.prefs.sfx) AU.sfx('ok');
+  });
+
   function menu() {
     const p = AU.prefs;
     const b = U.panel(`<div class="opts">
@@ -181,7 +194,7 @@
   }
   function help() {
     U.panel(`<ul class="links">
-      <li><b>Village.</b> Walk with WASD or arrow keys, or tap where you want to go. Walk into doors to enter, and into people to talk. Press M to open or close the menu.</li>
+      <li><b>Village.</b> Walk with WASD or arrow keys, or tap where you want to go. Walk into doors to enter, and into people to talk. Press M to open or close the menu, and V to mute or unmute the sound.</li>
       <li><b>Runs.</b> The Dungeon gate takes you down into Prod: a branching path of incidents, whiteboards, cafés and break rooms, ending at a boss. A run takes about 20 minutes.</li>
       <li><b>Combat.</b> Each turn you get 3 Capacity. Cards absorb load (Cache, Replica, Read, Write, Any) or mitigate the incident's Severity. The incident shows its next move: read it and answer with the right component.</li>
       <li><b>Matchups.</b> Cards that fit the incident are EFFECTIVE and mitigate hard. Wrong components are RESISTED, and the game tells you why. That reason is the lesson.</li>
