@@ -40,6 +40,10 @@
   // music (a song in js/audio.js, or a function that picks one or null), ambience (its PLACE sound, or null for quiet),
   // bell: a shop bell over the door. calm: nobody in it looks worried in the storm. front: [[x, y, w, h, row]], pieces
   // of the picture (in its pixels) drawn again over whoever stands behind them, as standing on that row: counters, tables.
+  // A piece is drawn after everyone already standing on its row, so it hides them as well as anyone further back.
+  // A sixth entry, [[x, y], ...] in picture pixels, cuts the piece to that outline, so the floor around a round table
+  // isn't drawn over whoever stands beside it; several outlines, [[[x, y], ...], ...], cut holes where they overlap
+  // (the middle of a ring light).
   // across: [[x, y, id]], tiles you talk to id from when they sit out of reach (on a sofa behind a table): walk up
   // into the tile from the one in front of it (below it), marked with an arrow while you're near.
   const ROOMS = I.ROOMS = {
@@ -67,6 +71,8 @@
       stormSpots: { seymour: [6, 5, 'south'] },
       windows: [{ r: [176, 48, 44, 32] }],
       lights: [{ x: 7.6, y: 1.9, r: 4 }],
+      // The pile of tapes by the cot hides the legs of whoever stands behind it.
+      front: [[105, 216, 49, 35, 6, [[105, 226], [122, 226], [124, 216], [148, 216], [150, 226], [154, 226], [154, 251], [105, 251]]]],
       hatch: true,
       props: [
         { x: 4, y: 3, t: () => ['Floor-to-ceiling tapes, one for every outage in history, each labelled in three different hands.', 'GREAT OUTAGE, YEAR 12 (COPY 1 OF 3). GREAT OUTAGE, YEAR 12 (COPY 2 OF 3). You get the idea.'] },
@@ -129,6 +135,9 @@
       spots: { kaito: [6, 5, 'south'] },
       windows: [{ r: [172, 34, 56, 60] }],
       lights: [{ x: 10.4, y: 3.2, r: 3 }],
+      // The ring light and the stool hide the legs of whoever stands behind them; you see through the ring.
+      front: [[106, 188, 45, 89, 6, [[[106, 205], [110, 195], [120, 189], [135, 189], [145, 194], [150, 205], [149, 216], [143, 226], [131, 232], [132, 262], [143, 268], [143, 277], [111, 277], [111, 268], [124, 262], [125, 232], [115, 228], [108, 220]],
+        [[115, 203], [122, 196], [134, 196], [142, 203], [141, 214], [134, 221], [124, 221], [116, 214]]]], [72, 239, 29, 37, 7]],
       props: [
         { x: 2, y: 3, t: () => ['A whiteboard of boxes and arrows. Every box says KAITO. Every arrow points at another KAITO.', 'In the corner, very small: "single point of failure?" It has been rubbed out, and written again.'] },
         { x: 5, y: 4, t: () => ['A weight rack. Each dumbbell is labelled with a number from 1 to 46, one for every instance.'] },
@@ -163,6 +172,8 @@
       sleep: { at: [8, 4], zz: [8.6, 4], t: [['narr', 'Coo is roosting in the big straw nest, head tucked under one wing.'], ['narr', 'Even asleep, one foot is resting on a letter. Just in case.']] },
       windows: [{ c: [192, 48, 32] }],
       lights: [{ x: 6, y: 2, r: 3 }],
+      // The desk and the sack by the door hide the legs of whoever stands behind them.
+      front: [[70, 147, 61, 104, 4], [279, 211, 44, 52, 6]],
       props: [
         { x: 3, y: 3, t: () => ['Pigeonholes from floor to ceiling, every one labelled with a villager\'s name. Yours is there too, stuffed full.'] },
         { x: 5, y: 3, t: () => ['A bench under the round window, worn smooth in one spot exactly the size of a pigeon.'] },
@@ -216,6 +227,8 @@
       sleep: { at: [7, 5], cloud: true, t: [['narr', 'Uptima is asleep on a small cloud in front of her own statue, snoring very politely.'], ['narr', 'A sign hangs off the cloud: "DO NOT DISTURB. TICKETS RESUME AT NINE."']] },
       windows: [{ r: [166, 8, 70, 56] }],
       lights: [{ x: 4.9, y: 4.2, r: 2.2 }, { x: 7.4, y: 4.2, r: 2.2 }],
+      // The round table hides the legs of whoever stands behind it.
+      front: [[263, 175, 46, 64, 5, [[264, 196], [267, 186], [272, 180], [279, 177], [286, 175], [293, 177], [300, 180], [305, 186], [308, 196], [308, 239], [264, 239]]]],
       props: [
         { x: 3, y: 5, t: () => ['Uptima\'s desk, buried in paperwork. Every one of your respawns has its own form, filed in triplicate.', 'The form on top says LOOP ' + (S.save ? S.save.loop : 1) + '. It has already been stamped.'] },
         { x: 6, y: 4, t: () => ['A marble statue of Uptima with a clipboard. The plaque says GODDESS OF UPTIME.', 'Someone has rubbed out "99%" on the clipboard and carved "99.9%". Then "99.99%". There is not much room left.'] },
@@ -234,6 +247,8 @@
       spots: { bru: [7, 4, 'south'], _: [[4, 5, 'east'], [7, 6, 'west'], [4, 7, 'north']] },
       windows: [{ r: [180, 26, 44, 30] }],
       lights: [{ x: 3.9, y: 1.6, r: 2.6 }, { x: 8.2, y: 1.6, r: 2.6 }, { x: 1.2, y: 4.2, r: 2.4 }, { x: 3, y: 4.5, r: 2.4 }],
+      // The long table and the ledger's table hide the legs of whoever stands behind them.
+      front: [[282, 149, 47, 110, 4, [[282, 149], [318, 149], [329, 259], [288, 259]]], [62, 136, 57, 128, 4]],
       props: [
         { x: 6, y: 3, t: () => ['The Brújula Board: quests pinned in rows, joined up with red string. In the corner, in Bru\'s tidy hand: COUNTED, NOT GUESSED.'], go: () => SD.quests.guild() },
         { x: 3, y: 3, t: () => ['A dented shield on a side table, tagged LOST PROPERTY. Nobody has come back for it, in a thousand loops.'] },
@@ -251,6 +266,8 @@
       spots: { ayo: [6, 5, 'north'], _: [[3, 5, 'east'], [8, 6, 'west'], [3, 6, 'east'], [4, 6, 'north'], [7, 6, 'north'], [8, 5, 'west']] },
       windows: [{ r: [180, 36, 44, 40] }],
       lights: [{ x: 3.1, y: 3.2, r: 4.5, rgb: '255,140,60' }],
+      // The two front workbenches hide the legs of whoever stands behind them (the jug on the right one too).
+      front: [[11, 215, 109, 61, 6], [273, 211, 99, 65, 6, [[273, 217], [345, 217], [345, 211], [367, 211], [367, 217], [372, 217], [372, 276], [273, 276]]]],
       props: [
         { x: 3, y: 4, t: () => ['The great forge. At its heart burns Ayo\'s grandmother\'s fire, carried here in a clay pot. It has never gone out.', 'A sign over it says ON-PREM. NO CLOUDS ALLOWED.'] },
         { x: 6, y: 4, t: () => ['The big anvil. It is worn smooth in the middle from years of hammering, and it rings like a bell if you tap it.'] },
@@ -291,6 +308,8 @@
       spots: { lexi: [7, 5, 'south'], _: [[5, 5, 'east'], [3, 6, 'north'], [9, 6, 'west']] },
       windows: [{ r: [180, 32, 44, 58] }],
       lights: [{ x: 4.9, y: 1.8, r: 2.2 }, { x: 7.5, y: 1.8, r: 2.2 }, { x: 5.3, y: 3.2, r: 2.4 }, { x: 3.1, y: 4.1, r: 2.4 }, { x: 4.3, y: 7, r: 2.4 }, { x: 7.2, y: 7.3, r: 2.4 }],
+      // The chair by the reading table hides the legs of whoever stands behind it, by the shelves.
+      front: [[113, 140, 31, 52, 4]],
       props: [
         { x: 6, y: 4, t: () => ['The librarian\'s desk. A stamp that says OVERDUE, a stamp that says VERY OVERDUE, and a stamp that just says KAITO.'] },
         { x: 8, y: 3, t: () => hallOpen() ? ['The door to the Hall of Blueprints. Something in there still nibbles the diagrams now and then, but only the bad ones.'] : ['A tall door you have never noticed before. It is locked. From the other side comes the faint sound of somebody chewing paper.'], go: () => hallOpen() && SD.main.hall ? SD.main.hall() : null },
@@ -331,8 +350,9 @@
       map: ['############', '############', '############', '############', '####...###.#',
         '####.#####.#', '##...###...#', '####....##.#', '#####DD....#'],
       enter: [5, 7, 'north'],
-      // Class round the Why Book: Apai reads out today's question, and the three of them want to know why.
-      spots: { saule: [6, 4, 'south'], kid1: [4, 6, 'east'], kid2: [7, 7, 'north'], kid3: [8, 6, 'west'] },
+      // Class round the Why Book: Apai reads out today's question, and the three of them want to know why. One of them
+      // waits between the desks, clear of the big table's edge.
+      spots: { saule: [6, 4, 'south'], kid1: [3, 6, 'east'], kid2: [7, 7, 'north'], kid3: [8, 6, 'west'] },
       windows: [{ r: [162, 26, 76, 60] }],
       lights: [{ x: 6, y: 1.8, r: 3 }],
       props: [
@@ -353,6 +373,8 @@
       spots: { farida: { afternoon: [5, 4, 'north'], _: [9, 4, 'east'] } },
       windows: [{ r: [214, 0, 44, 52] }],
       lights: [{ x: 5, y: 2.6, r: 3 }],
+      // The pile of ledgers on the floor hides the legs of whoever stands behind it.
+      front: [[86, 233, 75, 52, 7, [[86, 248], [92, 238], [108, 233], [118, 238], [128, 248], [132, 240], [146, 240], [152, 248], [161, 250], [161, 285], [86, 285]]]],
       props: [
         { x: 5, y: 3, t: () => ['The bank\'s ledger. Every line has two entries, one on each side. Madame Farida checks they balance before she lets herself blink.'] },
         { x: 7, y: 3, t: () => ['Brass scales, perfectly level. A sign says IF THESE TIP, NOBODY LEAVES. Each pan holds exactly one shell.'] },
@@ -411,6 +433,8 @@
       spots: { minh: { morning: [4, 4, 'west'], _: [7, 4, 'north'] } },
       windows: [{ r: [174, 36, 50, 40] }],
       lights: [{ x: 5.2, y: 2.6, r: 2.4 }, { x: 7.2, y: 1.4, r: 2.4 }, { x: 0.6, y: 4.3, r: 2.4 }, { x: 11.4, y: 3.8, r: 2.4 }, { x: 1.8, y: 8.2, r: 2.4 }],
+      // The chair at the map table hides the legs of whoever stands behind it.
+      front: [[112, 142, 38, 62, 4]],
       props: [
         { x: 3, y: 4, t: () => ['A map of the Isles, half drawn. Every bridge you have built is already on it. So are a few you haven\'t built yet.'] },
         { x: 7, y: 3, t: () => ['A brass telescope pointed at the lighthouse. Through it: a lit window, and a hand writing a note. Then nothing.'] },
@@ -449,6 +473,8 @@
       spots: { haeun: { afternoon: [4, 4, 'east'], _: [8, 4, 'east'] } },
       windows: [{ r: [242, 20, 48, 64] }],
       lights: [{ x: 9.6, y: 1.4, r: 2.6 }, { x: 1.2, y: 5.4, r: 2.6 }],
+      // The front desk, and the papers on it, hide the legs of whoever stands behind it.
+      front: [[230, 202, 115, 86, 6, [[230, 215], [247, 215], [247, 202], [296, 202], [296, 215], [345, 215], [345, 288], [230, 288]]]],
       props: [
         { x: 6, y: 4, t: () => ['Mayor Ha-eun\'s desk. A red stamp, a stack of decrees, and a letter to West Twin that begins "As I said".'] },
         { x: 9, y: 4, t: () => ['A tin-can telephone. Its string runs out of the window and across the water to West Twin. The can is still warm.'] },
@@ -464,6 +490,8 @@
       enter: [6, 7, 'north'],
       windows: [{ c: [104, 86, 20] }],
       lights: [{ x: 4.3, y: 2, r: 2.6 }, { x: 9.3, y: 3.2, r: 2.6 }, { x: 2.8, y: 5.8, r: 2.4 }],
+      // The keeper's little table hides the legs of whoever stands behind it.
+      front: [[77, 140, 45, 80, 4]],
       props: [
         { x: 5, y: 2, t: () => ['A coat on the stand, still damp with sea spray. The Keeper was here a moment ago. The Keeper is always here a moment ago.'] },
         { x: 4, y: 3, t: () => ['A lamp, trimmed and lit. A note is tied to it: "Wick changed. — K."'] },
@@ -507,6 +535,8 @@
       spots: { aigerim: [9, 5, 'south'] },
       windows: [{ r: [172, 36, 58, 44] }],
       lights: [{ x: 3.8, y: 6.6, r: 3 }, { x: 6.2, y: 2.2, r: 2.6 }],
+      // The counter, the bucket and the display case hide the legs of whoever stands behind them.
+      front: [[8, 188, 140, 79, 6, [[8, 205], [100, 205], [100, 188], [134, 188], [134, 205], [146, 205], [148, 267], [8, 267]]], [237, 232, 33, 42, 7], [274, 216, 83, 60, 6]],
       props: [
         { x: 3, y: 3, t: () => ['Card boxes in neat rows, every one dated. Aigerim knows the day each card came in, and what you were doing that day.'] },
         { x: 5, y: 3, t: () => ['A basket of rolled-up posters. Each says WANTED: ONE HERO. The hero is you. The reward is "a chat".'] },
@@ -822,9 +852,17 @@
     r.props.forEach((p, i) => sc.addActor('prop' + i, { x: p.x, y: p.y, draw() {}, prop: p }));
     // Furniture people stand behind: that part of the picture again, drawn with the row it stands on, so anyone
     // further back is hidden behind it and anyone in front is drawn over it.
-    (r.front || []).forEach(([x, y, w, h, row], i) => sc.addActor('front' + i, { x: 0, y: row, solid: false, talk: false, draw(ctx, fx, fy, ts) {
+    (r.front || []).forEach(([x, y, w, h, row, shape], i) => sc.addActor('front' + i, { x: 0, y: row, solid: false, talk: false, draw(ctx, fx, fy, ts) {
       const im = pic(key), k = ts / 32;
-      if (ok(im)) ctx.drawImage(im, x, y, w, h, x * k, y * k, w * k, h * k);
+      if (!ok(im)) return;
+      ctx.save();
+      if (shape) {
+        ctx.beginPath();
+        (Array.isArray(shape[0][0]) ? shape : [shape]).forEach(o => { o.forEach(([px, py], j) => ctx[j ? 'lineTo' : 'moveTo'](px * k, py * k)); ctx.closePath(); });
+        ctx.clip('evenodd');
+      }
+      ctx.drawImage(im, x, y, w, h, x * k, y * k, w * k, h * k);
+      ctx.restore();
     } }));
   }
   // Open floor to stand on in a room with no spots of its own, from the back wall forward, clear of the way in and of
