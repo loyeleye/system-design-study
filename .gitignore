@@ -7,3 +7,4 @@ game/assets/model/*.b64.txt
 # Cloudflare Worker (cloudflare/README.md)
 cloudflare/node_modules/
 cloudflare/.wrangler/
+cloudflare/dist-anon/
