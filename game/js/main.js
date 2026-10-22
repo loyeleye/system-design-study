@@ -67,8 +67,7 @@
       <button class="opt" id="m-name">Change name</button>
       ${S.cloud && S.cloud.where === 'code' ? '<button class="opt" id="m-code">Play on another device: your save code</button>' : ''}
       <button class="opt" id="m-credits">Credits</button>
-      <button class="opt" id="m-reset">Erase save and start over</button>
-      <button class="opt" id="m-debug">Debug start (testing): <b>${SD.debug ? 'On' : 'Off'}</b></button></div>
+      <button class="opt" id="m-reset">Erase save and start over</button></div>
       <p class="muted small">Progress saves automatically${!S.cloud ? ' in this browser' : S.cloud.where === 'claude' ? ' to your claude.ai account, so it follows you across devices' : ', and your save code brings it to another device'}.</p>`, { title: 'MENU' });
     b.querySelector('#m-help').onclick = help;
     // Bru's board of who is where right now (js/folk.js).
@@ -85,11 +84,6 @@
     };
     // Typed answers (js/explain-data.js, checked on-device by js/embed.js): sometimes explain a concept instead of picking.
     b.querySelector('#m-typed').onclick = () => { if (!S.save) return; S.save.typed = S.save.typed === false; S.persist(); menu(); };
-    // Testing only (js/debug.js; remove with it before release): a separate save that starts on any chapter or rank.
-    b.querySelector('#m-debug').onclick = () => {
-      try { if (SD.debug) localStorage.removeItem('last-uptime-debug'); else localStorage.setItem('last-uptime-debug', '1'); } catch (e) { /* ignore */ }
-      location.reload();
-    };
     b.querySelector('#m-name').onclick = () => askName(() => { U.closePanel(); M.hud(); });
     const mc = b.querySelector('#m-code'); if (mc) mc.onclick = saveCode;
     b.querySelector('#m-reset').onclick = () => {
