@@ -320,6 +320,7 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 | --- | --- | --- | --- |
 | `forge`, school (class training) | `cafe:in` helping Wen, or the `treehouse` (alternating loops) | `treehouse` ladder, walkie-talkie club | `treehouse`, asleep |
 
+- **Variant:** until quest 2 ("One Anvil, One Man") is done her class hasn't joined the Forge yet, so her mornings alternate between running a school of her own by the `treehouse` (three stuffed toys and a stick) and hanging about the `forge` queue hoping for a job ("I have a BUCKET."). The forge yard anvil is hers from quest 2 on.
 - **Variant:** after chapter 7, on alternating afternoons she's at the North Road gate, watching for her mum.
 - **Board:** "MIO: {spot}. Reports her own location as 'adventure'."
 
@@ -347,6 +348,7 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 | --- | --- | --- | --- |
 | `forge`, teaching Mio's class | `forge`, apprentices at the anvils | `forge` door, writing the day's post-mortem | `row:ayo`, but the forge stays lit |
 
+- **Variant:** until quest 2 is done there's no class to teach: his morning is alone at the one anvil.
 - **Variant:** after chapter 7, his afternoon is at the North Road market, selling.
 - **Board:** "AYO: {spot}. On-prem. Does not use the board, but tells Bru in person."
 

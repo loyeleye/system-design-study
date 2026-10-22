@@ -92,7 +92,11 @@
     },
     mio: {
       act: 'play',
-      morning: ['yard-mio', "At school: Ayo's class hammers in the forge yard", "Shh! I'm at SCHOOL. Ayo says today we learn to hit things on purpose.", 'smith'],
+      // Her anvil in the forge yard is hers only once she and her class sign on at the Forge ("One Anvil, One Man").
+      // Until then she runs a school of her own by the treehouse, or hangs about the Forge's queue angling for work.
+      morning: c => c.done('forge') ? ['yard-mio', "At school: Ayo's class hammers in the forge yard", "Shh! I'm at SCHOOL. Ayo says today we learn to hit things on purpose.", 'smith']
+        : c.loop % 2 ? ['treehouse', 'Running a school of her own by the treehouse. The pupils are three stuffed toys and a stick', "Class is in SESSION. Today is spelling. Tomorrow is hitting things. I don't have a hitting teacher yet.", 'play']
+        : ['forge', "Watching the queue outside the Forge, hoping somebody gives her a job", "That line is SO long. Ayo needs help. I could help. I have a BUCKET.", 'watch'],
       afternoon: c => c.f.ch7 && c.loop % 2 === 0 ? ['north-gate', 'Watching the North Road for her mum', "Mum carries letters up and down that road. If I watch hard enough, she'll come round the corner.", 'watch']
         : c.loop % 2 ? ['cafe:in', 'Helping Wen in the café']
         : [['treehouse', 'west-bridge', 'plaza', 'bench'], 'Running about town on an adventure', "I'm on a QUEST. It's secret. It's to find the best stick.", 'play'],
@@ -120,7 +124,7 @@
     ayo: {
       // His act by the Forge door, where quest business keeps him: no anvil there, so he writes up orders instead.
       act: 'write',
-      morning: ['yard', "Teaching Mio's class at the anvils", null, 'smith'],
+      morning: c => ['yard', c.done('forge') ? "Teaching Mio's class at the anvils" : 'Alone at the one anvil, while the line out front grows its own weather', null, 'smith'],
       afternoon: c => c.f.ch7 ? ['road', 'Selling at the North Road market'] : ['yard', 'Hammering out the day\'s orders in the forge yard', null, 'smith'],
       evening: ['stand', "Writing the day's post-mortem", null, 'write'],
       night: ['row:ayo', 'Asleep at home. The Forge stays lit.'],
