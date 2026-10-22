@@ -1,6 +1,11 @@
-// Debug start: for testing and reviewing only. Remove this file and its script tag in index.html before release.
-// Turn it on with ?debug in the URL (or #debug, window.SD_DEBUG = true before this script, or Menu > Debug start). It keeps its own save
-// (localStorage 'last-uptime-save-debug', never the cloud save), so testing never touches a real game.
+// Debug start: for testing and reviewing. It keeps its own save (localStorage 'last-uptime-save-debug', never the cloud
+// save), so testing never touches a real game.
+//
+// On a public host it takes a code: ?debug=<code> in the URL (or #debug=<code>). A right code is remembered in this
+// browser, so later links there can say just ?debug; ?debug=off (or the panel's off button) forgets it. A link without
+// debug always plays the real save. On localhost and file:// a bare ?debug is enough (the
+// test scripts in tools/ use that), and so is window.SD_DEBUG = true before this script. The code only keeps the
+// tools out of casual reach: anyone reading this file can get past it.
 //
 // URL options, all optional (each load with `ch` builds a fresh debug save):
 //   ch=1..10      the chapter you are on: every chapter before it counts as cleared
@@ -14,13 +19,27 @@
 //   weather=clear|drizzle|rain|storm|wind|gusty|fog|mist|snow   force the weather on every map (js/weather.js)
 // Examples: index.html?debug&ch=9&rank=A&at=camp   index.html?debug&ch=10&at=run&floor=4
 // While on, a 🐞 button (bottom left) opens the debug tools: win the current fight, add shards, start a group fight or replay
-// the intro; set the time and weather in place; or jump to a chapter with the options above (and copy that setup as a link).
+// the intro; set the time and weather in place; jump to a chapter with the options above (and copy that setup as a link);
+// or turn debug start off.
 (function () {
-  // The menu's "Debug start" switch sets the localStorage key too, for pages that can't take a URL (the published game).
-  let stored = false; try { stored = localStorage.getItem('last-uptime-debug') === '1'; } catch (e) { /* ignore */ }
-  const on = /[?&]debug\b/.test(location.search) || /debug/.test(location.hash) || !!window.SD_DEBUG || stored;
+  const ASK = 'last-uptime-debug';
+  const seal = c => { let x = 0x811c9dc5; for (const ch of 'last-uptime/' + c) { x ^= ch.charCodeAt(0); x = Math.imul(x, 0x01000193) >>> 0; } return x.toString(36); };
+  const fits = c => /^\d{4}$/.test(c || '') && seal(c) === '4rrmmx';
+  const local = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  // What the link asks for: null (no debug), '' (a bare ?debug), 'off' or a code.
+  const m = /[?&#]debug(?:=([^&#]*))?(?=[&#]|$)/.exec(location.search + location.hash);
+  let ask = null; try { ask = m ? decodeURIComponent(m[1] || '') : null; } catch (e) { ask = ''; }
+  let kept = null; try { kept = localStorage.getItem(ASK); } catch (e) { /* ignore */ }
+  if (ask === 'off') { try { localStorage.removeItem(ASK); } catch (e) { /* ignore */ } return; }
+  if (fits(ask) && ask !== kept) { try { localStorage.setItem(ASK, ask); } catch (e) { /* ignore */ } kept = ask; }
+  const on = !!window.SD_DEBUG || (ask != null && (local || fits(kept)));
   if (!on) return;
   const D = SD.debug = {};
+  // Turn it off in this browser and go back to the real save.
+  D.off = () => {
+    try { localStorage.removeItem(ASK); } catch (e) { /* ignore */ }
+    location.replace(location.href.split('?')[0].split('#')[0]);
+  };
   const S = SD.state, U = SD.ui;
   const KEY = 'last-uptime-save-debug';
   const P = new URLSearchParams(location.search);
@@ -186,7 +205,8 @@
         <p class="dbg-warn">This replaces the current debug save.</p>
         <div class="row"><button type="submit" class="primary" id="dbg-go">Build save and go</button></div>
         <div class="dbg-link"><span class="muted">Link:</span><code id="dbg-url"></code><button type="button" class="ghost" id="dbg-copy">Copy</button></div>
-      </fieldset></form></div>`, { title: 'DEBUG TOOLS', cls: 'dbg wide' });
+      </fieldset></form></div>
+      <div class="row"><button type="button" class="ghost" id="dbg-off">Turn debug start off</button></div>`, { title: 'DEBUG TOOLS', cls: 'dbg wide' });
     const $ = id => b.querySelector('#dbg-' + id);
     const v = k => $(k).value;
     const now = () => {
@@ -201,7 +221,7 @@
       if (!$('floor').disabled && v('floor') !== '1') q.set('floor', v('floor'));
       if (v('shards') !== '') q.set('shards', v('shards'));
       if ($('q').checked) q.set('quests', 'done');
-      return '?' + q.toString().replace('debug=&', 'debug&');
+      return '?' + q.toString().replace('debug=&', fits(kept) && !local ? 'debug=' + kept + '&' : 'debug&');
     };
     // Rank and start options depend on the chapter: its usual rank, and whether the North Road is open (chapter 7 on).
     const sync = () => {
@@ -244,6 +264,7 @@
       SD.main.show('title');
       SD.main.coldOpen();
     };
+    $('off').onclick = D.off;
     $('grp').onclick = () => { if (fight()) return U.system('DEBUG', 'Finish this fight first.'); D.groupFight(3); };
     $('sky').onclick = () => {
       D.setTime(v('time')); D.setWeather(v('wx'));
