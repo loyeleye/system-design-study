@@ -350,9 +350,9 @@
       map: ['############', '############', '############', '############', '####...###.#',
         '####.#####.#', '##...###...#', '####....##.#', '#####DD....#'],
       enter: [5, 7, 'north'],
-      // Class round the Why Book: Apai reads out today's question, and the three of them want to know why. One of them
-      // waits between the desks, clear of the big table's edge.
-      spots: { saule: [6, 4, 'south'], kid1: [3, 6, 'east'], kid2: [7, 7, 'north'], kid3: [8, 6, 'west'] },
+      // Class round the Why Book: Apai reads out today's question, and the three of them want to know why. Tunde and
+      // Maisie wait between the desks, clear of the big table's edges.
+      spots: { saule: [6, 4, 'south'], kid1: [3, 6, 'east'], kid2: [9, 6, 'west'], kid3: [8, 6, 'west'] },
       windows: [{ r: [162, 26, 76, 60] }],
       lights: [{ x: 6, y: 1.8, r: 3 }],
       props: [
