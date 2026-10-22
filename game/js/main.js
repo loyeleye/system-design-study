@@ -9,8 +9,59 @@
     if (screen === 'hub') { SD.hub.start(); M.hud(); if (!keepMusic) AU.music('town'); } else SD.hub.stop();
   };
 
-  const sndIcon = () => AU.muted() ? '🔇' : '🔊';
-  function toggleSound(btn) { AU.toggleAll(); btn.textContent = sndIcon(); }
+  // The speaker button (title and HUD) opens a small sound menu: music and sound effects switch on and off separately,
+  // with one button for all. The icon says what is on: 🔊 both, 🔉 one, 🔇 neither.
+  const sndIcon = () => AU.muted() ? '🔇' : AU.prefs.music && AU.prefs.sfx ? '🔊' : '🔉';
+  const sndLabel = () => 'Sound: ' + (AU.muted() ? 'all muted' : AU.prefs.music && AU.prefs.sfx ? 'on' : AU.prefs.music ? 'sound effects muted' : 'music muted');
+  const sndSync = () => ['#t-snd', '#hud-snd'].forEach(id => { const b = $(id); if (b) { b.textContent = sndIcon(); b.setAttribute('aria-label', sndLabel()); b.title = sndLabel(); } });
+  let sndPop = null;
+  function sndClose(refocus) {
+    if (!sndPop) return;
+    const { el, btn, off } = sndPop; sndPop = null;
+    el.remove(); off(); btn.setAttribute('aria-expanded', 'false');
+    if (refocus) btn.focus();
+  }
+  function soundMenu(btn) {
+    if (sndPop) { const same = sndPop.btn === btn; sndClose(true); if (same) return; }
+    const el = document.createElement('div');
+    el.id = 'snd-pop'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Sound');
+    const draw = () => {
+      const p = AU.prefs, sw = (k, label) => `<button type="button" class="snd-sw" role="switch" data-k="${k}" aria-checked="${p[k]}">
+        <span>${label}</span><i aria-hidden="true"></i></button>`;
+      el.innerHTML = sw('music', 'Music') + sw('sfx', 'Sound effects') +
+        `<button type="button" class="snd-all" data-k="all">${AU.muted() ? '🔊 Unmute all' : '🔇 Mute all'}</button>`;
+    };
+    draw();
+    el.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const k = b.dataset.k;
+      if (k === 'all') AU.toggleAll(); else AU.set(k, !AU.prefs[k]);
+      if (AU.prefs.sfx) AU.sfx('ok');
+      draw(); sndSync();
+      const again = el.querySelector(`[data-k="${k}"]`); if (again) again.focus();
+    });
+    document.body.appendChild(el);
+    // Below the button, right edges lined up, kept on screen.
+    const r = btn.getBoundingClientRect(), w = el.offsetWidth;
+    el.style.top = (r.bottom + 8) + 'px';
+    el.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + 'px';
+    const outside = e => { if (!el.contains(e.target) && !btn.contains(e.target)) sndClose(false); };
+    const key = e => {
+      if (e.key === 'Escape') { e.preventDefault(); sndClose(true); return; }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      const items = [...el.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+      e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+    };
+    const away = () => sndClose(false);
+    document.addEventListener('pointerdown', outside, true);
+    el.addEventListener('keydown', key);
+    el.addEventListener('focusout', e => { if (!el.contains(e.relatedTarget) && e.relatedTarget !== btn && e.relatedTarget) sndClose(false); });
+    window.addEventListener('resize', away);
+    sndPop = { el, btn, off: () => { document.removeEventListener('pointerdown', outside, true); window.removeEventListener('resize', away); } };
+    btn.setAttribute('aria-expanded', 'true');
+    el.querySelector('button').focus();
+  }
+  const sndButton = btn => { btn.setAttribute('aria-haspopup', 'dialog'); btn.setAttribute('aria-expanded', 'false'); btn.onclick = () => soundMenu(btn); };
 
   M.hud = function () {
     const sv = S.save;
@@ -27,12 +78,12 @@
       <button class="ghost" id="hud-quests">Quests${newQ ? ` <b class="badge">${newQ}</b>` : ''}</button>
       ${SD.journal ? SD.journal.button() : ''}
       <button class="ghost" id="hud-codex">Cheat sheet</button>
-      <button class="ghost" id="hud-snd" aria-label="Sound on or off">${sndIcon()}</button>
+      <button class="ghost" id="hud-snd" aria-label="${sndLabel()}" title="${sndLabel()}">${sndIcon()}</button>
       <button class="ghost" id="hud-menu" aria-label="Menu (M)" title="Menu (M)">☰</button>`;
     $('#hud-codex').onclick = () => U.codex();
     $('#hud-quests').onclick = () => SD.quests.log();
     SD.hub.npcMarks = marks;
-    $('#hud-snd').onclick = e => toggleSound(e.currentTarget);
+    sndClose(false); sndButton($('#hud-snd'));
     $('#hud-menu').onclick = menu;
     if (SD.journal) SD.journal.wire($('#hud'));
     SD.hub.markers = {
@@ -153,8 +204,7 @@
   let started = false;
   M.title = function () {
     M.show('title');
-    $('#t-snd').textContent = sndIcon();
-    $('#t-snd').onclick = e => toggleSound(e.currentTarget);
+    sndClose(false); sndButton($('#t-snd')); sndSync();
     if (!started) {
       // A press-start screen is also what lets the browser play music.
       $('#title-actions').innerHTML = '<button class="primary press" id="t-start">PRESS START</button>';
