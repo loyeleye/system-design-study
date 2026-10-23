@@ -127,7 +127,7 @@
         const ready = q.type === 'mc' ? pick != null : q.type === 'num' ? true : q.type === 'order' ? order.length === q.items.length : q.type === 'explain' ? words(typed) >= 3 : multi.size > 0;
         h += `<div class="conf"><span class="muted small">Commit your answer. How sure are you?</span><div class="conf-b">
           ${['Guess', 'Think so', 'Sure'].map((t, i) => `<button data-c="${i}" ${ready ? '' : 'disabled'}>${t}${T ? `<small class="stake"><span class="up">${sgn(T[i][0])}</span> / <span class="dn">${sgn(T[i][1])}</span></small>` : ''}</button>`).join('')}</div>
-          ${T ? `<p class="muted small stake-help">🎯 Your tally is <b>${tal0}</b>. Right / wrong moves it by the numbers on each button. Say how sure you really are.${opts.stakeNote ? ' ' + U.esc(opts.stakeNote) : ''}</p>` : ''}</div>`;
+          ${T ? `<p class="muted small stake-help">🎯 Your On-call Cred is <b>${tal0}</b>. Right / wrong moves it by the numbers on each button. Say how sure you really are.${opts.stakeNote ? ' ' + U.esc(opts.stakeNote) : ''}</p>` : ''}</div>`;
         const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
         b.querySelectorAll('[data-o]').forEach(el => el.onclick = () => { pick = +el.dataset.o; render(); });
         b.querySelectorAll('[data-ord]').forEach(el => el.onclick = () => { order.push(+el.dataset.ord); render(); });
@@ -259,7 +259,7 @@
         if (q.type === 'explain') h += `<p class="muted small">You covered ${score} of ${q.points.length} points.</p>`;
         if (T) {
           const t1 = SD.state.tally(), d = t1 - tal0, hl = opts.heal ? opts.heal(ok, t1) : '';
-          h += `<div class="tally-delta ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}"><span>🎯 Tally ${tal0} → <b>${t1}</b></span><span class="tally-d">${sgn(d)}</span><span class="muted small">${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}, ${ok ? 'right' : 'wrong'}: ${sgn((T[conf] || T[0])[ok ? 0 : 1])}${d !== (T[conf] || T[0])[ok ? 0 : 1] ? ` (the tally keeps your last 20 answers, at most ${SD.state.TALLY_MAX})` : ''}</span>${hl ? `<span class="tally-heal">${U.esc(hl)}</span>` : ''}</div>`;
+          h += `<div class="tally-delta ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}"><span>🎯 Cred ${tal0} → <b>${t1}</b></span><span class="tally-d">${sgn(d)}</span><span class="muted small">${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}, ${ok ? 'right' : 'wrong'}: ${sgn((T[conf] || T[0])[ok ? 0 : 1])}${d !== (T[conf] || T[0])[ok ? 0 : 1] ? ` (Cred counts your last 20 answers, at most ${SD.state.TALLY_MAX})` : ''}</span>${hl ? `<span class="tally-heal">${U.esc(hl)}</span>` : ''}</div>`;
         }
         const showAns = q.type !== 'explain' && (!ok || conf === 0) && !q.tiers;
         h += `<div class="why">${showAns ? `<p class="why-a"><span class="q-ctx">Answer</span><b>${U.esc(right)}</b></p>` : ''}<p>${U.esc(q.why || '')}</p></div>`;

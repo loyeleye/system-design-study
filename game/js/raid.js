@@ -1440,7 +1440,7 @@
         let h = d.ok ? (r.lo[peer] ? LOW_HEAL : Math.min(HEAL, p.tal | 0)) : 0;
         h = Math.max(0, Math.min(h, HEAL - (r.hl | 0), SLA - G.sla));
         r.hl = (r.hl | 0) + h; G.sla += h;
-        G.note = `${p.n}: ${d.ok ? 'right' : d.late ? 'time\'s up' : 'not quite'}${h ? `, and the team heals ${h} SLA` : ''}. Tally ${p.tal | 0}.`;
+        G.note = `${p.n}: ${d.ok ? 'right' : d.late ? 'time\'s up' : 'not quite'}${h ? `, and the team heals ${h} SLA` : ''}. On-call Cred ${p.tal | 0}.`;
         push(); check(); return;
       }
       if (r.t === 'reward' && d.k === 'take' && !(r.todo[peer] || []).length) { if (Number.isInteger(d.i) && p.o[d.i]) p.deck.push(p.o[d.i]); p.o = []; return fin(); }
@@ -1994,7 +1994,7 @@
         const title = r.t === 'board' ? 'WHITEBOARD' : r.t === 'reward' ? (second ? 'DEBRIEF · DUE REVIEW' : 'DEBRIEF') : String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase();
         // A debrief says what the answer heals (the host caps it by what the team is missing and what's healed this fight).
         const heal = r.t === 'reward' ? (ok, t) => (!ok ? 'No heal this time.' : r.lo && r.lo[me.peer] ? `The team heals ${LOW_HEAL} SLA.` : `The team heals up to ${healOf(t)} SLA.`) : null;
-        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new tally, up to ${HEAL} SLA.`) : '' });
+        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new Cred, up to ${HEAL} SLA.`) : '' });
         send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout, conf: res.conf, tal: myTally() });
       });
     }
@@ -2042,9 +2042,9 @@
     function tallyChip(t) {
       const n = Math.max(-HEAL, Math.min(HEAL, t)), pips = Array.from({ length: HEAL }, (_, i) => `<i class="${n >= 0 ? (i < n ? 'on' : '') : (i < -n ? 'neg' : '')}"></i>`).join('');
       const what = t < LOW ? `Debrief +${LOW_HEAL} ×2` : `Debrief heals <b class="heal">+${healOf(t)}</b>`;
-      return `<button class="hud-chip rd-tally${t < LOW ? ' low' : ''}" type="button" id="rd-tally" aria-expanded="${ui.tally}" aria-label="Confidence tally ${t}. ${t < LOW ? `Under ${LOW}: two debrief questions, ${LOW_HEAL} SLA each` : `A right debrief answer heals ${healOf(t)} SLA`}. Tap for how it works.">🎯 ${t} <span class="pips" aria-hidden="true">${pips}</span> ${what}</button>`;
+      return `<button class="hud-chip rd-tally${t < LOW ? ' low' : ''}" type="button" id="rd-tally" aria-expanded="${ui.tally}" aria-label="On-call Cred ${t}. ${t < LOW ? `Under ${LOW}: two debrief questions, ${LOW_HEAL} SLA each` : `A right debrief answer heals ${healOf(t)} SLA`}. Tap for how it works.">🎯 Cred ${t} <span class="pips" aria-hidden="true">${pips}</span> ${what}</button>`;
     }
-    const tallyHelp = t => `Your confidence tally scores your last 20 answers anywhere in the game: Guess +1 right, 0 wrong; Think so +2, −1; Sure +3, −5; never above ${HEAL}. After each won fight a right debrief answer heals the team by it${t < LOW ? `. Under ${LOW} you get two easier-paying questions instead, ${LOW_HEAL} SLA each, so a few honest answers will lift you` : ''}.`;
+    const tallyHelp = t => `On-call Cred is how much the team can trust your calls: it scores your last 20 answers anywhere in the game by how sure you said you were: Guess +1 right, 0 wrong; Think so +2, −1; Sure +3, −5; never above ${HEAL}. After each won fight a right debrief answer heals the team by it${t < LOW ? `. Under ${LOW} you get two easier-paying questions instead, ${LOW_HEAL} SLA each, so a few honest answers will lift you` : ''}.`;
     function paint(html) {
       const h = root.querySelector('.hand'), sx = h ? h.scrollLeft : 0, sc = root.closest('.win-b'), sy = sc ? sc.scrollTop : 0;
       root.innerHTML = `<div class="rd" data-ph="${esc(G.ph)}">${html}<div class="row" style="justify-content:flex-end"><button class="ghost" type="button" id="rd-leave">Leave the expedition</button></div></div>`;
@@ -2250,7 +2250,7 @@
       const gain = mine ? +r.gain[me.peer] || 0 : 0, todo = (mine && r.todo[me.peer]) || [];
       const lo = !!(r.lo && r.lo[me.peer]), n = todo.length;
       // The debrief first: one question (two under a tally of LOW), then the card.
-      const brief = `<p>Debrief: ${lo ? `your tally is under ${LOW}, so ${n > 1 ? 'two questions' : 'one more question'}, and each right answer heals the team ${LOW_HEAL}` : `a question on ${esc((SD.concepts[r.c] || {}).name || 'what you just fought')}. Right, and the team heals your tally, up to ${HEAL}`}. Guess, Think so and Sure move your tally: +1, +2, +3 right, and 0, −1, −5 wrong.</p>
+      const brief = `<p>Debrief: ${lo ? `your On-call Cred is under ${LOW}, so ${n > 1 ? 'two questions' : 'one more question'}, and each right answer heals the team ${LOW_HEAL}` : `a question on ${esc((SD.concepts[r.c] || {}).name || 'what you just fought')}. Right, and the team heals your Cred, up to ${HEAL}`}. Guess, Think so and Sure move your Cred: +1, +2, +3 right, and 0, −1, −5 wrong.</p>
           <button class="primary" type="button" id="rd-ask">Answer the debrief</button>`;
       paint(`<div class="mi-card rd-room">${hud()}${head(r.tier === 'boss' ? 'Floor boss down!' : (e.short || e.name || 'Incident') + ' resolved')}
         ${mine ? `<div class="loot"><span>+${gain} bits</span></div>` : ''}
