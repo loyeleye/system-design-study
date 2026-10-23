@@ -316,6 +316,14 @@
 @media (prefers-reduced-motion: reduce) { .rd-fighter .rd-spr { animation: none !important; } }
 .rd-end h2 { font-family: var(--f-head); margin: 4px 0; }
 .rd .run-hud { padding-top: 0; }
+.rd-tally { display: inline-flex; align-items: center; gap: 6px; }
+.rd-tally .pips { display: inline-flex; gap: 2px; }
+.rd-tally .pips i { width: 5px; height: 12px; border-radius: 2px; background: #e7e1d3; border: 1px solid rgba(43,35,64,.35); }
+.rd-tally .pips i.on { background: var(--sun, #ffc93c); border-color: var(--ink, #2b2340); }
+.rd-tally .pips i.neg { background: var(--red, #ff5a5a); border-color: var(--ink, #2b2340); }
+.rd-tally.low { background: #ffe9e9; }
+.rd-tally .heal { font-family: var(--f-head); }
+.rd-tally-help { margin: 0 0 10px; padding: 8px 12px; font-size: 13px; color: var(--ink, #2b2340); background: #fff; border: 2px solid var(--ink, #2b2340); border-radius: 12px; }
 .rd-votes { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 96px; }
 .rd-votes i { font: 700 10px var(--f-body); font-style: normal; background: var(--blue, #3b8bff); color: #fff; border-radius: 6px; padding: 0 5px; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
 .rd-votes i.me { background: var(--sun, #ffd23f); color: var(--ink); }
@@ -1984,7 +1992,9 @@
         if (!q) { send({ k: 'ans', ok: false }); return; }
         const typed = q.type === 'explain';
         const title = r.t === 'board' ? 'WHITEBOARD' : r.t === 'reward' ? (second ? 'DEBRIEF · DUE REVIEW' : 'DEBRIEF') : String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase();
-        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name });
+        // A debrief says what the answer heals (the host caps it by what the team is missing and what's healed this fight).
+        const heal = r.t === 'reward' ? (ok, t) => (!ok ? 'No heal this time.' : r.lo && r.lo[me.peer] ? `The team heals ${LOW_HEAL} SLA.` : `The team heals up to ${healOf(t)} SLA.`) : null;
+        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new tally, up to ${HEAL} SLA.`) : '' });
         send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout, conf: res.conf, tal: myTally() });
       });
     }
@@ -2005,7 +2015,7 @@
           if (!q) { send({ k: 'qa', id: e.k, ok: false, band: 'slow' }); return; }
           ASKED.add(q.id);
           const typed = q.type === 'explain';
-          const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: mine.c || undefined, title: 'EXPEDITION · ' + String(d.name).toUpperCase(), context: `${(SD.concepts[q.c] || {}).name || 'Question'}${owner && e.p !== me.peer ? ` · for ${owner.n}'s card` : ''}` });
+          const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: mine.c || undefined, title: 'EXPEDITION · ' + String(d.name).toUpperCase(), context: `${(SD.concepts[q.c] || {}).name || 'Question'}${owner && e.p !== me.peer ? ` · for ${owner.n}'s card` : ''}`, tally: true });
           send({ k: 'qa', id: e.k, ok: !!res.ok, band: bandOf(res.ms || 0, typed), sure: res.conf === 2, pts: typed ? res.score | 0 : 0, late: !!res.timeout, conf: res.conf, tal: myTally() });
         });
       });
@@ -2025,7 +2035,16 @@
 
     // ---------- What everyone sees ----------
     // Local choices that aren't the table's: the deck viewer, and which card a removal or refactor is picking.
-    const ui = { deck: false, pick: null, tg: null };
+    const ui = { deck: false, pick: null, tg: null, tally: false };
+    // The confidence tally on the HUD (Ladi, Oct 23): what a right debrief answer heals now, a pip per point up to HEAL
+    // (red pips below 0), and a tap for how it works.
+    const healOf = t => (t < LOW ? LOW_HEAL : Math.min(HEAL, t));
+    function tallyChip(t) {
+      const n = Math.max(-HEAL, Math.min(HEAL, t)), pips = Array.from({ length: HEAL }, (_, i) => `<i class="${n >= 0 ? (i < n ? 'on' : '') : (i < -n ? 'neg' : '')}"></i>`).join('');
+      const what = t < LOW ? `Debrief +${LOW_HEAL} ×2` : `Debrief heals <b class="heal">+${healOf(t)}</b>`;
+      return `<button class="hud-chip rd-tally${t < LOW ? ' low' : ''}" type="button" id="rd-tally" aria-expanded="${ui.tally}" aria-label="Confidence tally ${t}. ${t < LOW ? `Under ${LOW}: two debrief questions, ${LOW_HEAL} SLA each` : `A right debrief answer heals ${healOf(t)} SLA`}. Tap for how it works.">🎯 ${t} <span class="pips" aria-hidden="true">${pips}</span> ${what}</button>`;
+    }
+    const tallyHelp = t => `Your confidence tally scores your last 20 answers anywhere in the game: Guess +1 right, 0 wrong; Think so +2, −1; Sure +3, −5; never above ${HEAL}. After each won fight a right debrief answer heals the team by it${t < LOW ? `. Under ${LOW} you get two easier-paying questions instead, ${LOW_HEAL} SLA each, so a few honest answers will lift you` : ''}.`;
     function paint(html) {
       const h = root.querySelector('.hand'), sx = h ? h.scrollLeft : 0, sc = root.closest('.win-b'), sy = sc ? sc.scrollTop : 0;
       root.innerHTML = `<div class="rd" data-ph="${esc(G.ph)}">${html}<div class="row" style="justify-content:flex-end"><button class="ghost" type="button" id="rd-leave">Leave the expedition</button></div></div>`;
@@ -2034,6 +2053,7 @@
       if (sc) sc.scrollTop = sy;
       root.querySelectorAll('[data-send]').forEach(b => { b.onclick = () => { ui.pick = null; send(JSON.parse(b.dataset.send)); }; });
       const db = root.querySelector('#rd-deck'); if (db) db.onclick = () => { ui.deck = !ui.deck; render(); };
+      const tb = root.querySelector('#rd-tally'); if (tb) tb.onclick = () => { ui.tally = !ui.tally; render(); };
     }
     const head = t => `<span class="mi-tag">Expedition Raid · party ${esc(code.toUpperCase())}</span><h2 style="margin:2px 0 6px">${esc(t)}</h2>`;
     const sendAttr = d => `data-send="${esc(JSON.stringify(d))}"`;
@@ -2042,8 +2062,9 @@
       return `<div class="run-hud"><div class="hud-sla"><span>Team SLA</span><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}/${SLA}</b></div>
         <span class="hud-chip">Floor <b>${G.fl + 1}/${fs.length}</b></span>${mine ? `<span class="hud-chip">Bits <b>${mine.bits}</b></span>` : ''}
         <span class="hud-chip" title="Seymour's Tape: if the team goes down, the floor starts again">📼 Tapes <b>${G.tapes}</b></span>
-        ${mine ? `<span class="hud-chip" title="Your confidence tally: your last 20 answers, Guess +1/0, Think so +2/−1, Sure +3/−5, capped at 15. A debrief heals by it.">🎯 Tally <b>${mine.tal | 0}</b></span>` : ''}
+        ${mine ? tallyChip(mine.tal | 0) : ''}
         ${mine ? `<button class="hud-chip" type="button" id="rd-deck" aria-expanded="${ui.deck}">Deck (${mine.deck.length})</button>` : ''}</div>
+        ${ui.tally && mine ? `<p class="rd-tally-help">${tallyHelp(mine.tal | 0)}</p>` : ''}
         ${G.note ? `<p class="rd-note" role="status">${esc(G.note)}</p>` : ''}
         ${ui.deck && mine ? `<div class="cardgrid mini">${mine.deck.map(id => chtml(id)).join('')}</div>` : ''}`;
     }

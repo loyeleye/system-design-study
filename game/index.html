@@ -209,6 +209,15 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .conf-b { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .conf-b button { flex: 1 1 90px; background: #fff; }
 .conf-b button[data-c="2"]:not(:disabled) { background: var(--sun); }
+/* The confidence tally's stakes on each button, and its change after an answer (expeditions only, js/quiz.js). */
+.conf-b .stake { display: block; font: 700 11px var(--f-body); letter-spacing: .02em; opacity: .85; }
+.conf-b .stake .up { color: #17834f; } .conf-b .stake .dn { color: #c43a3a; }
+.stake-help { margin: 6px 0 0; }
+.tally-delta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 8px 0; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; font-weight: 700; }
+.tally-delta.up { background: #e6f8ee; } .tally-delta.dn { background: #ffe9e9; }
+.tally-delta .tally-d { font: 700 16px var(--f-head); }
+.tally-delta.up .tally-d { color: #17834f; } .tally-delta.dn .tally-d { color: #c43a3a; }
+.tally-delta .tally-heal { flex-basis: 100%; font-weight: 800; }
 .num { display: flex; align-items: center; gap: 10px; margin: 12px 0; flex-wrap: wrap; font-weight: 700; }
 .num input { flex: 1 1 140px; min-width: 0; background: #fff; border: 3px solid var(--ink); color: var(--ink); padding: 10px 12px; font: 600 18px var(--f-head); border-radius: 12px; }
 .order-done { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; margin: 10px 0; }
