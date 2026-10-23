@@ -13,6 +13,14 @@
 // Dying ends the expedition, unless the party bought Seymour's Tape at a café: then the floor starts again from the
 // snapshot taken on entering it (decks, SLA, bits, the same map), and one tape is used up.
 //
+// The debrief and the tally (Ladi, 2026-10-23, ported from Isekai'd Into the Cloud): a player's tally is the score of
+// the last 20 answers they committed anywhere in the game (SD.state.tally; CONF: Guess, Think so and Sure pay +1, +2,
+// +3 right and 0, -1, -5 wrong), capped at 15 as it goes. A bot keeps its own, for the expedition.
+// After every won fight, before the card pick, each player answers a debrief question on the incident they just
+// fought. With a tally of LOW or more it's one question, and a right answer heals the team by the new tally (up to
+// HEAL); under LOW it's two, the second on whatever review is due, and each right one heals LOW_HEAL. The team heals
+// at most HEAL a fight. Honest confidence pays: a Sure that's right heals the most, a Sure that's wrong costs the most.
+//
 // Its own small engine, separate from js/run.js: it reads the game's data (SD.cards, SD.enemies, SD.intentText,
 // SD.starterDeck) and draws with the game's styles (SD.ui.cardHtml, SD.art.enemy, the run map's classes), and it
 // never touches the save's run. One page is the authority (the host) and sends the whole expedition on `state` after
@@ -36,6 +44,13 @@
 //   SD.raid.cardChoices(n, ch, champ, tier, rarity) -> this player's card reward (as js/run.js cardChoices)
 (function () {
   const RD = SD.raid = {};
+  // How often a bot answers right (the balance tools set it).
+  RD.botAcc = 0.7;
+  // Every raid enemy's load, on top of its own tuning: the knob the debrief's heal is balanced against (Ladi, Oct 23).
+  // ×1.1 is the sequel's measured setting for the same engine (Isekai'd Into the Cloud, chapter 4 clean clears at 0% /
+  // 70% / 100% right: 65/80/88 before the debrief, 47/81/84 with it at ×1.1). Not yet re-measured on this game's
+  // expeditions.
+  RD.dmgX = 1.1;
   const net = SD.net;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const BOT_KEY = /^~b[1-9]$/;
@@ -56,6 +71,9 @@
   const BANDS = ['fast', 'steady', 'slow'], BAND_TEXT = { fast: 'CRITICAL! (fast)', steady: 'Right (steady)', slow: 'Right, but slow' };
   const bandOf = (ms, typed) => { const s = ms / 1000, k = typed ? 2 : 1; return s <= 20 * k ? 'fast' : s <= 45 * k ? 'steady' : 'slow'; };
   const BOARD = { fast: [6, 15], steady: [4, 10], slow: [2, 5] };
+  // The confidence tally (Guess, Think so, Sure: [right, wrong]) and the debrief's heal, as described at the top.
+  const CONF = [[1, 0], [2, -1], [3, -5]], LOW = 2, LOW_HEAL = 1, HEAL = 15;
+  const confOf = c => ([0, 1, 2].includes(c) ? c : 0);
   const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
   // A player's statuses and the team's, all reset for each fight (each enemy's own are in G.foes, newFoe() below).
   // carry/fresh: Pre-Warmed Capacity that stays warm; debt: Capacity Tightly Coupled takes next turn; tax: a Missed
@@ -1202,7 +1220,7 @@
       const h = here();
       Object.keys(G.players).forEach(k => { if (!h.has(k) && k !== me.peer) delete G.players[k]; });
       if (!X() || !all().length) return;
-      Object.values(G.players).forEach(p => { p.bits = BITS; p.o = []; p.sold = []; });
+      Object.values(G.players).forEach(p => { p.bits = BITS; p.o = []; p.sold = []; p.tal = 0; });
       Object.assign(G, { sla: SLA, tapes: 0, tapeN: 0, rooms: 0, end: null, note: '' });
       enterFloor(0); push();
     }
@@ -1233,7 +1251,7 @@
       const ps = PARTY[Math.min(4, n)] || { sev: 1, dmg: 1 }, xs = xpX(X(), 'sev'), xd = xpX(X(), 'dmg');
       G.foes = ids.map((id, i) => {
         const e = SD.enemies[id], g = share(i), sv = +obj(e.sevAt)[ch] || e.sev;
-        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * ps.sev * xs * (spec.sev[i] || g.sev) * sevX(i))), Math.min(1, spec.dmg[i] || g.dmg) * ps.dmg * xd);
+        return newFoe(id, Math.max(1, Math.round(sv * (0.4 + 0.6 * n) * ps.sev * xs * (spec.sev[i] || g.sev) * sevX(i))), Math.min(1, spec.dmg[i] || g.dmg) * ps.dmg * xd * RD.dmgX);
       });
       // A floor boss's debuffing move: the floor's own, or Tightly Coupled 2 on its last pattern step.
       if (tier === 'boss') {
@@ -1284,9 +1302,29 @@
         // The last floor's boss ends the expedition: no card to pick, since nothing carries over.
         if (tier === 'boss' && lastFloor(G)) return cleared();
         newRoom('reward', { tier, gain });
+        debrief(G.room);
         // What the floor's events promised for beating its boss (an event choice's onWin: SLA, bits, tapes).
         if (tier === 'boss') { G.onWin.forEach(fx => applyFx(G, fx, all(), true)); G.onWin = []; }
       } else if (G.ph === 'lost') wiped();
+    }
+    // A player's committed answer moves their tally (CONF). No confidence (a timeout) counts as a Guess.
+    // A person's tally is their save's (SD.state.tally), which their page sends with every answer and whenever it
+    // changes ('tal'); a bot keeps its own for the expedition, from 0.
+    const talOk = v => Number.isFinite(+v) && v !== null && v !== '' && typeof v !== 'boolean';
+    function score(p, ok, conf) { if (p) p.tal = Math.max(-HEAL, Math.min(HEAL, (p.tal | 0) + CONF[confOf(conf)][ok ? 0 : 1])); }
+    function mark(peer, d) {
+      const p = G.players[peer];
+      if (!p) return;
+      if (!isBot(peer) && talOk(d.tal)) p.tal = Math.max(-99, Math.min(999, Math.round(+d.tal)));
+      else score(p, !!d.ok, d.conf);
+    }
+    // Who answers the debrief: the people here, or at a table of bots (the balance runs) the first seat.
+    const askers = () => { const s = seatsHere(), h = s.filter(k => !isBot(k)); return h.length ? h : s.slice(0, 1); };
+    // A won fight's debrief: who answers, how many questions, and the concept the incident was about.
+    function debrief(r) {
+      const c = (SD.enemies[G.main] || {}).concept;
+      Object.assign(r, { c: c && SD.concepts[c] ? c : null, lo: {}, hl: 0 });
+      askers().forEach(k => { const lo = (G.players[k].tal | 0) < LOW; r.lo[k] = lo ? 1 : 0; r.todo[k] = lo ? ['ask', 'ask'] : ['ask']; });
     }
     function wiped() {
       Object.values(G.players).forEach(p => { p.draw = []; p.disc = []; p.hand = []; p.played = []; p.ready = false; });
@@ -1371,11 +1409,13 @@
         if (!e || !e.a.includes(peer) || e.r[peer]) return;
         const b = BANDS.indexOf(d.band);
         e.r[peer] = [d.ok ? 1 : 0, b < 0 ? 2 : b, d.sure ? 1 : 0, Math.max(0, Math.min(9, d.pts | 0)), d.late ? 1 : 0];
+        mark(peer, d);
         resolveDue(G);
         settle(); push(); check(); return;
       }
       if (d.k === 'peek' && G.ph === 'fight' && !p.ready && Number.isInteger(d.i)) { if (take(p, d.i)) push(); return; }
       if (d.k === 'ready' && G.ph === 'fight') { p.ready = !p.ready; push(); check(); return; }
+      if (d.k === 'tal' && !isBot(peer) && talOk(d.v)) { const v = Math.max(-99, Math.min(999, Math.round(+d.v))); if (v !== (p.tal | 0)) { p.tal = v; push(); } return; }
       if (d.k === 'vote' && G.ph === 'map' && typeof d.n === 'string' && reach(G).includes(d.n)) { G.votes[peer] = d.n; push(); check(); return; }
       if (!r || !r.wait[peer]) return;
       const fin = () => { delete r.wait[peer]; push(); check(); };
@@ -1386,7 +1426,16 @@
         p.o = d.ids.slice(0, 4).filter(id => typeof id === 'string' && SD.cards[id] && (!SD.cards[id].quest || own.includes(id)));
         push(); return;
       }
-      if (r.t === 'reward' && d.k === 'take') { if (Number.isInteger(d.i) && p.o[d.i]) p.deck.push(p.o[d.i]); p.o = []; return fin(); }
+      // The debrief comes first (debrief above), then the card.
+      if (r.t === 'reward' && d.k === 'ans' && (r.todo[peer] || [])[0] === 'ask') {
+        r.todo[peer].shift(); mark(peer, d);
+        let h = d.ok ? (r.lo[peer] ? LOW_HEAL : Math.min(HEAL, p.tal | 0)) : 0;
+        h = Math.max(0, Math.min(h, HEAL - (r.hl | 0), SLA - G.sla));
+        r.hl = (r.hl | 0) + h; G.sla += h;
+        G.note = `${p.n}: ${d.ok ? 'right' : d.late ? 'time\'s up' : 'not quite'}${h ? `, and the team heals ${h} SLA` : ''}. Tally ${p.tal | 0}.`;
+        push(); check(); return;
+      }
+      if (r.t === 'reward' && d.k === 'take' && !(r.todo[peer] || []).length) { if (Number.isInteger(d.i) && p.o[d.i]) p.deck.push(p.o[d.i]); p.o = []; return fin(); }
       if (r.t === 'cafe') {
         const b = r.buy[peer] = obj(r.buy[peer]);
         if (d.k === 'buy' && Number.isInteger(d.i) && p.o[d.i] && !p.sold.includes(d.i)) { const c = PRICE[SD.cards[p.o[d.i]].rarity] || 30; if (p.bits >= c) { p.bits -= c; p.deck.push(p.o[d.i]); p.sold.push(d.i); } }
@@ -1404,7 +1453,7 @@
       // The Whiteboard: a right answer heals the team and pays that player bits, 4 SLA and 10 bits when steady.
       const band = BANDS.includes(d.band) ? d.band : 'slow';
       const said = () => { G.note = `${p.n}: ${d.ok ? BAND_TEXT[band] : d.late ? 'Time\'s up' : 'Missed'}.`; };
-      if (r.t === 'board' && d.k === 'ans' && r.res[peer] == null) { r.res[peer] = d.ok ? band : false; said(); if (d.ok) { G.sla = Math.min(SLA, G.sla + BOARD[band][0]); p.bits += BOARD[band][1]; } return fin(); }
+      if (r.t === 'board' && d.k === 'ans' && r.res[peer] == null) { r.res[peer] = d.ok ? band : false; mark(peer, d); said(); if (d.ok) { G.sla = Math.min(SLA, G.sla + BOARD[band][0]); p.bits += BOARD[band][1]; } return fin(); }
       if (r.t === 'event') {
         const ev = SD.expeditionEvents[r.ev];
         if (!ev) return fin();
@@ -1419,7 +1468,7 @@
         if (d.k === 'wvote' && !ev.per && r.ch != null && !r.one && typeof d.p === 'string' && seatsHere().includes(d.p)) { r.wv[peer] = d.p; push(); check(); return; }
         const todo = r.todo[peer] || [];
         if (d.k === 'ans' && todo[0] === 'ask') {
-          todo.shift(); r.res[peer] = d.ok ? band : false; said();
+          todo.shift(); r.res[peer] = d.ok ? band : false; mark(peer, d); said();
           const ch = ev.choices[ev.per ? r.votes[peer] : r.ch], a = obj(obj(ch && ch.fx).ask), out = d.ok ? obj(a.speed)[band] || a.right : a.wrong;
           // What the answer wins (or costs) is everyone's, unless it says it's only the answerer's.
           applyFx(G, out, ev.per || obj(out).who === 'one' ? [peer] : all());
@@ -1506,7 +1555,7 @@
     function botAnswer(key) {
       if (botQ[key]) return botQ[key];
       const r = Math.random(), band = r < 0.25 ? 'fast' : r < 0.75 ? 'steady' : 'slow', t = { fast: [4, 15], steady: [22, 40], slow: [47, 57] }[band];
-      return (botQ[key] = { ok: Math.random() < 0.7, band, at: Date.now() + span(t[0], t[1]) * 1000 });
+      return (botQ[key] = { ok: Math.random() < RD.botAcc, band, at: Date.now() + span(t[0], t[1]) * 1000 });
     }
     // The leader's pick if a human made one, else the first human's: what a bot follows in an each-their-own event.
     const humanPick = votes => { const hs = Object.keys(votes).filter(j => G.players[j] && !isBot(j)); const j = hs.includes(G.host) ? G.host : hs[0]; return j == null ? null : votes[j]; };
@@ -1541,7 +1590,8 @@
     // null while it waits on the others. d can be a function, for a move that rolls cards when it's made.
     function botMove(k) {
       const p = G.players[k], r = G.room;
-      const ans = (key, d) => { const a = botAnswer(key); return { at: a.at, d: Object.assign({ ok: a.ok, band: a.band }, d) }; };
+      // A bot commits Sure when it's fast, Think so when steady, and Guess when slow.
+      const ans = (key, d) => { const a = botAnswer(key); return { at: a.at, d: Object.assign({ ok: a.ok, band: a.band, conf: a.band === 'fast' ? 2 : a.band === 'steady' ? 1 : 0 }, d) }; };
       if (G.ph === 'fight') {
         const e = G.qs.find(x => x.a.includes(k) && !x.r[k]);
         // Never past the question's deadline, even for a host who took over and rolled the answer late.
@@ -1553,6 +1603,7 @@
       if (G.ph === 'map') return null;
       if (!r || !r.wait[k]) return null;
       const roll = (rar, tier) => () => ({ k: 'offer', ids: RD.cardChoices(3, chOf(FL()), p.c, tier, rar) });
+      if (r.t === 'reward' && (r.todo[k] || [])[0] === 'ask') return ans('h' + r.k + ':' + r.todo[k].length, { k: 'ans' });
       if (r.t === 'reward') return { d: p.o.length ? { k: 'take', i: bestOf(p, p.o) } : roll(null, r.tier) };
       if (r.t === 'cafe') {
         if (!p.o.length) return { d: roll(null, null) };
@@ -1656,7 +1707,7 @@
       const pl = {};
       Object.keys(S.players).forEach(k => {
         const p = S.players[k], owes = !wire || !!(S.room && S.room.wait[k]);
-        pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: owes ? p.o : [], s: owes ? p.sold : [], st: stList(p.st), pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {}, bt: p.bot ? 1 : 0 };
+        pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: owes ? p.o : [], s: owes ? p.sold : [], st: stList(p.st), pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {}, bt: p.bot ? 1 : 0, tl: p.tal | 0 };
         if (wire && S.ph === 'fight') delete pl[k].d;
         if (wire) slim(pl[k]);
       });
@@ -1681,7 +1732,7 @@
         const was = x.d == null && d.ph === 'fight' && G.players[k];
         pl[k] = { n: net.clean(x.n, 24) || 'A hero', c: SD.champions && SD.champions.get(x.c) ? x.c : null, deck: was ? was.deck.slice() : dec(x.d, 80), bits: Math.max(0, Math.min(9999, x.b | 0)), draw: dec(x.dr, 80), disc: dec(x.di, 80), hand: dec(x.h, 10), played: dec(x.pl, 20), cap: Math.max(0, x.cap | 0), ready: !!x.r,
           o: (Array.isArray(x.o) ? x.o : []).filter(id => typeof id === 'string' && SD.cards[id]).slice(0, 4), sold: (Array.isArray(x.s) ? x.s : []).filter(Number.isInteger).slice(0, 4), st: myStatus(),
-          peek: dec(x.pk, 8), take: Math.max(0, Math.min(8, x.tk | 0)), ab: Math.max(0, Math.min(999, x.ab | 0)), hd: {} };
+          peek: dec(x.pk, 8), take: Math.max(0, Math.min(8, x.tk | 0)), ab: Math.max(0, Math.min(999, x.ab | 0)), hd: {}, tal: Math.max(-99, Math.min(999, x.tl | 0)) };
         // Only a bot's own kind of key can be a bot, so no page is ever played for its person.
         if (x.bt && BOT_KEY.test(k)) pl[k].bot = true;
         const sx = Array.isArray(x.st) ? x.st : SK.map(s => obj(x.st)[s]);
@@ -1691,7 +1742,7 @@
       const r = d.room && typeof d.room === 'object' ? d.room : null;
       const room = r && ROOMS.includes(r.t) ? { k: r.k | 0, t: r.t, tier: ['fight', 'elite', 'boss'].includes(r.tier) ? r.tier : null, wait: obj(r.wait), todo: obj(r.todo), res: obj(r.res), votes: obj(r.votes), buy: obj(r.buy), gain: obj(r.gain),
         q: typeof r.q === 'string' ? r.q : null, c: SD.concepts && SD.concepts[r.c] ? r.c : null, ev: SD.expeditionEvents && SD.expeditionEvents[r.ev] ? r.ev : null, ch: Number.isInteger(r.ch) ? r.ch : null,
-        wv: obj(r.wv), one: typeof r.one === 'string' && pl[r.one] ? r.one : null } : null;
+        wv: obj(r.wv), one: typeof r.one === 'string' && pl[r.one] ? r.one : null, lo: obj(r.lo), hl: Math.max(0, Math.min(99, r.hl | 0)) } : null;
       Object.values(room ? room.todo : {}).forEach((t, i, a) => { if (!Array.isArray(t)) a[i] = []; });
       if (room) Object.keys(room.todo).forEach(k => { room.todo[k] = Array.isArray(room.todo[k]) ? room.todo[k].filter(t => ['ask', 'rm', 'up', 'pc:common', 'pc:uncommon', 'pc:rare'].includes(t)).slice(0, 8) : []; });
       const S = Object.assign({}, d, { players: pl, room, xp: xpOf(d.xp) ? d.xp : null, map: rowsOf(d.map) ? d.map : null, pos: typeof d.pos === 'string' ? d.pos : null, seen: (Array.isArray(d.seen) ? d.seen : []).filter(x => typeof x === 'string').slice(0, 12), votes: obj(d.votes),
@@ -1907,22 +1958,34 @@
       const f = fs[G.fl];
       queue(async () => { await titleCard(f.gate || `FLOOR ${G.fl + 1}`); await dialog(f.intro); });
     }
-    // A question this page owes the room: the Whiteboard's, or an event's.
+    // A question this page owes the room: the Whiteboard's, an event's, or a won fight's debrief, one at a time
+    // (askKey: the room and how many are left).
     const asked = {};
+    const askKey = r => r.k + ':' + (r.todo[me.peer] || []).length;
+    const myTally = () => (SD.state && SD.state.tally ? SD.state.tally() : undefined);
+    let talSent = null;
     function owed() {
       const r = G.room, mine = G.players[me.peer];
+      // This page's tally goes to the host when it changes (a review in town, a question here).
+      if (mine && G.ph !== 'lobby') { const t = myTally(); if (t !== undefined && t !== (mine.tal | 0) && t !== talSent) { talSent = t; send({ k: 'tal', v: t }); } }
       if (!r || !mine || !r.wait[me.peer] || !r.q && r.t === 'board') return;
-      const need = (r.t === 'board' && r.res[me.peer] == null) || (r.t === 'event' && (r.todo[me.peer] || [])[0] === 'ask');
-      if (!need || asked[r.k]) return;
-      asked[r.k] = true;
+      const need = (r.t === 'board' && r.res[me.peer] == null) || ((r.t === 'event' || r.t === 'reward') && (r.todo[me.peer] || [])[0] === 'ask');
+      const key = askKey(r);
+      if (!need || asked[key]) return;
+      asked[key] = true;
       queue(async () => {
         // An event's question is on its own concept (ask.c) when it names one, else the floor boss's.
         const ev = r.t === 'event' && SD.expeditionEvents[r.ev], chn = ev && (ev.per ? r.votes[me.peer] : r.ch), ac = ev && ev.choices[chn] && obj(obj(ev.choices[chn].fx).ask).c;
-        const c = (ac && SD.concepts[ac] ? ac : null) || r.c || (SD.enemies[FL().boss] || {}).concept, q = r.t === 'board' ? findQ(r.q, c) : (SD.state.pickQuestion ? SD.state.pickQuestion(c, []) : null);
+        // A low tally's second debrief question is on whatever review is due (SD.state.pickConcepts).
+        const second = r.t === 'reward' && r.lo && r.lo[me.peer] && (r.todo[me.peer] || []).length === 1;
+        const due = second && SD.state.pickConcepts ? SD.state.pickConcepts(1, Object.keys(SD.concepts).filter(id => SD.state.reviewable(id) && (SD.state.save.concepts[id] || {}).seen))[0] : null;
+        const pick = id => (id && SD.state.pickQuestion ? SD.state.pickQuestion(id, []) : null);
+        const c = (ac && SD.concepts[ac] ? ac : null) || r.c || (SD.enemies[FL().boss] || {}).concept, q = r.t === 'board' ? findQ(r.q, c) : pick(due) || pick(c);
         if (!q) { send({ k: 'ans', ok: false }); return; }
         const typed = q.type === 'explain';
-        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: r.t === 'board' ? 'EXPEDITION · WHITEBOARD' : 'EXPEDITION · ' + String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase(), context: (SD.concepts[q.c] || {}).name });
-        send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout });
+        const title = r.t === 'board' ? 'WHITEBOARD' : r.t === 'reward' ? (second ? 'DEBRIEF · DUE REVIEW' : 'DEBRIEF') : String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase();
+        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name });
+        send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout, conf: res.conf, tal: myTally() });
       });
     }
     // A rare's question this player owes the fight: on their own card, or as the teammate an ally or pair card named.
@@ -1943,7 +2006,7 @@
           ASKED.add(q.id);
           const typed = q.type === 'explain';
           const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: mine.c || undefined, title: 'EXPEDITION · ' + String(d.name).toUpperCase(), context: `${(SD.concepts[q.c] || {}).name || 'Question'}${owner && e.p !== me.peer ? ` · for ${owner.n}'s card` : ''}` });
-          send({ k: 'qa', id: e.k, ok: !!res.ok, band: bandOf(res.ms || 0, typed), sure: res.conf === 2, pts: typed ? res.score | 0 : 0, late: !!res.timeout });
+          send({ k: 'qa', id: e.k, ok: !!res.ok, band: bandOf(res.ms || 0, typed), sure: res.conf === 2, pts: typed ? res.score | 0 : 0, late: !!res.timeout, conf: res.conf, tal: myTally() });
         });
       });
     }
@@ -1979,6 +2042,7 @@
       return `<div class="run-hud"><div class="hud-sla"><span>Team SLA</span><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}/${SLA}</b></div>
         <span class="hud-chip">Floor <b>${G.fl + 1}/${fs.length}</b></span>${mine ? `<span class="hud-chip">Bits <b>${mine.bits}</b></span>` : ''}
         <span class="hud-chip" title="Seymour's Tape: if the team goes down, the floor starts again">📼 Tapes <b>${G.tapes}</b></span>
+        ${mine ? `<span class="hud-chip" title="Your confidence tally: your last 20 answers, Guess +1/0, Think so +2/−1, Sure +3/−5, capped at 15. A debrief heals by it.">🎯 Tally <b>${mine.tal | 0}</b></span>` : ''}
         ${mine ? `<button class="hud-chip" type="button" id="rd-deck" aria-expanded="${ui.deck}">Deck (${mine.deck.length})</button>` : ''}</div>
         ${G.note ? `<p class="rd-note" role="status">${esc(G.note)}</p>` : ''}
         ${ui.deck && mine ? `<div class="cardgrid mini">${mine.deck.map(id => chtml(id)).join('')}</div>` : ''}`;
@@ -2162,13 +2226,18 @@
     }
     function rewardView(r, mine) {
       const e = SD.enemies[G.main] || {}, wait = mine && r.wait[me.peer];
-      const gain = mine ? +r.gain[me.peer] || 0 : 0;
+      const gain = mine ? +r.gain[me.peer] || 0 : 0, todo = (mine && r.todo[me.peer]) || [];
+      const lo = !!(r.lo && r.lo[me.peer]), n = todo.length;
+      // The debrief first: one question (two under a tally of LOW), then the card.
+      const brief = `<p>Debrief: ${lo ? `your tally is under ${LOW}, so ${n > 1 ? 'two questions' : 'one more question'}, and each right answer heals the team ${LOW_HEAL}` : `a question on ${esc((SD.concepts[r.c] || {}).name || 'what you just fought')}. Right, and the team heals your tally, up to ${HEAL}`}. Guess, Think so and Sure move your tally: +1, +2, +3 right, and 0, −1, −5 wrong.</p>
+          <button class="primary" type="button" id="rd-ask">Answer the debrief</button>`;
       paint(`<div class="mi-card rd-room">${hud()}${head(r.tier === 'boss' ? 'Floor boss down!' : (e.short || e.name || 'Incident') + ' resolved')}
         ${mine ? `<div class="loot"><span>+${gain} bits</span></div>` : ''}
-        ${wait ? (mine.o.length ? `<p class="muted">Choose a card to add to your deck.${r.tier === 'boss' ? ' A floor boss always offers something rare.' : r.tier === 'elite' ? ' An elite always offers something better.' : ''}</p>
+        ${wait && n ? brief : wait ? (mine.o.length ? `<p class="muted">Choose a card to add to your deck.${r.tier === 'boss' ? ' A floor boss always offers something rare.' : r.tier === 'elite' ? ' An elite always offers something better.' : ''}</p>
           <div class="cardgrid pick">${mine.o.map((id, i) => `<div ${sendAttr({ k: 'take', i })}>${chtml(id, { i })}</div>`).join('')}</div>
           <button class="ghost" type="button" ${sendAttr({ k: 'take', i: -1 })}>Skip</button>` : '<p class="muted">Drawing your cards…</p>') : '<p class="rd-wait">Waiting for the others to pick.</p>'}
-        ${team(k => (r.wait[k] ? ['choosing'] : ['done', 'ok']))}</div>`);
+        ${team(k => ((r.todo[k] || []).length ? ['debrief'] : r.wait[k] ? ['choosing'] : ['done', 'ok']))}</div>`);
+      const a = root.querySelector('#rd-ask'); if (a) a.onclick = () => { if (!busy) { delete asked[askKey(r)]; render(); } };
     }
     function cafeView(r, mine) {
       const wait = mine && r.wait[me.peer], b = obj(r.buy[me.peer]);
@@ -2207,7 +2276,7 @@
         <p>The same question for everyone, on ${esc((SD.concepts[r.c] || {}).name || 'this floor\'s boss')}, with ${TIMER} seconds each (double for a typed answer). A right answer heals the team and pays you bits, more the faster you answer: ${BOARD.fast[0]} SLA and ${BOARD.fast[1]} bits within 20 s, ${BOARD.steady[0]} and ${BOARD.steady[1]} within 45, else ${BOARD.slow[0]} and ${BOARD.slow[1]}.</p>
         ${wait ? `<p class="rd-wait">Your question is open.</p><button class="primary" type="button" id="rd-ask">Answer the question</button>` : mine ? '<p class="rd-wait">Waiting for the others to answer.</p>' : ''}
         ${team(k => (r.res[k] == null ? ['thinking'] : r.res[k] ? [BAND_TEXT[r.res[k]] || 'right', 'ok'] : ['missed', 'no']))}</div>`);
-      const a = root.querySelector('#rd-ask'); if (a) a.onclick = () => { if (!busy) { delete asked[r.k]; render(); } };
+      const a = root.querySelector('#rd-ask'); if (a) a.onclick = () => { if (!busy) { delete asked[askKey(r)]; render(); } };
     }
     function eventView(r, mine) {
       const ev = SD.expeditionEvents[r.ev], wait = mine && r.wait[me.peer];
@@ -2253,7 +2322,7 @@
       paint(`<div class="mi-card rd-room">${hud()}${head(ev.title)}
         <div class="rd-who">${ev.who && SD.cast[ev.who] ? SD.art.portrait(ev.who, 72) : ''}<p>${esc(ev.text)}</p></div>
         ${body}${team(tag)}</div>`);
-      const a = root.querySelector('#rd-ask'); if (a) a.onclick = () => { if (!busy) { delete asked[r.k]; render(); } };
+      const a = root.querySelector('#rd-ask'); if (a) a.onclick = () => { if (!busy) { delete asked[askKey(r)]; render(); } };
     }
 
     // ---------- Messages ----------
