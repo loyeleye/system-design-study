@@ -36,6 +36,8 @@
   // their quest (js/isles/twins.js), and put the festival stage on it.
   const STORY = { 'twin-twin': { islands: ['twins', 'twins'], built: () => I.chainStatus('twins') === 'done' } };
   const spanBuilt = id => STORY[id] ? STORY[id].built() : I.bridgeBuilt(id);
+  // Admiral Mutex's harbour (LAND below) has a jetty this many planks long, east of it over the sea.
+  const HARBOUR = 3;
   // Ferry docks: a wooden pier from the shore out to the dock tile you step on to call the ferry. Each island has one, named for it,
   // except the Twin Islands, where the ferry stops at both twins (isle says which island a dock is on).
   const DOCK = {
@@ -143,7 +145,7 @@
   // stool and campfire where he waits for players, with a lamp on a post to find it by.
   const SCENE = [
     ['sandbar', 20, 2], ['sea-rock', 16, 6], ['sea-rocks', 55, 3], ['buoy', 51, 5], ['sea-rock', 60, 8],
-    ['buoy', 31, 17], ['buoy', 39, 17], ['sea-rocks', 57, 16], ['sea-rock', 58, 34], ['sea-rocks', 36, 40],
+    ['buoy', 31, 19], ['buoy', 40, 18], ['sea-rocks', 57, 16], ['sea-rock', 58, 34], ['sea-rocks', 36, 40],
     ['buoy', 24, 42], ['sandbar', 46, 47], ['sea-rock', 39, 52], ['buoy', 60, 48],
     ['cave-fire', 8, 2], ['cave-lamp', 4, 3]
   ];
@@ -774,11 +776,18 @@
     umbrella: l => iobj('umbrella', ...foot(l)),
     cave: l => iobj('cave', ...foot(l)),
     harbour(l, t) {
-      // Admiral Mutex's harbour: one ship at a time. The queue of little boats reaches the horizon.
-      if (!ok(ipic('boat')) || !ok(ipic('pilings'))) return false;
-      const X = (l.x + 1) * ts, Y = (l.y + 0.6) * ts;
-      for (let i = 6; i >= 0; i--) iobj('boat', X + ts * (0.5 + i * 0.75), Y + ts * 0.9 + Math.sin(t * 2 + i) * 2, 1 - i * 0.08);
-      return iobj('pilings', (l.x + 0.5) * ts, (l.y + l.h) * ts, 0.9);
+      // Admiral Mutex's harbour: one ship at a time. A plank jetty like the ferry piers runs out from the shore, his
+      // flag flies from the post at its head, one boat is tied up alongside, and the rest queue to the horizon.
+      if (!ok(ipic('boat')) || !ok(ipic('pilings')) || !ok(ipic('bridge'))) return false;
+      const y = l.y + l.h - 1, x0 = l.x + 1, x1 = x0 + HARBOUR - 1;
+      for (let x = x0; x <= x1; x++) bridgePiece('bridge', x, y, 0, false);
+      bridgePiece('bridge-end', x0, y, ...endTurn(-1, 0), -3);
+      bridgePiece('bridge-end', x1, y, ...endTurn(1, 0), -3);
+      const hx = (x1 + 0.1) * ts, hy = (y + 0.5) * ts;
+      for (let i = 6; i >= 1; i--) iobj('boat', (x1 + 0.4 + i * 0.75) * ts, hy + ts * 0.75 + Math.sin(t * 2 + i) * 2, 1 - i * 0.08);
+      iobj('boat', (x1 - 0.6) * ts, hy + ts * 0.85 + Math.sin(t * 2) * 1.5, 1);
+      iobj('bollard', (x0 + 0.5) * ts, hy + ts * 0.3, 0.6);
+      return iobj('pilings', hx + ts * 0.3, hy + ts * 0.35, 0.75);
     },
     mill(l, t) {
       const im = ipic('mill'), sz = I.ART.objects.mill;
