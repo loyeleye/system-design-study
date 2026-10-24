@@ -15,6 +15,20 @@
   const esc = s => U.esc(s == null ? '' : String(s));
   const sfx = n => { if (SD.audio) SD.audio.sfx(n); };
   const DAY = 864e5;
+  // Once-a-day shard bonuses, so boards and chains have a reason to come back daily like the review and the mock.
+  // ECONOMY-CHECK (phase 7, economy balancer): these amounts are first guesses, not yet weighed against the rest of
+  // the shard economy (daily quest 100, mock 15 to 250, shop prices). Set `checked` once the balancer has signed off.
+  // tools/practice_check.js prints a reminder while it is false.
+  P.BONUS = { board: 60, chain: 40, checked: false };
+  const today = () => new Date().toDateString();
+  // First passing board, or first full chain, of the day. Returns the shards paid (0 if already paid today).
+  function daily(kind) {
+    const sv = S.save, key = 'practice' + kind[0].toUpperCase() + kind.slice(1) + 'Date';
+    if (sv.flags[key] === today()) return 0;
+    sv.flags[key] = today(); sv.shards += P.BONUS[kind];
+    return P.BONUS[kind];
+  }
+  const bonusLeft = kind => S.save.flags['practice' + kind[0].toUpperCase() + kind.slice(1) + 'Date'] !== today();
 
   P.button = id => `<button class="ghost practice-btn" id="${id}" title="Weak-spot review, Design Boards, mock interviews and deep dives">Practice</button>`;
   // Records of practice reps, in the save: { boards: { id: { best, at } }, chains: { id: { best, n, at } } }.
@@ -84,14 +98,14 @@
         <section><h3>Review my weak spots</h3><p class="small muted">${esc(weakWhy(pool))}</p>
           <button class="primary" id="pr-weak">Start a review</button></section>
         <section><h3>Design Board</h3>
-          <p class="small muted">${openB.length ? 'Draw it yourself, trace the flows, then the load test. Every board whose boss you have met.' : 'Reach a chapter boss to open its board here.'}</p>
+          <p class="small muted">${openB.length ? `Draw it yourself, trace the flows, then the load test. Every board whose boss you have met.${bonusLeft('board') ? ` Today's first passing board pays ${P.BONUS.board} shards.` : ''}` : 'Reach a chapter boss to open its board here.'}</p>
           ${openB.length ? `<div class="pr-list">${openB.map(x => { const k = r.boards[x.id]; return `<button class="opt" data-board="${x.id}"><b>${esc(x.b.name)}</b><br><span class="small muted">${k ? `Best: ${BOARD_BEST[k.best]} · ${ago(k.at)}` : 'Not practised yet'}</span></button>`; }).join('')}</div>` : ''}
           ${nextB && openB.length < bs.length ? `<p class="small muted">${bs.length - openB.length} more open as you meet their bosses.</p>` : ''}</section>
         <section><h3>Mock interview</h3>
           <p class="small muted">${mockOk ? `A timed 45-minute round with Ploy, scored on a senior rubric. ${openP.length} of ${probs.length} problems open; each chapter you clear opens its own.` : 'A timed 45-minute round with Ploy. Clear chapter 1 to open the URL Shortener.'}</p>
           <div class="row"><button class="primary" id="pr-mock" ${mockOk ? '' : 'disabled'}>Pick a problem</button>${page}</div></section>
         <section><h3>Deep-dive chains</h3>
-          <p class="small muted">${openC.length ? 'A boss\'s "go deeper" questions back to back, as the interviewer pushes on your answer.' : 'Meet a chapter boss to replay its deep dive here.'}</p>
+          <p class="small muted">${openC.length ? `A boss's "go deeper" questions back to back, as the interviewer pushes on your answer.${bonusLeft('chain') ? ` Today's first full chain pays ${P.BONUS.chain} shards.` : ''}` : 'Meet a chapter boss to replay its deep dive here.'}</p>
           ${openC.length ? `<div class="pr-list">${openC.map(id => { const e = SD.enemies[id], k = r.chains[id], n = chainOf(id).qs.length; return `<button class="opt" data-chain="${id}"><b>${esc(e.short || e.name)}</b> <span class="small muted">· ${esc((SD.concepts[e.concept] || {}).name || '')}</span><br><span class="small muted">${n} question${n > 1 ? 's' : ''}${k ? ` · best ${k.best} of ${k.n} · ${ago(k.at)}` : ''}</span></button>`; }).join('')}</div>` : ''}</section>
         </div>`, { title: 'PRACTICE', cls: 'wide', onClose: () => done() });
       // Under five weak concepts, the usual review fills the session: it asks due and weak concepts first anyway.
@@ -118,8 +132,9 @@
     const r = rec(), k = r.boards[id];
     r.boards[id] = { best: k && RANK[k.best] > RANK[best] ? k.best : best, at: Date.now() };
     const xp = !res.ok ? 5 : perfect ? 35 : held ? 25 : 15;
+    const sh = best !== 'not' ? daily('board') : 0;
     SD.run.gainXp(xp + (res.defended ? 5 : 0));
-    U.system(best === 'clean' ? 'CLEAN DESIGN!' : best === 'holds' ? 'THE DESIGN HOLDS!' : 'PRACTICE DONE', `+${xp + (res.defended ? 5 : 0)} XP. ${best === 'not' ? 'Try it again: the checks show what it was missing.' : ''}`, best === 'not' ? undefined : 'gold');
+    U.system(best === 'clean' ? 'CLEAN DESIGN!' : best === 'holds' ? 'THE DESIGN HOLDS!' : 'PRACTICE DONE', `+${xp + (res.defended ? 5 : 0)} XP${sh ? `, +${sh} shards (today's board bonus)` : ''}. ${best === 'not' ? 'Try it again: the checks show what it was missing.' : ''}`, best === 'not' ? undefined : 'gold');
     S.persist();
   }
 
@@ -138,8 +153,9 @@
     }
     const r = rec(), k = r.chains[id];
     r.chains[id] = { best: Math.max(right, k ? k.best : 0), n, at: Date.now() };
+    const sh = right === n ? daily('chain') : 0;
     SD.run.gainXp(right * 6);
-    U.system(right === n ? 'DEEP DIVE LANDED!' : 'PRACTICE DONE', `${right} of ${n} held. +${right * 6} XP.`, right === n ? 'gold' : undefined);
+    U.system(right === n ? 'DEEP DIVE LANDED!' : 'PRACTICE DONE', `${right} of ${n} held. +${right * 6} XP${sh ? `, +${sh} shards (today's chain bonus)` : ''}.`, right === n ? 'gold' : undefined);
     S.persist();
   }
 })();
