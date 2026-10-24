@@ -403,7 +403,7 @@
         { ask: 'il-keydesign-1' }] }
     ],
     school: { c: 'keydesign', q: '"Why don\'t you keep all the orders in one big drawer for each day?"',
-      opts: ['Because everyone would queue at today\'s drawer. By person, the work spreads and your orders stay together', 'Because a whole day of orders is too much for one drawer, so it overflows and jams shut', 'Because if today\'s drawer got lost, every order from today would be lost with it', 'Because filing by day makes it hard to find the newest orders when you need them'], a: 0,
+      opts: ['Because everyone would queue at one drawer; by person, the work spreads', 'Because a whole day of orders is too much for one drawer, so it overflows and jams shut', 'Because if today\'s drawer got lost, every order from today would be lost with it', 'Because filing by day makes it hard to find the newest orders when you need them'], a: 0,
       no: [null, 'A bigger drawer jams just the same. Size is not the trouble; everyone needing the same drawer at the same moment is (a hot partition).', 'Guarding against loss is what copies (replicas) are for. Filing by person is about spreading the work.', 'By day, the newest orders are the easiest to find: they are all in today\'s drawer. That is exactly why everyone queues there.'],
       why: 'Spread the work, and keep what one person asks for together. In grown-up words: a date partition key makes a hot partition, and partitioning by customer spreads the load and keeps each customer\'s orders on one partition.',
       cheer: 'Like having a cubby with your name on it instead of one big pile! I know where my cubby is. It has a sticker.' }

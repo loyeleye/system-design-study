@@ -164,9 +164,9 @@
           intro: 'Two records of Game Night disagree. One keeps only the current totals and gets rubbed out. One appends every game, in order. Find the truth.',
           rounds: [
             { type: 'choose', q: 'Uptima\'s chalkboard says UPTIMA 9. Aigerim\'s diary lists every game in order. Which one is the source of truth?', opts: [
-              { t: 'The diary: an append-only log of every event; the chalkboard is just a view computed from it', ok: true, why: 'A view can be wrong, stale or tampered with, and be rebuilt. The log of events is what actually happened.' },
-              { t: 'The chalkboard: it\'s bigger and more recent', why: 'Recent isn\'t true. It only shows the last thing someone wrote, and it forgets how it got there.' },
-              { t: 'Whichever the goddess prefers', why: 'Ren ate a sugar cube very pointedly at this answer.' }] },
+              { t: 'The diary: the board is a view built from it', ok: true, why: 'The diary is an append-only log of every event, and the chalkboard is computed from it. A view can be wrong, stale or tampered with, and be rebuilt. The log is what actually happened.' },
+              { t: 'The chalkboard, since it shows the most recent score', why: 'Recent isn\'t true. It only shows the last thing someone wrote, and it forgets how it got there.' },
+              { t: 'Both, as long as a nightly job syncs them', why: 'Two sources of truth disagree between syncs, and the sync can\'t say which one is wrong. One is the record; the other is derived from it.' }] },
             { type: 'order', q: 'Rebuild the real scoreboard from the diary.', chips: ['Start every player at zero', 'Read the first entry in the diary', 'Apply it: the winner gets a point', 'Repeat for every entry, in order', 'The totals are the real scoreboard'],
               why: 'Replaying the events in order rebuilds the state exactly. Do it again tomorrow and you get the same answer.' },
             { type: 'tap', q: 'Because the diary keeps every game, which of these can Ren do now? Tap them all.',
@@ -175,9 +175,9 @@
                 { t: 'Make Uptima win', sub: 'no' }],
               why: 'A log of events lets you replay to any moment, build new views later, and audit any view against it. It can\'t change what happened.', hint: 'Anything you can work out from what happened.' },
             { type: 'choose', q: 'Uptima says game 7 really was scored wrong (it was: Nok was counted twice). How does the club fix it?', opts: [
-              { t: 'Append a correction: "Entry 47: game 7 counted Nok twice; remove one point from Nok", then rebuild the board', ok: true, why: 'A compensating event fixes the state and keeps the history honest: you can see the mistake, who fixed it and when.' },
-              { t: 'Tear out the page with game 7 and rewrite it', why: 'Then nobody can check what happened, and any copy of the diary now disagrees with this one.' },
-              { t: 'Rub out Nok\'s total on the chalkboard', why: 'That is exactly how the chalkboard got into trouble.' }] }
+              { t: 'Append a correction entry, then rebuild the board', ok: true, why: 'A compensating event ("Entry 47: game 7 counted Nok twice; remove one point") fixes the state and keeps the history honest: you can see the mistake, who fixed it and when.' },
+              { t: 'Tear out the page with game 7 and rewrite it correctly', why: 'Then nobody can check what happened, and any copy of the diary now disagrees with this one.' },
+              { t: 'Fix Nok\'s total on the chalkboard by one point', why: 'The next rebuild from the diary puts the wrong point straight back. That is exactly how the chalkboard got into trouble.' }] }
           ],
           done: '<p>Keep the events, not just the totals. Replay them to rebuild state or see the past, build new views from them, and fix mistakes by appending corrections. The scoreboard is a read model; the diary is the truth.</p>' } },
         { take: 'chalk' },

@@ -46,7 +46,7 @@ function mc(id, q, n, what) {
   if (!Array.isArray(q.opts) || q.opts.length !== n) return bad(id, `${what} needs ${n} options`);
   if (typeof q.a !== 'number' || !q.opts[q.a]) return bad(id, `${what} answer is not one of its options`);
   const L = q.opts.map(o => o.length), wrong = L.filter((_, i) => i !== q.a);
-  if (L[q.a] > Math.max(...wrong) * 1.25) bad(id, `${what} right answer is ${L[q.a]} chars vs longest wrong ${Math.max(...wrong)}`);
+  if (L[q.a] > Math.max(...wrong) * 1.15) bad(id, `${what} right answer is ${L[q.a]} chars vs longest wrong ${Math.max(...wrong)}`);
   if (!Array.isArray(q.no) || q.no.length !== n) bad(id, `${what} needs a "why not" list as long as its options`);
   else q.opts.forEach((o, i) => { if (i !== q.a && !q.no[i]) bad(id, `${what} option ${i} has no "why not"`); });
 }

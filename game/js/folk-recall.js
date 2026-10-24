@@ -41,7 +41,7 @@
         opts: ['Kept only the latest version of each fact', 'Cut the facts that nobody ever read', 'Copied each fact into two separate books'], a: 0,
         no: [null, 'Nothing went for being unread. Only facts that a newer version replaced.', "That's a backup. The book got shorter, not doubled."] },
       ask: { q: 'An LSM-tree store takes many overwrites of the same keys. Why does it run compaction in the background?',
-        opts: ['To merge files and drop overwritten values, so reads check fewer', 'To sort new writes in memory before they first reach disk', 'To copy each SSTable to a replica before deleting it', 'To rebuild every Bloom filter after each new write'], a: 0,
+        opts: ['To merge files and drop old values, so reads check fewer', 'To sort new writes in memory before they first reach disk', 'To copy each SSTable to a replica before deleting it', 'To rebuild every Bloom filter after each new write'], a: 0,
         no: [null, "That's the memtable's job, before the flush. Compaction works on files already on disk.", 'Replication is separate. Compaction only rewrites a node\'s own files.', 'Each SSTable gets its Bloom filter when it is written. Compaction builds one for the merged file, but that isn\'t why it runs.'],
         why: 'LSM trees never update in place: each overwrite lands in a newer SSTable. Without compaction, reads check more and more files and the disk fills with dead versions. Compaction keeps the newest value per key and drops expired tombstones. The cost is background disk work (write amplification).' } },
     'midnight-4': {
@@ -57,12 +57,12 @@
         opts: ['He restored them and proved they work', 'He made a fourth copy, for extra safety', 'He moved every copy to one safe place'], a: 0,
         no: [null, "More copies wasn't the point. He'd never once read any of them back.", 'One place is one flood away from no copies at all.'] },
       ask: { q: 'Someone runs DELETE with no WHERE clause on the primary. You have three synchronous replicas. What saves the data?',
-        opts: ["A point-in-time backup you've practised restoring", 'Failing over to the most up-to-date replica', 'Promoting the replica with the lowest lag', 'Reading the deleted rows from a follower'], a: 0,
+        opts: ["A point-in-time backup you've practised restoring", 'Failing over to the most up-to-date synchronous replica', 'Promoting the replica with the lowest lag', 'Reading the deleted rows from a follower'], a: 0,
         no: [null, 'That replica is up to date, which is the problem: it applied the delete too.', 'Lowest lag means it got the delete first.', 'Followers apply the same log, so the rows are gone there too.'],
         why: 'Replication copies every write, mistakes included, so it protects you from losing a machine, not from a bad write. A backup does, but only one you have restored before is one you can count on. Restore drills prove it works and tell you how long a restore takes.' } },
     'altar-4': {
       predict: { q: 'Nobody told Uptima about the bug. How did she find it?',
-        opts: ['She read her logs before she acted', 'She blessed the well a second time', 'Gary left her a note about it'], a: 0,
+        opts: ['She read her logs before she acted', 'She blessed the well twice to be sure', 'Gary left her a note about it'], a: 0,
         no: [null, "Blessing first and reading never was the old way. That's how the bug got in.", "Gary didn't say anything. He never does."] },
       ask: { q: 'Checkout latency doubled at 14:00, but only for some users. What shows where the time goes in one slow request?',
         opts: ['A distributed trace of that request', 'The CPU graph for the checkout hosts', 'A count of errors per minute by service', 'The uptime check on the checkout page'], a: 0,
@@ -70,7 +70,7 @@
         why: 'Metrics tell you something changed, logs tell you what one component saw, and a trace follows one request across every service with the time spent in each. Sampling keeps traces affordable, at the cost of missing some rare requests.' } },
     'compass-4': {
       predict: { q: "Bru's board was always right. Why did the others take it over?",
-        opts: ['When she slept, nobody knew where anyone was', 'She kept writing the wrong names on it', 'Three boards are faster to read than one'], a: 0,
+        opts: ['When she slept, nobody knew where anyone was', 'She kept writing the wrong names on it', 'Three boards are faster for everyone to read than one'], a: 0,
         no: [null, 'Her board was right. The trouble was that there was only one of her.', "Speed wasn't the problem. What mattered was what happens when she's not there."] },
       ask: { q: 'Five monitors watch a service. One loses its network link and sees no heartbeats. Failover needs a majority to agree. What happens?',
         opts: ['Nothing: one vote in five is not a majority', 'Failover starts, since any monitor can trigger it', 'The service is fenced until that monitor recovers', 'All five monitors restart to clear their view'], a: 0,
@@ -81,7 +81,7 @@
         opts: ['Someone worked out why each one failed', 'Coo finally tried them all a tenth time', 'The box got too full to hold any more'], a: 0,
         no: [null, 'Sending again without fixing anything fails the same way. They go because the addresses got fixed.', 'A full box is a reason to look, not to send. Sent blind, they would just come back.'] },
       ask: { q: 'Your consumer moved 2,000 messages to the dead-letter queue overnight. What should happen first?',
-        opts: ['Find why they failed, fix it, then redrive them', 'Redrive them all at once, then watch for errors', 'Delete them, as they have already been retried', 'Raise the retry limit so fewer go to the queue'], a: 0,
+        opts: ['Find why they failed, fix it, then redrive them', 'Redrive all of them at once, then watch for errors', 'Delete them, as they have already been retried', 'Raise the retry limit so fewer go to the queue'], a: 0,
         no: [null, "If the cause is still there they fail again, and 2,000 at once can swamp the consumer.", 'Each one could be a lost order or payment. The queue is there so nothing silently disappears.', "More retries don't fix a bad message or a bug. They only delay the same failure."],
         why: 'A DLQ holds messages that kept failing, so the rest keep moving. Treat it as a to-do list: alert on it, inspect the messages, fix the cause, then redrive at a rate the consumer can take. Redriving needs idempotent consumers, since some messages may have half-succeeded.' } },
     'diary-4': {
@@ -94,7 +94,7 @@
         why: 'In CQRS the event log stays the truth, and read models (projections) built from it are kept current as events arrive, so reads are fast. The cost: read models lag the log a little, and need rebuilding when their shape changes.' } },
     'standby-4': { at: 1,
       predict: { q: 'Kaito stood in Gary\'s spot every night of the storm. What was he being?',
-        opts: ['A warm standby, ready to take over', 'A backup, to restore when needed', 'A second primary, sharing the load'], a: 0,
+        opts: ['A warm standby, ready to take over', 'A backup, to restore when needed', 'A second primary, sharing all the load'], a: 0,
         no: [null, 'A backup sits on a shelf until you restore it. Kaito was out there, running, every night.', "He wasn't sharing anything. Gary's spot only ever needs one person."] },
       ask: { q: 'Your primary region has a warm standby in a second region. What do you pay for, and what do you get?',
         opts: ['Idle capacity all year, for failover in minutes', 'Nothing until a disaster, then restore in hours', 'Double capacity, with both regions serving users', 'Only storage costs, for zero-downtime failover'], a: 0,
@@ -112,15 +112,15 @@
         why: "With each machine's own number in every ID, two machines can never make the same one, with no coordination per ID. The cost moves to setup: machine IDs must be unique and assigned, by config or a coordinator, and a reused machine ID brings duplicates back." } },
     'smoke-3': {
       predict: { q: "Explodia writes far ahead of Lyra. Why doesn't anyone miss a verse?",
-        opts: ['Each singer keeps their own place in the book', 'Lyra sings faster whenever he gets ahead', 'Explodia waits for Lyra before writing more'], a: 0,
-        no: [null, 'She sings at her own pace. Nobody makes her hurry.', 'He never waits. He keeps writing at the end, KA-BOOM, on schedule.'] },
+        opts: ['Each singer keeps their own place in the book', 'Lyra sings faster whenever Explodia gets ahead', 'Explodia waits for Lyra to catch up before writing more'], a: 0,
+        no: [null, 'She sings at her own pace. Nobody makes her hurry.', 'She never waits. She keeps writing at the end, KA-BOOM, on schedule.'] },
       ask: { q: 'Three services read the same Kafka topic. One is down for an hour. What happens when it comes back?',
         opts: ['It resumes from its saved offset and catches up', 'It misses that hour, since the others read it', 'The other two pause until it has caught back up', 'The broker resends that hour to all three of them'], a: 0,
         no: [null, "Reading doesn't remove messages from a log. Each consumer group keeps its own offset.", "Consumers don't wait for each other. Each reads at its own pace.", 'The others already have their places. Only the one that was down replays.'],
         why: "A log keeps messages for a retention period, and each consumer group stores its own offset, so readers don't block the writer or each other, and a slow one catches up later. The catch: down for longer than the retention period, and what it needed is gone." } },
     'armband-3': {
       predict: { q: 'Term two beats term one. What stops there ever being two chiefs again?',
-        opts: ['A chief who sees a higher term steps down', 'Whoever was Chief first keeps the armband', 'The two chiefs agree to share the job'], a: 0,
+        opts: ['A chief who sees a higher term steps down', 'Whoever was Chief first always keeps the armband', 'The two chiefs agree to share the job'], a: 0,
         no: [null, 'Then a chief who fell asleep could wake up and keep giving orders. The newer term has to win.', 'Two chiefs giving orders is exactly the scandal Suzu wants to end.'] },
       ask: { q: 'A Raft leader is cut off by a partition, and the rest elect a new one. Then the old leader reconnects. What happens?',
         opts: ['It sees the higher term and steps down', 'It stays leader, since it was elected first', 'Both lead, and their logs are merged later', 'It forces a fresh election for both of them'], a: 0,
@@ -128,7 +128,7 @@
         why: 'Every election raises the term, and any node that sees a higher term steps down at once, so two leaders can never both commit. Writes the old leader accepted without a majority are thrown away when it rejoins. The cost: an election pauses writes for a moment.' } },
     'commentary-3': {
       predict: { q: 'Lord Latency asks once and then waits. Why does the crowd love it?',
-        opts: ['They hear the news the moment it happens', 'He gets to ask many more questions', 'He saves his voice for the last round'], a: 0,
+        opts: ['They hear the news the moment it happens', 'He gets to ask many more questions', 'He gets to save his voice for the last round'], a: 0,
         no: [null, "He asks far fewer. That's the point: one question, held open.", 'Maybe. But what they love is hearing the news the moment it lands.'] },
       ask: { q: 'A dashboard polls every second for new alerts, which arrive a few times an hour. What does long polling change?',
         opts: ['Each request waits open until an alert or a timeout', 'The server pushes alerts down one two-way socket', 'The client polls less often, so alerts come later', 'Alerts are batched and sent every few minutes'], a: 0,
@@ -136,10 +136,10 @@
         why: 'With long polling the server holds each request open until it has news or a timeout passes, then the client asks again. You get near-instant delivery over plain HTTP with far fewer empty replies. The cost: an open connection held on the server for every waiting client.' } },
     'confession-3': {
       predict: { q: 'Eleven notes, and Akane still isn\'t sure. Will one more note do it?',
-        opts: ['No: any note might be the one that is lost', 'Yes: twelve is enough to be certain', 'Yes, if Hypewagon runs a bit faster'], a: 0,
+        opts: ['No: any note could be the lost one', 'Yes: twelve is enough to be certain', 'Yes, if Hypewagon runs a bit faster'], a: 0,
         no: [null, "Then they'd need a note to confirm the twelfth. It never ends.", 'Speed doesn\'t help. Any single note might never arrive.'] },
       ask: { q: 'A service sends a payment request, and the call times out. What does it know?',
-        opts: ['Nothing: the payment may or may not have happened', 'The payment failed, so it is safe to send again', 'The payment went through, but the reply was lost', 'The other service is down and must be failed over'], a: 0,
+        opts: ['Nothing: the payment may or may not have happened', 'The payment failed, so it is safe to send it again', 'The payment went through, but the reply was lost', 'The other service is down and must be failed over'], a: 0,
         no: [null, 'A timeout says nothing about the other side. Retry blindly and you may charge twice.', 'Maybe, or maybe the request never arrived. A timeout cannot tell those apart.', 'It might just be slow, or one packet was lost. One timeout proves nothing.'],
         why: "Over an unreliable network, no number of acknowledgements makes both sides certain: the Two Generals problem. So you design to cope: an idempotency key so a retry can't charge twice, and a status check to learn what happened. The cost: both sides must carry and check the key." } },
     'notfound-3': {
@@ -147,7 +147,7 @@
         opts: ['The sign remembers "not found" until one', 'Hero #404 told everyone where he went', 'Hero #12 looks for him every minute now'], a: 0,
         no: [null, "He's still not found. The lunch box is just empty.", "That's more looking, not less. The sign is so nobody has to look."] },
       ask: { q: "Bots look up usernames that don't exist. Each lookup misses the cache and hits the database. What helps most?",
-        opts: ['Cache the "not found" answer with a short TTL', 'Raise the TTL on usernames that do exist', 'Add a read replica to absorb the extra misses', "Switch the cache's eviction policy to LFU"], a: 0,
+        opts: ['Cache the "not found" answer with a short TTL', 'Raise the TTL on usernames that do exist', 'Add a read replica to absorb all the extra misses', "Switch the cache's eviction policy to LFU"], a: 0,
         no: [null, 'These keys never get cached at all, so longer TTLs on other keys don\'t touch them.', 'That pays to keep serving the bots. The misses keep coming.', 'Eviction cannot keep what was never stored, and a missing user never enters the cache.'],
         why: 'Negative caching stores "this doesn\'t exist" with a short TTL, so repeat lookups stop at the cache. The cost: if the user is created, readers may see "not found" until the TTL passes, so keep it short or delete the entry on create.' } },
 
@@ -162,10 +162,10 @@
         why: 'If matching is deterministic and both engines read one sequenced input, they end in the same state, so the standby can take over in milliseconds. The cost: nothing in the engine may differ between the two, no randomness and no reading the wall clock, or the guarantee breaks.' } },
     'halt-3': {
       predict: { q: 'The whole market just stopped for fifteen minutes. Why?',
-        opts: ['So it could recover before taking more orders', 'Because the clerks all went to lunch at once', 'To let Toro and Barnaby finish their argument'], a: 0,
+        opts: ['So it could recover before taking more orders', 'Because the clerks all went to lunch at once', 'To let Toro and Barnaby finally finish their argument'], a: 0,
         no: [null, 'It was the bell, not lunch. It rang because orders were burying the clerks.', 'They sat on the kerb, still arguing. The pause was for the market.'] },
       ask: { q: 'Calls to a struggling payment provider keep timing out, and a circuit breaker opens. What happens next?',
-        opts: ['Calls fail fast, then a few test calls probe it', "Calls queue up and replay once it's healthy", 'Every call is retried three times with backoff', 'Traffic moves over to a replica of the provider'], a: 0,
+        opts: ['Calls fail fast, then a few test calls probe it', "Calls queue up and replay once it's healthy", 'Every call is retried three times with backoff', 'Traffic moves over to a standby replica of the provider'], a: 0,
         no: [null, 'A queue builds a backlog that hits the provider the moment it recovers. A breaker sheds instead.', 'Retries add load to something already drowning. The breaker stops calls instead.', 'There may be no replica. The breaker just stops sending, wherever the calls would go.'],
         why: "An open breaker fails calls at once, so callers don't pile up waiting on timeouts and the service gets room to recover. After a cooldown it lets a few calls through (half-open), and closes if they work. The cost: while it's open every call fails, so callers need a fallback." } },
     'padlock-3': {
@@ -191,12 +191,12 @@
         opts: ['She reads one column for every child', "She remembers every child's answers", 'She guesses, the way Dami does'], a: 0,
         no: [null, "She doesn't need to remember. She opens one book and runs down one column.", 'Two hundred and twelve is not a guess.'] },
       ask: { q: "Analysts run 'average order value by month' over a billion orders with forty columns. Why does a column store beat a row store here?",
-        opts: ['It reads only the two columns the query needs', 'It keeps every row cached in memory for speed', 'It updates single orders faster than rows do', 'It skips indexes, so its writes are faster'], a: 0,
+        opts: ['It reads only the two columns the query needs', 'It keeps every row cached in memory for extra speed', 'It updates single orders faster than rows do', 'It skips indexes, so its writes are faster'], a: 0,
         no: [null, 'A billion rows rarely fit in memory. Column stores win by reading less from disk.', 'The opposite: one order touches many column files. Row stores win at that.', 'Column stores are slower to write, which is why they load in batches.'],
         why: 'A row store reads whole rows, all forty columns, to use two. A column store reads only those two, and columns of similar values compress well. The cost: single-row writes are slow, so column stores suit analytics loaded in batches, not the live orders table.' } },
     'tin-3': { at: 3,
       predict: { q: 'Each of them is waiting for the other. How does this ever end?',
-        opts: ['One of them lets go of what they hold', 'They both wait a little bit longer', 'They open both locks at once'], a: 0,
+        opts: ['One of them lets go of what they hold', 'They both just wait a little bit longer', 'They open both locks at once'], a: 0,
         no: [null, "Waiting is what they've been doing. Nobody's turn ever comes.", 'Neither can open anything: each needs what the other holds.'] },
       ask: { q: 'Under two-phase locking, transaction A holds row 1 and waits for row 2, while B holds row 2 and waits for row 1. What does the database do?',
         opts: ['Abort one of them, so the other can finish', 'Let both wait until one of them times out', 'Release both locks and run them in parallel', 'Merge the two transactions into one of them'], a: 0,
@@ -212,10 +212,10 @@
         why: "A Bloom filter never gives a false 'no', so a 'no' lets you skip the disk read. A 'maybe' can be a false positive, so you read to check. The cost is memory: about 10 bits per key for a 1% false-positive rate." } },
     'legend-3': {
       predict: { q: "Old maps don't have the star. Why do they still work?",
-        opts: ['The star was added; no old mark changed', 'Everyone was told to burn their old map', 'The star means the same as the anchor'], a: 0,
+        opts: ['The star was added; no old mark changed', 'Everyone was told to burn their old maps first', 'The star means the same as the anchor'], a: 0,
         no: [null, 'Nobody burned anything. Old maps still get people to the harbour.', 'Reusing an old mark would send old readers to the wrong place.'] },
       ask: { q: 'You add a field to a Protobuf message. Old services still read the new messages. What keeps that safe?',
-        opts: ['A new tag number that old readers can skip', 'Reusing the tag of a field you removed', 'Making the new field required everywhere', 'Renaming an old field to hold the new data'], a: 0,
+        opts: ['A new tag number that old readers can skip', 'Reusing the tag of a field you removed', 'Making the new field required everywhere', 'Renaming an old field so it holds the new data'], a: 0,
         no: [null, 'Old readers would decode the new data as the old field. Never reuse a tag.', "Old writers don't send it, so new readers would reject their messages.", "The tag is what's on the wire, so old readers would read the new data as the old field."],
         why: 'Protobuf identifies fields by tag. Adding an optional field with a new tag works both ways: old readers skip it, new readers default it. Reusing tags or making new fields required breaks one side. The cost: retired tags stay reserved forever.' } },
     'birthday-3': {
@@ -228,7 +228,7 @@
         why: 'Last-write-wins keeps one concurrent write by timestamp and drops the other with no error. Version vectors detect that two writes are concurrent, and a merge (a set union, or a CRDT) keeps both. The cost: you need merge logic, and removals are harder to merge than additions.' } },
     'reply-3': {
       predict: { q: 'The slip arrived eighty years late. Which day does Ruth count it on?',
-        opts: ['The day it was written, when she was six', 'Today, the day it finally reached her', "Neither: it's far too late to count"], a: 0,
+        opts: ['The day it was written, when she was six', 'Today, the day it finally reached her desk', "Neither: it's far too late to count"], a: 0,
         no: [null, "That's counting by when it arrived. She counts by the tag.", 'Nothing is too late for the late basket.'] },
       ask: { q: 'You count app events per hour by when they happened. Phones that were offline on a flight upload hours late. What should happen to those events?',
         opts: ['Count them in their hour, up to an allowed lateness', 'Count them in the hour they finally arrived in', "Drop them, since that hour's count is now closed", "Count them in a separate 'unknown hour' bucket"], a: 0,
@@ -239,7 +239,7 @@
         opts: ['Read the log of every shell paid in', 'Count the shells in the box again', "Ask Arjun, who's always right"], a: 0,
         no: [null, "A recount says twelve. It can't say who paid the twelfth.", "Arjun's asleep. Though he did say \"replay the log\"."] },
       ask: { q: 'A bank stores each account as a log of deposits and withdrawals, not just a balance. What does that buy?',
-        opts: ['An audit trail, and any past balance on demand', 'Faster balance reads with no work at all', 'Less storage than a single balance column', 'Simpler code, as there is nothing to replay'], a: 0,
+        opts: ['An audit trail, and any past balance on demand', 'Faster balance reads with no work at all', 'Less storage than a single balance column', 'Simpler code, since there is nothing to ever replay'], a: 0,
         no: [null, 'Reads get slower unless you keep a projection: the balance is computed from events.', 'A log of every change is far bigger than one number.', 'Replays and projections are extra code. That is part of the cost.'],
         why: 'With event sourcing, current state is worked out from an append-only log of what happened, so you get an audit trail, any past state, and new views built later. The costs: storage, replay time (eased with snapshots and projections) and keeping old event formats readable.' } },
 
@@ -249,7 +249,7 @@
         opts: ['No: it was for deciding, not for the board', 'Yes: it was too far off to be any use', 'No: it was right, if you count generously'], a: 0,
         no: [null, 'Good enough to choose one server or forty is all a napkin number has to be.', 'Generously is not a unit. 142 is what goes on the board.'] },
       ask: { q: 'Your napkin math says peak traffic will be about 2,000 requests a second. What is that number for?',
-        opts: ['Picking a design: one database or a sharded one', 'Setting the exact autoscaling limits for launch', 'Promising the customer an exact latency figure', 'Skipping the load test, as you already know'], a: 0,
+        opts: ['Picking a design: one database or a sharded one', 'Setting the exact autoscaling limits for the launch', 'Promising the customer an exact latency figure', 'Skipping the load test, as you already know'], a: 0,
         no: [null, 'Limits come from measured load. The estimate only says roughly where they will be.', 'Latency promises come from measuring under load, not from a napkin.', 'The estimate says what to build. A load test says what you built can do.'],
         why: 'Back-of-envelope math is for decisions that only need the right order of magnitude: one box or forty, cache or not, shard or not. Then you measure, and plan capacity on the measurement. Being off by a factor of a few is fine for choosing a design, and not fine for an SLA.' } },
     'pr-pit-3': {
@@ -270,7 +270,7 @@
         why: 'On a hash ring a new node takes over the arc next to it, so only about 1/N of the keys move, all from its neighbours. Virtual nodes spread the load more evenly. The cost: every client needs the same view of the ring.' } },
     'pr-signal-3': {
       predict: { q: "Kenji's stone doesn't glow once. Should Paz go up the mountain?",
-        opts: ['Not yet: one missed beat could be a cloud', 'Yes, at once: no glow means he is hurt', "No: he'll always come down on his own"], a: 0,
+        opts: ['Not yet: one missed beat could be a cloud', 'Yes, right away: no glow means he must be hurt', "No: he'll always come down on his own"], a: 0,
         no: [null, 'From down here a cloud looks just like trouble. Wait for a few.', 'Three missed peaks and she goes. Nobody is ignoring him.'] },
       ask: { q: 'Nodes send a heartbeat every 2 seconds. You set the timeout to 3 seconds to catch failures fast. What happens?',
         opts: ['GC pauses and slow links trigger false failovers', 'Failures are caught late and users see errors', 'Heartbeats slow down to match the short timeout', 'Nothing: a shorter timeout is always safer'], a: 0,
@@ -305,7 +305,7 @@
         opts: ['Everyone times off the same gong', 'Everyone buys the same kind of watch', "Paz's watch is the one used for heats"], a: 0,
         no: [null, 'The same model still drifts, each in its own way.', "Paz's watch drifts too. What matters is one source everyone listens to."] },
       ask: { q: 'Two servers stamp events with their own clocks, which NTP keeps within 50 ms. Can you order two events 10 ms apart by timestamp?',
-        opts: ['No: the skew is bigger than the gap, so use a logical order', 'Yes: NTP keeps the clocks close enough for that', 'Yes, if both servers are in the same data centre', 'No, unless you switch both servers to UTC time'], a: 0,
+        opts: ['No: skew beats the gap, so use a logical clock', 'Yes: NTP keeps the clocks close enough for that', 'Yes, if both servers are in the same data centre', 'No, unless you switch both servers to UTC time'], a: 0,
         no: [null, "Within 50 ms isn't within 10 ms. The order could be either way.", 'Same building, still two clocks, each drifting on its own.', 'Time zones have nothing to do with skew. Two UTC clocks can still disagree.'],
         why: "Clocks drift, and NTP only bounds the skew. When two events are closer than the skew, timestamps can't order them, so take the order from one place (a leader, a log) or use logical clocks. Who crossed the line first beats comparing watches." } }
   };

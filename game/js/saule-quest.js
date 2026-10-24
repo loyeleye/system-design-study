@@ -143,9 +143,9 @@
           intro: 'The temple keeps every prayer as one row of forty fields. The Fan Report needs three fields from every prayer ever made. Let us fix it properly.',
           rounds: [
             { type: 'choose', q: 'The Fan Report reads island, month and devotion for every prayer. The ledger keeps each prayer as one row of 40 fields. How much does the report read?', opts: [
-              { t: 'All 40 fields of every prayer, because each row is stored together; it throws 37 of them away', ok: true, why: 'A row store keeps a whole row together on disk, so a scan reads every field to get the three it wants. That is most of the Great Slowness.' },
-              { t: 'Only the 3 fields it needs', why: 'Only if the data is stored by column. In the ledger, each prayer\'s fields sit together, so they come off the disk together.' },
-              { t: 'Only the latest prayer', why: 'The report covers the dawn of time. Uptima was very clear about the dawn of time.' }] },
+              { t: 'All 40 fields of every prayer, to use just 3', ok: true, why: 'A row store keeps a whole row together on disk, so a scan reads every field to get the three it wants and throws 37 away. That is most of the Great Slowness.' },
+              { t: 'Only the 3 fields it needs, from every prayer', why: 'Only if the data is stored by column. In the ledger, each prayer\'s fields sit together, so they come off the disk together.' },
+              { t: 'Only prayers added since the last report ran', why: 'Nothing tracks what the last run saw, and the report covers the dawn of time. Uptima was very clear about the dawn of time.' }] },
             { type: 'tap', q: 'Saule copies the ledger into notebooks, one per column: an island notebook, a month notebook, a devotion notebook. Which of these are now true? Tap them all.',
               chips: [{ t: 'The report opens only 3 notebooks', sub: 'reads 3 of 40 columns', ok: true },
                 { t: 'The island notebook squashes down small', sub: '"Ledger Isle" written 9,000 times in a row is one entry', ok: true },
@@ -155,7 +155,7 @@
             { type: 'order', q: 'Build the temple a warehouse in the basement, in order.', chips: ['The prayer desk keeps writing to its row-by-row ledger', 'Every night, copy the new prayers out of the ledger (ETL)', 'Write them into the basement, one notebook per column', 'Run the Fan Report on the basement copy', 'The desk never notices'],
               why: 'The app keeps its fast row store for small writes. A batch job (or a change stream) copies data to a column-oriented warehouse, and the big questions run there. The report is a night behind, which a goddess can survive.' },
             { type: 'choose', q: 'Which question belongs on the prayer desk\'s own database, not the warehouse?', opts: [
-              { t: '"Record this prayer from Kwame, and show it to him right away"', ok: true, why: 'Small, by key, needs to be up to date this second: that is OLTP, the app\'s job.' },
+              { t: '"Save Kwame\'s prayer and show it to him right away"', ok: true, why: 'Small, by key, needs to be up to date this second: that is OLTP, the app\'s job.' },
               { t: '"Average devotion per island per year, for all time"', why: 'A scan over all history. Warehouse.' },
               { t: '"Which month do people pray most about late ferries?"', why: 'Grouping over everything. Warehouse. (The answer is every month.)' }] }
           ],

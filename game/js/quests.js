@@ -245,10 +245,10 @@
             ],
             gap: 'front', ask: 'What goes at the front door?',
             options: [
-              { t: 'An API gateway with a rate limiter, keeping shared counts in Redis', ok: true, why: 'One front door for every request, with each client\'s count in a fast shared store. Over the limit: <b>429 Too Many Requests</b> plus <b>Retry-After</b>.' },
-              { t: 'A cache of the quest board', why: 'A cache answers reads faster, but the bot still eats connections, and writes are never cached. You need to say no, not answer faster.' },
-              { t: 'A bigger database', why: 'The database was never the problem. The bot is.' },
-              { t: 'A sign asking Doug nicely', why: 'Doug has seen the sign. Doug has a bot that cannot read.' }
+              { t: 'A gateway that rate limits, with counts in Redis', ok: true, why: 'One front door (an API gateway) for every request, with each client\'s count in a fast shared store. Over the limit: <b>429 Too Many Requests</b> plus <b>Retry-After</b>.' },
+              { t: 'A cache of the quest board in front of the app', why: 'A cache answers reads faster, but the bot still eats connections, and writes are never cached. You need to say no, not answer faster.' },
+              { t: 'A bigger database with more read replicas', why: 'The database was never the problem. The bot is, and it will happily eat the new replicas too.' },
+              { t: 'A load balancer spreading calls over more servers', why: 'That shares the flood out more evenly, but every one of Doug\'s calls still gets served. Nothing says no.' }
             ],
             done: '<p class="small">The limiter lives at the <b>API gateway</b> (or as middleware just in front of the servers), with one shared counter per client in a fast store like <b>Redis</b>. If that store goes down, most teams <b>fail open</b>: let traffic through rather than block every hero.</p>'
           } }] },

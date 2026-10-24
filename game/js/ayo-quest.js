@@ -225,7 +225,7 @@
   const FORGE = {
     title: 'FORGE FIRE · TOMORROW, ON A SLATE', who: 'ayo', win: 'THE FORGE STAYS LIT!',
     predict: { q: 'Cron falls asleep at 10:00 and stops answering his gate. Each squire sent for charcoal waits there until Cron answers. What happens to the repair bench, which needs no charcoal at all?',
-      opts: ['Nothing: repairs don\'t need charcoal', 'It slows down a little', 'It stops: every squire ends up at the gate'], right: 2 },
+      opts: ['Nothing: repairs don\'t need charcoal', 'It slows down a little, then catches up', 'It stops: every squire ends up at the gate'], right: 2 },
     stages: [
       { name: 'Keep the bench going', levers: ['timeout', 'bulk'], goals: ['a', 'b'],
         intro: 'Here is tomorrow, on my slate: repairs and sword orders all day, and Cron asleep from ten until three. Run it as we did today first. Then give my squires two rules: how long to wait, and how many may go.' },
