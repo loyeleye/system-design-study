@@ -17,26 +17,75 @@
 
   // Typed answers (type 'explain', data in js/explain-data.js): which rubric points does the text cover?
   // A point counts as found when one of its key terms appears, or when a clause of the answer means nearly the same
-  // as one of its example phrasings (on-device embeddings, js/embed.js). The player confirms every tick, so this
-  // only has to be a good first guess. Returns [{ hit: 'key'|'close'|'maybe'|null, ev }] per point.
-  const CLOSE = 0.58, MAYBE = 0.42;
+  // as one of its example phrasings (on-device embeddings, js/embed.js). This is a second opinion: the player ticks
+  // their own points first and sees it after. A term only counts when it is used the right way round:
+  //   - negated ("never use a lock", "idempotency does not matter", "no TTL needed") it is 'not', not found
+  //   - a point's anti phrasings ("shard by timestamp") mean the answer recommends the trap: 'trap', not found
+  //   - a bare list of terms ("stale ttl stampede warm") is only 'maybe': it needs about 4 words per point found
+  // Returns [{ hit: 'key'|'close'|'maybe'|'not'|'trap'|null, ev }] per point.
+  const CLOSE = 0.58, MAYBE = 0.42, WORDS_PER_POINT = 4;
+  // Only clear dismissals count, since a good answer often negates a problem on purpose ("must not be a single
+  // point of failure", "without sticky sessions", "never reaches the origin"). Before a term, in the same clause:
+  // "never use", "don't need", "no need for", "skip", "get rid of". After it: "is bad", "does not matter",
+  // "isn't needed". And "no X ... needed" around it.
+  const NEG_BEFORE = /\b(?:(?:never|not|(?:do|does|did|wo|would|should)(?:n['’]?t| not)|will not|no need to) (?:use|using|need|needs|bother(?: with)?|add|want|require)|no need for|without (?:using|any)|get(?:ting)? rid of|forget(?: about)?)\b/i;
+  const SKIP = /\b(?:skip(?:s|ped|ping)?|ditch(?:es|ed|ing)?)(?: the| a| any)?\s*$/i;
+  const NEG_AFTER = /^(?:\s*\S+){0,2}?\s*(?:(?:is|are|was|were|seems?) (?:bad|a bad idea|useless|pointless|overkill|unnecessary|not (?:needed|required|necessary|important|worth it))|(?:is|are)n['’]?t (?:needed|required|necessary|important)|not needed|(?:does|do|did)(?: not|n['’]?t) (?:matter|help))\b/i;
+  const NO_NEEDED = /\bno\b[^.;:!?\n(),]*\b(?:needed|required|necessary)\b/i;
+  // Problems named as problems: "stale reads are bad" is the right idea, not a dismissal.
+  const PROBLEM = /^(?:stale|stampede|thundering|dogpile|race|collision|hot|skew|single point|spof|duplicat|double|lost|loss|outage|overload|contention|conflict|deadlock|split.?brain|noise|bottleneck|leak)/i;
+  const negated = (text, at, len) => {
+    while (/\w/.test(text[at + len] || '')) len++;
+    const before = /[^.;:!?\n(),]*$/.exec(text.slice(0, at))[0], after = /^[^.;:!?\n(),]*/.exec(text.slice(at + len))[0];
+    const words = before.trim().split(/\s+/).slice(-4).join(' ');
+    if (NEG_BEFORE.test(words) || SKIP.test(before) || NO_NEEDED.test(before.slice(-30) + text.substr(at, len) + after)) return true;
+    const m = NEG_AFTER.exec(after);
+    return !!m && !(/\b(?:bad|a bad idea|useless|pointless)$/i.test(m[0]) && PROBLEM.test(text.substr(at, len)));
+  };
+  // Every match of the pattern, and whether at least one is used the right way round.
+  // A trap is only recommended when nothing warns against it: "don't shard by timestamp" names it to avoid it.
+  const WARNED = /\b(?:never|not|no|nor|avoid\w*|beware|careful|(?:do|does|did|wo|would|should|could|is|are)n['’]?t|cannot|instead of|rather than|without)\b/i;
+  const warned = (text, at) => WARNED.test(/[^.;:!?\n(),]*$/.exec(text.slice(0, at))[0].trim().split(/\s+/).slice(-4).join(' '));
+  const matches = (text, pats, anti) => {
+    if (!(pats || []).length) return [];
+    const re = new RegExp('\\b(?:' + pats.join('|') + ')', 'gi'), out = [];
+    let m;
+    while ((m = re.exec(text))) { out.push({ ev: m[0] + /^\w*/.exec(text.slice(m.index + m[0].length))[0], not: anti ? warned(text, m.index) : negated(text, m.index, m[0].length) }); if (!m[0].length) re.lastIndex++; }
+    return out;
+  };
+  Q.negated = negated;
   Q.rubric = function (text, points) {
     const E = SD.embed;
-    const clauses = String(text).split(/[.;:!?\n()]+|,\s+|\s+(?:and|but|so|because|then|which|while)\s+/i)
+    text = String(text);
+    const words = text.split(/\s+/).filter(w => /\w/.test(w)).length;
+    const clauses = text.split(/[.;:!?\n()]+|,\s+|\s+(?:and|but|so|because|then|which|while)\s+/i)
       .map(x => x.trim()).filter(x => x.split(/\s+/).length >= 4);
-    if (clauses.length !== 1) clauses.push(String(text));
+    if (clauses.length !== 1) clauses.push(text);
     const cv = E && E.ready ? clauses.map(c => [c, E.vec(c)]).filter(x => x[1]) : [];
-    return points.map(p => {
-      const key = (p.keys || []).length ? new RegExp('\\b(?:' + p.keys.join('|') + ')', 'i').exec(text) : null;
-      if (key) return { hit: 'key', ev: key[0] };
-      let best = 0, ev = '';
+    const hasNeg = s => NEG_BEFORE.test(s) || NO_NEEDED.test(s) || /\b(?:never|not(?! just| only)|no(?! one| two| other| more)|don['’]?t|without|unnecessary|overkill|pointless|useless)\b|n['’]t matter|not matter/i.test(s);
+    const out = points.map(p => {
+      // Recommending the anti-pattern ("shard by timestamp") outweighs naming the right term; warning against it is fine.
+      const trap = matches(text, p.anti, true).find(m => !m.not);
+      if (trap) return { hit: 'trap', ev: trap.ev };
+      const keys = matches(text, p.keys);
+      const good = keys.find(m => p.negOk || !m.not);
+      if (good) return { hit: 'key', ev: good.ev };
+      let best = 0, ev = '', exNeg = false;
       for (const ex of [p.t].concat(p.ex || [])) {
         const pv = E && E.ready ? E.vec(ex) : null;
         if (!pv) continue;
-        for (const [c, v] of cv) { const s = E.cos(v, pv); if (s > best) { best = s; ev = c; } }
+        for (const [c, v] of cv) { const s = E.cos(v, pv); if (s > best) { best = s; ev = c; exNeg = hasNeg(ex); } }
       }
-      return { hit: best >= CLOSE ? 'close' : best >= MAYBE ? 'maybe' : null, ev, sim: best };
+      // A clause that sounds right but is negated where the example isn't ("never lock the seat") is only a maybe.
+      let hit = best >= CLOSE ? 'close' : best >= MAYBE ? 'maybe' : null;
+      if (hit === 'close' && hasNeg(ev) && !exNeg) hit = 'maybe';
+      if (keys.length && hit !== 'close') return { hit: 'not', ev: keys[0].ev, sim: best };
+      return { hit, ev, sim: best };
     });
+    // A list of terms with no sentences around them doesn't show the idea, only the vocabulary.
+    const found = out.filter(f => f.hit === 'key').length;
+    if (found && words < found * WORDS_PER_POINT) out.forEach(f => { if (f.hit === 'key') { f.hit = 'maybe'; f.bare = true; } });
+    return out;
   };
   Q.need = n => Math.ceil(n * 0.6);
 
@@ -161,7 +210,9 @@
         SD.state.persist();
         feedback(ok, conf, ms, page, score);
       }
-      // Typed answer: the game pre-ticks the rubric points it can see, and the player confirms or corrects them.
+      // Typed answer: the player ticks the points their answer made first, with nothing pre-ticked, since pre-ticks
+      // anchor self-scoring. Then the game's reading (Q.rubric) comes in as a second opinion, disagreements flagged,
+      // and the player can change their ticks before confirming. The player's ticks are the score.
       async function checkTyped(conf, ms) {
         const E = SD.embed;
         if (typed && E && !E.ready && !E.failed) {
@@ -169,19 +220,39 @@
           await Promise.race([E.load(), new Promise(r => setTimeout(r, 6000))]);
         }
         const found = typed ? Q.rubric(typed, q.points) : q.points.map(() => ({ hit: null }));
-        const ticks = found.map(f => f.hit === 'key' || f.hit === 'close');
+        const sees = found.map(f => f.hit === 'key' || f.hit === 'close');
+        const ticks = q.points.map(() => false);
         const need = Q.need(q.points.length);
-        const evText = f => f.hit === 'key' ? `Found "${U.esc(f.ev)}"` : f.hit === 'close' ? `Sounds like: "${U.esc(f.ev)}"` : f.hit === 'maybe' ? `Maybe: "${U.esc(f.ev)}"` : '';
+        let compare = !typed;
+        const evText = f => f.hit === 'key' ? `Found "${U.esc(f.ev)}"` : f.hit === 'close' ? `Sounds like: "${U.esc(f.ev)}"`
+          : f.hit === 'not' ? `"${U.esc(f.ev)}" is there, but your answer seems to rule it out`
+          : f.hit === 'trap' ? `"${U.esc(f.ev)}" is the trap this point warns about`
+          : f.hit === 'maybe' ? (f.bare ? `"${U.esc(f.ev)}" is named, but not explained` : `Maybe: "${U.esc(f.ev)}"`) : 'Not found';
+        const gap = i => !typed ? '' : ticks[i] && !sees[i] ? 'You ticked this; the game didn\'t find it. Check your answer says it.'
+          : !ticks[i] && sees[i] ? 'The game found this; you didn\'t tick it.' : '';
         const draw = () => {
           let h = `<div class="q-ctx">${U.esc(concept ? concept.name : 'Your answer')}</div><p class="q-q">${U.esc(q.q)}</p>`;
           h += typed ? `<blockquote class="typed">${U.esc(typed)}</blockquote>` : '<p class="muted">No answer this time. Here is what a strong one covers.</p>';
-          h += `<div class="q-ctx">A strong answer covers</div><div class="rubric">${q.points.map((p, i) => `<label class="rp${ticks[i] ? ' on' : ''}">
-              <input type="checkbox" data-r="${i}" ${ticks[i] ? 'checked' : ''} ${typed ? '' : 'disabled'}> <span><b>${U.esc(p.t)}</b>${evText(found[i]) ? `<br><span class="muted small">${evText(found[i])}</span>` : ''}</span></label>`).join('')}</div>`;
-          if (typed) h += `<p class="muted small">${E && E.ready ? 'Ticks are the game\'s guess.' : 'Only exact terms were checked this time.'} Tick what your answer really said; you need ${need} of ${q.points.length}.</p>`;
-          h += `<p><b>Model answer:</b> ${U.esc(q.model)}</p><button class="primary" id="q-confirm">${typed ? 'Confirm' : 'Continue'}</button>`;
+          h += `<div class="q-ctx">A strong answer covers</div><div class="rubric">${q.points.map((p, i) => {
+            const note = compare && typed ? `<br><span class="muted small">Game: ${evText(found[i])}</span><span class="rp-gap small">${gap(i) ? '<br>' + gap(i) : ''}</span>` : '';
+            return `<label class="rp${ticks[i] ? ' on' : ''}${compare && gap(i) ? ' differ' : ''}">
+              <input type="checkbox" data-r="${i}" ${ticks[i] ? 'checked' : ''} ${typed ? '' : 'disabled'}> <span><b>${U.esc(p.t)}</b>${note}</span></label>`;
+          }).join('')}</div>`;
+          if (typed && !compare) h += `<p class="muted small">Tick each point your answer really made; you need ${need} of ${q.points.length}. Then the game shows what it found.</p><button class="primary" id="q-check">Check my ticks</button>`;
+          else {
+            if (typed) h += `<p class="muted small">${E && E.ready ? 'The game reads key terms and meaning, so it can miss a good paraphrase.' : 'Only exact terms were checked this time.'} Your ticks are the score: change any you disagree with, you need ${need} of ${q.points.length}.</p>`;
+            h += `<p><b>Model answer:</b> ${U.esc(q.model)}</p><button class="primary" id="q-confirm">${typed ? 'Confirm' : 'Continue'}</button>`;
+          }
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
-          b.querySelectorAll('[data-r]').forEach(el => el.onchange = () => { ticks[+el.dataset.r] = el.checked; el.closest('.rp').classList.toggle('on', el.checked); });
-          b.querySelector('#q-confirm').onclick = () => {
+          b.querySelectorAll('[data-r]').forEach(el => el.onchange = () => {
+            const i = +el.dataset.r, rp = el.closest('.rp'), g = rp.querySelector('.rp-gap');
+            ticks[i] = el.checked; rp.classList.toggle('on', el.checked);
+            if (g) { g.innerHTML = gap(i) ? '<br>' + gap(i) : ''; rp.classList.toggle('differ', !!gap(i)); }
+          });
+          const chk = b.querySelector('#q-check');
+          if (chk) chk.onclick = () => { compare = true; draw(); };
+          const cf = b.querySelector('#q-confirm');
+          if (cf) cf.onclick = () => {
             const score = ticks.filter(Boolean).length, ok = !!typed && score >= need;
             // Typing takes longer than tapping, so typed answers don't count against fluency's speed check.
             let page = null;
