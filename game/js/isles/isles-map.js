@@ -7,28 +7,30 @@
   const I = SD.isles, U = SD.ui, S = SD.state, AU = SD.audio, K = I.kit;
   const esc = s => U.esc(s);
   const INK = '#2b2340';
-  const W = 65, HT = 50;
+  const W = 65, HT = 56;
 
   // ---------- Geometry ----------
   // Islands are rounded blobs of grass in the sea; the mainland (Ferry Landing) fills the west edge.
   const ISLE = {
     // The mainland runs south past the mill to Ploy's cove and the Tide Pool Game Club.
-    landing: { box: [0, 0, 12, 49], parts: [[0, 0, 12, 49], [13, 38, 31, 48]], label: [6, 1.2] },
-    ledger: { box: [18, 2, 28, 12], label: [23, 2.2] },
-    mill: { box: [18, 25, 28, 35], label: [23, 25.2] },
-    tower: { box: [31, 14, 40, 23], label: [35.5, 14.2] },
-    fish: { box: [43, 2, 54, 12], label: [48.5, 2.2] },
-    carto: { box: [43, 25, 54, 35], label: [48.5, 25.2] },
-    twins: { box: [31, 0, 41, 6], parts: [[31, 0, 36, 6], [38, 0, 41, 6]], label: [36, 7.6] },
-    lighthouse: { box: [59, 15, 63, 21], label: [61, 14.2] }
+    landing: { box: [0, 0, 12, 55], parts: [[0, 0, 12, 55], [13, 44, 31, 54]], label: [6, 7.2] },
+    ledger: { box: [18, 8, 28, 18], label: [23, 8.2] },
+    mill: { box: [18, 31, 28, 41], label: [23, 31.2] },
+    tower: { box: [31, 20, 40, 29], label: [35.5, 20.2] },
+    fish: { box: [43, 8, 54, 18], label: [48.5, 8.2] },
+    carto: { box: [43, 31, 54, 41], label: [48.5, 31.2] },
+    twins: { box: [31, 6, 41, 12], parts: [[31, 6, 36, 12], [38, 6, 41, 12]], label: [36, 13.6] },
+    lighthouse: { box: [59, 21, 63, 27], label: [61, 20.2] }
   };
   // Bridges are boardwalks over the water, as polylines of tile corners. The first and last water tiles are the
   // building sites you walk up to before it's built.
+  // The Bank of the Isles to the Fish Market goes the long way round, north of the Twin Islands, so it doesn't pass
+  // across the twins' docks.
   const BRIDGE = {
-    'landing-ledger': [[13, 7], [17, 7]], 'landing-mill': [[13, 30], [17, 30]], 'landing-tower': [[13, 18], [30, 18]],
-    'ledger-fish': [[29, 8], [42, 8]], 'mill-carto': [[29, 30], [42, 30]], 'tower-fish': [[41, 16], [46, 16], [46, 13]],
-    'carto-fish': [[50, 13], [50, 24]], 'twins-ledger': [[29, 4], [30, 4]],
-    'twin-twin': [[36, 4], [38, 4]]
+    'landing-ledger': [[13, 13], [17, 13]], 'landing-mill': [[13, 36], [17, 36]], 'landing-tower': [[13, 24], [30, 24]],
+    'ledger-fish': [[26, 7], [26, 3], [47, 3], [47, 7]], 'mill-carto': [[29, 36], [42, 36]], 'tower-fish': [[41, 22], [46, 22], [46, 19]],
+    'carto-fish': [[50, 19], [50, 30]], 'twins-ledger': [[29, 10], [30, 10]],
+    'twin-twin': [[36, 10], [38, 10]]
   };
   // Bridges the story builds rather than the player: the twins put up a little one between their islands at the end of
   // their quest (js/isles/twins.js), and put the festival stage on it.
@@ -37,27 +39,27 @@
   // Ferry docks: a wooden pier from the shore out to the dock tile you step on to call the ferry. Each island has one, named for it,
   // except the Twin Islands, where the ferry stops at both twins (isle says which island a dock is on).
   const DOCK = {
-    landing: { pier: [[13, 23], [14, 23], [15, 23]], at: [15, 23] }, ledger: { pier: [[23, 13]], at: [23, 13] }, mill: { pier: [[23, 24]], at: [23, 24] },
-    tower: { pier: [[35, 24]], at: [35, 24] }, fish: { pier: [[48, 13]], at: [48, 13] }, carto: { pier: [[45, 24]], at: [45, 24] },
-    twins: { pier: [[33, 7]], at: [33, 7], name: 'West Twin' }, twinsE: { pier: [[39, 7]], at: [39, 7], isle: 'twins', name: 'East Twin' }, lighthouse: { pier: [[58, 18], [57, 18], [56, 18]], at: [56, 18] }
+    landing: { pier: [[13, 29], [14, 29], [15, 29]], at: [15, 29] }, ledger: { pier: [[23, 19]], at: [23, 19] }, mill: { pier: [[23, 30]], at: [23, 30] },
+    tower: { pier: [[35, 30]], at: [35, 30] }, fish: { pier: [[48, 19]], at: [48, 19] }, carto: { pier: [[45, 30]], at: [45, 30] },
+    twins: { pier: [[33, 13]], at: [33, 13], name: 'West Twin' }, twinsE: { pier: [[39, 13]], at: [39, 13], isle: 'twins', name: 'East Twin' }, lighthouse: { pier: [[58, 24], [57, 24], [56, 24]], at: [56, 24] }
   };
   // Landmarks (drawn in code), each standing on a footprint you can't walk through.
   const LAND = [
-    { id: 'office', isle: 'landing', x: 3, y: 16, w: 5, h: 3, name: "HARBOURMASTER" },
-    { id: 'school', isle: 'landing', x: 3, y: 26, w: 5, h: 3, name: 'ISLES SCHOOL' },
-    { id: 'board', isle: 'landing', x: 10, y: 16, w: 1, h: 1, name: 'BOARD' },
-    { id: 'bank', isle: 'ledger', x: 21, y: 4, w: 5, h: 3, name: 'BANK OF THE ISLES' },
-    { id: 'harbour', isle: 'ledger', x: 27, y: 9, w: 1, h: 2, name: '' },
-    { id: 'mill', isle: 'mill', x: 20, y: 27, w: 4, h: 3, name: 'LOG MILL' },
-    { id: 'tower', isle: 'tower', x: 34, y: 15, w: 3, h: 3, name: 'TOWER OF TONGUES', lab: [35, 13] },
-    { id: 'market', isle: 'fish', x: 45, y: 4, w: 6, h: 2, name: 'FISH MARKET' },
-    { id: 'shop', isle: 'carto', x: 45, y: 27, w: 5, h: 3, name: 'MAP & TOOL SHOP' },
-    { id: 'hallW', isle: 'twins', x: 32, y: 1, w: 3, h: 2, name: 'WEST TWIN' },
-    { id: 'hallE', isle: 'twins', x: 39, y: 1, w: 3, h: 2, name: 'EAST TWIN' },
-    { id: 'light', isle: 'lighthouse', x: 60, y: 16, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [60.5, 12.4], door: [60, 17] },
-    { id: 'club', isle: 'landing', x: 16, y: 39, w: 4, h: 3, name: 'TIDE POOL GAME CLUB' },
-    { id: 'gtable', isle: 'landing', x: 20, y: 44, w: 1, h: 1, name: '' },
-    { id: 'umbrella', isle: 'landing', x: 26, y: 44, w: 1, h: 1, name: '' },
+    { id: 'office', isle: 'landing', x: 3, y: 22, w: 5, h: 3, name: "HARBOURMASTER" },
+    { id: 'school', isle: 'landing', x: 3, y: 32, w: 5, h: 3, name: 'ISLES SCHOOL' },
+    { id: 'board', isle: 'landing', x: 10, y: 22, w: 1, h: 1, name: 'BOARD' },
+    { id: 'bank', isle: 'ledger', x: 21, y: 10, w: 5, h: 3, name: 'BANK OF THE ISLES' },
+    { id: 'harbour', isle: 'ledger', x: 27, y: 15, w: 1, h: 2, name: '' },
+    { id: 'mill', isle: 'mill', x: 20, y: 33, w: 4, h: 3, name: 'LOG MILL' },
+    { id: 'tower', isle: 'tower', x: 34, y: 21, w: 3, h: 3, name: 'TOWER OF TONGUES', lab: [35, 19] },
+    { id: 'market', isle: 'fish', x: 45, y: 10, w: 6, h: 2, name: 'FISH MARKET' },
+    { id: 'shop', isle: 'carto', x: 45, y: 33, w: 5, h: 3, name: 'MAP & TOOL SHOP' },
+    { id: 'hallW', isle: 'twins', x: 32, y: 7, w: 3, h: 2, name: 'WEST TWIN' },
+    { id: 'hallE', isle: 'twins', x: 39, y: 7, w: 3, h: 2, name: 'EAST TWIN' },
+    { id: 'light', isle: 'lighthouse', x: 60, y: 22, w: 2, h: 2, name: 'LIGHTHOUSE', lab: [60.5, 18.4], door: [60, 23] },
+    { id: 'club', isle: 'landing', x: 16, y: 45, w: 4, h: 3, name: 'TIDE POOL GAME CLUB' },
+    { id: 'gtable', isle: 'landing', x: 20, y: 50, w: 1, h: 1, name: '' },
+    { id: 'umbrella', isle: 'landing', x: 26, y: 50, w: 1, h: 1, name: '' },
     // A small cave in the mainland's northern hills, where Kagemaru deals cards off the books inside (js/card-dealer.js).
     { id: 'cave', isle: 'landing', x: 3, y: 1, w: 4, h: 2, name: '' }
   ];
@@ -70,25 +72,25 @@
   // other spots through the day are in js/folk-far.js. The keeper is a note pinned to the lighthouse door.
   const PEOPLE = [
     // The club yard: Ploy presides over the game table, Kai and Nok play across it, Meron referees, Arjun naps.
-    { id: 'ploy', x: 16, y: 43, face: 'east' }, { id: 'kai', x: 19, y: 44, face: 'east' }, { id: 'nok', x: 21, y: 44, face: 'west' },
-    { id: 'arjun', x: 26, y: 45, face: 'south' }, { id: 'meron', x: 23, y: 42, face: 'west' },
+    { id: 'ploy', x: 16, y: 49, face: 'east' }, { id: 'kai', x: 19, y: 50, face: 'east' }, { id: 'nok', x: 21, y: 50, face: 'west' },
+    { id: 'arjun', x: 26, y: 51, face: 'south' }, { id: 'meron', x: 23, y: 48, face: 'west' },
     // Leilani at her board, Kwame on the dock looking back up the path for anyone still running, the class out at
     // break asking Apai why, and Apai locking up the school.
-    { id: 'leilani', x: 10, y: 19, face: 'north' }, { id: 'kwame', x: 12, y: 22, face: 'west' }, { id: 'kids', x: 10, y: 28, face: 'west' }, { id: 'saule', x: 5, y: 30, face: 'north' },
+    { id: 'leilani', x: 10, y: 25, face: 'north' }, { id: 'kwame', x: 12, y: 28, face: 'west' }, { id: 'kids', x: 10, y: 34, face: 'west' }, { id: 'saule', x: 5, y: 36, face: 'north' },
     // Farida counts the boats in the Admiral's harbour against his receipts; he waves them in one at a time.
-    { id: 'farida', x: 24, y: 8, face: 'east' }, { id: 'mutex', x: 26, y: 10, face: 'east' },
+    { id: 'farida', x: 24, y: 14, face: 'east' }, { id: 'mutex', x: 26, y: 16, face: 'east' },
     // Tomas stacks new planks at the mill door, and Bloom watches Tomas.
-    { id: 'tomas', x: 22, y: 31, face: 'north' }, { id: 'bloom', x: 25, y: 31, face: 'west' },
+    { id: 'tomas', x: 22, y: 37, face: 'north' }, { id: 'bloom', x: 25, y: 37, face: 'west' },
     // Lúcia reads the day's letters to the gulls, Ruth counts the catch at her stall, Minh sketches the coast.
-    { id: 'lucia', x: 36, y: 19, face: 'east' }, { id: 'ruth', x: 48, y: 7, face: 'north' }, { id: 'minh', x: 47, y: 31, face: 'east' },
+    { id: 'lucia', x: 36, y: 25, face: 'east' }, { id: 'ruth', x: 48, y: 13, face: 'north' }, { id: 'minh', x: 47, y: 37, face: 'east' },
     // The mayors argue across the water.
-    { id: 'hajin', x: 34, y: 4, face: 'east' }, { id: 'haeun', x: 40, y: 4, face: 'west' },
-    { id: 'keeper', x: 61, y: 18, note: true },
-    { id: 'gary', x: 54, y: 9, face: 'east', sunday: true }
+    { id: 'hajin', x: 34, y: 10, face: 'east' }, { id: 'haeun', x: 40, y: 10, face: 'west' },
+    { id: 'keeper', x: 61, y: 24, note: true },
+    { id: 'gary', x: 54, y: 15, face: 'east', sunday: true }
   ];
   // Tide posts: one per island. Low tide means a quick review is waiting.
-  const TIDE = { landing: [11, 25], ledger: [20, 9], mill: [26, 28], tower: [32, 20], fish: [52, 10], carto: [52, 28], twins: [36, 5], lighthouse: [62, 20] };
-  const EXIT = [0, 20];
+  const TIDE = { landing: [11, 31], ledger: [20, 15], mill: [26, 34], tower: [32, 26], fish: [52, 16], carto: [52, 34], twins: [36, 11], lighthouse: [62, 26] };
+  const EXIT = [0, 26];
 
   // Build the tile grid: '~' sea, '.' grass, 'p' dirt path, ',' boards and plazas, 'T' tree, 'L' prop, '#' landmark.
   const G = [];
@@ -104,25 +106,25 @@
     }
   }
   // The mainland coast wobbles a little.
-  for (let y = 0; y < HT; y++) for (let x = 0; x <= 12 + (hash(3, y) % 3 === 0 && ![7, 18, 23, 30].includes(y) ? 1 : 0); x++) set(x, y, '.');
+  for (let y = 0; y < HT; y++) for (let x = 0; x <= 12 + (hash(3, y) % 3 === 0 && ![13, 24, 29, 36].includes(y) ? 1 : 0); x++) set(x, y, '.');
   blob(ISLE.landing.parts[1], true);
   Object.keys(ISLE).forEach(id => { if (id === 'landing') return; (ISLE[id].parts || [ISLE[id].box]).forEach(b => blob(b, id !== 'lighthouse')); });
   // Dirt paths: from the Pingsby road through Ferry Landing, and across each island to its dock and bridges.
   const path = pts => { for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i]; for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++) if (get(x, y) === '.') set(x, y, 'p'); } };
-  path([[0, 20], [9, 20], [9, 7], [12, 7]]); path([[9, 20], [9, 30], [12, 30]]); path([[9, 30], [9, 42], [28, 42]]); path([[9, 18], [12, 18]]); path([[9, 23], [12, 23]]);
-  path([[9, 17], [9, 17]]);
-  path([[9, 7], [9, 4], [5, 4], [5, 3]]);   // up into the hills, to the cave
-  path([[18, 7], [23, 7], [23, 12]]); path([[23, 7], [28, 7], [28, 8]]); path([[23, 4], [28, 4]]);
-  path([[18, 30], [23, 30], [23, 25]]); path([[23, 30], [28, 30]]);
-  path([[31, 18], [35, 18], [35, 23]]); path([[35, 18], [40, 16]]); path([[35, 16], [40, 16]]);
-  path([[43, 8], [48, 8], [48, 12]]); path([[46, 12], [50, 12]]);
-  path([[43, 30], [48, 30], [48, 25]]); path([[45, 25], [50, 25]]);
-  path([[33, 3], [33, 6]]); path([[31, 4], [33, 4]]); path([[39, 3], [39, 6]]);
-  path([[59, 18], [61, 18]]);
+  path([[0, 26], [9, 26], [9, 13], [12, 13]]); path([[9, 26], [9, 36], [12, 36]]); path([[9, 36], [9, 48], [28, 48]]); path([[9, 24], [12, 24]]); path([[9, 29], [12, 29]]);
+  path([[9, 23], [9, 23]]);
+  path([[9, 13], [9, 4], [5, 4], [5, 3]]);   // up into the hills, to the cave
+  path([[18, 13], [23, 13], [23, 18]]); path([[23, 13], [27, 13]]); path([[26, 10], [26, 8]]); path([[23, 10], [28, 10]]);
+  path([[18, 36], [23, 36], [23, 31]]); path([[23, 36], [28, 36]]);
+  path([[31, 24], [35, 24], [35, 29]]); path([[35, 24], [40, 22]]); path([[35, 22], [40, 22]]);
+  path([[44, 14], [48, 14], [48, 18]]); path([[47, 8], [47, 9], [44, 9], [44, 14]]); path([[46, 18], [50, 18]]);
+  path([[43, 36], [48, 36], [48, 31]]); path([[45, 31], [50, 31]]);
+  path([[33, 9], [33, 12]]); path([[31, 10], [33, 10]]); path([[39, 9], [39, 12]]);
+  path([[59, 24], [61, 24]]);
   // Plazas: Ferry Landing's harbour square, the market floor and the Game Club's yard.
-  for (let y = 21; y <= 24; y++) for (let x = 8; x <= 11; x++) set(x, y, ',');
-  for (let y = 43; y <= 45; y++) for (let x = 15; x <= 24; x++) set(x, y, ',');
-  for (let y = 6; y <= 7; y++) for (let x = 45; x <= 50; x++) if (get(x, y) !== '~') set(x, y, ',');
+  for (let y = 27; y <= 30; y++) for (let x = 8; x <= 11; x++) set(x, y, ',');
+  for (let y = 49; y <= 51; y++) for (let x = 15; x <= 24; x++) set(x, y, ',');
+  for (let y = 12; y <= 13; y++) for (let x = 45; x <= 50; x++) if (get(x, y) !== '~') set(x, y, ',');
   // Trees and props on grass, away from paths and people.
   const busy = (x, y) => PEOPLE.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) <= 1) || LAND.some(l => x >= l.x - 1 && x <= l.x + l.w && y >= l.y - 1 && y <= l.y + l.h)
     || Object.values(TIDE).some(([a, b]) => Math.abs(a - x) + Math.abs(b - y) <= 1) || Object.values(DOCK).some(d => Math.abs(d.at[0] - x) + Math.abs(d.at[1] - y) <= 2);
@@ -130,7 +132,7 @@
   for (let y = 0; y < HT; y++) for (let x = 0; x < W; x++) {
     if (get(x, y) !== '.' || busy(x, y) || coast(x, y)) continue;
     const h = hash(x + 5, y * 3 + 1) % 100;
-    if (x <= 2 && y !== 20 && h < 55) set(x, y, 'T');
+    if (x <= 2 && y !== 26 && h < 55) set(x, y, 'T');
     else if (h < 7) set(x, y, 'T');
     else if (h < 10) set(x, y, 'L');
   }
@@ -259,17 +261,17 @@
     // Ferry Landing: gulls on the pier and the harbour square, crabs on the shore, sparrows in the town.
     { kind: 'gull', x: 13, y: 23, range: 2 }, { kind: 'gull', x: 11, y: 21, range: 2 }, { kind: 'gull', x: 11, y: 8, range: 3 },
     { kind: 'crab', x: 12, y: 33, range: 3 }, { kind: 'crab', x: 12, y: 12, range: 3 }, { kind: 'sparrow', x: 7, y: 21, range: 3 },
-    { kind: 'sparrow', x: 7, y: 31, range: 3 }, { kind: 'bfly1', x: 6, y: 12, range: 3 }, { kind: 'rabbit', x: 5, y: 9, range: 3 },
+    { kind: 'sparrow', x: 7, y: 37, range: 3 }, { kind: 'bfly1', x: 6, y: 18, range: 3 }, { kind: 'rabbit', x: 5, y: 15, range: 3 },
     // The cove: crabs and gulls on the beach by the club, a butterfly in the yard.
-    { kind: 'crab', x: 28, y: 46, range: 3 }, { kind: 'crab', x: 22, y: 47, range: 3 }, { kind: 'gull', x: 29, y: 43, range: 3 },
-    { kind: 'bfly2', x: 13, y: 45, range: 3 },
+    { kind: 'crab', x: 28, y: 52, range: 3 }, { kind: 'crab', x: 22, y: 53, range: 3 }, { kind: 'gull', x: 29, y: 49, range: 3 },
+    { kind: 'bfly2', x: 13, y: 51, range: 3 },
     // The islands.
-    { kind: 'gull', x: 26, y: 11, range: 2 }, { kind: 'crab', x: 19, y: 10, range: 3 }, { kind: 'sparrow', x: 21, y: 9, range: 3 },
-    { kind: 'frog', x: 19, y: 33, range: 2 }, { kind: 'snail', x: 26, y: 33, range: 2 }, { kind: 'ladybug', x: 20, y: 31, range: 2 }, { kind: 'bee', x: 27, y: 31, range: 2 },
-    { kind: 'bfly3', x: 38, y: 21, range: 3 }, { kind: 'dragonfly', x: 33, y: 16, range: 3 },
-    { kind: 'gull', x: 47, y: 9, range: 2 }, { kind: 'gull', x: 51, y: 7, range: 2 }, { kind: 'crab', x: 53, y: 9, range: 3 },
-    { kind: 'rabbit', x: 52, y: 32, range: 3 }, { kind: 'bfly1', x: 45, y: 33, range: 3 },
-    { kind: 'sparrow', x: 34, y: 5, range: 2 }, { kind: 'crab', x: 62, y: 19, range: 2 }
+    { kind: 'gull', x: 26, y: 17, range: 2 }, { kind: 'crab', x: 19, y: 16, range: 3 }, { kind: 'sparrow', x: 21, y: 15, range: 3 },
+    { kind: 'frog', x: 19, y: 39, range: 2 }, { kind: 'snail', x: 26, y: 39, range: 2 }, { kind: 'ladybug', x: 20, y: 37, range: 2 }, { kind: 'bee', x: 27, y: 37, range: 2 },
+    { kind: 'bfly3', x: 38, y: 27, range: 3 }, { kind: 'dragonfly', x: 33, y: 22, range: 3 },
+    { kind: 'gull', x: 47, y: 15, range: 2 }, { kind: 'gull', x: 51, y: 13, range: 2 }, { kind: 'crab', x: 53, y: 15, range: 3 },
+    { kind: 'rabbit', x: 52, y: 38, range: 3 }, { kind: 'bfly1', x: 45, y: 39, range: 3 },
+    { kind: 'sparrow', x: 34, y: 11, range: 2 }, { kind: 'crab', x: 62, y: 25, range: 2 }
   ];
   const wild = { actors: {}, def: {}, P: null };
   wild.walkable = (x, y) => walkable(x, y) && get(x, y) !== '~';
@@ -305,7 +307,7 @@
   const wildOn = y => Object.values(wild.actors).filter(a => !a.hidden && Math.round(a.py) === y && (!isleAt(a.x, a.y) || I.islandOpen(isleAt(a.x, a.y))));
   // Gulls in the air: each wheels in a wide loop over the water, its wings beating and then gliding. They head off
   // when it rains (and come back after), and go to roost at night.
-  const GULLS = [[16, 14, 3.5], [15, 27, 3], [30, 10, 4], [42, 20, 4.5], [38, 30, 3.5], [52, 18, 3], [33, 37, 3.5], [8, 46, 3]].map(([x, y, r], i) => ({ x, y, r, ph: i * 1.7, dir: i % 2 ? 1 : -1, sp: 0.16 + (i % 3) * 0.04, vis: 1 }));
+  const GULLS = [[16, 20, 3.5], [15, 33, 3], [30, 16, 4], [42, 26, 4.5], [38, 36, 3.5], [52, 24, 3], [33, 43, 3.5], [8, 52, 3]].map(([x, y, r], i) => ({ x, y, r, ph: i * 1.7, dir: i % 2 ? 1 : -1, sp: 0.16 + (i % 3) * 0.04, vis: 1 }));
   function gulls(t, dt) {
     const art = SD.critterArt && SD.critterArt.gullfly, im = art && critterPic('gullfly');
     if (!art || !ok(im)) return;
@@ -393,7 +395,10 @@
     const st = I.st();
     // The first time, you walk in off the Pingsby road at the map's left edge (one step in from the exit); after that,
     // you come back where you left.
-    const back = st.pos && walkable(st.pos[0], st.pos[1]) ? st.pos : st.intro ? [9, 21] : [EXIT[0] + 1, EXIT[1]];
+    // The map grew six rows to the north (2026-10): a position saved before that moves down with everything else.
+    if (st.pos && !st.north) st.pos = [st.pos[0], st.pos[1] + 6];
+    st.north = 6;
+    const back = st.pos && walkable(st.pos[0], st.pos[1]) ? st.pos : st.intro ? [9, 27] : [EXIT[0] + 1, EXIT[1]];
     place(back[0], back[1]);
     if (!st.pos && !st.intro) P.face = 'east';
     plan(true);
@@ -1224,7 +1229,7 @@
     if (SD.clock) SD.clock.shade(ctx, vw, vh, lights(t, cx, cy));
     ctx.save(); ctx.translate(-Math.round(cx), -Math.round(cy));
     LAND.forEach(l => { if (I.islandOpen(l.isle) && l.name && l.id !== 'board') label(l.lab ? l.lab[0] : l.x + l.w / 2 - 0.5, l.lab ? l.lab[1] : l.y + l.h + 0.7, l.name, null, false, t); });
-    if (I.islandOpen('landing')) label(10, 16.6, 'BOARD', I.commissions.some(c => I.commissionStatus(c.id) === 'open') ? '!' : null, true, t);
+    if (I.islandOpen('landing')) label(10, 22.6, 'BOARD', I.commissions.some(c => I.commissionStatus(c.id) === 'open') ? '!' : null, true, t);
     ppl.forEach(p => label(p.px, p.py + 1.45, p.note ? 'NOTE' : p.label || (I.who(p.id).split(' ').slice(-1)[0] || '').toUpperCase(), marks[p.id], true, t));
     label(EXIT[0] + 0.6, EXIT[1] - 0.2, '← PINGSBY', null, true, t);
     Object.keys(ISLE).forEach(id => { if (id !== 'landing' && !I.islandOpen(id)) fog(id, t); });

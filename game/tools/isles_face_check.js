@@ -56,7 +56,7 @@ const server = http.createServer((req, res) => {
   });
   await page.goto(base + 'index.html?debug&ch=5&time=morning');
   await page.waitForFunction(() => window.SD && SD.isles && SD.isles.ART && SD.scene && SD.scene.create.hooked);
-  await page.evaluate(() => { const s = SD.isles.st(); s.intro = true; s.waveSeen = 4; s.ployMet = true; s.pos = [18, 44]; SD.isles.open(); });
+  await page.evaluate(() => { const s = SD.isles.st(); s.intro = true; s.waveSeen = 4; s.ployMet = true; s.pos = [18, 50]; s.north = 6; SD.isles.open(); });
   for (let i = 0; i < 8; i++) { await page.waitForTimeout(300); await page.keyboard.press('Enter'); }
   await finish();
 
@@ -130,9 +130,9 @@ const server = http.createServer((req, res) => {
 
   // Inside: the Isles School in the morning, through its door.
   // Standing at its door (Saule may be just behind you), tap the building to go in.
-  await page.evaluate(() => SD.isles.placeAt(5, 29));
+  await page.evaluate(() => SD.isles.placeAt(5, 35));
   await page.waitForTimeout(300);
-  const [sx, sy] = await page.evaluate(() => SD.isles.tileToScreen(5, 27));
+  const [sx, sy] = await page.evaluate(() => SD.isles.tileToScreen(5, 33));
   await page.mouse.click(sx, sy);
   await page.waitForTimeout(2500);
   const room = await page.evaluate(() => {
@@ -163,7 +163,7 @@ const server = http.createServer((req, res) => {
   // At their spots through the day, with you well away from everyone: each faces their spot's way (a scheduled
   // spot's own), and they don't all face the same way.
   for (const block of ['morning', 'afternoon', 'evening']) {
-    await page.evaluate(block => { SD.clock.set(block, 'debug', true); SD.isles.close(); SD.isles.st().pos = [5, 12]; SD.isles.open(); }, block);
+    await page.evaluate(block => { SD.clock.set(block, 'debug', true); SD.isles.close(); Object.assign(SD.isles.st(), { pos: [5, 18], north: 6 }); SD.isles.open(); }, block);
     await page.waitForTimeout(800);
     const r = await page.evaluate(block => {
       const I = SD.isles, table = SD.folkFar.isles, P = I.where(), out = { faces: {}, bad: [] };
