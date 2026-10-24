@@ -85,6 +85,8 @@
         const extra = [...sel].filter(id => !F.need.some(g => g.includes(id)) && !(F.ok || []).includes(id));
         return { cls: miss.length || extra.length ? 'bad' : 'ok', t: `${ev.after ? 'After the nudge, ' : ''}“${F.name}”: ${[...sel].map(id => part(id).name).join(' → ') || 'nothing'}`, s: [miss.length ? 'Missing ' + miss.map(g => g.map(id => part(id).name).join(' or ')).join(', ') : '', extra.length ? 'Not needed: ' + extra.map(id => part(id).name).join(', ') : ''].filter(Boolean).join('. ') };
       }
+      case 'typed': return ev.text ? { cls: '', t: `Typed before the options: “${String(ev.text).slice(0, 600)}”` } : { cls: 'bad', t: 'Went to the options without typing an answer first' };
+      case 'ticks': return { cls: ev.score ? 'ok' : 'bad', t: `Ticked ${ev.score} of ${ev.n} points their typed answer made` };
       case 'nudge': return { cls: '', t: `${AI()} nudged: “${ev.text}”` };
       case 'dive': { const d = P.dives.find(x => x.id === ev.id); if (!d) return null; return { cls: d.kind === 'bikeshed' ? 'bad' : 'ok', t: `Chose to go deep on: ${d.title}`, s: d.kind === 'bottleneck' ? 'The real bottleneck. Senior signal.' : d.kind === 'bikeshed' ? `A bikeshed. ${AI()} steers them to the bottleneck.` : 'A fair pick, but not the main risk.' }; }
       case 'divenow': { const d = P.dives.find(x => x.id === ev.id); return d ? { cls: 'ph', t: 'Deep dive: ' + d.title } : null; }
