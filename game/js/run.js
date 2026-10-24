@@ -68,14 +68,13 @@
   const bossId = () => (S.save.run && S.save.run.bossId) || chap().boss;
   // Plot Devices (town quest rewards) and this dungeon's active curses.
   const dev = id => SD.quests.has(id);
-  // Keepsakes from Grandma Wen's café and the Exchange. The ones that act in a fight from the B shelf up are backed by
-  // knowledge (Ladi, Oct 24): they work only while your On-call Cred (S.tally: your last 20 answers anywhere, weighed
+  // Keepsakes from Grandma Wen's café and the Exchange. The ones that act in a fight from the A shelf up are
+  // credentialed (Ladi, Oct 24): they work only while your On-call Cred (S.tally: your last 20 answers anywhere, weighed
   // by how sure you said you were) is R.backCred or more, so what they are worth grows with what you know (bots tried
-  // 5, 7 and 10 at 35% right). The rest stay on: the E and C shelves (a first relic shouldn't wait for Cred), gifts,
-  // those that act outside a fight, where the Cred chip isn't showing, max SLA (js/state.js), Trading Halt's one save,
-  // the Escrow Vault and Pip's Monocle, a study aid. The Bag of Holding's draw is backed, its fourth choice isn't.
-  const BACKED = ['torii', 'standby', 'breaker', 'drip', 'lantern', 'stamp', 'orderbook', 'marketdepth', 'bluechip', 'pinned', 'croissant',
-    'sequencer', 'openingbell', 'badge', 'heartbeat', 'interest', 'satchel'];
+  // 5, 7 and 10 at 35% right). The rest stay on: the E, C and B shelves (beginners' relics and a weaker player's safety
+  // net), gifts, those that act outside a fight, where the Cred chip isn't showing, max SLA (js/state.js), Trading
+  // Halt's one save, the Escrow Vault and Pip's Monocle, a study aid.
+  const BACKED = ['lantern', 'stamp', 'orderbook', 'marketdepth', 'bluechip', 'pinned', 'croissant', 'sequencer', 'openingbell', 'badge', 'heartbeat', 'interest'];
   R.backCred = 5;
   const credOk = () => !R.backCred || S.tally() >= R.backCred;
   const owns = id => S.save.relics.includes(id);
