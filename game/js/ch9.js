@@ -25,7 +25,7 @@
     },
     leaderboard: {
       name: 'Real-time Gaming Leaderboard', zone: 9, tag: 'Ranking',
-      gist: 'A sorted set (Redis ZSET) keeps players ordered by score: updating a score, reading the top 10 and finding one player\'s rank and neighbours are all O(log n). A relational table needs a full sort for every rank query. Keep one sorted set per board per month. When it outgrows one node, shard by score range (so each shard knows its offset) or by player and scatter-gather the top K from every shard. Store the source of truth in a database and rebuild the cache from it.',
+      gist: 'A sorted set (Redis ZSET) keeps players ordered by score: updating a score, reading the top 10 and finding one player\'s rank and neighbours are all O(log n). A relational table with an index on score reads the top 10 cheaply, but a mid-table player\'s rank means counting everyone above them: a scan that grows with their rank, on every request, while scores keep changing. Keep one sorted set per board per month. When it outgrows one node, shard by score range (so each shard knows its offset) or by player and scatter-gather the top K from every shard. Store the source of truth in a database and rebuild the cache from it.',
       page: 'I am first in the Vibes column. Nobody else even has a Vibes column. That is called a moat. — U.'
     }
   });
