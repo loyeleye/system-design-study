@@ -227,13 +227,50 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .rt-row .rt-tx { flex: 1; min-width: 0; }
 .rt-row .rt-tx small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
 .rt-row .rt-sw { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; font: 700 11px var(--f-body); }
-.rt-row .rt-sw i { position: relative; width: 38px; height: 22px; border-radius: 11px; background: #2fa35f; border: 2px solid var(--ink); transition: background .15s; }
+.rt-row .rt-sw i { position: relative; width: 38px; height: 22px; border-radius: 11px; background: var(--sun); border: 2px solid var(--ink); transition: background .15s; }
 .rt-row .rt-sw i::after { content: ''; position: absolute; top: 2px; left: 18px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
 .rt-row.off { background: #f3f1f7; }
 .rt-row.off .rt-tx b { color: var(--muted); }
 .rt-row.off .rt-sw i { background: #c9c4d6; }
 .rt-row.off .rt-sw i::after { left: 2px; }
 @media (prefers-reduced-motion: reduce) { .rt-row .rt-sw i, .rt-row .rt-sw i::after { transition: none; } }
+/* The menu (js/main.js): grouped sections, 44px+ tap targets, switches that match the sound popover. */
+.win-h .x.back { flex: none; margin-right: 10px; font-size: 20px; font-weight: 700; padding-bottom: 2px; }
+.win-h .x.back + span { margin-right: auto; }
+.mnu section { margin-bottom: 16px; }
+.mnu-h { margin: 0 0 6px 2px; font: 600 12px var(--f-head); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.mnu-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mnu-tile { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; min-height: 56px; padding: 8px 12px; text-align: left; color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 rgba(43,35,64,.85); cursor: pointer; transition: transform .08s; }
+.mnu-tile:hover { background: #f1f7ff; transform: translateY(-1px); }
+.mnu-tile:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.mnu-ic { grid-row: span 2; font-size: 22px; line-height: 1; }
+.mnu-tile b { font: 600 15px var(--f-head); }
+.mnu-tile small { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.mnu-list { background: #fff; border: 2px solid var(--ink); border-radius: 12px; overflow: hidden; }
+.mnu-list:empty { display: none; }
+.mnu-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; width: 100%; min-height: 48px; padding: 8px 12px; text-align: left; font: 15px var(--f-body); color: var(--ink); background: #fff; border: 0; border-radius: 0; }
+.mnu-row + .mnu-row { border-top: 2px solid var(--line); }
+button.mnu-row { cursor: pointer; }
+button.mnu-row:hover { background: #f3f8ff; }
+.mnu-row:focus-visible, .mnu-tile:focus-visible { outline: 3px solid var(--blue); outline-offset: -3px; }
+.mnu-l { flex: 1 1 180px; display: flex; flex-direction: column; min-width: 0; }
+.mnu-l b { font-weight: 700; }
+.mnu-l small, .mnu-note { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.mnu-v { color: var(--muted); font-weight: 600; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mnu-go { font-size: 20px; font-weight: 700; color: var(--muted); line-height: 1; }
+.mnu-note { margin: 6px 2px 0 !important; }
+.seg { display: inline-flex; flex: none; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
+.seg button { min-height: 44px; padding: 6px 10px; font: 600 13px var(--f-head); color: var(--ink); background: #fff; border: 0; cursor: pointer; }
+.seg button + button { border-left: 2px solid var(--ink); }
+.seg button[aria-checked="true"] { background: var(--sun); }
+.seg button:focus-visible { outline: 3px solid var(--blue); outline-offset: -4px; }
+.mnu-danger { margin-top: 20px; padding-top: 14px; border-top: 2px dashed var(--line); }
+.mnu-danger .danger { width: 100%; min-height: 48px; }
+.mnu-keys { margin: 12px 0 0 !important; text-align: center; }
+.mnu-keys kbd { display: inline-block; min-width: 20px; padding: 0 5px; font: 600 11px var(--f-head); border: 2px solid var(--ink); border-bottom-width: 3px; border-radius: 6px; background: #fff; color: var(--ink); }
+@media (max-width: 480px) { .mnu-say .seg { width: 100%; } .mnu-say .seg button { flex: 1; } .mnu-tile { grid-template-columns: 1fr; } .mnu-ic { grid-row: auto; margin-bottom: 2px; } }
+@media (hover: none) { .mnu-keys { display: none; } }
+@media (prefers-reduced-motion: reduce) { .mnu-tile { transition: none; } .mnu-tile:hover { transform: none; } }
 .conf { border-top: 2px dashed var(--line); padding-top: 12px; margin-top: 6px; }
 .conf-b { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .conf-b button { flex: 1 1 90px; background: #fff; }

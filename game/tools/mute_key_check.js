@@ -93,7 +93,7 @@ const server = http.createServer((req, res) => {
 
   await page.keyboard.press('m');
   await page.keyboard.press('v');
-  check(/Music: <b>Off/.test(await page.innerHTML('#panel')), 'the open menu updates its Music line');
+  check(await page.getAttribute('#m-music', 'aria-checked') === 'false' && await page.getAttribute('#m-sfx', 'aria-checked') === 'false', 'the open menu updates its Music and Sound effects switches');
   await page.keyboard.press('v');
 
   check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
