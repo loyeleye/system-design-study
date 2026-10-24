@@ -1015,7 +1015,7 @@ SD.specs = {
 // Meta shop (Grandma Wen, paid in Memory Shards that survive every loop). Keepsakes past the first three
 // unlock with your Guild rank; most borrow an idea from a Slay the Spire relic (named in the comment).
 SD.metaShop = [
-  { id: 'pipeye', name: "Pip's Monocle", cost: 100, rank: 'E', text: 'Every incident opens with a diagnosis, and diagnoses show one wrong answer crossed out.' },
+  { id: 'pipeye', name: "Pip's Monocle", cost: 80, rank: 'E', text: 'Every incident opens with a diagnosis. Twice a dungeon run, Ask Pip to cross out one wrong answer; that answer counts as a Guess.' },
   { id: 'teapot', name: 'Bottomless Teapot', cost: 115, rank: 'E', text: 'Break rooms heal 15% more.' },
   { id: 'thermos', name: "Grandma's Thermos", cost: 150, rank: 'E', text: '+1 Capacity on the first turn of every fight.' },
   // C-Rank

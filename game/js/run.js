@@ -82,6 +82,11 @@
   // For the shops and the quiz: which relics are backed, and whether to show On-call Cred on a run's questions.
   R.isBacked = id => BACKED.includes(id);
   R.showCred = () => !!S.save.run && !$('#screen-run').hidden && S.save.relics.some(id => BACKED.includes(id));
+  // Pip's Monocle: "Ask Pip" crosses out one wrong option, PIP_CHARGES times per dungeon run (js/quiz.js).
+  // An answer that used it counts as a Guess, so the hint never props up mastery or Cred.
+  const PIP_CHARGES = 2;
+  R.pipLeft = () => S.save.run && !$('#screen-run').hidden && owns('pipeye') ? Math.max(0, PIP_CHARGES - (S.save.run.pipUsed || 0)) : 0;
+  R.usePip = () => { const run = S.save.run; if (!R.pipLeft()) return false; run.pipUsed = (run.pipUsed || 0) + 1; S.persist(); return true; };
   // js/meta.js loads after this file, so the listener goes on when a run starts or resumes. The answer is already in
   // the Cred window (js/state.js recordAnswer), so it compares with what the last answer left (run.credOn).
   let listening = false;
@@ -745,7 +750,7 @@
     const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss && !SD.enemies[k].tutorial && !SD.enemies[k].raid && (SD.enemies[k].ch || 1) <= ch)).slice(0, 3);
     const optsIds = Q.shuffle([C.eid, ...others]);
     const q = { c: e.concept, type: 'mc', q: `Symptoms: ${e.symptom} Which incident is this?`, opts: optsIds.map(k => SD.enemies[k].name), a: optsIds.indexOf(C.eid), why: Object.values(e.weak)[0] };
-    const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight', hideOne: rel('pipeye') });
+    const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight' });
     if (r.ok) {
       // The Unindexed Stacks curse: you know what it is, but you can't find the fix in time.
       const bonus = curse('stacks') ? 0 : dev('bookmark') ? 2 : 1;
