@@ -14,7 +14,7 @@ Where it lives in the game:
 
 - **The game wins.** Everything here agrees with the idle lines and quest scripts. When those change, update this file.
 - **Show it, don't tell it.** A backstory reaches the player through idle lines, props in the rooms and scenes, never as an info dump.
-- **Scenes are short.** Each scene runs four to eight lines. Each arc has three scenes, and only the last one lands a system design idea, as a joke, with an optional review question.
+- **Scenes are short.** Each scene runs four to eight lines. Each arc has three scenes, and only the last one lands a system design idea, as a joke. As in Pingsby, it stops before the reveal for you to name what just happened, then offers an optional review question on that idea (`game/js/folk-recall.js`).
 - **Quest business beats the clock.** Anyone with a **!** or **?** stays at their usual spot. A scene never plays while either person in it has quest business pending, so most arcs start once that pair's quest is done.
 - **Scripted, not points.** An arc moves on when you're in the right place at the right time of day. A scene you miss comes round again. Each arc's last scene waits for a later loop than the one before it.
 
@@ -27,7 +27,7 @@ Sunny's barn wall is the one thing on the North Road that remembers. Heroes resp
 ### Sunny
 
 - **Canon.** She's a lifting coach and the club's founder. Her rules are "Log it" and "LOG IT", and she says "The bar remembers when we don't." She hosts *The PR Board* with Leon.
-- **Backstory.** On her first loop on the North Road she was the strongest in her party, and on every loop since she has respawned at day one. One loop she chalked her numbers on a barn wall, and the next loop they were still there. She built the gym round the wall and has kept it ever since. She lives in the loft over the gym.
+- **Backstory.** On her first loop on the North Road she was the strongest in her party, and on every loop since she has respawned at day one. One loop she chalked her numbers on a barn wall, and the next loop they were still there. She built the gym round the wall and has kept it ever since. She never really leaves it: at night she's still in the gym, checking every record twice by lamplight.
 - **Voice.** She's warm and loud, and every speech ends with an instruction.
 - **Relationships.** Leon (*The Barn Door*).
 
@@ -85,7 +85,7 @@ Sunny's barn wall is the one thing on the North Road that remembers. Heroes resp
 ### Imani
 
 - **Canon.** She's a strength coach and the club's treasurer. "Control the weight. Don't let it control you." She runs the hammer auction that pays the tournament entry fee and fixes the roof. She hosts *Going, Going, Gerald* with Magnus.
-- **Backstory.** She keeps the books with the patience of someone who knows every number has a story, and she writes the stories down too. She is the one who decides that Gerald is never for sale. She goes home at night and takes the ledger with her.
+- **Backstory.** She keeps the books with the patience of someone who knows every number has a story, and she writes the stories down too. She is the one who decides that Gerald is never for sale. At night she does the books in the members' lounge up the studio stairs, by lamplight.
 - **Voice.** She's practical and firm, and kind underneath it.
 - **Relationships.** Magnus (*Gerald*).
 
@@ -175,7 +175,7 @@ Each cell gives where the member is and what they're doing. "Gym" and "Studio" m
 | Kofi | Studio, Dawn Flow upside down | Yard, handstands by the path | By the signpost, juggling stones | Under a different tree each loop |
 | Paz | Laps round the track | Intervals on the track | By the segment board | Away, home and asleep by nine |
 | Kenji | Away, in the hills | Away, on the Ridge Loop | Track, stretching | Infield, camped under the stars |
-| Imani | Auction block, the club's books | Gym, coaching deadlifts | Auction block, counting the takings twice | Away, home with the ledger |
+| Imani | Auction block, the club's books | Gym, coaching deadlifts | Auction block, counting the takings twice | Lounge, doing the books by lamplight |
 | Magnus | Auction block, lifting | Auction block, polishing hammers | Gym, in a staring contest with Leon | Auction block, asleep beside his hammers |
 
 **Bru's board.** Under Pingsby's entries, the board has a PR Club section. It lists every member you've met, where they are right now and what they're doing, followed by the club's scenes with a hint for the next one. Bru doesn't get heartbeats from the club, so Sunny chalks everyone's whereabouts on a slate by the gate, and a pigeon carries it over.
