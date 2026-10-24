@@ -210,7 +210,7 @@
               { t: 'The rack is full, and three waiters are running in with towers of plates.', k: 'slow', why: 'Backpressure: tell producers to slow down instead of letting the queue grow forever.' },
               { t: 'A plate from a customer who left an hour ago and won\'t be back.', k: 'drop', why: 'Load shedding: work nobody is waiting for is the first to drop.' },
               { t: 'The plate at the front of the rack.', k: 'wash', why: 'The consumer works the queue in order. Washing is the actual job.' },
-              { t: 'Gary\'s coffee cup. He needs it back in two minutes.', k: 'wash', why: 'High priority goes first. Gary\'s cup has never waited, in ten thousand years.' },
+              { t: 'Gary\'s coffee cup. He needs it back in two minutes.', k: 'wash', why: 'High priority goes first. Gary\'s cup has never waited, not once.' },
               { t: 'Uptima brings forty decorative plates "to make the café look busy".', k: 'drop', why: 'Reject work that has no value under load. Uptima is offended.' },
               { t: 'The rack is at 19 and one more waiter is coming.', k: 'slow', why: 'Push back before the queue is full, not after. Waiters wait at the door, plates stay unbroken.' },
               { t: 'A single cup, rack half empty, sink free.', k: 'wash', why: 'With spare capacity, just do the work.' }
@@ -556,11 +556,11 @@
     // ---- Seymour: Missing, One Gary (No Backups) ----
     {
       id: 'missinggary', title: 'Missing, One Gary (No Backups)', giver: 'seymour', unlock: 9, device: 'note', xp: 220, concepts: ['failuredet', 'netfaults'],
-      blurb: 'Gary missed his nine o\'clock coffee for the first time in ten thousand years. Seymour has already written three eulogies, with backups.',
+      blurb: 'Gary missed his nine o\'clock coffee for the first time anyone can remember. Seymour has already written three eulogies, with backups.',
       items: { box: 'An empty box of Heritage Croissants (11 of 12 eaten)', pigeon: 'Gary\'s last heartbeat pigeon note: "Soon."', note: 'Gary\'s note, restored from backup' },
       steps: [
         { at: 'seymour', hint: 'Talk to Seymour on the North Road.', do: [
-          { say: [['seymour', 'Hero. Gary missed his nine o\'clock coffee. He has not missed a coffee in ten thousand years. He is the realm\'s last single point of failure, and he has NO BACKUP.'],
+          { say: [['seymour', 'Hero. Gary missed his nine o\'clock coffee. He has not missed a coffee in living memory. He is the realm\'s last single point of failure, and he has NO BACKUP.'],
             ['seymour', 'I offered to replicate him in year 40. He said "No." and left. I have written three eulogies. With backups. I am ready to declare him dead.'],
             ['pip', 'Wait! One missed ping doesn\'t mean he\'s gone. He could be slow, or busy, or... somewhere without signal. Ask other people first!'],
             ['seymour', '...Very well. One heartbeat longer. Not a millisecond more. There is only ever ONE TRUTH!']] }] },
@@ -569,8 +569,9 @@
             ['wen', 'He looked so determined. Then he looked... less determined. Then he left very quickly.']] },
           { item: 'box' }] },
         { at: 'coo', hint: 'Ask Coo at the Pigeon Post about Gary\'s heartbeat pigeon.', do: [
-          { say: [['coo', 'Coo. Gary\'s heartbeat pigeon has flown every five minutes for ten thousand years. Never late. Coo.'],
-            ['coo', 'The last one came at 9:04. One word. "Soon." Then nothing. Coo.'],
+          { say: [['coo', 'Coo. Gary\'s heartbeat pigeon flies once an hour, on the hour. One word: "OK." Never late, as long as anyone can remember. Coo.'],
+            ['coo', 'The nine o\'clock one came at 9:04. One word. "Soon." Then nothing. Coo.'],
+            ['pip', 'So he\'s only missed one beat, and his beats are an hour apart. That\'s not dead. That\'s not even late yet.'],
             ['seymour', 'SOON! He knew! He knew he was going to his DOOM! There is only ever one truth!']] },
           { item: 'pigeon' }] },
         { at: 'bru', hint: 'Check Bru\'s registry at the Adventurers\' Guild.', do: [

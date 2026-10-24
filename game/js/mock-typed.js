@@ -234,5 +234,101 @@ SD.mock.typed = {
   'crawler.trap': [
     { t: 'Cap pages and URL depth (or length) per site', keys: ['cap', 'limit', 'depth', 'max(imum)? (pages|depth|length)', 'budget', 'per site'], anti: ['random order', 'short timeout', 'raise the (per.site )?delay'], ex: ['stop after so many pages from one site'] },
     { t: 'Spot near-duplicate pages (SimHash) and flag the site for review', keys: ['simhash', 'near.duplicate', 'look alike', 'similar', 'duplicate content', 'fingerprint', 'flag'], ex: ['notice that every page looks the same'] }
+  ],
+  'typeahead.why': [
+    { t: 'Reads (keystrokes) vastly outnumber updates', keys: ['read.heavy', 'reads? (vastly |far )?outnumber', 'every keystroke', 'mostly reads', 'more reads'], ex: ['people type far more often than the rankings change'] },
+    { t: 'Rank ahead of time offline, so each read is one lookup', keys: ['precomput', 'ahead of time', 'offline', 'pre.?rank', 'one (memory )?lookup', 'single lookup', 'rebuil'], ex: ['do the ranking in advance so a keystroke is just a lookup'] }
+  ],
+  'typeahead.trie': [
+    { t: 'A trie (or prefix map) with the top 5 stored at each node', keys: ['trie', 'prefix (tree|map)', 'top (5|five) (at|in|on) (each|every)', 'each node', 'every node'], anti: ["like '?prefix", 'like .%', 'counts only at the leaves'], ex: ['every prefix already holds its best five suggestions'] },
+    { t: 'Built offline and kept in memory on replicas', keys: ['offline', 'in memory', 'replica', 'batch', 'rebuil', 'swap'], ex: ['rebuild it in the background and copy it to every server'] }
+  ],
+  'typeahead.trend': [
+    { t: 'A stream job counts queries in short windows (with decay)', keys: ['stream', 'flink', 'kafka', 'short windows?', 'sliding', 'decay', 'real.?time count', 'last few minutes'], anti: ['every minute instead', 'by hand'], ex: ['count searches over the last few minutes as they happen'] },
+    { t: 'Rising terms go into a small live layer merged with the daily top 5', keys: ['live (layer|index|list|trie)', 'merge', 'rising', 'trending', 'two layers', 'small (index|layer)'], ex: ['mix the hot new terms into the normal suggestions'] }
+  ],
+  'typeahead.short': [
+    { t: 'Cache short prefixes at the CDN and in browsers', keys: ['cdn', 'edge', 'browser cache', 'cache', 'http cach'], anti: ['five characters', 'rate.?limit'], ex: ['let the edge answer the one letter prefixes'] },
+    { t: 'With a short TTL: everyone gets the same answer (and debounce keystrokes)', keys: ['ttl', 'same answer', 'everyone (gets|sees)', 'debounc', 'hot keys?', 'a minute'], ex: ['the answer for "a" is the same for everybody'] }
+  ],
+  'scheduler.why': [
+    { t: 'Finding due runs is quick; running them is slow: they scale apart', keys: ['decoupl', 'scale (separately|independently|apart|differently)', 'quick', 'cheap', 'slow'], ex: ['the poller is fast but the jobs take a while'] },
+    { t: 'Workers drain the queue at their own pace, so a spike becomes a short backlog', keys: ['own pace', 'drain', 'backlog', 'absorb', 'buffer', 'burst', 'spike', 'scale (on|with) (the )?queue'], anti: ['exactly once'], ex: ['the 10 am rush just waits in line'] }
+  ],
+  'scheduler.claim': [
+    { t: 'Split runs into partitions; each node holds leases on some', keys: ['partition', 'lease', 'shard', 'etcd', 'zookeeper', 'owns? (some|a set)'], anti: ['modulo', 'every node queues'], ex: ['each scheduler is responsible for a slice of the jobs'] },
+    { t: 'Claim a run with a conditional update, so it is queued once; a dead node\'s lease expires and another takes over', keys: ['conditional', "where status", 'compare.and.(set|swap)', 'claim', 'only once', 'lease (expires|runs out)', 'takes? over', 'fail ?over', 'atomic'], ex: ['the update only succeeds if the run is still due'] }
+  ],
+  'scheduler.spike': [
+    { t: 'Spread the start: a start window or jitter', keys: ['jitter', 'window', 'spread', 'stagger', 'random (delay|offset)', 'hash (the )?job'], anti: ['one after another', 'refuse new'], ex: ['let most jobs start sometime in the first few minutes'] },
+    { t: 'The queue absorbs the rest and workers scale on its depth', keys: ['queue', 'absorb', 'backlog', 'autoscal', 'scale (on|with)', 'priority'], ex: ['the leftover burst waits briefly in the queue'] }
+  ],
+  'scheduler.dead': [
+    { t: 'Running workers send heartbeats (renew a lease)', keys: ['heartbeat', 'lease', 'renew', 'visibility timeout', 'keep.?alive', 'ping'], anti: ['24 hours', 'two workers'], ex: ['the worker checks in every few seconds while it runs'] },
+    { t: 'No heartbeat past a timeout puts the run back for a retry (with backoff and a limit)', keys: ['timeout', 'retr', 'requeue', 're.?queue', 'back on the queue', 'backoff', 'attempt'], ex: ['if it goes quiet the run is handed to someone else'] }
+  ],
+  'llmchat.why': [
+    { t: 'GPUs are scarce and fixed: the queue absorbs spikes instead of overloading them', keys: ['gpu', 'scarce', 'absorb', 'spike', 'burst', 'overload', 'capacity'], anti: ['exactly once'], ex: ['the model servers can only take so much at once'] },
+    { t: 'Model servers pull work as slots free up (and free tier is shed first)', keys: ['pull', 'slots?', 'free up', 'shed', 'tier', 'back.?pressure', 'own pace'], ex: ['each server takes the next request when it has room'] }
+  ],
+  'llmchat.batch': [
+    { t: 'Continuous batching: requests join the running batch at each step', keys: ['continuous', 'in.flight batch', 'iteration.level', 'each (step|token|iteration)', 'every (step|token|iteration)', 'vllm', 'join'], anti: ['wait for (32|\\d+) requests', 'its own gpu', 'run each one alone'], ex: ['new chats slot into the batch as soon as a spot opens'] },
+    { t: 'Finished ones leave at once, so long replies don\'t hold up the rest (paged KV cache fits more)', keys: ['as (others|they|each) finish', 'swap', 'leave', 'paged', 'kv.?cache', 'memory bound'], ex: ['a short reply does not wait for the longest one'] }
+  ],
+  'llmchat.context': [
+    { t: 'Reuse the cached prompt prefix across turns (prefix / KV caching)', keys: ['prefix', 'kv.?cache', 'prompt cach', 'same replica', 'sticky', 'reuse'], anti: ['only the newest', 'three closest'], ex: ['the start of the prompt is the same each turn so keep it computed'] },
+    { t: 'Summarise older turns past a token budget', keys: ['summar', 'token budget', 'compress', 'truncat', 'older turns', 'oldest turns'], ex: ['fold the early conversation into a short recap'] }
+  ],
+  'llmchat.fair': [
+    { t: 'Limit by tokens, not requests', keys: ['tokens', 'token (bucket|budget|limit)', 'gpu time', 'not requests'], anti: ['same for every tier', 'ip address'], ex: ['count how much text they make the model process'] },
+    { t: 'A tighter budget for the free tier (shed it first when busy)', keys: ['free.?tier', 'tier', 'paid', 'shed', 'priority', 'tighter'], ex: ['free users get less than paying ones'] }
+  ],
+  'metrics.why': [
+    { t: 'The queue absorbs bursts (after a deploy or outage)', keys: ['absorb', 'burst', 'spike', 'buffer', 'decoupl'], anti: ['compresses? points', 'timestamp order'], ex: ['every agent flushing at once just waits in kafka'] },
+    { t: 'The database can fall behind briefly without dropping points (and several consumers read it)', keys: ['fall behind', 'catch up', 'without (dropping|losing)', 'no (data|points) lost', 'replay', 'several consumers', 'alert evaluator'], ex: ['nothing is lost if the store is slow for a while'] }
+  ],
+  'metrics.tsdb': [
+    { t: 'A time-series store: append-only points per series in compressed time blocks', keys: ['time.?series', 'tsdb', 'prometheus', 'influx', 'compress', 'gorilla', 'delta', 'blocks?', 'append.only'], anti: ['one row per point', 'search index over every'], ex: ['store each series as compressed chunks of time'] },
+    { t: 'Sharded by series, with a tag index, so a query reads a few shards', keys: ['shard(ed)? by series', 'by series', 'inverted index', 'tag index', 'series id'], ex: ['a query only touches the shards holding that service'] }
+  ],
+  'metrics.rollup': [
+    { t: 'Roll up into 1-minute and 1-hour buckets keeping min, max, sum and count', keys: ['roll.?up', 'downsampl', 'min', 'max', 'sum and count', 'count'], anti: ['one raw point in every', 'single value'], ex: ['keep hourly summaries with the peak and the total'] },
+    { t: 'Drop raw points after a couple of weeks (retention)', keys: ['retention', 'drop (the )?raw', 'expire', 'two weeks', '2 weeks', 'delete (the )?raw', 'object storage'], ex: ['throw away the ten second data after a fortnight'] }
+  ],
+  'metrics.flap': [
+    { t: 'Fire only after the breach lasts minutes, and clear lower (hysteresis)', keys: ['for \\d+ minutes', 'last(s)? (for )?(a few )?minutes', 'duration', 'hysteresis', 'clear (at|lower|below)', 'sustain'], anti: ['20%', 'once an hour', 'email instead'], ex: ['only page if it stays high for five minutes'] },
+    { t: 'Alert on missing data (absence), or on SLO burn rate', keys: ['missing data', 'absen', 'no data', 'stops? sending', 'silent', 'burn rate', 'heartbeat'], ex: ['a host going quiet is itself an alert'] }
+  ],
+  'leaderboard.why': [
+    { t: 'A sorted set keeps members in order as scores change (a skip list)', keys: ['skip.?list', 'sorted set', 'zset', 'kept (in )?order', 'stays? sorted', 'ordered'], anti: ['more durabl', 'break ties'], ex: ['the structure is always sorted so there is nothing to re-sort'] },
+    { t: 'So a rank is an O(log n) lookup, not a scan of millions of rows', keys: ['log ?n', 'logarithmic', 'not a scan', 'no scan', 'count\\(\\*\\)', 'microsecond', 'zrevrank'], ex: ['finding a rank takes a few steps instead of counting everyone'] }
+  ],
+  'leaderboard.rank': [
+    { t: 'A sorted set ordered by score', keys: ['sorted set', 'zset', 'skip.?list', 'zadd', 'zincrby', 'redis'], anti: ['rank column', 'count\\(\\*\\)', 'recompute all'], ex: ['keep the players in a redis structure sorted by points'] },
+    { t: 'ZREVRANK gives the rank in O(log n), worked out on read, never stored', keys: ['zrevrank', 'zrank', 'log ?n', 'on read', 'never stored', 'not stored'], ex: ['ask the set for the position directly'] }
+  ],
+  'leaderboard.grow': [
+    { t: 'Shard by player hash', keys: ['hash', 'shard by player', 'by player id', 'evenly'], anti: ['first letter', 'whichever shard is largest'], ex: ['spread players over shards by their id'] },
+    { t: 'The global top 10 is a merge of every shard\'s own top 10 (scatter-gather)', keys: ['merg', 'scatter', 'gather', 'each shard\'?s? (own )?top', 'every shard\'?s? (own )?top', 'union'], ex: ['ask every shard for its best ten and combine them'] }
+  ],
+  'leaderboard.final': [
+    { t: 'Cache the top 10 for about a second (app servers or CDN)', keys: ['cache', 'cdn', 'a second', 'one.second', 'local'], anti: ['shard the sorted set', 'rate.?limit each player', 'queue the refresh'], ex: ['keep a copy of the top ten that refreshes each second'] },
+    { t: 'Everyone sees the same list: one hot key', keys: ['same (list|answer)', 'everyone', 'hot key', 'one key'], ex: ['every player is asking for the identical thing'] }
+  ],
+  'payments.why': [
+    { t: 'Several rows (status, ledger entries) must commit together', keys: ['transaction', 'acid', 'together', 'atomic', 'several rows', 'all or nothing'], ex: ['the status and the ledger lines change in one go'] },
+    { t: 'Constraints keep the books balanced (debits equal credits); the write volume is modest', keys: ['constraint', 'debits? (equal|=)', 'balanc', 'few hundred', 'modest', 'consisten'], anti: ['scale writes more easily', 'encrypts every row'], ex: ['the database can enforce that money adds up'] }
+  ],
+  'payments.twice': [
+    { t: 'Record the attempt (pending, with its key) before calling the provider', keys: ['record', 'pending', 'before calling', 'write (it|the payment) first', 'first write', 'persist'], anti: ['charge again', 'mark it paid', 'two.phase'], ex: ['save that we are about to charge before we call out'] },
+    { t: 'Retry with the same idempotency key; if still unknown, ask the provider later', keys: ['idempot', 'same key', 'dedup', 'reconcil', 'status (check|later)', 'ask the provider'], ex: ['the provider ignores a repeat with the same key'] }
+  ],
+  'payments.ledger': [
+    { t: 'Double-entry: each movement is a debit and an equal credit', keys: ['double.entry', 'debit', 'credit', 'sum to zero', 'balanced entries'], anti: ['balance column', 'nightly snapshot'], ex: ['every movement takes money from one account and adds it to another'] },
+    { t: 'Append-only: never update rows, correct with new entries; balances are sums', keys: ['append.only', 'immutable', 'never (update|edit)', 'new entr', 'sum of', 'rebuil', 'audit'], ex: ['mistakes are fixed by adding more lines, not editing old ones'] }
+  ],
+  'payments.outbox': [
+    { t: 'Write the event to an outbox table in the same transaction as the payment', keys: ['outbox', 'same transaction', 'one transaction', 'together'], anti: ['publish the event first', 'retry the publish in a loop'], ex: ['save the message alongside the payment in one commit'] },
+    { t: 'A relay (or CDC) publishes it afterwards; consumers dedupe (at least once)', keys: ['relay', 'cdc', 'change data capture', 'debezium', 'poll(s|er)? the outbox', 'at.least.once', 'dedup'], ex: ['a background job sends the saved messages to the queue'] }
   ]
 };

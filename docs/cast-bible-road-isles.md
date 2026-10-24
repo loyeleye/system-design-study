@@ -2,11 +2,11 @@
 
 Backstories and relationships for the named people beyond Pingsby, the companion to `docs/cast-bible.md` (Pingsby's fourteen). Every line written for these people should agree with what is here. Their daily schedules are in `game/js/folk-far.js`, and the relationship scenes are data in `game/js/folk-far-arcs.js`.
 
-How the scenes play: each arc has three scenes. A scene plays when you talk to someone in it on their own map, from your second conversation with them, once nobody in it has a quest step or an Isles commission waiting. Seen scenes stay seen across loops, the arc's last scene lands its system-design analogy and offers one review question, and Bru's Brújula Board lists them with Pingsby's. Crowd extras (the arena's fans and bookie, the Exchange queue, the road's merchant, traveller, courier, pilgrim and guest) and Kyu are left out. Heroes #1023 and #500 have backstories but no arc, since the story decides where they are.
+How the scenes play: each arc has three scenes. A scene plays when you talk to someone in it on their own map, from your second conversation with them, once nobody in it has a quest step or an Isles commission waiting. Seen scenes stay seen across loops, the arc's last scene stops before its reveal for you to name what just happened, lands its system-design analogy and offers one review question on that idea (`game/js/folk-recall.js`), and Bru's Brújula Board lists them with Pingsby's. Crowd extras (the arena's fans and bookie, the Exchange queue, the road's merchant, traveller, courier, pilgrim and guest) and Kyu are left out. Heroes #1023 and #500 have backstories but no arc, since the story decides where they are.
 
 ## The North Road
 
-Backstories and relationship arcs for the named people of the North Road and its side maps: the road itself, Lord Latency's waystation, the tournament arena, the heroes' camp and the Exchange. The ground rules are Pingsby's: the game wins, show it and don't tell it, scenes are short, and only an arc's last scene lands a system design analogy. Where people stand each time of day comes from `game/js/folk-far.js`. Anything not already in the game is new, and Ladi can veto it without breaking anything.
+Backstories and relationship arcs for the named people of the North Road and its side maps: the road itself, Lord Latency's waystation, the tournament arena, the heroes' camp and the Exchange. The ground rules are Pingsby's: the game wins, show it and don't tell it, scenes are short, only an arc's last scene lands a system design analogy, and the player names it first. Where people stand each time of day comes from `game/js/folk-far.js`. Anything not already in the game is new, and Ladi can veto it without breaking anything.
 
 ### Marta
 
@@ -360,7 +360,7 @@ The Isles have wildlife too (`WILD` in `js/isles/isles-map.js`, drawn by `js/cri
 | --- | --- | --- | --- |
 | `ferry` Eventually Punctual | Leilani, Kwame | Replication lag (`replag`) | Ferry Landing |
 | `whybook` The Why Book | Saule, the kids | Column storage (`colstore`) | Ferry Landing, the school |
-| `tin` The Biscuit Tin | Farida, Mutex | Write skew and serializability (`serializable`) | The Ledger |
+| `tin` The Biscuit Tin | Farida, Mutex | Deadlock under two-phase locking, the cost of serializability (`serializable`) | The Ledger |
 | `collar` Ask the Dog First | Tomas, Bloom | Bloom filters (`bloom`) | The Mill |
 | `legend` Add, Never Reuse | Lúcia, Minh | Schema evolution (`schemaevo`) | Tower and Map & Tool Shop, by letter and map |
 | `birthday` Four Minutes | Ha-jin, Ha-eun | Multi-leader conflicts (`multileader`) | The Twins |

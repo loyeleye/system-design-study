@@ -16,7 +16,8 @@
 //   SD.folkScenes.talkIn(k, id) in room k: play the scene due there if that villager is in it; true if one played
 //   SD.folkScenes.talkFar(at, id) on 'road:<map>' or 'isles': play the scene due with that person; true if one played
 //   SD.folkScenes.find(at)     the scene due at a place ('room:cafe', 'talk:aigerim', a spot), or null
-//   SD.folkScenes.play(s)      play a scene (or a scene id), then offer the arc's review question if it's the last
+//   SD.folkScenes.play(s)      play a scene (or a scene id); an arc's last one stops before its reveal for you to name
+//                              what happened, then offers the arc's own review question (js/folk-recall.js)
 //   SD.folkScenes.seen(id)     whether you've seen a scene ('drawer-2' is arc "drawer", scene 2)
 //   SD.folkScenes.boardHtml()  the scenes page at the bottom of the Brújula Board
 //   SD.folkScenes.table()      for playtests: every scene, whether it's seen, and what it waits on
@@ -179,22 +180,60 @@
     s.who.forEach(id => SD.folk.meet(id));
     const lines = (typeof s.lines === 'function' ? s.lines(c) : s.lines).map(([who, t, e]) => ({ s: who, t, e }));
     U.system(`SCENE · ${s.arc.title.toUpperCase()}`, `${s.n} of ${s.arc.scenes.length}: ${U.esc(s.title)}`);
-    await U.dialog(lines);
-    if (s.review) await review(s.arc);
+    const rc = s.review && recall(s), at = rc && rc.predict ? stop(rc, lines) : -1;
+    if (at < 0) await U.dialog(lines);
+    else { await U.dialog(lines.slice(0, at)); await predict(rc.predict); await U.dialog(lines.slice(at)); }
+    if (s.review) await review(s.arc, rc);
   };
-  // The arc's last scene offers one review question on its concept. It's optional, and counts like any review.
-  async function review(arc) {
+  // An arc's last scene has its recall in js/folk-recall.js: a stop before the reveal, and its own review question.
+  const recall = s => (SD.folkRecall && SD.folkRecall[s.id]) || null;
+  // The line it stops before: `at`, or Pip's last line, which is usually the reveal.
+  function stop(rc, lines) {
+    const at = rc.at != null ? rc.at : lines.map(l => l.s).lastIndexOf('pip');
+    return at > 0 && at < lines.length ? at : -1;
+  }
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  // Before the reveal, Pip asks you to name what just happened, from three chips. Nothing is graded or saved: a pick
+  // shows whether that was the idea (and why not, if it wasn't), then the scene lands it.
+  function predict(p) {
+    const order = shuffle(p.opts.map((o, i) => i));
+    return new Promise(res => {
+      const ask = () => {
+        const b = U.panel(`<div class="q-ctx">Pip asks</div><p class="q-q">${U.esc(p.q)}</p>
+          <div class="opts">${order.map(i => `<button class="opt" data-o="${i}">${U.esc(p.opts[i])}</button>`).join('')}</div>
+          <p class="muted small">Name it before anyone says it. Nothing's scored.</p>`, { title: 'WHAT JUST HAPPENED?', noClose: true });
+        b.querySelectorAll('[data-o]').forEach(el => el.onclick = () => told(+el.dataset.o));
+        b.querySelector('[data-o]').focus();
+      };
+      const told = i => {
+        const ok = i === p.a;
+        const b = U.panel(`<div class="q-ctx">You said</div><p class="q-q">${U.esc(p.opts[i])}</p>
+          <div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? "That's it." : 'Not quite.'}</div>
+          ${ok ? '' : `<div class="why"><p>${U.esc((p.no && p.no[i]) || '')}</p></div>`}
+          <div class="row"><button class="primary" id="fs-on">${ok ? 'Carry on' : 'See what it was'}</button></div>`, { title: 'WHAT JUST HAPPENED?', noClose: true });
+        const on = b.querySelector('#fs-on');
+        on.onclick = () => { U.closePanel(); res(ok); };
+        on.focus();
+      };
+      ask();
+    });
+  }
+  // The arc's last scene offers one review question: its own (js/folk-recall.js), on the idea the scene just taught,
+  // or failing that one from the bank for the arc's concept. It's optional, and counts like any review.
+  async function review(arc, rc) {
     const id = arc.concept, con = SD.concepts[id];
-    if (!con || !S.questionsFor(id).length) return;
+    const own = rc && rc.ask ? Object.assign({ id: 'fs-' + arc.id, c: id, type: 'mc' }, rc.ask) : null;
+    if (!con || (!own && !S.questionsFor(id).length)) return;
     const go = await new Promise(res => {
-      const p = U.panel(`<p>That was the last scene of <b>${U.esc(arc.title)}</b>.</p><p>Want one review question on <b>${U.esc(con.name)}</b> while it's fresh?</p>
+      const p = U.panel(`<p>That was the last scene of <b>${U.esc(arc.title)}</b>.</p><p>${own ? `Want one question on what it was about, <b>${U.esc(con.name)}</b>, the way an interviewer would ask it?`
+        : `Want one review question on <b>${U.esc(con.name)}</b> while it's fresh?`}</p>
         <div class="row"><button class="primary" id="fs-y">One question</button><button class="ghost" id="fs-n">Not now</button></div>`,
       { title: 'REVIEW', onClose: () => res(false) });
       p.querySelector('#fs-y').onclick = () => { U.closePanel(); res(true); };
       p.querySelector('#fs-n').onclick = () => { U.closePanel(); res(false); };
     });
     if (!go) return;
-    const q = S.pickQuestion(id);
+    const q = own || S.pickQuestion(id);
     if (!q) return;
     S.seeConcept(id);
     const r = await SD.quiz.ask(q, { title: 'REVIEW', context: con.name });

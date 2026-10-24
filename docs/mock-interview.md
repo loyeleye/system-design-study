@@ -66,8 +66,14 @@ The debrief shows the verdict, the rubric with notes, where the time went agains
 | Video Platform | Chapter 5 | Smooth playback | A viral trailer; resumable uploads | Subscribe-button red |
 | Notification Service | Chapter 5 | A provider fails mid-send | A 50 million user blast; not spamming users | The notification sound |
 | Web Crawler | Chapter 5 | Politeness per site | Have we seen this URL?; a crawler trap | User agent name |
+| Search Autocomplete | Chapter 3 | 300,000 lookups a second under 100 ms | Breaking news trends; one-letter prefixes | Highlight colour |
+| Job Scheduler | Chapter 4 | Finding due runs without starting them twice | The top-of-the-hour spike; a worker dies mid-run | Cron syntax colours |
+| LLM Chat Service | Chapter 6 | Keeping GPUs busy and replies fast | A long conversation gets expensive; fair use when GPUs run short | Typing dots |
+| Metrics & Alerting | Chapter 8 | A million writes a second | A year of data cheaply; alerts that flap or never fire | Dashboard palette |
+| Real-time Leaderboard | Chapter 9 | One player's rank among 50 million | The board outgrows one machine; the season's last minute | Medal art |
+| Payment System | Chapter 10 | Never charging twice | Knowing where every cent went; telling the shop it went through (outbox) | Checkout button text |
 
-They are common problems from Hello Interview's problem list; File Sync, Top-K Videos and Home Rentals were added after the Learning content depth review, and Ad Click Aggregator, Ride Hailing, Distributed Cache, Notification Service and Web Crawler after the completeness review. Every multiple choice question follows `docs/question-style.md` and passes `node tools/question_lint.js`. Every prompt and explanation is written fresh.
+They are common problems from Hello Interview's problem list; File Sync, Top-K Videos and Home Rentals were added after the Learning content depth review, and Ad Click Aggregator, Ride Hailing, Distributed Cache, Notification Service and Web Crawler after the completeness review. LLM Chat Service, Job Scheduler, Search Autocomplete, Payment System, Real-time Leaderboard and Metrics & Alerting came from the expert panel audit (Oct 23, 2026), which listed them among the most common senior prompts the rotation was missing. Every multiple choice question follows `docs/question-style.md` and passes `node tools/question_lint.js`. Every prompt and explanation is written fresh.
 
 ## Rewards (main game)
 
@@ -75,10 +81,10 @@ XP and Memory Shards by verdict: strong hire 120 XP and 150 shards, senior hire 
 
 ## Files
 
-- `game/js/mock-data.js` — phases and budgets, the rubric, the nudges per part, the wrap-up questions, and the nine problems (`SD.mock.problems`, listed by chapter).
+- `game/js/mock-data.js` — phases and budgets, the rubric, the nudges per part, the wrap-up questions, and the 20 problems (`SD.mock.problems`, listed by chapter).
 - `game/js/mock-typed.js` — what a strong typed answer covers, per "why" question and deep dive.
 - `game/js/mock.js` — the round, the debrief and the menu. Self-contained: it injects its own styles under `.mi` and needs only `SD.mock` and `SD.wb.parts` (from `whiteboard-data.js`, so the parts palette shares names and icons with Smudge). It uses `SD.art`, `SD.cast`, `SD.concepts`, `SD.icons` and `SD.audio` when they are loaded.
-  - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, concepts, spent, mins, cut }`.
+  - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, typed, concepts, spent, mins, cut }`.
   - `SD.mock.menu(root, { store, open, onResult, pid })` shows the problem list and runs rounds.
   - `SD.mock.solo()` is the main game's entry: the panel, the save-backed store (`sv.mock`), spaced review and rewards. Ploy on the Eventual Isles and the Practice hub (`js/practice.js`) offer it, and it stays locked until chapter 1 is cleared. Gary no longer offers it.
 - `game/mock.html` — the standalone page.
@@ -94,7 +100,7 @@ New save fields, created on first use: `sv.mock` (`{ pace, think, best, runs }`,
 
 ## Not built yet
 
-- Problems for chapters 6 to 10 (the ChatGPT-style service, the key-value store, the notification service, the web crawler, and whatever the North Road arcs teach).
+- More problems from the audit's list: collaborative docs, proximity search (Yelp), a key-value store, and RAG document Q&A. Chapter 7 has no problem yet.
 - A Plot Device for passing every unlocked problem at senior level (it would go in `SD.devices` in `quests.js`, which another thread owns).
 - An interview room backdrop in the PixelLab pass.
 

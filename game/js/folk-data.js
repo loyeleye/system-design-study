@@ -257,8 +257,9 @@
   //   block: a time block, a list of them, or 'any'
   //   when:  c => unlocked, with c = { f: flags, loop, block, done(questId), seen(sceneId), reached(chapter) }
   //   gone:  c => true once the scene's window has closed for good, so the arc carries on without it
-  //   lines: [speaker, text, mood?], or c => lines. The arc's last scene lands its analogy, and `review` offers
-  //          a question on the arc's concept afterwards.
+  //   lines: [speaker, text, mood?], or c => lines. The arc's last scene lands its analogy, marked `review`: it
+  //          stops before the reveal for you to name what happened, then offers its own question afterwards
+  //          (both in js/folk-recall.js, by scene id).
   //   diary: what Aigerim reads back to you about it, next time you see her (arc 10's running gag).
   D.ARCS = [
     {
@@ -366,7 +367,7 @@
       ]
     },
     {
-      id: 'memoir', title: 'The Memoir, Second Edition', who: ['lexi', 'kaito'], concept: 'indexes',
+      id: 'memoir', title: 'The Memoir, Second Edition', who: ['lexi', 'kaito'], concept: 'lsm',
       scenes: [
         { title: 'Overdue', at: 'library', block: 'afternoon', when: c => c.done('library'),
           lines: [['kaito', '"My Legendary Skill: Kubernetes, Volume Four." Returned. Now tell me who keeps borrowing it.'],

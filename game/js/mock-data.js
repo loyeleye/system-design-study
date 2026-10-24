@@ -1537,6 +1537,634 @@ SD.mock.problems = [
       },
       { id: 'bike', title: 'The crawler\'s user agent name', kind: 'bikeshed', reply: 'PoliteSpider/1.0. Done. Moving on.', note: 'Chose to spend deep-dive time on the user agent string.' }
     ]
+  },
+
+  // Added after the expert panel audit (Oct 23, 2026): the most common senior prompts the rotation was missing.
+  {
+    id: 'llmchat', ch: 6, name: 'LLM Chat Service', like: 'ChatGPT',
+    prompt: 'Design a chat service for a large language model: millions of people hold long conversations with one model. The Oracle\'s GPUs are already sweating.',
+    concepts: ['llmserve', 'llmcost', 'guardrails', 'ratelimit', 'realtime', 'estimation'],
+    clarify: [
+      { q: 'How many users, and how long are the chats?', good: true, a: 'About 10 million daily users, 20 messages each. A typical chat carries 2,000 tokens of history, and replies average 500 tokens.' },
+      { q: 'How fast must a reply start?', good: true, a: 'The first words should appear in under a second. The rest can stream at reading speed.' },
+      { q: 'Do we train the model too?', good: true, a: 'No. Another team trains it and hands us the weights. You own everything between the user and the GPUs.' },
+      { q: 'Are there free and paid tiers?', good: true, a: 'Yes. Free users get a smaller quota and are the first to wait when GPUs run short. Paid users keep their speed.' },
+      { q: 'Can we fine-tune on every user\'s chats overnight?', good: false, a: 'Legal just fainted.', note: 'Proposed training on user data before asking about privacy.' },
+      { q: 'Which JavaScript framework should the chat window use?', good: false, a: 'Whatever renders text. ...It renders text.', note: 'Asked about the frontend framework in a backend round.' }
+    ],
+    req: [
+      { t: 'Send a message and get a streamed reply', k: 'f' },
+      { t: 'List and resume past conversations', k: 'f' },
+      { t: 'Refuse harmful requests', k: 'f' },
+      { t: 'First words appear in under a second', k: 'nf' },
+      { t: 'No single user can starve the GPU pool', k: 'nf' },
+      { t: 'The GPU bill stays within budget', k: 'nf' },
+      { t: 'Training the model', k: 'out' },
+      { t: 'Generating images and voice', k: 'out' }
+    ],
+    entities: [
+      { t: 'Conversation (ID, user, title, model)', ok: true },
+      { t: 'Message (conversation, role, content, tokens)', ok: true },
+      { t: 'User (tier, token quota)', ok: true },
+      { t: 'Usage record (user, tokens, time)', ok: 'opt' },
+      { t: 'GPU', ok: false, why: 'GPUs are infrastructure, not data the product stores.' },
+      { t: 'The model weights', ok: false, why: 'Weights are a deployment artifact the model servers load, not product data.' }
+    ],
+    api: {
+      q: 'Which API would you write on the board?', c: 'realtime',
+      opts: ['POST /conversations/{id}/messages {content, idempotencyKey} → a token stream over SSE', 'POST /conversations/{id}/messages {content} → 200 with the whole reply once it is done', 'GET /conversations/{id}/reply?content={text} → a token stream over server-sent events', 'POST /conversations/{id}/messages {content} → {jobId}, then poll GET /jobs/{jobId} each second'],
+      a: 0, no: [null, 'A 500-token reply takes 10 seconds or more to generate, so nothing shows for 10 seconds. Streaming is what makes the first words fast.', 'Sending a message changes state and costs money, so it should not be a GET, even though EventSource only speaks GET. Prefetchers and retries replay GETs.', 'Polling adds up to a second before the first words, and millions of clients polling mostly get "not yet". Stream instead.'],
+      why: 'Sending a message is a POST on the conversation. Server-sent events stream tokens over plain HTTP as the model makes them, so the first words show in under a second. Browsers read a streamed POST with fetch, since EventSource only does GET; a WebSocket works too. The idempotency key stops a retried send from being answered and billed twice.'
+    },
+    est: {
+      pick: [
+        { t: 'Output tokens a second. They size the GPU fleet.', k: 'best' },
+        { t: 'Storage for every conversation, in bytes, for ten years.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '10 million daily users send 20 messages each, and each reply is about 500 tokens. Roughly how many output tokens a second, on average?', unit: 'tokens a second', lo: 800000, hi: 1600000,
+      ans: '~1.2 million tokens a second (2 × 10^8 messages × 500 ÷ 86,400 s)', why: 'If one model replica streams a few thousand tokens a second across its batch, that is hundreds of replicas on average and more at peak. Tokens, not requests, size the fleet, and the 2,000 tokens of history read with each message cost GPU time too.'
+    },
+    hld: {
+      palette: ['lb', 'gateway', 'app', 'limiter', 'guard', 'queue', 'gpu', 'semcache', 'nosql', 'sql', 'cache', 'vector', 'cdn', 'blob'],
+      flows: [
+        { name: 'A user sends message 12 of a chat', need: [['lb', 'gateway'], ['app'], ['guard'], ['nosql', 'sql'], ['queue'], ['gpu']], ok: ['limiter', 'cache', 'semcache', 'lb', 'gateway'], nudge: { guard: 'Someone asks for step-by-step weapon instructions. What says no, before or after the model?', queue: 'A new model launches and messages triple for ten minutes. GPUs can\'t be added that fast. Where do the extra requests wait?', gpu: 'Who actually runs the model, and how do many chats share one GPU?' } },
+        { name: 'A user reopens last week\'s chat', need: [['lb', 'gateway'], ['app'], ['nosql', 'sql']], ok: ['cache', 'lb', 'gateway'] }
+      ],
+      why: {
+        c: 'llmserve', q: '"Why a queue between the chat servers and the model servers?"',
+        opts: ['GPUs are scarce, so it absorbs spikes and servers pull work as slots free up', 'The queue holds each conversation\'s history, so model servers never read the database', 'A queue makes sure each reply is generated exactly once, so no user is billed twice', 'Model servers only accept work from a message queue, never over HTTP or gRPC calls'],
+        a: 0, no: [null, 'Queues hold short-lived work, not records you look up later. History lives in the conversation store and is sent with each request.', 'Most queues deliver at least once, so a message can be processed twice. The idempotency key prevents double billing.', 'Model servers usually expose HTTP or gRPC. The queue is there for capacity, not because servers need it.'],
+        why: 'GPU capacity is fixed in the short term and is the biggest cost. Requests wait briefly in a queue (one per tier) instead of overloading the servers, and each model server pulls new requests into its running batch as old ones finish. When the queue gets too deep, free-tier work waits or is shed first.'
+      }
+    },
+    dives: [
+      {
+        id: 'batch', title: 'Keeping GPUs busy and replies fast', kind: 'bottleneck', c: 'llmserve',
+        q: 'One GPU can serve dozens of chats at once, but replies run from 20 to 2,000 tokens. How do you batch requests so GPUs stay busy and first words stay fast?',
+        opts: ['Continuous batching: new requests join the running batch at each step as others finish', 'Static batches: wait for 32 requests to arrive, then run them together until all are done', 'Give every chat its own GPU, so one long reply never slows down anyone else\'s chat', 'Spread requests round robin across the GPUs and run each one alone, in arrival order'],
+        a: 0, no: [null, 'Short replies sit idle until the longest one in the batch is done, and waiting to fill a batch delays the first words.', 'One chat uses a sliver of a GPU. At a million tokens a second that is thousands of mostly idle GPUs.', 'Generating a token is limited by reading the weights from memory. Running one request at a time wastes most of each read.'],
+        nudge: 'A batch of 32 started together. Thirty-one replies are finished; one has 1,500 tokens to go. What are those 31 slots doing?',
+        why: 'Each decoding step reads all the weights from GPU memory once, so serving many chats in the same step is nearly free. Continuous batching (vLLM, TensorRT-LLM) swaps finished requests out and new ones in at every step, and paged KV-cache memory fits far more chats per GPU.',
+        f: {
+          q: 'What limits how many chats one GPU can batch at once?',
+          opts: ['GPU memory for each chat\'s KV cache, which grows with every token of context', 'CPU cores on the host, since each chat in the batch needs its own thread', 'The network link, since every token is sent to the user as soon as it is made', 'The size of the vocabulary, since each new token is picked from all of them'],
+          a: 0, no: [null, 'Tokenising and streaming are cheap. The GPU does the real work, scheduled by one serving process.', 'A token is a few bytes. Even a million tokens a second is a few MB a second across the fleet.', 'The vocabulary sets the size of one output layer, the same for every chat, so it doesn\'t change how many fit.'],
+          why: 'Every chat keeps keys and values for each past token (the KV cache), which reaches gigabytes for long chats on big models. Memory, not compute, caps the batch. That is why long conversations cost more and why history gets trimmed or summarised.'
+        }
+      },
+      {
+        id: 'context', title: 'A long conversation gets expensive', kind: 'real', c: 'llmcost',
+        q: 'Message 80 of a chat sends 30,000 tokens of history to the model every time. How do you cut the cost without the model forgetting the conversation?',
+        opts: ['Reuse the cached prompt prefix across turns, and summarise turns past a token budget', 'Send only the newest user message, since the model remembers earlier turns on its own', 'Put the history in a vector index and send only the three closest messages each turn', 'Cache each full reply by conversation ID, so repeat questions skip the model entirely'],
+        a: 0, no: [null, 'Models keep no state between calls. Without the history in the prompt, the reply has no idea what came before.', 'Retrieval helps recall an old detail, but dropping the recent turns breaks the thread. RAG suits large document sets, not the last few messages.', 'Each message in a chat is new, so a per-conversation reply cache almost never hits. A semantic cache suits common standalone questions.'],
+        nudge: 'Message 80 starts with the same 30,000 tokens as message 79. Does the GPU need to read them from scratch?',
+        why: 'Turn after turn, the prompt starts with the same prefix. Prefix caching keeps those KV entries on the GPU (or close by), so only the new tokens are processed, and routing a conversation back to the same replica makes hits likely. Past a token budget, the oldest turns become a running summary.',
+        f: {
+          q: 'What does routing each conversation back to the same model server cost?',
+          opts: ['Load gets uneven, and a crashed server takes its cached prefixes with it', 'Every replica has to keep a full copy of every conversation\'s history', 'The conversation can no longer be saved to the database between turns', 'Each user can only keep one chat open, on one device, at any one time'],
+          a: 0, no: [null, 'Only the server a conversation is routed to keeps its prefix, and only while it is warm. Sticky routing is how you avoid copying everything everywhere.', 'The database stays the source of truth. The prefix cache is a speed-up that can be rebuilt from it.', 'Routing is by conversation ID, not by user, so one user can run several chats on several servers.'],
+          why: 'Sticky routing trades even load for cache hits. A busy conversation can overload one replica, and a crash drops its prefixes, so the next turn pays for the full prompt again. Prefer the warm server, but fall back to the least-loaded one when it is hot.'
+        }
+      },
+      {
+        id: 'fair', title: 'Fair use when GPUs run short', kind: 'real', c: 'ratelimit',
+        q: 'A free user scripts thousands of 30,000-token prompts an hour. How do you keep the GPU pool fair?',
+        opts: ['Limit each user by tokens, not requests, with a tighter free-tier budget', 'Limit each user to a set number of requests a minute, the same for every tier', 'Add GPUs automatically whenever the queue grows, so nobody ever has to wait', 'Block the user\'s IP address once its traffic passes a fixed daily threshold'],
+        a: 0, no: [null, 'One 30,000-token prompt costs as much as hundreds of short ones. Counting requests lets the heavy ones through at the same rate.', 'GPUs take minutes to start and load weights, and supply is often capped. Autoscaling follows the daily curve; it doesn\'t stop abuse.', 'Scripts rotate IPs, and shared IPs (offices, mobile carriers) block innocent users. Limit by account and API key.'],
+        nudge: 'Two users each send ten requests a minute. One types "hi"; the other pastes a novel. Do they cost the same?',
+        why: 'GPU time scales with tokens, so budgets count tokens (prompt plus reply) per user per window, in a token bucket keyed by user and tier. When the queue is deep, free-tier work waits or is shed first and reply length is capped, so paid users keep their speed.',
+        f: {
+          q: 'You only know a reply\'s length once it is generated. How do you charge the limit up front?',
+          opts: ['Reserve the prompt plus the maximum reply length, then refund what was unused', 'Charge nothing until the reply ends, then take off the tokens actually used', 'Charge a flat 1,000 tokens for every request, whatever its real size', 'Ask the model to estimate the length of its reply first, and charge that'],
+          a: 0, no: [null, 'A burst of long requests all pass the check before any is charged, so a script overshoots its limit many times over.', 'Short prompts are overcharged and novels get a discount, which is the abuse you set out to stop.', 'That is an extra model call per request, and the estimate isn\'t reliable anyway.'],
+          why: 'Reserve the worst case when the request is admitted, then settle the real count when the stream ends. It is the same shape as a card authorisation followed by a capture.'
+        }
+      },
+      { id: 'bike', title: 'The typing-dots animation', kind: 'bikeshed', reply: '...Three dots. They pulse. Next question.', note: 'Chose to spend deep-dive time on the typing indicator.' }
+    ]
+  },
+
+  {
+    id: 'scheduler', ch: 4, name: 'Job Scheduler', like: 'a distributed cron service',
+    prompt: 'Design a distributed job scheduler: teams register jobs to run once at a set time or on a cron schedule. The kingdom\'s nightly ledgers keep running twice, or not at all.',
+    concepts: ['sched', 'locks', 'queue', 'backoff', 'indexes', 'estimation'],
+    clarify: [
+      { q: 'How many jobs, and how precise must the timing be?', good: true, a: 'About 10 million active jobs, each running about once an hour on average, with big spikes at the top of each hour. Starting within a few seconds of the due time is fine.' },
+      { q: 'What does a job actually run?', good: true, a: 'A container image or an HTTP call the team provides. We start it on our worker fleet and record the result.' },
+      { q: 'Is running a job twice acceptable?', good: true, a: 'Jobs should be safe to rerun, but we must never start the same run twice on purpose. Never skipping a run matters even more.' },
+      { q: 'Do failed runs retry?', good: true, a: 'Yes, by a retry policy on each job, and the owner is alerted after the last attempt.' },
+      { q: 'Should we invent a nicer schedule syntax than cron?', good: false, a: 'Please no. Standard cron expressions are fine.', note: 'Wanted to invent a new schedule format.' },
+      { q: 'Can jobs run on my laptop?', good: false, a: '...Only if your laptop lives in the data centre.', note: 'Asked about local runs instead of the system.' }
+    ],
+    req: [
+      { t: 'Schedule a job once, or on a cron expression', k: 'f' },
+      { t: 'Run each due job on a worker and record the result', k: 'f' },
+      { t: 'Retry failed runs by the job\'s policy', k: 'f' },
+      { t: 'Due runs start within a few seconds', k: 'nf' },
+      { t: 'No run is skipped when a scheduler node dies', k: 'nf' },
+      { t: 'No run is started twice on purpose', k: 'nf' },
+      { t: 'A drag-and-drop editor for job pipelines', k: 'out' },
+      { t: 'Billing teams per CPU second', k: 'out' }
+    ],
+    entities: [
+      { t: 'Job (ID, owner, schedule, payload, retry policy)', ok: true },
+      { t: 'Run (job, due time, status, attempt, worker)', ok: true },
+      { t: 'Worker (ID, capacity, last heartbeat)', ok: 'opt' },
+      { t: 'The cron daemon on each host', ok: false, why: 'That is what you are replacing. Cron on one host dies with the host and can\'t coordinate with others.' },
+      { t: 'Log line', ok: false, why: 'Logs are output shipped to a logging system, not something the scheduler models.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'sched',
+      opts: ['POST /jobs {schedule, payload, retryPolicy} → {jobId}; GET /jobs/{id}/runs → run history', 'POST /jobs {schedule, payload} → {jobId}, answering only after the first run has finished', 'PUT /jobs/{name}/run, which each team\'s own cron calls whenever its job is due to start', 'GET /jobs/due?before=now, which each team polls before running due jobs on its own servers'],
+      a: 0, no: [null, 'A job may first be due next month. Scheduling is a quick write; runs happen later and are read back as history.', 'Then every team still runs cron, with the same single point of failure. The scheduler should own the clock.', 'Every team rebuilds the hard parts: claiming each run once, retrying, and surviving a dead poller.'],
+      why: 'Registering a job is a create (POST) that returns an ID. Runs happen later, so they are their own resource you list. The create takes an idempotency key, so a retried request doesn\'t schedule the job twice.'
+    },
+    est: {
+      pick: [
+        { t: 'Runs coming due each second, and the spike at the top of the hour.', k: 'best' },
+        { t: 'The total bytes of every job payload kept over five years.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '10 million jobs each run about once an hour. Roughly how many runs come due each second, on average?', unit: 'runs a second', lo: 2000, hi: 4000,
+      ans: '~2,800 runs a second (10^7 ÷ 3,600)', why: 'Under 3,000 a second on average is easy for an indexed store. But people pick round times, so a big share lands at minute 0. The design has to survive a spike tens of times the average: poll in time buckets, queue the work, and spread jobs that don\'t need an exact second.'
+    },
+    hld: {
+      palette: ['lb', 'app', 'sql', 'nosql', 'cache', 'queue', 'worker', 'lock', 'stream', 'search', 'cdn', 'socket'],
+      flows: [
+        { name: 'A team schedules a nightly job', need: [['lb'], ['app'], ['sql', 'nosql']], ok: ['cache'] },
+        { name: 'A run comes due and executes', need: [['app'], ['sql', 'nosql'], ['queue'], ['worker']], ok: ['lock', 'cache', 'stream'], nudge: { app: 'Every second, something must ask the store which runs are due. Which part does the asking?', queue: 'Ten thousand runs come due at once, and workers start a few hundred a second. Where do the rest wait?' } }
+      ],
+      why: {
+        c: 'queue', q: '"Why put a queue between the scheduler and the workers?"',
+        opts: ['Finding due runs is quick, running them is slow, so workers drain a queue at their own pace', 'The queue holds the schedule itself, ordered by time, so jobs need no database at all', 'A queue delivers each message exactly once, so a run can never be started twice', 'The queue retries failed runs by itself, so jobs don\'t need retry policies of their own'],
+        a: 0, no: [null, 'Most queues can\'t hold 10 million entries for months or look one up by job. The durable schedule belongs in a database indexed by next run time.', 'Queues deliver at least once. A worker can crash after starting a run and the message comes back, so runs need a status check or an idempotency key.', 'Queue redelivery knows nothing about max attempts, backoff or alerting the owner. The scheduler tracks attempts on the run record.'],
+        why: 'Finding due runs and running them scale differently. The poller does a cheap indexed read and enqueues; a worker pool drains at its own rate and grows with the queue, so the spike at 10:00 becomes a short backlog instead of missed starts.'
+      }
+    },
+    dives: [
+      {
+        id: 'claim', title: 'Finding due runs without starting them twice', kind: 'bottleneck', c: 'locks',
+        q: 'Three scheduler nodes poll for due runs every second. How do you make sure each run is queued once, and none are skipped when a node dies?',
+        opts: ['Split runs into partitions; each node leases some, and claims a run with a conditional update', 'Every node queues every due run it finds, and the workers skip any duplicates they receive', 'Each node keeps an in-memory timer for every job, all loaded from the database at startup', 'Assign jobs to nodes by job ID modulo 3, fixed in config, so no two nodes ever share a job'],
+        a: 0, no: [null, 'Three nodes queue every run three times. Workers can dedupe, but you have tripled the load and the race just moves to the workers.', 'Ten million timers per node, rebuilt on every restart, and a node that dies takes its due runs with it until someone notices.', 'When a node dies, a third of the jobs are skipped until someone edits the config. Modulo N also reshuffles every job when N changes.'],
+        nudge: 'Node B dies holding its share of the 10:00 runs. Who notices, and how long until someone else picks them up?',
+        why: 'Runs sit in a table indexed by (partition, next run time). Each node holds leases on some partitions (through etcd, ZooKeeper or a lease row) and polls only those. It claims a run with UPDATE runs SET status = \'queued\' WHERE id = ? AND status = \'due\', so a run can only be claimed once. When a lease expires, another node takes the partition and finds the overdue runs.',
+        f: {
+          q: 'A node pauses for 30 seconds in a long garbage collection, and its lease expires. When it wakes, what stops it acting on its old partitions?',
+          opts: ['A fencing token: each lease has a rising number, and stale ones are refused', 'The node checks the wall clock as it wakes, and sees that 30 seconds have passed', 'The queue rejects messages from any node that no longer holds the lease for them', 'Nothing is needed, since a paused process can\'t send anything while it is paused'],
+          a: 0, no: [null, 'It can check, but the pause can strike between the check and the write. A clock check can\'t make that safe.', 'Queues know nothing about your leases. Fencing has to happen where the claim is written.', 'It resumes mid-step, holding writes it prepared before the pause, and sends them unaware the lease is gone.'],
+          why: 'Leases expire by time, and a paused process doesn\'t know time passed. Each new lease carries a higher token, and the store refuses writes with an older one. The conditional claim on run status gives the same protection for each run.'
+        }
+      },
+      {
+        id: 'spike', title: 'The top-of-the-hour spike', kind: 'real', c: 'sched',
+        q: '2 million hourly jobs are all set to minute 0. At 10:00:00 they all come due at once. What do you do?',
+        opts: ['Let jobs set a start window, add jitter, and let the queue absorb the rest', 'Run enough workers to start all 2 million runs within the first second of the hour', 'Refuse new hourly jobs once any single minute holds more than a fixed number of runs', 'Run the minute-0 jobs strictly one after another, so the database is never overloaded'],
+        a: 0, no: [null, 'That fleet sits idle the other 3,599 seconds of every hour. Size for the spread-out load and let a short backlog take the peak.', 'Teams just pick minute 1, and the spike moves. A start window fixes the cause.', 'Two million runs in a row take hours, so most start long after they were due.'],
+        nudge: 'Does a nightly report need to start at exactly 10:00:00, or would any time before 10:05 do?',
+        why: 'Most jobs don\'t need a precise second. Letting owners set a window, or hashing the job ID into a few minutes of jitter, flattens the spike. The rest waits briefly in the queue, the worker fleet scales on queue depth, and jobs that really need the exact time go on a priority queue.',
+        f: {
+          q: 'What does spreading jobs over a start window cost?',
+          opts: ['Runs start later and less predictably, which breaks jobs that rely on each other\'s timing', 'Every job needs a queue of its own, so the number of queues grows with the number of jobs', 'Each run is stored several times in the database, once for each minute of its window', 'Workers must hold a lock for the whole window, so fewer jobs can run at the same time'],
+          a: 0, no: [null, 'The run record carries its start time. One queue, or one per priority, still serves every job.', 'A run is one row with a chosen start time. The window only changes that value.', 'Workers run a job when it reaches them. The window only changes when that is.'],
+          why: 'A job that assumes another one finished by 10:01 can now race it. Dependencies should be explicit (run B after A succeeds), not implied by clock times.'
+        }
+      },
+      {
+        id: 'dead', title: 'A worker dies halfway through a run', kind: 'real', c: 'backoff',
+        q: 'A worker takes a run, starts it, and its machine dies 10 minutes in. How do you notice, and recover?',
+        opts: ['Workers send heartbeats while running; a run with none past a timeout is retried', 'Workers write "done" at the end, and runs with no "done" after 24 hours are retried', 'The queue deletes each message as soon as a worker receives it, so none come back', 'Every run is sent to two workers at once, and the first one to finish is kept'],
+        a: 0, no: [null, 'A 24-hour wait breaks the "never skipped" promise for an hourly job. Liveness needs a short heartbeat, not a deadline.', 'That is at most once: the dead worker took the run with it, and nothing will ever retry it.', 'Twice the cost, and two copies of a job that charges cards or sends email both take effect.'],
+        nudge: 'From outside, a slow 10-minute run and a dead worker look the same. What signal tells them apart?',
+        why: 'A running worker renews a lease on the run every few seconds (or extends the queue\'s visibility timeout). If renewals stop, the run goes back on the queue with its attempt count raised, following the job\'s retry policy and backoff. After the last attempt, the owner is alerted.',
+        f: {
+          q: 'The worker wasn\'t dead, only cut off from the network. Now two copies of the run are going. What limits the damage?',
+          opts: ['The job uses the run ID as an idempotency key, so its side effects happen once', 'The scheduler kills the first worker\'s process over the network before it retries', 'Heartbeats every 100 ms make it impossible for both copies to run at the same time', 'The second worker waits until the first copy\'s logs show up before it starts'],
+          a: 0, no: [null, 'It can\'t reach a worker on the far side of a partition. That is why it was declared dead.', 'Faster heartbeats shrink the window but never close it. A partition can outlast any timeout.', 'A partitioned worker\'s logs don\'t arrive either. Waiting turns every crash into a hang.'],
+          why: 'Across a network you can\'t tell slow from dead, so at least once is the honest promise. Jobs pass the run ID to whatever they change, so a second copy\'s writes do nothing, and a worker stops itself when it can\'t renew its lease.'
+        }
+      },
+      { id: 'bike', title: 'Syntax colours for cron expressions', kind: 'bikeshed', reply: 'Green for minutes. Fine. Next.', note: 'Chose to spend deep-dive time on syntax colours.' }
+    ]
+  },
+
+  {
+    id: 'typeahead', ch: 3, name: 'Search Autocomplete', like: 'a search engine\'s typeahead',
+    prompt: 'Design search autocomplete: as someone types, show the top 5 completions. The royal library\'s card catalogue has opinions about prefixes.',
+    concepts: ['search', 'topk', 'cache', 'cdn', 'streams', 'estimation'],
+    clarify: [
+      { q: 'How many searches, and how many requests each?', good: true, a: 'About 5 billion searches a day. Each one sends about 5 suggestion requests as the user types, after a short debounce.' },
+      { q: 'How fresh must suggestions be?', good: true, a: 'A daily rebuild is fine for most terms. Breaking news should show up within about 15 minutes.' },
+      { q: 'How fast must suggestions appear?', good: true, a: 'Under 100 ms end to end, or they lag behind the typing and feel broken.' },
+      { q: 'Are suggestions personal, or the same for everyone?', good: true, a: 'The same for everyone in a language and country, for now. Personal history can come later.' },
+      { q: 'Which font should the dropdown use?', good: false, a: 'The same one as the search box. Next.', note: 'Asked about fonts in a backend round.' },
+      { q: 'Can we just run a SQL LIKE query?', good: false, a: 'On five billion searches a day? Bold.', note: 'Reached for a LIKE query before thinking about scale.' }
+    ],
+    req: [
+      { t: 'Suggest the top 5 completions for a typed prefix', k: 'f' },
+      { t: 'Rank completions by how often they are searched', k: 'f' },
+      { t: 'Never suggest blocked or offensive terms', k: 'f' },
+      { t: 'Suggestions return in under 100 ms', k: 'nf' },
+      { t: 'Trending searches appear within about 15 minutes', k: 'nf' },
+      { t: 'Stays up through breaking-news spikes', k: 'nf' },
+      { t: 'Correcting spelling in the full query', k: 'out' },
+      { t: 'Showing the search results themselves', k: 'out' }
+    ],
+    entities: [
+      { t: 'Prefix entry (prefix, top 5 completions with scores)', ok: true },
+      { t: 'Query log (query, time, country)', ok: true },
+      { t: 'Blocked term', ok: 'opt' },
+      { t: 'Web page', ok: false, why: 'Pages are what search returns. Autocomplete only knows about past queries.' },
+      { t: 'User session', ok: false, why: 'Suggestions are the same for everyone here, so nothing per user is stored.' }
+    ],
+    api: {
+      q: 'Which API would you write on the board?', c: 'cache',
+      opts: ['GET /suggest?q={prefix}&lang=en&country=us → [top 5], cacheable for a few minutes', 'POST /suggest {prefix, sessionId} → [top 5], so every keystroke gets logged first', 'A WebSocket per user that pushes fresh suggestions each time another key is pressed', 'GET /suggest?q={prefix} → every completion that starts with the prefix, sorted'],
+      a: 0, no: [null, 'Browsers and CDNs don\'t cache POST responses, and logging belongs off the read path. A read like this should be a cacheable GET.', 'A socket per searcher costs a lot for a few seconds of typing, and pushed answers can\'t be cached at the edge.', 'A short prefix like "a" has millions of completions. Return only the top 5, ranked on the server.'],
+      why: 'A read that is the same for everyone in a region is a cacheable GET. The prefix, language and country are the whole cache key, so a CDN or the browser can answer repeat prefixes without touching your servers.'
+    },
+    est: {
+      pick: [
+        { t: 'Suggestion requests a second. It decides what can sit on the read path.', k: 'best' },
+        { t: 'Every possible prefix of every word in every language.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '5 billion searches a day, each sending about 5 suggestion requests. Roughly how many requests a second, on average?', unit: 'requests a second', lo: 200000, hi: 400000,
+      ans: '~290,000 a second (2.5 × 10^10 ÷ 86,400)', why: 'Nearly 300,000 a second on average, more at peak, each in under 100 ms. No database query per keystroke survives that. Precompute the top 5 for each prefix, keep it in memory, and let the CDN and the browser absorb the popular short prefixes.'
+    },
+    hld: {
+      palette: ['lb', 'cdn', 'app', 'cache', 'search', 'sql', 'nosql', 'queue', 'stream', 'worker', 'blob', 'socket'],
+      flows: [
+        { name: 'Someone types "how to b"', need: [['cdn'], ['lb'], ['app'], ['cache', 'nosql']], ok: ['search'], nudge: { cdn: 'Millions of people type "w", "we" and "wea" every minute. Do all of those requests need to reach your data centre?', cache: 'Each keystroke needs the top 5 for one prefix within a few milliseconds. Where is that answer already waiting?' } },
+        { name: 'Search logs update the suggestions', need: [['queue'], ['stream', 'worker'], ['cache', 'nosql']], ok: ['blob', 'app', 'sql'], nudge: { queue: 'Billions of finished searches a day. Where do they go before anything counts them?', stream: 'Who turns raw query logs into counts per query?' } }
+      ],
+      why: {
+        c: 'search', q: '"Why precompute the top 5 for every prefix, instead of searching when the request comes in?"',
+        opts: ['Reads vastly outnumber updates, so rank ahead of time and make reads lookups', 'Precomputed lists take up less storage than keeping the raw query counts would', 'A search index can only match whole words, never prefixes, so it can\'t answer this', 'Ranking needs the full query log, which only becomes available once a day'],
+        a: 0, no: [null, 'It is the other way round: storing a top 5 for every prefix repeats completions many times over. You spend storage to save time.', 'Search engines match prefixes fine (edge n-grams, completion suggesters). The issue is doing the ranking 300,000 times a second.', 'Streaming counts can be minutes fresh. Precomputing is about the cost of each read, not when logs arrive.'],
+        why: 'Walking a trie and ranking every completion under "a" is expensive. Storing the top 5 at every node (or in a prefix-to-list map) turns each keystroke into one memory lookup. It is rebuilt offline and swapped in, so serving never waits on it.'
+      }
+    },
+    dives: [
+      {
+        id: 'trie', title: 'Answering in under 100 ms, 300,000 times a second', kind: 'bottleneck', c: 'search',
+        q: 'How do you store the suggestions so each keystroke is a single fast lookup?',
+        opts: ['A trie with the top 5 at each node, built offline and kept in memory on replicas', 'A SQL table of queries, read with WHERE query LIKE \'prefix%\' ORDER BY count DESC LIMIT 5', 'A trie with counts only at the leaves, walked and ranked again on every single keystroke', 'One big hash map from each full query to its count, scanned for keys with the prefix'],
+        a: 0, no: [null, 'A B-tree can find the prefix range, but ranking every match for "a" by count is a huge scan, 300,000 times a second.', 'Short prefixes cover millions of leaves. Ranking them on every keystroke blows the 100 ms budget.', 'A hash map has no order, so finding keys by prefix means scanning all of them.'],
+        nudge: 'The prefix "s" has 40 million completions under it. How much work should one keystroke do to rank them?',
+        why: 'Precompute: each trie node (or a prefix-to-list map in a key-value store) holds its top 5 with scores, so a lookup costs the length of the prefix. Shard by prefix range if it outgrows one machine, and keep full replicas in each region so reads stay local.',
+        f: {
+          q: 'What does keeping a top 5 at every node cost you?',
+          opts: ['More memory, and a change to one query\'s count touches every prefix above it', 'Slower lookups, since each node\'s list has to be sorted again on every read', 'Rare queries can no longer be found, since they get dropped from the trie', 'The trie can no longer be split up, so it has to fit on a single server'],
+          a: 0, no: [null, 'The lists are sorted when the trie is built. Reads just return them.', 'Rare queries stay in the trie. They miss the top 5 of short prefixes, but longer prefixes still surface them.', 'Shard by prefix range (a to f, g to m, and so on) and route by the first characters.'],
+          why: 'A popular query sits in the list of many of its prefixes, so memory grows with query length and each count change fans out up the path. That is why the trie is rebuilt in batch and swapped in, not updated on every search.'
+        }
+      },
+      {
+        id: 'trend', title: 'Breaking news trends within minutes', kind: 'real', c: 'streams',
+        q: 'A storm gets a name and millions search it within minutes. The daily rebuild won\'t show it until tomorrow. What do you add?',
+        opts: ['A stream job counting queries in short windows, feeding rising terms into a small live layer', 'Rebuild the whole trie from the full query log every minute instead of once a day', 'Write every incoming query straight into the live trie, updating top 5 lists as it goes', 'Let editors add trending terms by hand to a list that the servers check first'],
+        a: 0, no: [null, 'Rebuilding from billions of log lines every minute costs far more than the freshness is worth. Batch suits the slow-moving bulk.', 'Hundreds of thousands of writes a second into the structure serving 300,000 reads, each fanning out up the prefix path, means contention and lag.', 'Editors can\'t keep up with the world, and this has to work at 3 a.m. Hand curation suits blocklists.'],
+        nudge: 'Do you need to recount every query ever made, or only the ones that just spiked?',
+        why: 'A daily batch trie covers the long tail. A stream processor (Flink, Kafka Streams) counts queries over the last few minutes with decay, and terms rising fast go into a small live index. Servers merge the live list with the batch top 5 at read time.',
+        f: {
+          q: 'What risk comes with fast-moving trending suggestions?',
+          opts: ['Bots can push a term into suggestions, so trending needs abuse checks', 'Merging live terms in corrupts the batch trie, which then has to be rebuilt', 'CDN caching has to be switched off, since suggestions now change every minute', 'Trending terms push long-tail queries out of the batch trie permanently'],
+          a: 0, no: [null, 'The merge happens at read time, so the batch trie is never written to.', 'A TTL of a minute or two on short prefixes keeps most of the CDN\'s benefit and is fresh enough.', 'Live terms decay away after hours, and the next batch build reflects the real totals.'],
+          why: 'Fast feedback is easy to game: a few thousand scripted searches can surface a slur or a smear. Count unique users rather than raw searches, rate limit each client, and check rising terms against blocklists before they show.'
+        }
+      },
+      {
+        id: 'short', title: 'One-letter prefixes', kind: 'real', c: 'cdn',
+        q: 'One- and two-letter prefixes are half of all requests. How do you stop them hammering the servers?',
+        opts: ['Cache them at the CDN and in browsers with a short TTL; everyone gets the same answer', 'Shard the trie by prefix, so the "a" shard gets more and bigger machines of its own', 'Show no suggestions at all until the user has typed at least five characters', 'Rate limit each user to one suggestion request a second while they are typing'],
+        a: 0, no: [null, 'The "a" shard still takes every "a" request. Sharding spreads different keys, not one hot key.', 'Suggestions for short prefixes are the most useful ones. Waiting for five characters breaks the product.', 'People type several keys a second, so they would see stale suggestions. Debounce on the client instead.'],
+        nudge: 'Everyone in the country typing "w" gets the same five answers. How many times do you need to work them out?',
+        why: 'Short prefixes are a small set of very hot keys with one answer per region. The CDN and the browser cache answer them with a TTL of a minute or so. Clients also debounce keystrokes by about 100 ms, cutting requests without hurting the feel.',
+        f: {
+          q: 'What does a 5-minute TTL on cached prefixes cost?',
+          opts: ['A new trending term can take up to 5 minutes to appear under short prefixes', 'Everyone sees the same suggestions, even in a different language or country', 'The CDN can only hold the first character, never any of the longer prefixes', 'The browser\'s cache stops working once the CDN\'s cache is switched on'],
+          a: 0, no: [null, 'Language and country are part of the cache key, so each locale gets its own entry.', 'Any prefix can be cached. Short ones just get the most hits.', 'Browser and CDN caches stack: the browser first, then the edge, then your servers.'],
+          why: 'The TTL trades freshness against load directly. Pick it by prefix length: short prefixes are the hottest and can live a minute or two, while long, rare prefixes barely benefit from caching.'
+        }
+      },
+      { id: 'bike', title: 'The highlight colour for matched letters', kind: 'bikeshed', reply: 'Bold. Not a colour. Bold. Moving on.', note: 'Chose to spend deep-dive time on highlight styling.' }
+    ]
+  },
+
+  {
+    id: 'payments', ch: 10, name: 'Payment System', like: 'a marketplace\'s checkout and payouts',
+    prompt: 'Design a payment system for the kingdom\'s marketplace: buyers pay by card, and sellers get paid out. Nobody may be charged twice. Not even Doug.',
+    concepts: ['payment', 'backoff', 'outbox', 'sagas', 'sqlnosql', 'estimation'],
+    clarify: [
+      { q: 'How many payments, and how big?', good: true, a: 'About 10 million payments a day, averaging 30 dollars, with peaks at five times the average during holiday sales.' },
+      { q: 'Do we process cards ourselves, or through a provider?', good: true, a: 'Through payment providers like Stripe or Adyen. We never store raw card numbers; the provider gives us a token.' },
+      { q: 'Which matters more, speed or correctness?', good: true, a: 'Correctness. A payment can take a few seconds. Losing track of money can\'t happen.' },
+      { q: 'Do sellers get paid straight away?', good: true, a: 'No. Daily payouts, after refunds and platform fees are taken off.' },
+      { q: 'Should the ledger be on a blockchain?', good: false, a: 'We have a database. It is very good at being a ledger.', note: 'Reached for a buzzword before the requirements.' },
+      { q: 'Can we round amounts to the nearest coin to keep it simple?', good: false, a: 'The auditors would like a word.', note: 'Proposed rounding money.' }
+    ],
+    req: [
+      { t: 'Charge a buyer\'s card for an order', k: 'f' },
+      { t: 'Record every movement of money in a ledger', k: 'f' },
+      { t: 'Pay sellers daily, minus fees and refunds', k: 'f' },
+      { t: 'A payment is never charged twice, even on retries', k: 'nf' },
+      { t: 'No payment is lost if a server dies mid-flow', k: 'nf' },
+      { t: 'Our books match the provider\'s every day', k: 'nf' },
+      { t: 'Storing raw card numbers', k: 'out' },
+      { t: 'Recommending products at checkout', k: 'out' }
+    ],
+    entities: [
+      { t: 'Payment (ID, order, amount, currency, status, idempotency key)', ok: true },
+      { t: 'Ledger entry (account, debit or credit, amount, payment)', ok: true },
+      { t: 'Account (a buyer, a seller, or platform fees)', ok: true },
+      { t: 'Payout (seller, amount, date, status)', ok: 'opt' },
+      { t: 'Card number', ok: false, why: 'Raw card numbers stay with the provider, which keeps you out of most PCI scope. You store its token.' },
+      { t: 'Shopping cart', ok: false, why: 'The cart belongs to the shop. Payments sees an order ID and an amount.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'backoff',
+      opts: ['POST /payments {orderId, amount, currency, cardToken} + Idempotency-Key header → {paymentId, status}', 'POST /payments {orderId, amount, currency, cardToken} → {paymentId}, retried by the client on any timeout', 'PUT /orders/{orderId}/paid {amount} → 200, which charges the card and marks the order paid in one call', 'GET /payments/charge?order={orderId}&amount={amount}&card={cardToken} → {status}, easy for shops to call'],
+      a: 0, no: [null, 'Without a key, a retry after a timeout looks like a brand new payment, and the buyer is charged twice.', 'That hides the charge inside the order service with no payment record or status of its own. Payments need their own resource.', 'A charge changes state, so it must not be a GET. Prefetchers, crawlers and retries replay GETs freely.'],
+      why: 'Creating a payment is a POST, and POST isn\'t idempotent, so the client sends an idempotency key. The server stores the key with the result, and a retry with the same key gets the first answer back instead of a second charge. The status may be pending, since providers often confirm later.'
+    },
+    est: {
+      pick: [
+        { t: 'Peak payments a second, and the ledger writes each one makes.', k: 'best' },
+        { t: 'The total value of every payment over the next ten years.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '10 million payments a day, peaking at five times the average. Roughly how many payments a second at peak?', unit: 'payments a second', lo: 400, hi: 800,
+      ans: '~580 a second (10^7 ÷ 86,400 × 5)', why: 'Under a thousand a second fits one well-run relational database with replicas. Payments don\'t need a sharded store for scale; they need transactions and correctness. Each payment writes a few ledger rows, so plan for a few thousand rows a second.'
+    },
+    hld: {
+      palette: ['lb', 'gateway', 'app', 'sql', 'nosql', 'cache', 'queue', 'worker', 'stream', 'lock', 'blob', 'socket'],
+      flows: [
+        { name: 'A buyer pays for an order', need: [['lb', 'gateway'], ['app'], ['sql']], ok: ['cache', 'queue', 'lock', 'worker', 'lb', 'gateway'], nudge: { sql: 'The payment\'s status and its ledger entries must change together, or not at all. Where does that happen?' } },
+        { name: 'The provider confirms a payment by webhook', need: [['lb', 'gateway'], ['app'], ['queue'], ['worker'], ['sql']], ok: ['stream', 'lb', 'gateway'], nudge: { queue: 'The provider sends 2,000 confirmations in a burst and retries any that time out. Do you do all the work while it waits?' } }
+      ],
+      why: {
+        c: 'sqlnosql', q: '"Why a relational database for payments, rather than a NoSQL store?"',
+        opts: ['Each payment changes several rows (status, ledger entries) that must commit together', 'NoSQL stores can only hold floating point numbers, so amounts would lose their cents', 'Payments are a huge write load, and relational databases scale writes more easily', 'A relational database encrypts every row by default, and PCI compliance requires it'],
+        a: 0, no: [null, 'Money is stored as integer minor units (cents) in any database. Floats are wrong everywhere, not just in NoSQL.', 'Usually the reverse: NoSQL stores scale writes more easily. At under a thousand a second, scale isn\'t the deciding factor.', 'Encryption at rest is a setting on most databases of either kind, and raw cards aren\'t stored here at all.'],
+        why: 'A payment\'s status change and its balanced ledger entries must commit in one ACID transaction, with constraints such as debits equalling credits. At a few hundred payments a second, a relational database with synchronous replicas does this comfortably.'
+      }
+    },
+    dives: [
+      {
+        id: 'twice', title: 'Never charging twice', kind: 'bottleneck', c: 'backoff',
+        q: 'Your server asks the provider to charge 30 dollars, and the call times out. Did the charge happen? What do you do?',
+        opts: ['Record the attempt first, then retry with the same idempotency key until answered', 'Treat it as a failure and charge again, since the provider never sent back an answer', 'Treat it as a success and mark it paid, since most timeouts turn out to be slow successes', 'Put the provider call and your database write inside one two-phase commit transaction'],
+        a: 0, no: [null, 'A timeout means you don\'t know. The charge may have gone through, and charging again bills the buyer twice.', 'Then failed charges ship free goods. Unknown must stay unknown until you check.', 'Outside providers don\'t take part in your two-phase commit. Across systems you don\'t own, use idempotency keys and reconciliation.'],
+        nudge: 'The timeout tells you nothing about whether money moved. What could make a second attempt harmless?',
+        why: 'Write the payment as pending, with its key, before calling out, then call the provider with that key. Providers dedupe on it, so a retry returns the first result. If retries run out, the payment stays unknown and a worker asks the provider for its status later. Statuses move from created to pending to succeeded or failed, and are never guessed.',
+        f: {
+          q: 'Why write the pending record before calling the provider, rather than after?',
+          opts: ['If the server dies after the charge, the pending row is how you find it and finish it', 'Writing first makes the provider\'s call quicker, since the row is already in the cache', 'The provider refuses charges for any payment it can\'t find in your own database', 'It locks the buyer\'s card, so no other merchant can charge it at the same moment'],
+          a: 0, no: [null, 'The order doesn\'t change the provider\'s speed. It changes what you can recover.', 'The provider can\'t see your database. It sees only your request and its key.', 'Nobody can lock a card. Each merchant\'s charges are separate.'],
+          why: 'Charge first and crash, and money moved with no record on your side. Record first and crash, and a sweeper finds pending payments older than a minute and asks the provider what happened. The record is the intent; the provider\'s answer settles it.'
+        }
+      },
+      {
+        id: 'ledger', title: 'Knowing where every cent went', kind: 'real', c: 'payment',
+        q: 'Finance wants every seller\'s exact balance at any point in history. How do you store money movements?',
+        opts: ['An append-only double-entry ledger: each movement a debit and equal credit', 'A balance column on each seller, updated in place by every payment, refund and payout', 'A Kafka topic of payment events, replayed from the start whenever a balance is needed', 'Nightly snapshots of each seller\'s balance, copied over from the provider\'s reports'],
+        a: 0, no: [null, 'Updating in place erases history, and a bug that adds twice leaves no trace of where the money came from.', 'Kafka is a fine way to move events, but a balance query shouldn\'t replay months of them. The ledger is a table that events can feed.', 'Snapshots can\'t say what happened between them, and the provider only sees its side, not your fees and refunds.'],
+        nudge: 'A seller says their balance is 40 dollars short. How would you show where every cent went?',
+        why: 'Each movement writes two or more entries that sum to zero (debit the buyer\'s funds, credit the seller and the platform\'s fees) in one transaction. Rows are never updated; corrections are new entries. Balances are sums, cached per account, and any balance at any moment can be rebuilt and audited.',
+        f: {
+          q: 'A refund undoes part of a payment. How does the ledger record it?',
+          opts: ['New entries that move the money back, linked to the original payment', 'Edit the original entries so that they show the smaller amount instead', 'Delete the original entries and write the payment again for less', 'Mark the payment as refunded and leave its entries just as they are'],
+          a: 0, no: [null, 'Editing history breaks every report already run and every audit. Ledgers are append-only.', 'Deleting money movements is exactly what auditors look for. The original payment happened.', 'Then the seller\'s balance still counts money that went back to the buyer.'],
+          why: 'Corrections are new entries in the opposite direction, like an accountant\'s reversing entry. Balances stay right, and the history shows the payment and the refund, each with its time and reason.'
+        }
+      },
+      {
+        id: 'outbox', title: 'Telling the shop the payment went through', kind: 'real', c: 'outbox',
+        q: 'Once a payment succeeds, the order service must hear about it so it ships. Your code commits the payment, then publishes an event, and sometimes crashes in between. What fixes it?',
+        opts: ['Write the event to an outbox table in the same transaction, and relay it to the queue after', 'Publish the event first, then commit the payment, so the order service is never kept waiting', 'Retry the publish in a loop inside the request until the queue has acknowledged the event', 'Have the order service ask the provider directly whether each of its orders has been paid'],
+        a: 0, no: [null, 'Then a crash before the commit tells the shop to ship an order whose payment was never recorded.', 'A crash ends the loop too. The event exists only in memory until it is published.', 'The provider knows charges, not your orders, fees and holds, and every service would need provider credentials.'],
+        nudge: 'The database commit and the queue publish are two different systems. What single write could hold both?',
+        why: 'The transactional outbox: the payment update and an "order paid" row in an outbox table commit together. A relay, or change data capture such as Debezium, publishes outbox rows and marks them sent. Delivery is at least once, so the order service dedupes on the payment ID.',
+        f: {
+          q: 'What catches the payments where something still went wrong?',
+          opts: ['A daily job matching every ledger entry against the provider\'s settlement report', 'A database trigger that blocks any payment row being written without an event', 'An alert whenever the outbox table holds more than zero rows at any moment', 'Asking buyers to email support whenever they think they were charged twice'],
+          a: 0, no: [null, 'Triggers can\'t see the provider\'s side, which is where many mismatches start.', 'The outbox is never empty under normal load. Alert on age (rows older than a few minutes), not on count.', 'Most double charges are never reported, and the ones that are cost you trust.'],
+          why: 'Reconciliation is the safety net every payment system has: the provider\'s settlement file is compared with your ledger line by line. Missing, duplicate or mismatched entries become tickets, and fixes are new ledger entries.'
+        }
+      },
+      { id: 'bike', title: 'The text on the checkout button', kind: 'bikeshed', reply: '"Pay". It says "Pay". Next.', note: 'Chose to spend deep-dive time on button text.' }
+    ]
+  },
+
+  {
+    id: 'leaderboard', ch: 9, name: 'Real-time Leaderboard', like: 'a mobile game\'s global rankings',
+    prompt: 'Design a real-time leaderboard for the kingdom\'s arena: 50 million players, and every one of them wants to see the top 10 and their own rank.',
+    concepts: ['leaderboard', 'cache', 'sharding', 'hotkey', 'estimation'],
+    clarify: [
+      { q: 'How many players, and how often do scores change?', good: true, a: '50 million players a month, 5 million a day, about 10 matches each. The board resets every month.' },
+      { q: 'What do players see?', good: true, a: 'The global top 10, their own rank, and the players just above and below them.' },
+      { q: 'How fresh must it be?', good: true, a: 'A new score should show within a second or two. That is the fun of it.' },
+      { q: 'Can scores go down, and how are ties broken?', good: true, a: 'Scores only go up within a month. A tie goes to whoever reached the score first.' },
+      { q: 'What shade of gold is the gold medal?', good: false, a: 'Gold.', note: 'Asked about medal art.' },
+      { q: 'Can we just recompute every rank once a night?', good: false, a: 'The players would riot by lunchtime.', note: 'Proposed a nightly batch for a real-time requirement.' }
+    ],
+    req: [
+      { t: 'Record a player\'s score after each match', k: 'f' },
+      { t: 'Show the global top 10', k: 'f' },
+      { t: 'Show a player\'s rank and the players around them', k: 'f' },
+      { t: 'New scores show within about a second', k: 'nf' },
+      { t: 'Rank lookups take a few milliseconds', k: 'nf' },
+      { t: 'No scores are lost if a cache node dies', k: 'nf' },
+      { t: 'Matching players of similar skill', k: 'out' },
+      { t: 'Chat between players', k: 'out' }
+    ],
+    entities: [
+      { t: 'Player (ID, name)', ok: true },
+      { t: 'Score (player, month, points, reached at)', ok: true },
+      { t: 'Match result (match, player, points won)', ok: 'opt' },
+      { t: 'Rank', ok: false, why: 'A rank is computed from everyone\'s scores. Storing it per player means rewriting millions of rows after every match.' },
+      { t: 'Arena map', ok: false, why: 'Maps are game content, not leaderboard data.' }
+    ],
+    api: {
+      q: 'Which API would you write on the board?', c: 'leaderboard',
+      opts: ['POST /scores {matchId, points}; GET /top?n=10; GET /players/{id}/rank?around=5', 'POST /scores {playerId, points}; GET /leaderboard → every player, sorted, to the client', 'PUT /players/{id}/rank {rank}, with each game client working out its own rank', 'GET /top?n=10 only, rebuilt once a night by a batch job over all the scores'],
+      a: 0, no: [null, 'Fifty million players per request is gigabytes. Serve the top and the neighbourhood as small, separate reads.', 'Clients can\'t see everyone else\'s scores, and a client that sets its own rank is a cheater\'s dream.', 'It fails the real-time requirement and never shows a player their own rank.'],
+      why: 'Game servers report match results, keyed by match so a retried report isn\'t counted twice. Clients never set scores. Reads are the top N and "me and my neighbours": both small, paginated answers.'
+    },
+    est: {
+      pick: [
+        { t: 'Score updates a second, and the memory for 50 million entries.', k: 'best' },
+        { t: 'Storage for every player\'s full match history, forever.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '5 million daily players each play about 10 matches. Roughly how many score updates a second, on average?', unit: 'updates a second', lo: 400, hi: 800,
+      ans: '~580 a second (5 × 10^7 ÷ 86,400)', why: 'Even at five times that at peak, a few thousand updates a second is easy for one Redis sorted set, where each update is O(log n). Fifty million entries at roughly 100 bytes is about 5 GB, which fits in one machine\'s memory. You may not need to shard at all.'
+    },
+    hld: {
+      palette: ['lb', 'app', 'cache', 'sql', 'nosql', 'queue', 'worker', 'stream', 'search', 'cdn', 'socket', 'blob'],
+      flows: [
+        { name: 'A match ends and scores update', need: [['lb'], ['app'], ['nosql', 'sql'], ['cache']], ok: ['queue', 'worker', 'stream'], nudge: { cache: 'You need rank 4,812,331 out of 50 million in a few milliseconds. Which in-memory structure keeps players sorted as scores change?' } },
+        { name: 'A player opens the leaderboard', need: [['lb'], ['app'], ['cache']], ok: ['cdn', 'nosql', 'sql'] }
+      ],
+      why: {
+        c: 'leaderboard', q: '"Why a Redis sorted set, and not an ORDER BY on the scores table?"',
+        opts: ['It keeps members ordered as scores change, so a rank is an O(log n) lookup', 'It keeps scores more durably than a database, so the scores table can be dropped', 'ORDER BY can\'t break ties, while a sorted set breaks them by time automatically', 'It spreads itself across machines by score range on its own as the board grows'],
+        a: 0, no: [null, 'Redis is memory-first. The database stays the source of truth, and the set is rebuilt from it if lost.', 'Both can sort on more than one thing. A sorted set breaks ties by member name, so a time tie-break has to be folded into the score.', 'One sorted set lives on one node. Redis Cluster shards by key, so one big board stays on one shard unless you split it yourself.'],
+        why: 'Ranking with SQL means COUNT(*) WHERE score > mine, a scan over millions of rows on each lookup. A sorted set is a skip list: ZADD, ZREVRANK and ZREVRANGE are all O(log n), so a rank, the top 10 and a player\'s neighbours each take microseconds.'
+      }
+    },
+    dives: [
+      {
+        id: 'rank', title: 'One player\'s rank among 50 million', kind: 'bottleneck', c: 'leaderboard',
+        q: 'Player 31337 wants their exact rank, out of 50 million, after every match. How do you answer in a few milliseconds?',
+        opts: ['A sorted set ordered by score, where ZREVRANK gives the rank in O(log n)', 'SELECT COUNT(*) FROM scores WHERE score > mine, with an index on score', 'Store a rank column on every player, and rewrite it after every match', 'Cache each player\'s rank for an hour, then recompute all of them hourly'],
+        a: 0, no: [null, 'The index finds the starting point quickly, but counting millions of rows above a low score is still a scan, thousands of times a second.', 'One score change can shift the rank of millions of players, so each match rewrites millions of rows.', 'Ranks an hour old break the real-time requirement, and recomputing 50 million of them is a big job every hour.'],
+        nudge: 'Your score goes up by 10. How many other players\' ranks just changed, and do you want to write all of them?',
+        why: 'Keep one sorted set per board (per month). Each match result is a ZINCRBY; a rank is ZREVRANK, and neighbours are a ZREVRANGE around it. Rank is worked out on read from the ordered structure, never stored. The scores table remains the record, and the set can be rebuilt from it.',
+        f: {
+          q: 'Two players both reach 9,000 points. The earlier one should rank higher. How?',
+          opts: ['Fold the time into the score: points × 10^7, plus the seconds left in the month', 'Let Redis order them, since a sorted set keeps equal scores in insertion order', 'Keep the times in a second sorted set and merge the two of them on every read', 'Sort the tied players on the client, after fetching everyone with that score'],
+          a: 0, no: [null, 'Equal scores are ordered by member name, byte by byte, not by when they were added.', 'Merging two 50-million-entry sets on each read throws away the O(log n) you came for.', 'Tens of thousands of players can share a score. Fetching them all per read is slow and leaks data.'],
+          why: 'A sorted set orders by one number, so encode the tie-break into it: more points always win, and at equal points the earlier time leaves more seconds in the month. Sorted set scores are doubles, exact for integers up to 2^53, so check the combined number fits.'
+        }
+      },
+      {
+        id: 'grow', title: 'The board outgrows one machine', kind: 'real', c: 'sharding',
+        q: 'The game goes global: 500 million players, and one sorted set no longer fits on one node. How do you split it and still show a global top 10?',
+        opts: ['Shard by player hash; the global top 10 is a merge of every shard\'s own top 10', 'Shard by player hash, and read the global top 10 from whichever shard is largest', 'Shard by the first letter of each player\'s name, with one sorted set per letter', 'Store scores in a NoSQL table and sort the whole table again for each request'],
+        a: 0, no: [null, 'The top 10 can be spread across every shard. Only merging every shard\'s top gives the right answer.', 'Names are skewed (lots of S, few X), so shards are uneven, and it gives no global order either.', 'Sorting 500 million rows per request is far too slow. That is the work a sorted set does a little at a time.'],
+        nudge: 'Each shard knows its own top 10 exactly. Is the global top 10 always among those?',
+        why: 'With hash sharding, the global top 10 must be in the union of each shard\'s top 10, so a scatter-gather of small reads (cached for a second) answers it. A player\'s global rank is the sum of ZCOUNT of scores above theirs across shards. Sharding by score range makes rank easy but turns the top range into a hot shard.',
+        f: {
+          q: 'What does summing counts across every shard cost a rank lookup?',
+          opts: ['Every lookup touches every shard, so the slowest shard sets the latency', 'The rank can be off by up to ten places, since each shard rounds its count', 'Players on smaller shards always get a better rank than they deserve', 'Every score must be copied to every shard so that each one can count it'],
+          a: 0, no: [null, 'Each shard\'s count is exact, and so is the sum, at that moment.', 'Counts are exact per shard, so shard size doesn\'t bias the total.', 'Each score lives on one shard. Counting reads it; it doesn\'t copy it.'],
+          why: 'Scatter-gather means tail latency: one slow shard slows every read. Cache ranks for a second or two, or show an approximate rank ("top 5%") to players far from the top, where an exact number matters less.'
+        }
+      },
+      {
+        id: 'final', title: 'The last minute of the season', kind: 'real', c: 'hotkey',
+        q: 'In the final minute of the season, 2 million players refresh the top 10 every few seconds. How do you protect the sorted set?',
+        opts: ['Cache the top 10 for a second in the app servers, since everyone sees the same list', 'Shard the sorted set more widely, so the top 10 is spread across more nodes', 'Queue the refresh requests and answer them strictly in the order they came in', 'Rate limit each player to one refresh a minute until the season is over'],
+        a: 0, no: [null, 'The top 10 sits at the top of one set. Sharding spreads different keys, not one hot read.', 'Players wait in line for a list that only changes once a second. Queues suit work nobody waits on.', 'This is the moment players care most. Throttling them breaks the product right when it matters.'],
+        nudge: 'Two million people ask for the same ten names in the same second. How many times do you need to read them?',
+        why: 'The top 10 is one hot key with the same answer for everyone. A one-second cache in each app server (or at the CDN) turns millions of reads into a handful a second. Read replicas also help, but a local cache is cheaper.',
+        f: {
+          q: 'What does that one-second cache cost players?',
+          opts: ['The top 10 can lag the real scores by up to a second', 'Players near the top can no longer see their own rank', 'The sorted set must be rebuilt from the database every second', 'Scores sent in during that second are lost for good'],
+          a: 0, no: [null, 'Only the shared top 10 is cached. Each player\'s own rank is still read live.', 'The set updates as usual. The cache is a short-lived copy of one read.', 'Writes go straight to the set and the database. The cache only affects reads.'],
+          why: 'A second of staleness on a shared view is a cheap trade for a hundredfold drop in load. Final standings, where exactness matters, are read from the database after the season closes.'
+        }
+      },
+      { id: 'bike', title: 'The gold, silver and bronze medal art', kind: 'bikeshed', reply: 'They are round. They are shiny. Next.', note: 'Chose to spend deep-dive time on medal art.' }
+    ]
+  },
+
+  {
+    id: 'metrics', ch: 8, name: 'Metrics & Alerting', like: 'Datadog or Prometheus',
+    prompt: 'Design a metrics and alerting system: every server in the kingdom reports CPU, latency and error counts, engineers chart them, and the on-call is paged when something breaks.',
+    concepts: ['metrics', 'colstore', 'streams', 'srealert', 'estimation'],
+    clarify: [
+      { q: 'How many machines, and how many metrics?', good: true, a: '100,000 hosts, each sending about 100 metrics every 10 seconds. Every metric has tags like host, region and service.' },
+      { q: 'How long do we keep the data?', good: true, a: 'Full 10-second detail for 2 weeks, then 1-minute and 1-hour rollups for a year.' },
+      { q: 'How quickly must alerts fire?', good: true, a: 'Within a minute of the problem. A page that arrives ten minutes late is a postmortem.' },
+      { q: 'Who queries it, and how?', good: true, a: 'Dashboards that refresh every minute, and engineers digging into an incident, mostly over the last few hours.' },
+      { q: 'Can we just log every request instead?', good: false, a: 'Logs are a different system. We want numbers over time.', note: 'Mixed up logs and metrics.' },
+      { q: 'Should the dashboards have a dark mode?', good: false, a: 'Yes. Next question.', note: 'Asked about dashboard themes.' }
+    ],
+    req: [
+      { t: 'Ingest tagged metrics from every host', k: 'f' },
+      { t: 'Chart any metric over time, filtered and grouped by tags', k: 'f' },
+      { t: 'Page the on-call when an alert rule is breached', k: 'f' },
+      { t: 'Ingest a million points a second without losing them', k: 'nf' },
+      { t: 'Alerts fire within a minute', k: 'nf' },
+      { t: 'Queries over the last day return in a second or two', k: 'nf' },
+      { t: 'Storing full request logs and traces', k: 'out' },
+      { t: 'Fixing the problem behind each alert automatically', k: 'out' }
+    ],
+    entities: [
+      { t: 'Series (metric name and tags)', ok: true },
+      { t: 'Data point (series, timestamp, value)', ok: true },
+      { t: 'Alert rule (query, threshold, duration, who to page)', ok: true },
+      { t: 'Dashboard', ok: 'opt' },
+      { t: 'Log line', ok: false, why: 'Logs are text events in a different system. Metrics are numbers per series over time.' },
+      { t: 'User session', ok: false, why: 'Nothing here is tracked per user; the data is per host and per service.' }
+    ],
+    api: {
+      q: 'Which API would you write down?', c: 'metrics',
+      opts: ['Agents POST /ingest a batch every 10 s; GET /query?expr=…&from=…&to=…&step=…', 'Agents POST /ingest once for each point, the moment its value is measured on the host', 'Agents write their points straight into the time-series database\'s tables over SQL', 'GET /query?metric=… returns every raw point, and each dashboard does its own math'],
+      a: 0, no: [null, 'A request per point is millions of HTTP calls a second. Agents batch and compress points.', 'Then every host holds database credentials, and the storage format can never change. An ingest API decouples them.', 'A week of raw points across thousands of series is millions of values per chart. Downsample and aggregate on the server.'],
+      why: 'Agents buffer, batch and compress, sending one request every 10 seconds. A query names a metric, tag filters, an aggregation and a step, so the server returns one value per step instead of raw points. Pulling from each host, as Prometheus does, is a fine alternative to pushing.'
+    },
+    est: {
+      pick: [
+        { t: 'Data points a second, and the storage for two weeks of them.', k: 'best' },
+        { t: 'The bytes in every dashboard\'s saved configuration.', k: 'slow' },
+        { t: 'Skip the math and start drawing.', k: 'skip' }
+      ],
+      q: '100,000 hosts each send 100 metrics every 10 seconds. How many data points a second?', unit: 'points a second', lo: 800000, hi: 1200000,
+      ans: '1 million points a second (10^5 × 100 ÷ 10)', why: 'A million writes a second rules out a row per point in a relational database. Time-series stores compress each series (delta-of-delta timestamps, XOR\'d values, about 1.4 bytes a point in Facebook\'s Gorilla), so two weeks is about 1.2 trillion points, roughly 2 TB before replication.'
+    },
+    hld: {
+      palette: ['lb', 'app', 'queue', 'stream', 'worker', 'nosql', 'sql', 'cache', 'blob', 'search', 'notify', 'cdn'],
+      flows: [
+        { name: 'A host sends a batch of metrics', need: [['lb'], ['app'], ['queue'], ['nosql']], ok: ['stream', 'worker', 'blob', 'cache'], nudge: { queue: 'Every agent flushes its buffer at once after a network blip. What absorbs the burst before the database?', nosql: 'A million points a second, each looked up by series and time. Where do they live?' } },
+        { name: 'An error rate crosses its alert threshold', need: [['nosql', 'queue'], ['stream', 'worker'], ['notify']], ok: ['sql', 'cache', 'app'], nudge: { stream: 'Ten thousand alert rules, each checked every minute. Which part evaluates them?', notify: 'The rule is breached at 3 a.m. How does the on-call find out?' } }
+      ],
+      why: {
+        c: 'metrics', q: '"Why put a queue, like Kafka, between ingest and the time-series database?"',
+        opts: ['It absorbs bursts and lets the database fall behind briefly without dropping points', 'Kafka compresses points better than any time-series store, so storage costs less', 'The queue answers dashboard queries for the last hour, so the database doesn\'t have to', 'A queue keeps all points in timestamp order, so the database never has to sort them'],
+        a: 0, no: [null, 'Kafka keeps a few days of raw data. Time-series compression (delta and XOR encoding) is the database\'s job.', 'Kafka can\'t query by series and time range. Recent data is served from the database\'s in-memory head block.', 'Order holds only within a partition, and agents send late points anyway. Time-series stores accept slightly out-of-order writes.'],
+        why: 'Ingest spikes after a deploy or an outage, when every agent flushes its buffer. The queue absorbs that, decouples the writers from the database, and lets several consumers read the same stream: the store, the alert evaluator and the rollup jobs.'
+      }
+    },
+    dives: [
+      {
+        id: 'tsdb', title: 'A million writes a second', kind: 'bottleneck', c: 'metrics',
+        q: 'How do you store a million points a second so that "p99 latency for one service over the last 6 hours" is fast?',
+        opts: ['A time-series store: points per series in compressed time blocks, sharded by series', 'A relational table with one row per point and an index on (metric, timestamp)', 'One document per host per day, with each new metric value appended inside it', 'A search index over every single point, so any mix of tags can be filtered fast'],
+        a: 0, no: [null, 'A million row inserts a second, each updating a B-tree index at 20 or more bytes a row. It can be done with heavy sharding, at many times the cost.', 'A host\'s document grows all day and is rewritten on each append, and a query by service has to read every host\'s document.', 'Inverted indexes find tags, not ranges of numbers over time. Real systems index series by tag, then fetch points from a time-series store.'],
+        nudge: 'Neighbouring points in one series are 10 seconds apart and barely change. How could you store them in fewer bytes?',
+        why: 'Each series (metric plus tags) is an append-only list of time and value. Recent points sit in memory; every couple of hours a block is compressed (delta-of-delta times, XOR\'d floats) to 1 or 2 bytes a point and written out. An inverted index maps tags to series IDs, and data is sharded by series so a query reads a few shards.',
+        f: {
+          q: 'An engineer adds a user ID tag to a latency metric. Why does the store fall over?',
+          opts: ['Each tag value makes a new series, so millions of users mean millions of series', 'User IDs are strings, and a time-series store can only compress numeric values', 'The new tag makes each data point bigger than one network packet can carry', 'Points with the new tag have to be written to every shard at the same time'],
+          a: 0, no: [null, 'Tag values are stored once in the index, not in every point. Strings are fine; how many there are is the problem.', 'A tag adds a few bytes to the series key, which is stored once, not in each point.', 'Each series still lives on one shard. The problem is the number of series.'],
+          why: 'This is cardinality explosion. The index and the in-memory head grow with the number of series, so a tag like user ID or request ID multiplies them by millions. Limit tag cardinality at ingest; per-user detail belongs in logs or traces.'
+        }
+      },
+      {
+        id: 'rollup', title: 'Keeping a year of data cheaply', kind: 'real', c: 'metrics',
+        q: 'Keeping 10-second points for a year is about 45 TB. Nobody looks at 10-second detail from last March. What do you do?',
+        opts: ['Roll up into 1-minute and 1-hour min, max, sum and count; drop raw after 2 weeks', 'Keep every raw point, but move all of it to the cheapest disks in the cluster', 'Keep one raw point in every 60 and throw the other 59 away after 2 weeks', 'Average each hour into a single value, and keep only that for older data'],
+        a: 0, no: [null, 'Cheaper disks still hold 45 TB, and a year-long chart still reads billions of points. Rollups cut both.', 'Sampling misses the spikes between samples, which are exactly what you were looking for.', 'An average hides spikes, and can\'t be combined into a correct maximum or p99 later. Keep min, max, sum and count.'],
+        nudge: 'A chart of last year is maybe 500 pixels wide. How many points does it need?',
+        why: 'Downsampling jobs write 1-minute and 1-hour rollups that keep sum, count, min and max (plus a sketch for percentiles), so later queries can still compute averages, peaks and quantiles. Old blocks move to object storage. A year at hourly resolution is a tiny fraction of the raw size.',
+        f: {
+          q: 'Why can\'t you average each minute\'s p99 to get the hour\'s p99?',
+          opts: ['Percentiles don\'t combine; you need the raw values or a mergeable sketch', 'Averaging loses the timestamps, so the hour\'s chart can\'t be drawn', 'Each minute has a different number of points, so the weights are unknown', 'You can, as long as every minute had the same number of requests'],
+          a: 0, no: [null, 'The rollup has its own timestamp for the hour. Timestamps aren\'t the issue.', 'Counts are kept with each rollup, and even a weighted average of percentiles is wrong.', 'Even with equal volume, the average of p99s isn\'t the p99. One terrible minute is diluted by 59 calm ones.'],
+          why: 'Quantiles aren\'t additive. Store a mergeable sketch (t-digest, DDSketch or histogram buckets) per minute, and merge those to get the percentiles of any window.'
+        }
+      },
+      {
+        id: 'flap', title: 'Alerts that flap, and alerts that never fire', kind: 'real', c: 'srealert',
+        q: 'A rule says "page if the error rate is over 5%". It pages 40 times a night as the rate wobbles around 5%, and a dead host sends no data and never alerts at all. What fixes both?',
+        opts: ['Require the breach to last minutes, clear lower, and alert on missing data', 'Raise the threshold to 20%, so that only the very worst outages ever page anyone', 'Check each rule once an hour instead of once a minute, to cut down the pages', 'Send the alerts by email instead of paging, so the wobbles don\'t wake anyone'],
+        a: 0, no: [null, 'Now a 15% error rate, a real outage, never pages. Thresholds should come from the SLO, not from the noise.', 'An outage could run for 59 minutes before anyone hears. Alerts must fire within a minute or two.', 'Then real outages also go to email at 3 a.m. Fix the rule\'s noise, not the channel.'],
+        nudge: 'The rate goes 4.9, 5.1, 4.9, 5.1. Is that one outage or forty? And what does "no data" mean?',
+        why: 'A duration (fire only if true for 5 minutes) and hysteresis (clear at 4%) stop flapping. Absence alerts catch silent failures: no points from a host for 2 minutes is a page in itself. Mature setups alert on SLO burn rate, which pages fast for big outages and slowly for small leaks.',
+        f: {
+          q: 'What does requiring the breach to last 5 minutes cost?',
+          opts: ['Every real outage pages 5 minutes later than it could', 'Short spikes get deleted from the stored data for good', 'Each alert rule now needs its own stream processor to run', 'Alerts can no longer be grouped or deduplicated'],
+          a: 0, no: [null, 'The rule only changes when you page. Every point is still stored and charted.', 'One evaluator runs thousands of rules. A duration is just a little state per rule.', 'Grouping happens after firing, in the alert manager, whatever the duration.'],
+          why: 'A duration trades detection speed for fewer false pages. Pick it per rule: a total outage can page within a minute, while a slow error-budget burn can wait an hour. Burn-rate alerts over two windows give you both.'
+        }
+      },
+      { id: 'bike', title: 'The dashboard\'s colour palette', kind: 'bikeshed', reply: 'Red is bad, green is good. Settled. Next.', note: 'Chose to spend deep-dive time on chart colours.' }
+    ]
   }
 ];
 

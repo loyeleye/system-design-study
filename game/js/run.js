@@ -18,7 +18,7 @@
       // Cards bought at Ayo's Card Forge join the starter deck unless benched.
       // Kagemaru's pins (js/card-dealer.js) go on top, until a run is lost.
       deck: SD.starterDeck.concat((sv.cardLib || []).filter(x => x.on).map(x => x.id), SD.dealer ? SD.dealer.arm() : []).map(id => ({ id, up: false })),
-      sla: 0, bits: 20, floor: -1, pos: null, pending: null,
+      sla: 0, bits: 20, notes: 0, floor: -1, pos: null, pending: null,
       map: genMap(), mercy: false, startedAt: Date.now(), firstFight: !sv.stats.fights,
       log: { fights: 0, concepts: {}, misses: 0, right: 0, xp: 0 }, boss: {}
     };
@@ -327,7 +327,7 @@
     const run = S.save.run, sv = S.save;
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
     return `<div class="hud-sla"><span>SLA</span><div class="bar sla"><i style="width:${pct}%"></i></div><b>${run.sla}/${S.maxSla()}</b></div>
-      <span class="hud-chip">Bits <b>${run.bits}</b></span><span class="hud-chip">Shards <b>${sv.shards}</b></span><span class="hud-chip">${S.rank()}-Rank · Lv ${sv.level}</span>${hook('hud', run) || ''}`;
+      <span class="hud-chip">Bits <b>${run.bits}</b></span><span class="hud-chip">Shards <b>${sv.shards}</b></span><span class="hud-chip">${S.rank()}-Rank · Lv ${sv.level}</span>${run.notes ? `<span class="hud-chip" title="Wen's Notebook: go down, answer a question, and you're back in the same fight at full SLA">📓 <b>${run.notes}</b></span>` : ''}${hook('hud', run) || ''}`;
   }
   function showDeck() {
     const run = S.save.run;
@@ -429,8 +429,8 @@
     const tea = mod('heal', 15);
     const stock = cardChoices(3);
     const sold = new Set();
-    let removed = 0, healed = false;
-    const removals = 1;
+    let removed = 0, healed = false, noted = false;
+    const removals = 1, note = mod('price', NOTE);
     function render() {
       // Bits are small change, so nothing here asks before buying.
       SD.shop.panel({
@@ -441,10 +441,12 @@
         footer: `<div class="row">
           <button id="rm" ${removed >= removals || run.bits < 35 ? 'disabled' : ''}>Remove a card · 35${removals > 1 ? ` (${removals - removed} left)` : ''}</button>
           <button id="heal" ${healed || run.bits < 20 ? 'disabled' : ''}>Tea: +${tea} SLA · 20</button>
+          <button id="note" title="Go down, answer a question, and you're back in the same fight at full SLA. Lasts this run." ${noted || run.bits < note ? 'disabled' : ''}>📓 Wen's Notebook · ${note}</button>
           <button class="primary" id="leave">Leave</button>
         </div>`,
         wire: b => {
           b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + tea); healed = true; AU.sfx('heal'); S.persist(); render(); };
+          b.querySelector('#note').onclick = () => { run.bits -= note; run.notes = (run.notes | 0) + 1; noted = true; AU.sfx('coin'); S.persist(); render(); };
           b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed++; S.persist(); render(); }, render);
           b.querySelector('#leave').onclick = () => { U.closePanel(); done(); };
         },
@@ -555,6 +557,8 @@
     C.sev = C.max = Math.round(e.sev * mod('sev', scale, C));
     // Group fights: each member gets its own severity, intent, load and weakness notes (see SD.groupFights).
     const extra = groupFor(eid, opts);
+    // What refight() needs to set the same fight up again.
+    C.spec = { eid, opts, group: extra };
     if (extra.length) {
       const G = SD.groupFights.scale, n = extra.length + 1, knownBy = { [eid]: C.known };
       C.foes = [eid].concat(extra).map((id, i) => {
@@ -577,6 +581,58 @@
     if (opts.diagnose) diagnose(go); else go();
   }
   const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
+  // Wen's Notebook (Ladi, 2026-10-24): a café buy, one per café, NOTE bits, for this run only. Wen writes down every
+  // step as you go (her second notebook, cast bible arc 2), so reading it back puts you back mid-fight, the way she
+  // reads Mio the next step of a recipe. The same restore as Seymour's tape in chapters 9 and 10 (js/arc.js).
+  const NOTE = 75;
+  // A restore (Wen's Notebook, or Seymour's tape): one question on the incident that beat you, then refight(keep).
+  // o: { title, use() to spend it, fx(go) for a transition }. Resolves false when there's no fight to go back to.
+  async function restore(o) {
+    const e = C && (C.foes ? C.foes[C.fi].e : C.e);
+    if (!C || !C.spec || !e) return false;
+    const q = SD.concepts[e.concept] && S.pickQuestion ? S.pickQuestion(e.concept, []) : null;
+    const res = q ? await Q.ask(q, { title: o.title, context: (SD.concepts[e.concept] || {}).name, tally: true, stakeNote: `Right, and ${e.name} keeps the damage you did.` }) : { ok: true };
+    const keep = !!res.ok;
+    o.use();
+    S.persist();
+    U.system(keep ? 'RESTORE TESTED' : 'RESTORED, NOT TESTED', keep ? `Back on your feet at full SLA. ${U.esc(e.name)} still has the damage you did.` : `Back on your feet at full SLA, but ${U.esc(e.name)} is back at full Severity.`, keep ? 'gold' : 'red');
+    const go = () => { if (!refight(keep)) R.showMap(); };
+    if (o.fx) o.fx(go); else go();
+    return true;
+  }
+  // Going down with Wen's Notebook and no other way back (js/arc.js offers it beside its own retry).
+  function noteOffer(incident) {
+    const run = S.save.run;
+    const b = U.panel(`<div class="verdict bad">DOWN</div>
+      <p>${U.esc(incident || 'An incident')} took you down.</p>
+      <p>Wen's notebook has every step of this fight, written down as you went. Read it back and you're up again in the same fight at full SLA. First, one question on what went wrong: right, and the incident keeps the damage you did; wrong, and it's back at full Severity. You have ${run.notes}.</p>
+      <div class="row"><button class="primary" id="nb-go">Read the notebook</button><button class="ghost" id="nb-home">Go home</button></div>`, { title: 'WEN\'S NOTEBOOK', noClose: true });
+    const home = () => { run.notes = 0; endRun(false, incident); };
+    b.querySelector('#nb-go').onclick = async () => { U.closePanel(); if (!(await useNote())) home(); };
+    b.querySelector('#nb-home').onclick = () => { U.closePanel(); home(); };
+  }
+  const useNote = () => restore({ title: 'WEN\'S NOTEBOOK', use: () => { S.save.run.notes = Math.max(0, (S.save.run.notes | 0) - 1); } });
+  // Seymour's tape (js/arc.js, chapters 9 and 10) and Wen's Notebook: the fight you lost, again, at full SLA with a fresh hand. keep: each
+  // incident keeps the damage you did (and its place in its pattern, and the turn count a survival fight counts);
+  // otherwise it starts again at full Severity. Fight-wide effects (infra, absorb, statuses) start over either way.
+  function refight(keep) {
+    const old = C, sp = old && old.spec;
+    if (!sp) return false;
+    stash();
+    S.save.run.sla = S.maxSla();
+    fight(sp.eid, Object.assign({}, sp.opts, { diagnose: false, group: sp.group }), old.done);
+    if (keep) {
+      if (C.foes && old.foes) {
+        C.foes.forEach((f, i) => { const g = old.foes[i]; if (g && g.eid === f.eid) Object.assign(f, { sev: g.sev, ii: g.ii, rage: g.rage, dead: g.dead }); });
+        load(Math.max(0, C.foes.findIndex(f => !f.dead)));
+      } else Object.assign(C, { sev: old.sev, ii: old.ii, rage: old.rage });
+      C.turn = Math.max(C.turn, old.turn);
+      C.log = 'Back on your feet, mid-incident. It still has the damage you did.';
+    } else C.log = 'Back on your feet. The incident is back at full Severity.';
+    AU.music(C.boss ? 'boss' : 'battle');
+    renderCombat();
+    return true;
+  }
 
   // Who joins this fight, from SD.groupFights (content.js). Bosses and the tutorial always fight alone.
   // Companions come from the chapter's normal pools, preferring the same tier as the first incident.
@@ -1561,6 +1617,7 @@
     const sv = S.save, run = sv.run;
     if (!run) return;
     if (hook('end', won, incident, quit)) return;
+    if (!won && !quit && (run.notes | 0) > 0 && C && C.over && C.spec) { noteOffer(incident); return; }
     // Kagemaru's pins stay while you win: losing or abandoning a run with them in it sends them back to him.
     const pinsUsed = SD.dealer ? SD.dealer.spend(won) : 0;
     const pinsKept = won && SD.dealer ? SD.dealer.pins().length : 0;
@@ -1598,5 +1655,5 @@
     };
   }
   // The pieces js/arc.js builds chapter runs from.
-  R.api = { fight, target, groupFor, rewards, cardChoices, cafe, campfire, eventNode, whiteboard, pickCard, findNode, endRun, gateFx, win, mitigate, absorb, hasInfra, combat: () => C };
+  R.api = { fight, refight, restore, useNote, target, groupFor, rewards, cardChoices, cafe, campfire, eventNode, whiteboard, pickCard, findNode, endRun, gateFx, win, mitigate, absorb, hasInfra, combat: () => C };
 })();

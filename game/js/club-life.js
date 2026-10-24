@@ -16,6 +16,7 @@
 //   SD.clubLife.where(id)        where a member is now
 //   SD.clubLife.scene(id, at)    the scene due with that member at 'prgym', 'prstudio' or 'yard', or null
 //   SD.clubLife.table()          for playtests: everyone's day and every scene's state
+//   SD.clubLife.ARCS             the arcs (their last scenes' recall is in js/folk-recall.js)
 // Loads after js/club.js, js/folk-scenes.js and js/roadfolk.js.
 (function () {
   const C = SD.club, NR = SD.northRoad, I = SD.interiors, FS = SD.folkScenes;
@@ -500,6 +501,7 @@
   FS.boardHtml = function () { return bh.apply(this, arguments) + board(); };
 
   // For playtests: SD.clubLife.table() prints everyone's place in every block, and every scene's state.
+  L.ARCS = ARCS;
   L.table = function () {
     const day = {};
     MEMBERS.forEach(id => { day[id] = {}; BLOCKS.forEach(b => { const e = DAY[id][b]; day[id][b] = (typeof e[0] === 'function' ? 'tree' : [].concat(e[0]).join(',')) + ': ' + e[1]; }); });
