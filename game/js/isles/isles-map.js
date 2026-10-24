@@ -27,13 +27,19 @@
   const BRIDGE = {
     'landing-ledger': [[13, 7], [17, 7]], 'landing-mill': [[13, 30], [17, 30]], 'landing-tower': [[13, 18], [30, 18]],
     'ledger-fish': [[29, 8], [42, 8]], 'mill-carto': [[29, 30], [42, 30]], 'tower-fish': [[41, 16], [46, 16], [46, 13]],
-    'carto-fish': [[50, 13], [50, 24]], 'twins-ledger': [[29, 4], [30, 4]]
+    'carto-fish': [[50, 13], [50, 24]], 'twins-ledger': [[29, 4], [30, 4]],
+    'twin-twin': [[36, 4], [38, 4]]
   };
-  // Ferry docks: a short pier ending in the dock tile you step on to call the ferry.
+  // Bridges the story builds rather than the player: the twins put up a little one between their islands at the end of
+  // their quest (js/isles/twins.js), and put the festival stage on it.
+  const STORY = { 'twin-twin': { islands: ['twins', 'twins'], built: () => I.chainStatus('twins') === 'done' } };
+  const spanBuilt = id => STORY[id] ? STORY[id].built() : I.bridgeBuilt(id);
+  // Ferry docks: a short pier ending in the dock tile you step on to call the ferry. Each island has one, named for it,
+  // except the Twin Islands, where the ferry stops at both twins (isle says which island a dock is on).
   const DOCK = {
     landing: { pier: [[13, 23], [14, 23]], at: [14, 23] }, ledger: { pier: [[23, 13]], at: [23, 13] }, mill: { pier: [[23, 24]], at: [23, 24] },
     tower: { pier: [[35, 24]], at: [35, 24] }, fish: { pier: [[48, 13]], at: [48, 13] }, carto: { pier: [[45, 24]], at: [45, 24] },
-    twins: { pier: [[33, 7]], at: [33, 7] }, lighthouse: { pier: [[55, 18]], at: [55, 18] }
+    twins: { pier: [[33, 7]], at: [33, 7], name: 'West Twin' }, twinsE: { pier: [[39, 7]], at: [39, 7], isle: 'twins', name: 'East Twin' }, lighthouse: { pier: [[55, 18]], at: [55, 18] }
   };
   // Landmarks (drawn in code), each standing on a footprint you can't walk through.
   const LAND = [
@@ -111,7 +117,7 @@
   path([[31, 18], [35, 18], [35, 23]]); path([[35, 18], [40, 16]]); path([[35, 16], [40, 16]]);
   path([[43, 8], [48, 8], [48, 12]]); path([[46, 12], [50, 12]]);
   path([[43, 30], [48, 30], [48, 25]]); path([[45, 25], [50, 25]]);
-  path([[33, 3], [33, 6]]); path([[31, 4], [33, 4]]); path([[39, 3], [39, 5]]);
+  path([[33, 3], [33, 6]]); path([[31, 4], [33, 4]]); path([[39, 3], [39, 6]]);
   path([[56, 18], [58, 18]]);
   // Plazas: Ferry Landing's harbour square, the market floor and the Game Club's yard.
   for (let y = 21; y <= 24; y++) for (let x = 8; x <= 11; x++) set(x, y, ',');
@@ -141,6 +147,7 @@
     BT[id] = tiles;
   });
   const bridgeAt = (x, y) => Object.keys(BT).find(id => BT[id].some(([a, b]) => a === x && b === y));
+  const dockIsle = id => DOCK[id].isle || id;
   const isleAt = (x, y) => Object.keys(ISLE).find(id => (ISLE[id].parts || [ISLE[id].box]).some(([x0, y0, x1, y1]) => x >= x0 - 1 && x <= x1 + 1 && y >= y0 - 1 && y <= y1 + 1));
   const personAt = (x, y) => people().find(p => p.x === x && p.y === y);
   const landAt = (x, y) => LAND.find(l => x >= l.x && x < l.x + l.w && y >= l.y && y < l.y + l.h);
@@ -153,7 +160,7 @@
   function walkable(x, y) {
     const c = get(x, y);
     if (personAt(x, y) || tideAt(x, y)) return false;
-    if (c === '~') { const b = bridgeAt(x, y); return !!b && I.bridgeBuilt(b); }
+    if (c === '~') { const b = bridgeAt(x, y); return !!b && spanBuilt(b); }
     if (c === 'T' || c === 'L' || c === '#') return false;
     const isl = isleAt(x, y);
     return !isl || I.islandOpen(isl) || isl === 'landing';
@@ -607,18 +614,19 @@
 
   // ---------- The ferry ----------
   async function ferry(from) {
-    const open = Object.keys(DOCK).filter(id => id !== from && I.islandOpen(id));
+    const open = Object.keys(DOCK).filter(id => id !== from && I.islandOpen(dockIsle(id)));
+    const dockName = id => I.ISLANDS[dockIsle(id)].name + (DOCK[id].name ? ' · ' + DOCK[id].name : '');
     const to = await new Promise(res => {
       const b = U.panel(`<div class="shopkeep">${SD.art.portrait('kwame', 64)}<p>${esc((I.pick('ferryLate', [['kwame', 'Late is a feature.']]) || {}).t || '')}</p></div>
-        <div class="opts">${open.map(id => `<button class="opt" data-to="${id}"><b>${esc(I.ISLANDS[id].name)}</b>${I.tideLow(id) ? ' <span class="pill due">Low tide</span>' : ''}<br><span class="small">${esc(I.ISLANDS[id].blurb)}</span></button>`).join('')}</div>
+        <div class="opts">${open.map(id => `<button class="opt" data-to="${id}"><b>${esc(dockName(id))}</b>${I.tideLow(dockIsle(id)) ? ' <span class="pill due">Low tide</span>' : ''}<br><span class="small">${esc(I.ISLANDS[dockIsle(id)].blurb)}</span></button>`).join('')}</div>
         ${Object.keys(I.ISLANDS).filter(id => !I.islandOpen(id)).map(id => `<p class="muted small">${esc(I.ISLANDS[id].name)}: opens after chapter ${I.WAVES[I.ISLANDS[id].wave]}.</p>`).join('')}`, { title: 'THE FERRY · WHERE TO?', onClose: () => res(null) });
       b.querySelectorAll('[data-to]').forEach(el => el.onclick = () => { U.closePanel(); res(el.dataset.to); });
     });
     if (!to) return;
     await crossing(to);
     const d = DOCK[to].at;
-    // Step off the pier onto the island.
-    const land = DIRS.map(([dx, dy]) => [d[0] + dx, d[1] + dy]).find(([x, y]) => walkable(x, y) && get(x, y) !== ',') || DIRS.map(([dx, dy]) => [d[0] + dx, d[1] + dy]).find(([x, y]) => walkable(x, y)) || d;
+    // Step off the pier onto the island, not onto a bridge that passes the pier.
+    const land = DIRS.map(([dx, dy]) => [d[0] + dx, d[1] + dy]).find(([x, y]) => walkable(x, y) && get(x, y) !== ',' && get(x, y) !== '~') || DIRS.map(([dx, dy]) => [d[0] + dx, d[1] + dy]).find(([x, y]) => walkable(x, y)) || d;
     place(land[0], land[1]);
     hud();
   }
@@ -629,7 +637,7 @@
       AU.sfx && AU.sfx('blip');
       const b = U.panel(`<div class="il-ferry" aria-hidden="true"><span class="sun"></span><span class="wave" style="top:58%"></span><span class="wave" style="top:76%;animation-delay:-1.5s"></span><span class="boat">⛴️</span></div>
         <p class="center small" style="margin-top:10px"><i>${esc(l ? l.t : '')}</i></p>
-        <button class="ghost" id="il-skip">Skip</button>`, { title: 'CROSSING TO ' + I.ISLANDS[to].name.toUpperCase(), cls: 'isles-game', noClose: true });
+        <button class="ghost" id="il-skip">Skip</button>`, { title: 'CROSSING TO ' + I.ISLANDS[dockIsle(to)].name.toUpperCase(), cls: 'isles-game', noClose: true });
       let done = false;
       const go = () => { if (done) return; done = true; clearTimeout(tm); U.closePanel(); res(); };
       const tm = setTimeout(go, 4200);
@@ -904,10 +912,11 @@
   function drawBridges(t) {
     const rails = [], posts = new Map(), lanterns = [];
     Object.keys(BT).forEach(id => {
-      if (!I.bridges.some(b => b.id === id)) return;
-      const tiles = BT[id], done = I.bridgeBuilt(id), bridge = I.bridges.find(b => b.id === id);
-      const both = bridge.islands.every(I.islandOpen), ready = !done && I.bridgeReady(bridge);
-      if (!done && !both) return;
+      const bridge = I.bridges.find(b => b.id === id) || STORY[id];
+      if (!bridge) return;
+      const tiles = BT[id], done = spanBuilt(id), both = bridge.islands.every(I.islandOpen);
+      if (!done && (!both || STORY[id])) return;
+      const ready = !done && I.bridgeReady(bridge);
       tiles.forEach(([x, y], i) => {
         const end = i === 0 || i === tiles.length - 1;
         if (!done && !end) return;
@@ -926,17 +935,13 @@
           }
           return;
         }
-        // Where the bridge turns a corner, the span it comes in on runs to the middle of the corner tile, under the
-        // span it turns onto, so the two join.
+        // Where the bridge turns a corner it lands on a square L piece, drawn open to the west and north and turned to
+        // face the two spans it joins.
         const prev = tiles[i - 1], next = tiles[i + 1], corner = prev && next && prev[0] !== next[0] && prev[1] !== next[1];
         if (corner) {
-          const [ix, iy] = prev;
-          ctx.save(); ctx.beginPath();
-          ctx.rect((x + (ix > x ? 0.5 : ix < x ? -0.5 : 0)) * ts, (y + (iy > y ? 0.5 : iy < y ? -0.5 : 0)) * ts, ts, ts); ctx.clip();
-          bridgePiece('bridge', x, y, iy === y ? 0 : Math.PI / 2, ix > x || iy > y);
-          ctx.restore();
-        }
-        bridgePiece('bridge', x, y, horiz ? 0 : Math.PI / 2, false);
+          const open = [prev, next].map(([a, b]) => a < x ? 'W' : a > x ? 'E' : b < y ? 'N' : 'S').sort().join('');
+          bridgePiece('bridge-corner', x, y, { NW: 0, EN: Math.PI / 2, ES: Math.PI, SW: -Math.PI / 2 }[open], false);
+        } else bridgePiece('bridge', x, y, horiz ? 0 : Math.PI / 2, false);
         if (end) { const [ang, flip] = endTurn(x - nb[0], y - nb[1]); bridgePiece('bridge-end', x, y, ang, flip, -3); }
         // Handrails: a post at each corner of the deck and a rope between, on every side that isn't more bridge or the
         // shore it lands on.
@@ -964,7 +969,7 @@
   }
   function drawDocks(t) {
     Object.keys(DOCK).forEach(id => {
-      if (!I.islandOpen(id)) return;
+      if (!I.islandOpen(dockIsle(id))) return;
       const [x, y] = DOCK[id].at;
       if (ok(ipic('bollard'))) { [[0.2, 0.35], [0.8, 0.35], [0.2, 1], [0.8, 1]].forEach(([a, b]) => iobj('bollard', (x + a) * ts, (y + b) * ts, 0.45)); return; }
       ctx.fillStyle = '#a8774f'; ctx.strokeStyle = INK; ctx.lineWidth = 2;

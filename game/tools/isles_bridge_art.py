@@ -9,6 +9,8 @@ SRC_DIR holds two PixelLab map objects (high top-down, 'single color outline', '
 It writes to assets/img/isles:
   bridge       one 32px span of deck that tiles, with the post on its right edge (js/isles/isles-map.js turns it for
                the bridges that run north to south)
+  bridge-corner  where a bridge turns: the span from the west meets the span going north on one square landing
+               (turned for the other corners)
   bridge-end   the end post and outline where a bridge meets land (flipped or turned for the other ends)
   bridge-stub  a bridge site: the end post and a few planks reaching out over the water
   lantern-*    the festival lanterns: red and blue, the colours of the twins' two halls
@@ -35,6 +37,17 @@ br = Image.open(os.path.join(SRC, 'bridge.png')).convert('RGBA')
 save(br.crop((13, 11, 45, 37)), 'bridge')
 save(br.crop((2, 11, 13, 37)), 'bridge-end')
 save(br.crop((2, 11, 30, 37)), 'bridge-stub')
+
+# The corner, on a whole 32px tile: the north-south span (the deck turned a quarter clockwise, as the map turns it)
+# stops in a square landing with its own outline along the south, and the west-east span runs into it from the west.
+deck = Image.new('RGBA', (32, 32)); deck.alpha_composite(br.crop((13, 11, 45, 37)), (0, 3))
+ns = deck.rotate(-90)
+corner = Image.new('RGBA', (32, 32)); corner.alpha_composite(ns.crop((0, 0, 32, 26)))
+px, ink = corner.load(), ns.getpixel((6, 12))
+for x in range(6, 28): px[x, 26] = ink
+corner.alpha_composite(deck.crop((0, 3, 7, 29)), (0, 3))
+art['objects']['bridge-corner'] = [32, 32]
+corner.save(os.path.join(OUT, 'bridge-corner.webp'), lossless=True, quality=100, method=6)
 
 
 # Lanterns: the Twin Islands' mayors hung them (js/isles/twins.js), in the colours of their two town halls, so
