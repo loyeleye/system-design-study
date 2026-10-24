@@ -184,7 +184,10 @@
       if (q.type === 'mc') optOrder = shuffle(q.opts.map((o, i) => i));
       if (q.type === 'order') optOrder = shuffle(q.items.map((o, i) => i));
       if (q.type === 'multi') optOrder = shuffle(q.items.map((o, i) => i));
-      const hidden = opts.hideOne && q.type === 'mc' ? optOrder.find(i => i !== q.a) : null;
+      let hidden = opts.hideOne && q.type === 'mc' ? optOrder.find(i => i !== q.a) : null;
+      // Pip's Monocle (js/run.js R.pipLeft): a charge crosses out one wrong option, and the answer then counts as a Guess.
+      let pipped = false;
+      const pipLeft = () => q.type === 'mc' && hidden == null && !opts.noRecord && SD.run && SD.run.pipLeft ? SD.run.pipLeft() : 0;
       const concept = SD.concepts[q.c];
       function render() {
         let h = `<div class="q-ctx">${U.esc(opts.context || (concept ? concept.name : 'Question'))}</div>${limit ? bar() : ''}<p class="q-q">${U.esc(q.q)}</p>`;
@@ -212,6 +215,9 @@
         if (said.text) h += `<blockquote class="typed">${U.esc(said.text)}</blockquote>`;
         if (q.type === 'mc') {
           h += '<div class="opts">' + optOrder.map(i => `<button class="opt${pick === i ? ' on' : ''}${hidden === i ? ' struck' : ''}" data-o="${i}" ${hidden === i ? 'disabled' : ''}>${U.esc(q.opts[i])}</button>`).join('') + '</div>';
+          const left = pipLeft();
+          if (left) h += `<button class="ghost small" id="q-pip">🧐 Ask Pip: cross out a wrong answer (${left} left this run). Counts as a Guess</button>`;
+          if (pipped) h += '<p class="muted small">🧐 Pip crossed one out. This answer counts as a Guess.</p>';
         } else if (q.type === 'num') {
           h += `<label class="num"><input id="q-num" type="number" inputmode="decimal" placeholder="Your estimate" value="${pick != null ? pick : ''}"> <span>${U.esc(q.unit || '')}</span></label>`;
         } else if (q.type === 'order') {
@@ -227,10 +233,17 @@
         const words = t => t.trim().split(/\s+/).filter(Boolean).length;
         const ready = q.type === 'mc' ? pick != null : q.type === 'num' ? true : q.type === 'order' ? order.length === q.items.length : q.type === 'explain' ? words(typed) >= 3 : multi.size > 0;
         h += `<div class="conf"><span class="muted small">Commit your answer. How sure are you?</span><div class="conf-b">
-          ${['Guess', 'Think so', 'Sure'].map((t, i) => `<button data-c="${i}" ${ready ? '' : 'disabled'}>${t}${T ? `<small class="stake"><span class="up">${sgn(T[i][0])}</span> / <span class="dn">${sgn(T[i][1])}</span></small>` : ''}</button>`).join('')}</div>
+          ${['Guess', 'Think so', 'Sure'].map((t, i) => `<button data-c="${i}" ${ready && !(pipped && i) ? '' : 'disabled'}>${t}${T ? `<small class="stake"><span class="up">${sgn(T[i][0])}</span> / <span class="dn">${sgn(T[i][1])}</span></small>` : ''}</button>`).join('')}</div>
           ${T ? `<p class="muted small stake-help">🎯 Your On-call Cred is <b>${tal0}</b>. Right / wrong moves it by the numbers on each button. Say how sure you really are.${opts.stakeNote ? ' ' + U.esc(opts.stakeNote) : ''}</p>` : ''}</div>`;
         const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
         b.querySelectorAll('[data-o]').forEach(el => el.onclick = () => { pick = +el.dataset.o; render(); });
+        const pb = b.querySelector('#q-pip');
+        if (pb) pb.onclick = () => {
+          if (!SD.run.usePip()) return render();
+          const wrong = optOrder.filter(i => i !== q.a && i !== pick);
+          hidden = wrong[Math.floor(Math.random() * wrong.length)];
+          pipped = true; render();
+        };
         b.querySelectorAll('[data-ord]').forEach(el => el.onclick = () => { order.push(+el.dataset.ord); render(); });
         b.querySelectorAll('[data-m]').forEach(el => el.onclick = () => { const i = +el.dataset.m; multi.has(i) ? multi.delete(i) : multi.add(i); render(); });
         const rs = b.querySelector('#q-reset'); if (rs) rs.onclick = () => { order = []; render(); };
@@ -253,6 +266,7 @@
       }
       function submit(conf) {
         stop();
+        if (pipped) conf = 0;
         const ms = Date.now() - t0;
         if (q.type === 'explain') return checkTyped(conf, ms);
         let ok = false, score = null;
@@ -373,7 +387,7 @@
         if (q.type === 'mc') {
           body = `<ul class="qr-opts">${optOrder.map(i => {
             const isA = i === q.a, mine = i === pick;
-            const tag = isA ? (mine ? 'Your pick · right' : 'Right answer') : mine ? 'Your pick' : hidden === i ? 'Struck out' : '';
+            const tag = isA ? (mine ? 'Your pick · right' : 'Right answer') : mine ? 'Your pick' : hidden === i ? (pipped ? 'Pip crossed it out' : 'Struck out') : '';
             return `<li class="qr-o${isA ? ' right' : ''}${mine && !isA ? ' wrong' : ''}${hidden === i ? ' struck' : ''}"><span class="qr-m" aria-hidden="true">${isA ? '✓' : mine ? '✗' : ''}</span><span>${U.esc(q.opts[i])}${tag ? ` <em class="qr-tag">${tag}</em>` : ''}</span></li>`;
           }).join('')}</ul>`;
           if (pick === null) body += '<p class="muted small">No answer: time ran out.</p>';
