@@ -487,12 +487,12 @@
         footer: `<div class="row">
           <button id="rm" ${removed >= removals || run.bits < 35 ? 'disabled' : ''}>Remove a card · 35${removals > 1 ? ` (${removals - removed} left)` : ''}</button>
           <button id="heal" ${healed || run.bits < 20 ? 'disabled' : ''}>Tea: +${tea} SLA · 20</button>
-          <button id="note" title="Go down, answer a question, and you're back in the same fight at full SLA. Lasts this run." ${noted || run.bits < note ? 'disabled' : ''}>📓 Wen's Notebook · ${note}</button>
+          <button id="note" title="${run.notes ? 'You carry one already. Wen only lends one at a time.' : 'Go down, answer a question, and you\'re back in the same fight at full SLA. Lasts this run. You can carry one.'}" ${noted || run.notes || run.bits < note ? 'disabled' : ''}>📓 Wen's Notebook · ${run.notes ? 'carrying' : note}</button>
           <button class="primary" id="leave">Leave</button>
         </div>`,
         wire: b => {
           b.querySelector('#heal').onclick = () => { run.bits -= 20; run.sla = Math.min(S.maxSla(), run.sla + tea); healed = true; AU.sfx('heal'); S.persist(); render(); };
-          b.querySelector('#note').onclick = () => { run.bits -= note; run.notes = (run.notes | 0) + 1; noted = true; AU.sfx('coin'); S.persist(); render(); };
+          b.querySelector('#note').onclick = () => { if (run.notes) return; run.bits -= note; run.notes = 1; noted = true; AU.sfx('coin'); S.persist(); render(); };
           b.querySelector('#rm').onclick = () => pickCard('Remove which card?', c => { run.bits -= 35; run.deck.splice(run.deck.indexOf(c), 1); removed++; S.persist(); render(); }, render);
           b.querySelector('#leave').onclick = () => { U.closePanel(); done(); };
         },
@@ -628,9 +628,10 @@
     if (opts.diagnose) diagnose(go); else go();
   }
   const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
-  // Wen's Notebook (Ladi, 2026-10-24): a café buy, one per café, NOTE bits, for this run only. Wen writes down every
-  // step as you go (her second notebook, cast bible arc 2), so reading it back puts you back mid-fight, the way she
-  // reads Mio the next step of a recipe. The same restore as Seymour's tape in chapters 9 and 10 (js/arc.js).
+  // Wen's Notebook (Ladi, 2026-10-24): a café buy, NOTE bits, for this run only. You carry at most one, so a rich run
+  // can't stack lives; Seymour's tapes cover the long chapters. Wen writes down every step as you go (her second
+  // notebook, cast bible arc 2), so reading it back puts you back mid-fight, the way she reads Mio the next step of a
+  // recipe. The same restore as Seymour's tape in chapters 9 and 10 (js/arc.js).
   const NOTE = 75;
   // A restore (Wen's Notebook, or Seymour's tape): one question on the incident that beat you, then refight(keep).
   // o: { title, use() to spend it, fx(go) for a transition }. Resolves false when there's no fight to go back to.
