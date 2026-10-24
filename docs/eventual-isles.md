@@ -97,6 +97,8 @@ The bridges (the building sites at each end, the finished planks and the festiva
 footbridge and one lantern by `tools/isles_bridge_art.py SRC` (raw files under `isles-bridge-raw/`); the map turns the
 pieces for bridges that run north to south, joins them at corners, and strings rope handrails between posts; after the
 festival the twin mayors' red and blue lanterns hang from the handrails.
+The sea's rocks, sandbars and channel buoys, and the campfire and lamp post by Kagemaru's cave, are trimmed from six
+PixelLab map objects by `tools/isles_sea_art.py SRC` (prompts in its docstring); the map's `SCENE` list places them.
 
 | What | Files | Drawn by |
 | --- | --- | --- |

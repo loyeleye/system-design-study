@@ -67,10 +67,11 @@ def turn(im, dh):
 for name, dh in [('red', 0), ('blue', 0.6)]:
     save(turn(ln, dh), 'lantern-' + name)
 
-block = '  // <isles-art> Made by tools/isles_art.py: sprite sheet and object sizes in assets/img/isles.\n  I.ART = ' + json.dumps(art) + ';\n  // </isles-art>'
-s = re.sub(r'  // <isles-art>.*?// </isles-art>', lambda _: block, s, flags=re.S)
-open(data, 'w').write(s)
 for gone in ['lantern-gold', 'lantern-pink', 'bridge-rope']:
     art['objects'].pop(gone, None)
     if os.path.exists(os.path.join(OUT, gone + '.webp')): os.remove(os.path.join(OUT, gone + '.webp'))
+
+block = '  // <isles-art> Made by tools/isles_art.py: sprite sheet and object sizes in assets/img/isles.\n  I.ART = ' + json.dumps(art) + ';\n  // </isles-art>'
+s = re.sub(r'  // <isles-art>.*?// </isles-art>', lambda _: block, s, flags=re.S)
+open(data, 'w').write(s)
 print({k: art['objects'][k] for k in art['objects'] if k.startswith(('bridge', 'lantern'))})

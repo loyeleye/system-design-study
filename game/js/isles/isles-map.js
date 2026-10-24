@@ -28,7 +28,7 @@
   // across the twins' docks.
   const BRIDGE = {
     'landing-ledger': [[13, 13], [17, 13]], 'landing-mill': [[13, 36], [17, 36]], 'landing-tower': [[13, 24], [30, 24]],
-    'ledger-fish': [[26, 7], [26, 3], [47, 3], [47, 7]], 'mill-carto': [[29, 36], [42, 36]], 'tower-fish': [[41, 22], [46, 22], [46, 19]],
+    'ledger-fish': [[27, 8], [27, 4], [44, 4], [44, 8]], 'mill-carto': [[29, 36], [42, 36]], 'tower-fish': [[41, 22], [46, 22], [46, 19]],
     'carto-fish': [[50, 19], [50, 30]], 'twins-ledger': [[29, 10], [30, 10]],
     'twin-twin': [[36, 10], [38, 10]]
   };
@@ -116,10 +116,10 @@
   path([[0, 26], [9, 26], [9, 13], [12, 13]]); path([[9, 26], [9, 36], [12, 36]]); path([[9, 36], [9, 48], [28, 48]]); path([[9, 24], [12, 24]]); path([[9, 29], [12, 29]]);
   path([[9, 23], [9, 23]]);
   path([[9, 13], [9, 4], [5, 4], [5, 3]]);   // up into the hills, to the cave
-  path([[18, 13], [23, 13], [23, 18]]); path([[23, 13], [27, 13]]); path([[26, 10], [26, 8]]); path([[23, 10], [28, 10]]); path([[27, 10], [27, 13]]);
+  path([[18, 13], [23, 13], [23, 18]]); path([[23, 13], [27, 13]]); path([[23, 10], [28, 10]]); path([[27, 9], [27, 13]]);
   path([[18, 36], [23, 36], [23, 31]]); path([[23, 36], [28, 36]]);
   path([[31, 24], [35, 24], [35, 29]]); path([[35, 24], [40, 22]]); path([[35, 22], [40, 22]]);
-  path([[44, 14], [48, 14], [48, 18]]); path([[47, 8], [47, 9], [44, 9], [44, 14]]); path([[46, 18], [50, 18]]);
+  path([[44, 14], [48, 14], [48, 18]]); path([[44, 9], [44, 14]]); path([[46, 18], [50, 18]]);
   path([[43, 36], [48, 36], [48, 31]]); path([[45, 31], [50, 31]]);
   path([[33, 9], [33, 12]]); path([[31, 10], [33, 10]]); path([[39, 9], [39, 12]]);
   path([[59, 24], [61, 24]]);
@@ -139,6 +139,16 @@
     else if (h < 10) set(x, y, 'L');
   }
   LAND.forEach(l => { for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) set(x, y, '#'); });
+  // Scenery, standing on its tile: rocks, sandbars and channel buoys out in the open sea, and by Kagemaru's cave the
+  // stool and campfire where he waits for players, with a lamp on a post to find it by.
+  const SCENE = [
+    ['sandbar', 20, 2], ['sea-rock', 16, 6], ['sea-rocks', 55, 3], ['buoy', 51, 5], ['sea-rock', 60, 8],
+    ['buoy', 31, 17], ['buoy', 39, 17], ['sea-rocks', 57, 16], ['sea-rock', 58, 34], ['sea-rocks', 36, 40],
+    ['buoy', 24, 42], ['sandbar', 46, 47], ['sea-rock', 39, 52], ['buoy', 60, 48],
+    ['cave-fire', 8, 2], ['cave-lamp', 4, 3]
+  ];
+  const SCALE = { sandbar: 1.6, 'sea-rocks': 1.4, 'sea-rock': 1.2, 'cave-fire': 1.2 };
+  SCENE.forEach(([name, x, y]) => { if (get(x, y) !== '~') set(x, y, '#'); });
   // Bridge tiles, by bridge id.
   const BT = {};
   Object.keys(BRIDGE).forEach(id => {
@@ -1217,6 +1227,7 @@
         if (c === 'T') obj(hash(x, y) % 5 === 0 ? 'tree2' : 'tree', (x + 0.5) * ts, (y + 1.05) * ts, 1, hash(x, y) % 2);
         else if (c === 'L') obj(['bush', 'lamp', 'bush', 'barrel', 'sign'][hash(x, y) % 5], (x + 0.5) * ts, (y + 0.95) * ts, 1);
       }
+      SCENE.forEach(([name, sx, sy]) => { if (sy === y) iobj(name, (sx + 0.5) * ts, (sy + 0.9) * ts + (name === 'buoy' ? Math.round(Math.sin(t * 2 + sx) * ts / 16) : 0), SCALE[name]); });
       LAND.forEach(l => { if (l.y + l.h - 1 === y && I.islandOpen(l.isle) && !(PIXEL[l.id] && PIXEL[l.id](l, t))) DRAW[l.id](l, t); });
       Object.keys(TIDE).forEach(id => { if (TIDE[id][1] === y) drawTide(id, t); });
       wildOn(y).forEach(a => a.draw(ctx, (a.px + 0.5) * ts, (a.py + 0.95) * ts, ts, t));
