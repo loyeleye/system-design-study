@@ -833,7 +833,7 @@
       }
       if (r.sleep && id === r.owner && !storm() && block() === 'night') {
         // Asleep: a slow "Zz" over the pillow, and you talk to them from beside the bed.
-        if (r.sleep.cloud) actor(id, [r.sleep.at[0], r.sleep.at[1], 'south'], { asleep: r.sleep.t, under: dream, name: null });
+        if (r.sleep.cloud) sc.addActor(id, { x: r.sleep.at[0], y: r.sleep.at[1], draw: nap, tall: 40, asleep: r.sleep.t });
         else sc.addActor(id, { x: r.sleep.at[0], y: r.sleep.at[1], draw: zz(r.sleep.zz), asleep: r.sleep.t });
         return;
       }
@@ -885,13 +885,20 @@
     });
     ctx.globalAlpha = 1;
   }
-  // Uptima sleeps standing up on a little cloud, with her Zz drifting up from it.
-  function dream(ctx, x, y, ts, t) {
-    const cy = y - ts * 0.05 + Math.sin(t * 1.5) * ts * 0.04;
-    ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.strokeStyle = '#2b2340'; ctx.lineWidth = 2;
-    ctx.beginPath(); [[-0.42, 0.06, 0.24], [-0.12, -0.04, 0.3], [0.2, -0.02, 0.3], [0.46, 0.08, 0.22]].forEach(([dx, dy, r]) => { ctx.moveTo(x + (dx + r) * ts, cy + dy * ts); ctx.arc(x + dx * ts, cy + dy * ts, r * ts, 0, Math.PI * 2); });
-    ctx.stroke(); ctx.fill();
-    zz([x / ts + 0.4, y / ts - 1.6])(ctx, x, y, ts, t);
+  // Uptima asleep, curled up on her little cloud (assets/img/village/n-uptima.webp, made by tools/uptima_nap_art.py):
+  // four breathing frames with a "z" drifting up, and the cloud floating gently. It is drawn instead of her sheet, so
+  // none of her standing idles or gags (js/uptima-idle.js) play while she sleeps. Lying down she would look smaller
+  // than she stands, so she's drawn a little bigger.
+  const NAP = { w: 56, h: 51, n: 4, k: 1.25 };
+  let napPic = null;
+  function nap(ctx, x, y, ts, t) {
+    const im = napPic || (napPic = load('assets/img/village/n-uptima.webp'));
+    if (!ok(im)) return;
+    const k = ts / 32 * NAP.k, w = NAP.w * k, h = NAP.h * k, f = Math.floor(t / 0.6) % NAP.n;
+    const fy = Math.round(y - ts * 0.05 + Math.sin(t * 1.2) * k * 1.5);
+    ctx.fillStyle = 'rgba(43,35,64,0.18)';
+    ctx.beginPath(); ctx.ellipse(x, y, w * 0.4, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(im, f * NAP.w, 0, NAP.w, NAP.h, Math.round(x - w / 2), fy - h, w, h);
   }
   // Coo is a pigeon: he has no sprite sheet, so he's drawn from his village picture, bobbing.
   function bird(ctx, x, y, ts, t) {
