@@ -630,7 +630,8 @@
   const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
   // Wen's Notebook (Ladi, 2026-10-24): a café buy, NOTE bits, for this run only. You carry at most one, so a rich run
   // can't stack lives; Seymour's tapes cover the long chapters. Wen writes down every step as you go (her second
-  // notebook, cast bible arc 2), so reading it back puts you back mid-fight, the way she reads Mio the next step of a recipe. The same restore as Seymour's tape in chapters 9 and 10 (js/arc.js).
+  // notebook, cast bible arc 2), so reading it back puts you back mid-fight, the way she reads Mio the next step of a
+  // recipe. The same restore as Seymour's tape in chapters 9 and 10 (js/arc.js).
   const NOTE = 75;
   // A restore (Wen's Notebook, or Seymour's tape): one question on the incident that beat you, then refight(keep).
   // o: { title, use() to spend it, fx(go) for a transition }. Resolves false when there's no fight to go back to.
