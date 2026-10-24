@@ -136,6 +136,8 @@
       // opts.tally (an expedition's questions, js/raid.js): each confidence button shows what it does to the
       // confidence tally (SD.state.tally), and the feedback's verdict carries the tally before and after. opts.heal(ok, tally), when
       // given, says on the Continue button what this answer heals; opts.stakeNote adds a line under the buttons.
+      // A run's questions show it too while you carry a relic backed by Cred (js/run.js R.showCred).
+      if (!opts.tally && SD.run && SD.run.showCred && SD.run.showCred()) opts = Object.assign({ tally: true, stakeNote: `Your backed relics work at ${SD.run.backCred}+ Cred.` }, opts);
       const T = opts.tally && SD.state.tally && SD.state.TALLY ? SD.state.TALLY : null, tal0 = T ? SD.state.tally() : 0;
       const sgn = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
       const limit = opts.timer > 0 ? opts.timer * 1000 : 0;
@@ -169,6 +171,8 @@
         const nw = el.querySelector('.qt-now'); if (nw && band >= 0) nw.textContent = BAND_NAMES[band];
         el.querySelectorAll('.qt-b').forEach(b => b.classList.toggle('on', +b.dataset.b === band));
       }, 250);
+      // Every answer is announced (SD.meta 'answer'), for what keys off your last answer: js/run.js's backed relics.
+      const settle = res => { if (SD.meta && SD.meta.emit) SD.meta.emit('answer', res, q); resolve(res); };
       let thinking = sayFirst(q, opts);
       let pick = null, order = [], multi = new Set(), typed = '';
       // opts.typeFirst (a boss's opening deep-dive question, js/run.js): type 1 to 3 sentences instead of saying it,
@@ -481,12 +485,12 @@
             SD.state.persist();
             b.querySelectorAll('[data-p]').forEach(x => x.classList.toggle('on', x === el));
           });
-          nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
+          nx.onclick = () => { U.closePanel(); settle({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
         } else {
           h += `<div class="q-foot">${credMore}<button class="primary" id="q-next">Continue${healTxt ? ` <span class="heal-on">· ${U.esc(healTxt)}</span>` : ''}</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
-          b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
+          b.querySelector('#q-next').onclick = () => { U.closePanel(); settle({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
           b.querySelector('#q-next').focus();
         }
         if (page) U.system('CHEAT SHEET PAGE RESTORED!', U.esc(SD.concepts[q.c].name) + ': a page in Uptima\'s handwriting fades back in.', 'gold');

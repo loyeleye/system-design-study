@@ -1060,10 +1060,28 @@
     }
     if (p.id === 'kids') {
       if (!['kid1', 'kid2', 'kid3'].every(k => ok(ipic('c-' + k)))) return false;
-      if (doing(p) === 'play') return football(X, Y, t);
-      ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.42, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
-      const turn = SD.art.turned(p, p.face, p.moving, t);
-      sprite('kid1', X - 10 * s, Y, t, 0, p.face, p.moving, turn); sprite('kid2', X + 10 * s, Y, t, 0, p.face, p.moving, turn); sprite('kid3', X, Y + 2 * s, t, 0, p.face, p.moving, turn);
+      // Each kid runs between their football spot and their place in the line, rather than jumping there.
+      const play = doing(p) === 'play', to = play ? KIDS.play : KIDS.idle, dt = t - (p.kidT || 0);
+      p.kidT = t;
+      if (!p.kids || dt > 0.5 || dt < 0) p.kids = Object.fromEntries(Object.entries(to).map(([k, o]) => [k, o.slice()]));
+      const run = {};
+      Object.entries(p.kids).forEach(([k, o]) => {
+        const dx = to[k][0] - o[0], dy = to[k][1] - o[1], d = Math.hypot(dx, dy), step = KIDS.speed * dt;
+        if (d <= step) { o[0] = to[k][0]; o[1] = to[k][1]; return; }
+        o[0] += dx / d * step; o[1] += dy / d * step;
+        run[k] = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north');
+      });
+      if (play && !Object.keys(run).length) return football(X, Y, t);
+      const turn = SD.art.turned(p, p.face, p.moving, t), still = !Object.keys(run).length && !play;
+      ctx.fillStyle = 'rgba(43,35,64,0.22)';
+      if (still) { ctx.beginPath(); ctx.ellipse(X, Y - s, ts * 0.42, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill(); }
+      else Object.values(p.kids).forEach(o => { ctx.beginPath(); ctx.ellipse(X + o[0] * s, Y + (o[1] - 1) * s, ts * 0.26, ts * 0.08, 0, 0, Math.PI * 2); ctx.fill(); });
+      // Back to front, so whoever is nearer is drawn over whoever they pass.
+      Object.keys(p.kids).sort((a, b) => p.kids[a][1] - p.kids[b][1]).forEach(k => {
+        const o = p.kids[k], x = X + o[0] * s, y = Y + o[1] * s;
+        if (run[k]) sprite(k, x, y, t, 0, run[k], true, null);
+        else sprite(k, x, y, t, 0, play ? KIDS.face[k] : p.face, p.moving, play ? null : turn);
+      });
       return true;
     }
     if (!I.ART || !I.ART.chars[p.id] || !ok(ipic('c-' + p.id))) return false;
@@ -1107,6 +1125,14 @@
   }
   // Seconds into this ten-second turn (from when they start their action, for the ones who do it now and then).
   const busyFor = (p, t) => (t + p.stand[0] * 1.7 + p.stand[1]) % 10;
+  // Where each kid stands, in 1/32 tiles from the middle of their tile: football (the same spots football() draws
+  // them at) or in a line, and how fast they run between the two.
+  const KIDS = {
+    play: { kid1: [-30.4, 0], kid2: [30.4, 0], kid3: [0, -8] },
+    idle: { kid1: [-10, 0], kid2: [10, 0], kid3: [0, 2] },
+    face: { kid1: 'east', kid2: 'west', kid3: 'south' },
+    speed: 48
+  };
   // The school's football: the two older ones pass the ball back and forth across the tile either side, and the
   // smallest jumps up and down and cheers behind them. Each pass is a kick, a bouncing ball, and a stop.
   function football(X, Y, t) {

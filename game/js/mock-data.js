@@ -230,7 +230,7 @@ SD.mock.problems = [
       ],
       why: {
         c: 'limiterdesign', q: '"Why keep the counters in a shared store instead of in each server\'s memory?"',
-        opts: ['With 20 servers, local counts let a client get up to 20 times its limit; a shared store gives one count', 'Redis answers faster than a local hash map, because it is built and tuned for counters', '10 million keys of bucket state is too much to fit in a gateway server\'s memory', 'Otherwise we would need sticky routing by key, and load balancers can\'t route that way'],
+        opts: ['With 20 servers, local counts let a client get 20 times its limit', 'Redis answers faster than a local hash map, because it is built and tuned for counters', '10 million keys of bucket state is too much to fit in a gateway server\'s memory', 'Otherwise we would need sticky routing by key, and load balancers can\'t route that way'],
         a: 0, no: [null, 'Local memory answers in about 100 nanoseconds; Redis is a network hop of half a millisecond. You pay that hop to get one shared count.', 'At about 100 bytes a key, that is roughly 1 GB, which fits on any server. Memory is not the problem; 20 separate counts are.', 'L7 balancers like Envoy and HAProxy can hash on a header. Routing by key is a real alternative, though scaling moves keys and resets their counts.'],
         why: 'The limit is global, so the count must be too. You pay a network hop per request for it, which is why the store has to be fast and in-memory.'
       }

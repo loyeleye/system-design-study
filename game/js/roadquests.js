@@ -184,8 +184,8 @@
               { type: 'order', q: 'Put an upload in order.', chips: ['Hash the chunks on the client', 'Ask which hashes the server lacks', 'Get presigned URLs for those', 'Upload straight to blob storage', 'Commit the new chunk list to metadata'],
                 why: 'The commit comes last, so other devices never see a file whose chunks aren\'t there yet.' },
               { type: 'choose', q: 'A buyer\'s second wagon has been offline for a week. How does it catch up?', opts: [
-                { t: 'Ask metadata for changes since its cursor, then download only missing chunks', ok: true, why: 'A change log plus a cursor gives each device just what it missed, and chunk hashes tell it which bytes it already has.' },
-                { t: 'Re-download every file', why: 'That works and costs the whole caravan again. Hashes exist so you don\'t.' },
+                { t: 'Fetch changes since its cursor, then missing chunks', ok: true, why: 'A change log plus a cursor gives each device just what it missed, and chunk hashes tell it which bytes it already has, so it downloads only the missing chunks.' },
+                { t: 'Re-download every file the buyer has synced', why: 'That works and costs the whole caravan again. Hashes exist so you don\'t.' },
                 { t: 'Wait for the server to push the full cargo list hourly', why: 'Pushing everything to everyone is the problem we started with.' }] }
             ],
             done: '<p>Chunk, hash, upload only what is missing, keep bytes and metadata apart, and sync from a cursor. That is the core of Dropbox and Google Drive.</p>' } },
@@ -222,22 +222,22 @@
             intro: 'Okay. Okay okay. Letters are coming in. Tell me what to do with each one.',
             rounds: [
               { type: 'choose', q: 'Ana sends Bo a letter. Bo is online right now. What first?', opts: [
-                { t: 'Save it in the store, then push it over Bo\'s open connection', ok: true, why: 'Persist first, so a crash can\'t lose it; then push. Saved is one tick.' },
-                { t: 'Push it to Bo, and save it if that fails', why: 'If the server dies mid-push, the letter is gone and Ana already saw it as sent.' },
-                { t: 'Wait for Bo to ask for new letters', why: 'Polling makes every chat slow and burns requests. Bo has a live connection; use it.' }] },
+                { t: 'Save it, then push it over Bo\'s open connection', ok: true, why: 'Persist first, so a crash can\'t lose it; then push. Saved is one tick.' },
+                { t: 'Push it to Bo at once, and save it only if that fails', why: 'If the server dies mid-push, the letter is gone and Ana already saw it as sent.' },
+                { t: 'Wait for Bo\'s app to poll for new letters', why: 'Polling makes every chat slow and burns requests. Bo has a live connection; use it.' }] },
               { type: 'choose', q: 'Cid is offline. A letter for him arrives.', opts: [
-                { t: 'Keep it in Cid\'s inbox and deliver when he reconnects', ok: true, why: 'Offline users get an inbox (often with a push notification); on reconnect the client pulls everything after its last ack.' },
-                { t: 'Drop it and tell Ana to resend', why: 'Users expect the system to hold the letter for them.' },
-                { t: 'Keep retrying the push every second', why: 'There is no connection to push to. Hammering wastes work; the inbox already solves it.' }] },
+                { t: 'Hold it in his inbox until he reconnects', ok: true, why: 'Offline users get an inbox (often with a push notification); on reconnect the client pulls everything after its last ack.' },
+                { t: 'Drop it and tell Ana\'s app to resend later', why: 'Users expect the system to hold the letter for them, not to make the sender do it.' },
+                { t: 'Keep retrying the push to Cid every second', why: 'There is no connection to push to. Hammering wastes work; the inbox already solves it.' }] },
               { type: 'order', q: 'Letters 43, 41 and 44 land before 42. Show them in the right order.', chips: ['#41', '#42', '#43', '#44'],
                 why: 'A per-chat sequence number assigned by the server gives one order for everyone, whatever order the network delivers in.' },
               { type: 'tap', q: 'Fen knocked and got no answer. Which could be true? Tap all that could be.',
                 chips: [{ t: 'The letter was lost on the way', ok: true }, { t: 'The reader is asleep (slow)', ok: true }, { t: 'The reader left town (dead)', ok: true }, { t: 'The reply was lost coming back', ok: true }],
                 why: 'From the sender\'s side, all four look identical. That is why distributed systems rely on timeouts and idempotent retries, not certainty.', hint: 'Silence tells you very little.' },
               { type: 'choose', q: 'Heartbeats come every 10 seconds. When should Fen mark someone as away?', opts: [
-                { t: 'After about 3 missed beats (30 seconds)', ok: true, why: 'A few missed beats rides out a single lost packet or a pause without waiting forever.' },
-                { t: 'After 1 second', why: 'Shorter than the beat itself: everyone flaps between online and away.' },
-                { t: 'After 1 hour', why: 'Safe from false alarms, but people wait an hour to learn someone is gone.' }] }
+                { t: 'After 3 missed beats, about 30 s', ok: true, why: 'A few missed beats rides out a single lost packet or a pause without waiting forever.' },
+                { t: 'After 1 second without a beat', why: 'Shorter than the beat itself: everyone flaps between online and away.' },
+                { t: 'After an hour with no beats', why: 'Safe from false alarms, but people wait an hour to learn someone is gone.' }] }
             ],
             done: '<p>Store before you send, push to whoever is connected, inbox the rest, order by a per-chat sequence number, ack for ticks, and decide failures with heartbeats and timeouts. That is WhatsApp, plus DDIA chapter 8\'s hard truth: silence is ambiguous.</p>' } },
           { ask: { id: 'rq-courier', c: 'netfaults', type: 'mc', q: 'Your service called another and timed out. What do you actually know?', opts: ['Nothing certain: the request may or may not have been processed', 'The other service is down, so retries should go to a different replica', 'The request never arrived, so sending it again cannot do it twice', 'The request failed, so the other side rolled back any change it made'], a: 0, no: [null, 'It may just be slow, or its reply was lost. A circuit breaker counts many failures before treating a service as down.', 'It may have arrived and run, with only the reply lost. Retries are safe only if the operation is idempotent.', 'A timeout is not a failure reply. The other side may have committed the change, and nothing rolls it back because you stopped waiting.'], why: 'A timeout only says no reply arrived in time. The request may have been lost, processed slowly, or processed with the reply lost, so retries must be idempotent.' } },

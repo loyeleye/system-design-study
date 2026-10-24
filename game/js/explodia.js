@@ -323,7 +323,7 @@
           { t: 'Raise the SLO target so the team takes reliability seriously', why: 'A stricter SLO makes the budget smaller; it doesn\'t refill it.' },
           { t: 'Add more on-call engineers so incidents end faster', why: 'Faster response helps, but launches keep burning a budget that\'s already gone.' }] },
         { type: 'choose', q: 'Why not aim for 100% reliability?', opts: [
-          { t: 'Users can\'t tell it from 99.99%, and it would freeze all change', ok: true, why: 'Their own Wi-Fi fails more often than that. Past a point each nine costs a fortune and buys users nothing.' },
+          { t: 'Users can\'t tell it from 99.99%, and change would stop', ok: true, why: 'Their own Wi-Fi fails more often than that. Past a point each nine costs a fortune and buys users nothing.' },
           { t: 'Hardware fails, so it needs more replicas than money allows', why: 'Replicas get you close. The real problem is that the last nines buy users nothing and stop every change.' },
           { t: 'Contracts (SLAs) legally forbid promising more than 99.9%', why: 'No such rule: SLAs are looser than SLOs by choice, to leave room.' }] }
       ],
@@ -383,7 +383,7 @@
         { type: 'choose', q: 'Kyu spends 90% of every day on toil. What does the SRE Book recommend?', opts: [
           { t: 'Cap toil near 50% and spend the rest automating it', ok: true, why: 'Without the cap, toil grows with the service until no engineering happens at all.' },
           { t: 'Hire more operators so each one does less toil', why: 'Then toil grows with headcount and nothing gets engineered away.' },
-          { t: 'Write better runbooks so the toil goes faster', why: 'Runbooks help, but the work is still manual and still grows.' }] },
+          { t: 'Write better runbooks so each bit of toil goes faster', why: 'Runbooks help, but the work is still manual and still grows.' }] },
         { type: 'order', q: 'Put the evolution of automation in order, from worst to best.', chips: ['Done by hand from a runbook', 'A script one person keeps on their laptop', 'A shared, maintained tool anyone can run', 'The system does it itself, no human needed'],
           why: 'Each step removes a human from the loop. The best automation is a system that doesn\'t need the task at all.' },
         { type: 'match', q: 'Link each chore to what demolishes it.', pairs: [['Restarting a leaky server weekly', 'Fix the leak (or auto-restart on a health check)'], ['Approving every disk resize', 'Automatic resizing within safe limits'], ['Copy-pasting deploy steps', 'A deploy pipeline'], ['Resetting passwords by ticket', 'Self-service reset']],
@@ -416,7 +416,7 @@
           { t: '27 (3 × 3 × 3)', why: 'That forgets each layer\'s first try: 1 + 3 = 4 attempts per layer.' },
           { t: '12 (3 × 4)', why: 'Retries multiply layer by layer: 4 × 4 × 4.' }, { t: '10 (3 + 3 + 3 + 1)', why: 'Retries multiply across layers; they don\'t add.' }] },
         { type: 'choose', q: 'The client gave up after 2 seconds. The backend is still working on its request at 5 seconds. What should it do?', opts: [
-          { t: 'Stop: the deadline passed, so nobody wants the answer', ok: true, why: 'Propagated deadlines stop dead work from eating the capacity live requests need.' },
+          { t: 'Stop: the deadline passed, nobody wants it', ok: true, why: 'Propagated deadlines stop dead work from eating the capacity live requests need.' },
           { t: 'Finish it and cache the result for the next caller', why: 'Caching helps repeat reads, but this work still holds capacity that live requests need.' },
           { t: 'Hand it to a less busy replica to finish faster', why: 'Load balancing doesn\'t help when nobody is waiting for the answer.' }] },
         { type: 'tap', q: 'Tap everything that helps stop a cascade.', chips: [{ t: 'Load shedding', ok: true }, { t: 'Per-client quotas', ok: true }, { t: 'Circuit breakers', ok: true }, { t: 'Retry budgets with jitter', ok: true }, { t: 'Graceful degradation', ok: true }, { t: 'Unbounded queues' }, { t: 'Instant retries forever' }, { t: 'Restarting everything together' }],
@@ -493,7 +493,7 @@
           why: 'Budgets, bounded toil, actionable pages, blameless learning. No 100%, no retry storms, mitigation first.' }
       ],
       recall: { type: 'choose', q: 'From memory: what single idea ties the whole SRE Book together?', opts: [
-        { t: 'Set a reliability target users feel; spend what\'s left on change', ok: true, why: 'Measure what users feel, set a target, and spend the difference on change. The rest is how.' },
+        { t: 'Set a reliability target; spend the rest on change', ok: true, why: 'Measure what users feel, set a target, and spend the difference on change. The rest is how.' },
         { t: 'Automate every operational task until no human is needed', why: 'Automation is one chapter. Without a target you don\'t know what to automate first.' },
         { t: 'Prevent every outage by adding redundancy to every layer', why: 'That\'s the 100% trap: it costs a fortune and freezes change.' }] },
       done: '<p>You mixed every chapter and kept the budget. That\'s the SRE Book: <b>SLOs and error budgets</b>, <b>golden signals</b>, <b>bounded toil</b>, <b>overload control</b> and <b>calm incident command</b>, joined up.</p>'
@@ -711,11 +711,11 @@
               { type: 'tap', q: 'What made the permits, the gong and the certificates toil?', chips: [{ t: 'Manual', ok: true }, { t: 'Repetitive', ok: true }, { t: 'Automatable', ok: true }, { t: 'Grew with every blast', ok: true }, { t: 'They were hard' }, { t: 'They were boring' }],
                 why: 'Hard or boring doesn\'t matter. What matters is that it repeats, a machine could do it, and it scales with the service.' },
               { type: 'choose', q: 'Lord Latency\'s standing approval reads only unusual permits. Which step of the automation ladder is that?', opts: [
-                { t: 'The routine case is automated; people handle exceptions', ok: true, why: 'Near the top of the ladder: the machine does the normal path.' },
+                { t: 'Routine cases run themselves; people take exceptions', ok: true, why: 'Near the top of the ladder: the machine does the normal path.' },
                 { t: 'A shared script that any clerk can run by hand each day', why: 'Still run by a person every time. The standing approval needs nobody for the routine case.' },
                 { t: 'A second stamper, so the permits move twice as fast', why: 'That doubles the toil instead of removing it.' }] },
               { type: 'choose', q: 'Why does the SRE Book cap toil at about half of an engineer\'s time?', opts: [
-                { t: 'So the other half can go into removing the toil', ok: true, why: 'Toil grows with the service. Without a cap it wins.' },
+                { t: 'So the other half goes into removing the toil', ok: true, why: 'Toil grows with the service. Without a cap it wins.' },
                 { t: 'So engineers always have spare time for on-call', why: 'On-call is mostly operations work itself; the cap protects engineering time.' },
                 { t: 'Because past 50% the toil can\'t be measured', why: 'It measures fine. The cap is about keeping time for engineering.' }] }
             ],
@@ -766,13 +766,13 @@
               { actor: 'akane', a: 'Load shedding', keys: ['load ?shed', 'shed', 'drop(ping)? (the )?(low|least)', 'turn(ing)? (them )?away', 'reject', 'declin'], opts: ['Graceful degradation', 'An unbounded queue', 'A circuit breaker'],
                 clues: ['Holds up a stack of a hundred petitions. Reads one. Stamps it. Drops the rest in the bin, politely.', 'Points at a sign: URGENT REQUESTS ONLY TODAY.', 'The important line keeps moving fast while everyone else is turned away at the door.'],
                 why: 'Turn away the lowest-priority work when you\'re overloaded, so the important requests stay fast.' },
-              { actor: 'wen', a: 'Graceful degradation', keys: ['degrad', 'cached', 'cheaper', 'fall ?back', 'day.old', 'smaller answer', 'stale'], opts: ['Load shedding', 'Backoff with jitter', 'Per-client quotas'],
+              { actor: 'wen', a: 'Graceful degradation', keys: ['degrad', 'cached', 'cheaper', 'fall ?back', 'day.old', 'smaller answer', 'stale'], opts: ['Load shedding by priority', 'Backoff with jitter', 'Per-client quotas'],
                 clues: ['Runs out of fresh croissants. Does NOT close the café.', 'Hands out yesterday\'s croissants with a little sign: STILL GOOD.', 'Mimes: a smaller answer is better than no answer.'],
                 why: 'Serve a cheaper, simpler answer (cached, partial, older) instead of failing.' },
-              { actor: 'zen', a: 'Backoff with jitter', keys: ['back ?off', 'jitter', 'exponential', 'retry budget', 'wait (longer|more)'], opts: ['Instant retries', 'Load shedding', 'A deadline'],
+              { actor: 'zen', a: 'Backoff with jitter', keys: ['back ?off', 'jitter', 'exponential', 'retry budget', 'wait (longer|more)'], opts: ['Instant retries forever', 'Load shedding', 'A deadline'],
                 clues: ['Knocks on a door. Waits one second. Knocks. Waits two. Then four.', 'Each wait wobbles a little, so he never knocks at the same moment as anyone else.', 'After a few tries, he stops and goes home.'],
                 why: 'Wait longer between retries, add randomness so clients don\'t retry in step, and cap the total.' },
-              { actor: 'latency', a: 'Deadline propagation', keys: ['deadline', 'time ?out', 'expir', 'cancel', 'give up'], opts: ['Load shedding', 'A retry budget', 'An unbounded queue'],
+              { actor: 'latency', a: 'Deadline propagation', keys: ['deadline', 'time ?out', 'expir', 'cancel', 'give up'], opts: ['Load shedding', 'A retry budget per client', 'An unbounded queue'],
                 clues: ['...Writes a time on every croissant order...', '...Hands the order to the next cook... the time goes with it...', '...Throws away the orders... whose time has passed... Bakes only for people still waiting...'],
                 why: 'Each request carries its deadline through every layer, so nobody works on an answer nobody is waiting for.' },
               { actor: 'ayo', a: 'Circuit breaker', keys: ['circuit', 'breaker'], opts: ['Load shedding', 'Graceful degradation', 'A health check restart'],
@@ -781,10 +781,10 @@
               { actor: 'doug', a: 'Per-client quotas', keys: ['quota', 'rate ?limit', 'throttl', 'per.client', 'fair share', 'limit (each|per)'], opts: ['Load shedding', 'A circuit breaker', 'Backoff with jitter'],
                 clues: ['His bot sends ten thousand requests a second.', 'The gatekeeper hands the bot a card: TEN A SECOND. MAXIMUM.', 'Everyone else gets their fair share again.'],
                 why: 'Cap each client\'s share, so one greedy caller can\'t starve everyone else.' },
-              { actor: 'uptima', a: 'Restarting everything at once', keys: ['restart(ing)? (every|all|the whole)', 'thundering', 'herd', 'stampede', 'cold cache', 'all at once'], opts: ['A rolling restart', 'Graceful degradation', 'Load shedding'],
+              { actor: 'uptima', a: 'Restarting everything at once', keys: ['restart(ing)? (every|all|the whole)', 'thundering', 'herd', 'stampede', 'cold cache', 'all at once'], opts: ['A rolling restart, a few at a time', 'Graceful degradation', 'Load shedding'],
                 clues: ['Restarts every server in the realm. At the same moment. Smiles.', 'Every cache wakes up empty. Every request goes the slow way, all at once.', 'The stampede knocks everything over again. She restarts everything again.'],
                 why: 'A way to START a cascade: every cache goes cold together. Restart a few at a time instead.' },
-              { actor: 'bru', a: 'An unbounded queue', keys: ['unbounded', 'queue', 'infinite (line|queue)', 'backlog', 'endless line'], opts: ['Load shedding', 'A deadline', 'Per-client quotas'],
+              { actor: 'bru', a: 'An unbounded queue', keys: ['unbounded', 'queue', 'infinite (line|queue)', 'backlog', 'endless line'], opts: ['Load shedding', 'A deadline on every request', 'Per-client quotas'],
                 clues: ['Lets everyone into the line. Nobody is ever refused.', 'The line goes out the door, round the well, and into next week.', 'By the time anyone reaches the desk, they gave up and went home hours ago.'],
                 why: 'Another way to make it worse: the queue just holds the overload until every request times out. Bound it, and shed.' }],
             done: '<p>Stop a cascade by <b>cutting work</b> (load shedding, graceful degradation, per-client quotas), <b>stopping multipliers</b> (backoff with jitter, retry budgets, circuit breakers) and <b>dropping dead work</b> (deadlines). Make it worse with instant retries, unbounded queues and restarting everything at once.</p>' } }] },
