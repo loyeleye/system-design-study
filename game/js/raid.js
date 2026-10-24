@@ -10,8 +10,13 @@
 // which one hand can rarely cover alone. When two players land an
 // effective card in the same turn, it's a Tag Team: +8 mitigation. The team's SLA carries from room to room, and each
 // player keeps their own deck and bits for the whole expedition. After each fight everyone picks a card of their own.
-// Dying ends the expedition, unless the party bought Seymour's Tape at a café: then the floor starts again from the
-// snapshot taken on entering it (decks, SLA, bits, the same map), and one tape is used up.
+// Dying ends the expedition, unless the party bought Seymour's Tape at a café.
+//
+// Seymour's Tape (Ladi, 2026-10-24, ported from Isekai'd Into the Cloud): an extra life. A wipe with a tape opens the
+// tape room, Seymour's restore drill: each player (each human, or the first seat at a table of bots) answers one
+// question on the incident that beat them. Then the tape is used up, the team is back at full SLA, and the same fight
+// goes on: if at least half the answers were right, the incident keeps the damage the team did; if not, it starts
+// again at full Severity. The map, decks and bits are as they were.
 //
 // The debrief and the tally (Ladi, 2026-10-23, ported from Isekai'd Into the Cloud): a player's tally is the score of
 // the last 20 answers they committed anywhere in the game (SD.state.tally; CONF: Guess, Think so and Sure pay +1, +2,
@@ -1250,7 +1255,7 @@
       const ids = spec.ids, n = Math.max(1, seatsHere().length), k = ids.length, ch = chOf(FL()), GS = obj(SD.groupFights && SD.groupFights.scale);
       const one = { sev: 1, dmg: 1 }, minion = GS.minion || { sev: 0.4, dmg: 0.45 };
       const share = i => (k < 2 ? one : tier === 'fight' ? GS[k] || GS[3] || { sev: 0.42, dmg: 0.45 } : i ? minion : tier === 'elite' ? GS.elite || { sev: 0.8, dmg: 0.8 } : one);
-      Object.assign(G, fightStatus(), { ph: 'fight', room: null, main: ids[0], tier, turn: 0, stale: 0, taken: 0, sh: zero(), flags: {}, infra: [], eff: [] });
+      Object.assign(G, fightStatus(), { ph: 'fight', room: null, main: ids[0], tier, turn: 0, stale: 0, taken: 0, sh: zero(), flags: {}, infra: [], eff: [], spec: { ids: ids.slice(), sev: (spec.sev || []).slice(), dmg: (spec.dmg || []).slice() } });
       // Balance (Ladi, 2026-10-20): an elite has 20% more Severity, its load unchanged; a floor boss's Severity times
       // the floor's bossSev (js/expeditions.js); every enemy's Severity and load scale by the party's size (PARTY,
       // bots count): 80% load for two seats, more Severity and load for three and four; and by the expedition's own
@@ -1326,7 +1331,7 @@
       if (!isBot(peer) && talOk(d.tal)) p.tal = Math.max(-99, Math.min(999, Math.round(+d.tal)));
       else score(p, !!d.ok, d.conf);
     }
-    // Who answers the debrief: the people here, or at a table of bots (the balance runs) the first seat.
+    // Who answers the debrief and the tape room: the people here, or at a table of bots (the balance runs) the first seat.
     const askers = () => { const s = seatsHere(), h = s.filter(k => !isBot(k)); return h.length ? h : s.slice(0, 1); };
     // A won fight's debrief: who answers, how many questions, and the concept the incident was about.
     function debrief(r) {
@@ -1337,14 +1342,13 @@
     function wiped() {
       Object.values(G.players).forEach(p => { p.draw = []; p.disc = []; p.hand = []; p.played = []; p.ready = false; });
       G.infra = [];
-      const s = G.snap;
-      if (G.tapes > 0 && s && rowsOf(s.map)) {
-        G.tapes--; G.tapeN++;
-        Object.keys(G.players).forEach(k => { const x = s.p[k]; if (x) { const d = dec(x.d, 80); if (d.length) G.players[k].deck = d; G.players[k].bits = Math.max(0, x.b | 0); } });
-        Object.assign(G, { sla: Math.max(1, s.sla | 0), onWin: [], map: s.map, pos: null, seen: [], votes: {}, room: null, ph: 'map', boss: null, main: null, tier: null, foes: [] });
-        G.k++;
-        G.note = `Seymour's tape played: back to the start of floor ${G.fl + 1}, as you entered it. ${G.tapes ? `${G.tapes} tape${G.tapes > 1 ? 's' : ''} left.` : 'No tapes left.'}`;
-        save();
+      // Seymour's tape: the tape room's question first (finishRoom plays the tape).
+      if (G.tapes > 0 && G.main && G.foes.length) {
+        const c = (SD.enemies[G.main] || {}).concept;
+        newRoom('tape', { c: c && SD.concepts[c] ? c : null });
+        G.room.wait = {};
+        askers().forEach(k => { G.room.wait[k] = 1; });
+        G.note = `The team is down. Seymour's tape is spinning up. Answer one question on ${(SD.concepts[c] || {}).name || 'the incident'}: right, and ${(SD.enemies[G.main] || {}).name || 'the incident'} keeps the damage you did.`;
         return;
       }
       G.end = { fl: G.fl, rooms: G.rooms, foe: G.main, sev: G.foes.reduce((a, f) => a + Math.max(0, f.sev), 0) };
@@ -1360,8 +1364,32 @@
       enterFloor(G.fl + 1);
       G.note = `Floor ${G.fl} cleared. The team healed ${heal} SLA between floors.`;
     }
+    // Seymour's tape plays: used up, full SLA, and the same fight again, the incident's damage kept if at least half
+    // the tape room's answers were right.
+    function tapeDone(r) {
+      const ks = Object.keys(r.res), right = ks.filter(k => r.res[k]).length, keep = ks.length > 0 && right * 2 >= ks.length;
+      const nm = (SD.enemies[G.main] || {}).name || 'The incident';
+      G.tapes = Math.max(0, G.tapes - 1); G.tapeN++;
+      G.sla = SLA;
+      resumeFight(keep);
+      G.note = `Seymour's tape played: everyone's up, at full SLA. ${keep ? `${nm} still has the damage you did.` : `${nm} is back at full Severity.`} ${G.tapes ? `${G.tapes} tape${G.tapes > 1 ? 's' : ''} left.` : 'No tapes left.'}`;
+      save();
+    }
+    // The fight the team lost, again: the same enemies, as they were (keep) or fresh, and fresh hands. A host who
+    // took over mid-fight has no spec (it stays off the wire), so a fresh start uses each enemy's base numbers.
+    function resumeFight(keep) {
+      const tier = G.tier, sp = obj(G.spec), ids = (Array.isArray(sp.ids) ? sp.ids : G.foes.map(f => f.boss)).filter(id => SD.enemies[id]);
+      if (!keep || !G.foes.length) return fight({ ids, sev: Array.isArray(sp.sev) ? sp.sev : [], dmg: Array.isArray(sp.dmg) ? sp.dmg : [] }, tier);
+      const kept = { foes: G.foes, main: G.main, spec: G.spec };
+      Object.assign(G, fightStatus(), { ph: 'fight', room: null, tier, turn: 0, stale: 0, taken: 0, sh: zero(), flags: {}, infra: [], eff: [] }, kept);
+      G.log = 'Back on your feet. Plan it out loud, then play.';
+      Object.values(G.players).forEach(p => { Object.assign(p, { draw: p.deck.slice(), disc: [], hand: [], played: [], ready: false, st: myStatus(), peek: [], take: 0, ab: 0, hd: {} }); });
+      withFoe(G, 0, () => {});
+      newTurn(G);
+    }
     function finishRoom() {
       const r = G.room;
+      if (r.t === 'tape') return tapeDone(r);
       if (r.t === 'reward' && r.tier === 'boss') return cleared();
       toMap();
     }
@@ -1461,6 +1489,7 @@
       // The Whiteboard: a right answer heals the team and pays that player bits, 4 SLA and 10 bits when steady.
       const band = BANDS.includes(d.band) ? d.band : 'slow';
       const said = () => { G.note = `${p.n}: ${d.ok ? BAND_TEXT[band] : d.late ? 'Time\'s up' : 'Missed'}.`; };
+      if (r.t === 'tape' && d.k === 'ans' && r.res[peer] == null) { r.res[peer] = d.ok ? band : false; mark(peer, d); said(); return fin(); }
       if (r.t === 'board' && d.k === 'ans' && r.res[peer] == null) { r.res[peer] = d.ok ? band : false; mark(peer, d); said(); if (d.ok) { G.sla = Math.min(SLA, G.sla + BOARD[band][0]); p.bits += BOARD[band][1]; } return fin(); }
       if (r.t === 'event') {
         const ev = SD.expeditionEvents[r.ev];
@@ -1623,7 +1652,7 @@
         const ups = p.deck.map((id, i) => i).filter(i => upOk(p.deck[i]));
         return { d: G.sla < SLA * 0.6 || !ups.length ? { k: 'rest' } : { k: 'up', i: ups[bestOf(p, ups.map(i => p.deck[i]))] } };
       }
-      if (r.t === 'board') return r.res[k] == null ? ans('b' + r.k, { k: 'ans' }) : null;
+      if (r.t === 'board' || r.t === 'tape') return r.res[k] == null ? ans('b' + r.k, { k: 'ans' }) : null;
       if (r.t !== 'event') return null;
       const ev = SD.expeditionEvents[r.ev];
       if (!ev) return { d: { k: 'done' } };
@@ -1726,7 +1755,7 @@
       if (wire) { out.log = net.clean(S.log, 400); out.note = net.clean(S.note, 200); }
       return out;
     }
-    const ROOMS = ['reward', 'cafe', 'camp', 'board', 'event'];
+    const ROOMS = ['reward', 'cafe', 'camp', 'board', 'event', 'tape'];
     const PHASES = ['lobby', 'map', 'fight', 'done', 'over'].concat(ROOMS);
     // Card ids must be real cards and every field the right shape; anything else is dropped.
     function unpack(d) {
@@ -1959,7 +1988,7 @@
       shown = key;
       const [wx, wf, wt] = (was || '').split(':');
       if (wx === G.xp && +wf === G.fl && +wt < G.tapeN) {
-        queue(async () => { await titleCard('RESTORING FROM TAPE...'); await dialog([{ who: 'seymour', text: 'Backup No. 401, restored! Tested, labelled, and only slightly chewed. Back to the start of the floor, everyone.' }]); });
+        queue(async () => { await titleCard('RESTORING FROM TAPE...'); await dialog([{ who: 'seymour', text: 'Backup No. 401, restored! Tested, labelled, and only slightly chewed. On your feet, everyone. It\'s still in there.' }]); });
         return;
       }
       if (wx === G.xp && +wf === G.fl - 1 && fs[G.fl - 1]) queue(() => dialog(fs[G.fl - 1].outro));
@@ -1977,7 +2006,7 @@
       // This page's tally goes to the host when it changes (a review in town, a question here).
       if (mine && G.ph !== 'lobby') { const t = myTally(); if (t !== undefined && t !== (mine.tal | 0) && t !== talSent) { talSent = t; send({ k: 'tal', v: t }); } }
       if (!r || !mine || !r.wait[me.peer] || !r.q && r.t === 'board') return;
-      const need = (r.t === 'board' && r.res[me.peer] == null) || ((r.t === 'event' || r.t === 'reward') && (r.todo[me.peer] || [])[0] === 'ask');
+      const need = ((r.t === 'board' || r.t === 'tape') && r.res[me.peer] == null) || ((r.t === 'event' || r.t === 'reward') && (r.todo[me.peer] || [])[0] === 'ask');
       const key = askKey(r);
       if (!need || asked[key]) return;
       asked[key] = true;
@@ -1991,10 +2020,10 @@
         const c = (ac && SD.concepts[ac] ? ac : null) || r.c || (SD.enemies[FL().boss] || {}).concept, q = r.t === 'board' ? findQ(r.q, c) : pick(due) || pick(c);
         if (!q) { send({ k: 'ans', ok: false }); return; }
         const typed = q.type === 'explain';
-        const title = r.t === 'board' ? 'WHITEBOARD' : r.t === 'reward' ? (second ? 'DEBRIEF · DUE REVIEW' : 'DEBRIEF') : String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase();
+        const title = r.t === 'board' ? 'WHITEBOARD' : r.t === 'tape' ? 'SEYMOUR\'S TAPE' : r.t === 'reward' ? (second ? 'DEBRIEF · DUE REVIEW' : 'DEBRIEF') : String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase();
         // A debrief says what the answer heals (the host caps it by what the team is missing and what's healed this fight).
         const heal = r.t === 'reward' ? (ok, t) => (!ok ? 'no heal' : `team heals ${r.lo && r.lo[me.peer] ? LOW_HEAL : healOf(t)} SLA`) : null;
-        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, credNote: CRED_NOTE, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new Cred, up to ${HEAL} SLA.`) : '' });
+        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, credNote: CRED_NOTE, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new Cred, up to ${HEAL} SLA.`) : r.t === 'tape' ? `Right, and ${(SD.enemies[G.main] || {}).name || 'the incident'} keeps the damage you did.` : '' });
         send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout, conf: res.conf, tal: myTally() });
       });
     }
@@ -2062,7 +2091,7 @@
       const mine = G.players[me.peer], fs = floorsOf(X());
       return `<div class="run-hud"><div class="hud-sla"><span>Team SLA</span><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}/${SLA}</b></div>
         <span class="hud-chip">Floor <b>${G.fl + 1}/${fs.length}</b></span>${mine ? `<span class="hud-chip">Bits <b>${mine.bits}</b></span>` : ''}
-        <span class="hud-chip" title="Seymour's Tape: if the team goes down, the floor starts again">📼 Tapes <b>${G.tapes}</b></span>
+        <span class="hud-chip" title="Seymour's Tape: if the team goes down, one plays and you fight on at full SLA">📼 Tapes <b>${G.tapes}</b></span>
         ${mine ? tallyChip(mine.tal | 0) : ''}
         ${mine ? `<button class="hud-chip" type="button" id="rd-deck" aria-expanded="${ui.deck}">Deck (${mine.deck.length})</button>` : ''}</div>
         ${ui.tally && mine ? `<p class="rd-tally-help">${tallyHelp(mine.tal | 0)}</p>` : ''}
@@ -2119,6 +2148,7 @@
       if (r.t === 'cafe') return cafeView(r, mine);
       if (r.t === 'camp') return campView(r, mine);
       if (r.t === 'board') return boardView(r, mine);
+      if (r.t === 'tape') return tapeView(r, mine);
       if (r.t === 'event') return eventView(r, mine);
     }
     function lobby(x) {
@@ -2135,7 +2165,7 @@
         mode: 'Expedition Raid', code, leader: G.host, max: MAX_PLAYERS, listed: o.vis && o.vis.get(), vis: o.vis, leave,
         what: 'the expedition', startLabel: G.rs ? 'Resume the expedition' : 'Start the expedition', boss: kyu, deck: !G.rs,
         settings: pickX,
-        note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café. No shards; this one is for practice.${seats}`,
+        note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café: then you answer a question and fight on. No shards; this one is for practice.${seats}`,
         addBot: hosting && !G.rs && all().length < MAX_PLAYERS ? () => send({ k: 'bot' }) : null,
         botChamp: hosting && !G.rs ? (k, c) => send({ k: 'botc', b: k, c }) : null,
         startWhy: () => (!x ? 'No expedition is open yet.' : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
@@ -2272,7 +2302,7 @@
           <button type="button" ${sendAttr({ k: 'tea' })} ${b.tea || mine.bits < TEA ? 'disabled' : ''}>Tea: team +${TEA_HEAL} SLA · ${TEA}</button>
           <button type="button" ${sendAttr({ k: 'tape' })} ${b.tape || mine.bits < TAPE ? 'disabled' : ''}>📼 Seymour's Tape · ${TAPE}</button>
           <button class="primary" type="button" ${sendAttr({ k: 'done' })}>Leave</button></div>
-        <p class="muted small">Seymour's Tape: if the team goes down, the floor starts again as you entered it, and the tape is used up. The party can hold several.</p>`;
+        <p class="muted small">Seymour's Tape: if the team goes down, everyone answers a question, then the tape is used up and the team fights on at full SLA. Get it right, and the incident keeps the damage you did. The party can hold several.</p>`;
       else if (mine) body = '<p class="rd-wait">You\'ve left the café. Waiting for the others.</p>';
       paint(`<div class="mi-card rd-room">${hud()}${head('Cache Café')}
         <div class="shopkeep">${SD.art.portrait('wen', 72)}<p>"A party! Grandma Wen runs a branch down here too, dears. Your own bits, your own baskets. Seymour left some tapes by the till."</p></div>
@@ -2298,6 +2328,16 @@
         <p>The same question for everyone, on ${esc((SD.concepts[r.c] || {}).name || 'this floor\'s boss')}, with ${TIMER} seconds each (double for a typed answer). A right answer heals the team and pays you bits, more the faster you answer: ${BOARD.fast[0]} SLA and ${BOARD.fast[1]} bits within 20 s, ${BOARD.steady[0]} and ${BOARD.steady[1]} within 45, else ${BOARD.slow[0]} and ${BOARD.slow[1]}.</p>
         ${wait ? `<p class="rd-wait">Your question is open.</p><button class="primary" type="button" id="rd-ask">Answer the question</button>` : mine ? '<p class="rd-wait">Waiting for the others to answer.</p>' : ''}
         ${team(k => (r.res[k] == null ? ['thinking'] : r.res[k] ? [BAND_TEXT[r.res[k]] || 'right', 'ok'] : ['missed', 'no']))}</div>`);
+      const a = root.querySelector('#rd-ask'); if (a) a.onclick = () => { if (!busy) { delete asked[askKey(r)]; render(); } };
+    }
+    // The tape room: each player's question on the incident that beat the team, then the tape plays (tapeDone).
+    function tapeView(r, mine) {
+      const wait = mine && r.wait[me.peer], e = SD.enemies[G.main] || {};
+      paint(`<div class="mi-card rd-room">${hud()}${head('Restoring from tape…')}
+        <div class="shopkeep">${SD.art.portrait('seymour', 72)}<p>"Gary says a backup you've never restored is a hope, not a backup. So we test it. One question first: say what went wrong, and it plays clean."</p></div>
+        <p>The team went down to ${esc(e.name || 'the incident')}. The tape puts everyone back on their feet at full SLA, in the same fight. One question each on ${esc((SD.concepts[r.c] || {}).name || 'what beat you')}: if at least half of you get it right, ${esc(e.name || 'the incident')} keeps the damage you did. If not, it starts again at full Severity.</p>
+        ${wait ? '<p class="rd-wait">Your question is open.</p><button class="primary" type="button" id="rd-ask">Answer the question</button>' : mine ? '<p class="rd-wait">Waiting for the others to answer.</p>' : ''}
+        ${team(k => (!r.wait[k] && r.res[k] == null ? ['watching'] : r.res[k] == null ? ['thinking'] : r.res[k] ? [BAND_TEXT[r.res[k]] || 'right', 'ok'] : ['missed', 'no']))}</div>`);
       const a = root.querySelector('#rd-ask'); if (a) a.onclick = () => { if (!busy) { delete asked[askKey(r)]; render(); } };
     }
     function eventView(r, mine) {
