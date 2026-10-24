@@ -71,7 +71,12 @@
       if (window.__SIMEVAL) return Promise.resolve({ ok: false, conf: 1, ms: 15000, score: 0 });
       const ch = channel(opts && opts.title), ok = answer(ch, q && q.opts ? q.opts.length - (opts && opts.hideOne ? 1 : 0) : 0);
       tallyQ(ch, ok);
-      return Promise.resolve({ ok, conf: ok && quiz() < 0.33 ? 2 : 1, ms: 15000, score: ok ? 1 : 0 });
+      const res = { ok, conf: ok && quiz() < 0.33 ? 2 : 1, ms: 15000, score: ok ? 1 : 0 };
+      // As the real quiz does: the answer goes into the On-call Cred window (js/state.js recordAnswer), then it is
+      // announced (js/quiz.js settle), for the relics backed by knowledge.
+      const sv = SD.state.save; if (q && q.c) sv.tally = (Array.isArray(sv.tally) ? sv.tally : []).concat([[ok ? 1 : 0, res.conf]]).slice(-20);
+      if (SD.meta && SD.meta.emit) SD.meta.emit('answer', res, q);
+      return Promise.resolve(res);
     };
     // The Design Board (js/board.js): the real B.bossStep runs, so its payoff formula is the game's own, and only the
     // player's drawing is modelled. Each stage goes right at the board channel's accuracy: the design passes its
@@ -427,7 +432,7 @@
     RUN = { cfg, seed: cfg.seed, errs: [], rooms: [], q: 0, qok: 0, plays: 0, turns: 0, offers: 0, picked: [], bought: [], removed: 0, tea: 0, rests: 0, upgrades: 0, clears: 0, events: 0, retries: 0, unknown: {}, ended: false, by: {}, board: null, boss: false };
     timers.length = 0;
     game = seeded('start', cfg.seed); Math.random = () => game(); quizR = seeded('quiz0', cfg.seed); bot = seeded('bot0', cfg.seed);
-    U.closePanel(); window.__slaPlus = cfg.slaPlus || 0; window.__sevx = cfg.sevx || 1; window.__dmgx = cfg.dmgx || 0; window.__noGary = !!cfg.noGary; window.__lastPicks = [];
+    U.closePanel(); window.__slaPlus = cfg.slaPlus || 0; window.__sevx = cfg.sevx || 1; window.__dmgx = cfg.dmgx || 0; window.__noGary = !!cfg.noGary; if (SD.run && 'backCred' in SD.run) SD.run.backCred = cfg.backCred || 0; window.__lastPicks = [];
     SD.debug.build(cfg.ch, cfg.rank || null, 0, cfg.quests ? 'done' : null);
     const sv = S.save;
     if (cfg.level) sv.level = cfg.level;
@@ -439,6 +444,10 @@
     { const ch = SD.chapters[cfg.ch]; if (ch) { SIM.chap0 = SIM.chap0 || {}; SIM.chap0[cfg.ch] = SIM.chap0[cfg.ch] || { ...ch }; Object.assign(ch, SIM.chap0[cfg.ch], cfg.chap || {}); } }
     if (SD.ascension.TUNE) { if (!SIM.tune0) SIM.tune0 = { ...SD.ascension.TUNE }; Object.assign(SD.ascension.TUNE, SIM.tune0, cfg.tune || {}); }
     sv.relics = (cfg.relics || []).slice();
+    // On-call Cred carried in (js/state.js S.tally): cold (cfg.cred unset) starts the run at 0; 'warm' fills the 20-answer
+    // window the way a player at this accuracy would have, seeded by the run's seed so every arm carries the same.
+    sv.tally = [];
+    if (cfg.cred === 'warm') { let x = (cfg.seed + 1) * 2654435761 % 4294967296; const r = () => (x = (x * 1664525 + 1013904223) % 4294967296) / 4294967296; const a = cfg.acc != null ? cfg.acc : 0.7; for (let i = 0; i < 20; i++) { const ok = r() < a; sv.tally.push([ok ? 1 : 0, ok && r() < 0.33 ? 2 : 1]); } }
     if (cfg.flags) Object.assign(sv.flags, cfg.flags);
     // Card experiments: the card joins the starting deck (cardLib, as Ayo's forge does).
     sv.cardLib = (cfg.card ? [{ id: cfg.card, on: true }] : []);
