@@ -11,7 +11,7 @@
     },
     multiregion: {
       name: 'Multi-Region & Failover', zone: 5, tag: 'Regions',
-      gist: 'Light needs about 70 ms to cross an ocean and back, so a single region is slow for half the world and one storm away from a total outage. Run the service in several regions. Active-passive keeps a warm standby that takes over on failover; active-active serves users from every region at once. Stateless tiers copy easily; data is the hard part: replicate asynchronously across regions (fast, but a failover can lose the last few seconds), or synchronously (safe, but every write pays the ocean). Give each user a home region for their writes, route reads to the nearest copy, and rehearse failover before you need it.',
+      gist: 'A round trip takes about 70 ms across the Atlantic and 100 to 150 ms across the Pacific, so a single region is slow for half the world and one storm away from a total outage. Run the service in several regions. Active-passive keeps a warm standby that takes over on failover; active-active serves users from every region at once. Stateless tiers copy easily; data is the hard part: replicate asynchronously across regions (fast, but a failover can lose the last few seconds), or synchronously (safe, but every write pays the ocean). Give each user a home region for their writes, route reads to the nearest copy, and rehearse failover before you need it.',
       page: 'Heaven now has two regions: Heaven and Heaven (East). Heaven (East) is just my old cloud with a sign on it. It counts. — U.'
     },
     observe: {

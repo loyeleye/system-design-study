@@ -133,12 +133,12 @@ SD.mock.problems = [
     },
     dives: [
       {
-        id: 'ids', title: 'Generating unique short codes', kind: 'bottleneck', c: 'idgen',
+        id: 'ids', title: 'Generating unique short codes', kind: 'real', c: 'idgen',
         q: 'How do you make sure two servers never hand out the same code?',
         opts: ['Each server leases a block of 1,000 IDs from a shared counter and base62-encodes them', 'Hash the long URL with MD5 and keep the first 7 characters, so the same URL gets the same code', 'Generate a random 7-character base62 string; with 3.5 trillion codes, a clash is too rare to matter', 'Use a UUIDv4 for each link, since random 128-bit IDs never collide in practice'],
-        a: 0, no: [null, 'Seven characters of a hash collide once you have billions of links, and nothing here detects it. Hash-and-check works, but costs a lookup per create.', 'The birthday paradox: a clash becomes likely after a couple of million codes, long before trillions. Random codes need a conditional insert and a retry.', 'A UUID is unique without coordination, but it is 22 characters even in base62, so the "short" link is not short. UUIDs suit internal IDs.'],
+        a: 0, no: [null, 'Seven characters of a hash collide once you have billions of links, and nothing here detects it. Hash, insert only if the code is free, and retry with a salt on a clash works.', 'The birthday paradox: a clash becomes likely after a couple of million codes, long before trillions. Random codes are fine at this scale, but only with a conditional insert and a retry.', 'A UUID is unique without coordination, but it is 22 characters even in base62, so the "short" link is not short. UUIDs suit internal IDs.'],
         nudge: 'What happens when two servers pick the same random code, or two URLs hash alike?',
-        why: 'Counter ranges give guaranteed-unique numbers with one round trip per thousand links. Hashes and random strings collide unless you check every insert, and UUIDs are unique but far too long to be short codes.',
+        why: 'Counter ranges give guaranteed-unique numbers with one round trip per thousand links and never retry. Random or hashed codes also work at about 40 creates a second if the insert itself is conditional (a unique key, INSERT ... ON CONFLICT): the write is the check, so there is no extra lookup, only a rare retry. UUIDs are unique but far too long to be short codes.',
         f: {
           q: 'What does the counter-range approach cost you?',
           opts: ['Codes are roughly sequential and guessable, and a crashed server wastes the rest of its block', 'Every create takes a lock on the shared counter, so creates run one at a time worldwide', 'Blocks can overlap between servers, so every new code still needs a uniqueness check', 'Redirects get slower, since each lookup must ask the counter which server issued that short code'],
@@ -147,7 +147,7 @@ SD.mock.problems = [
         }
       },
       {
-        id: 'viral', title: 'A link goes viral', kind: 'real', c: 'hotkey',
+        id: 'viral', title: 'A link goes viral', kind: 'bottleneck', c: 'hotkey',
         q: 'One code gets 50,000 clicks a second. What do you do?',
         opts: ['Serve the hot code from the cache, or a CDN edge, so the database only sees the first miss', 'Shard the links table by short code so the load spreads across more database nodes', 'Put the lookups on a queue and let workers resolve them as fast as the database allows', 'Rate limit that code so the database is never asked for more than it can handle'],
         a: 0, no: [null, 'Sharding spreads different keys. All 50,000 clicks are for one code, which lives on one shard, so that shard still takes every read.', 'A redirect is synchronous: the browser is waiting. Queues suit work nobody waits on, like counting the clicks afterwards.', 'These are real users following a popular link. Rate limiting is for abusive clients; here it would break the product at its best moment.'],
