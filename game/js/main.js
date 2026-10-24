@@ -479,9 +479,9 @@
     // Keepsakes past the first shelf unlock with your Guild rank. The next shelf up shows, locked, as a preview; the
     // ones after it stay hidden until then (SD.shop.shown).
     const rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
-    // Once, when the B shelf opens: its keepsakes and every one above are backed by On-call Cred (js/run.js). The
+    // Once, when the A shelf opens: its keepsakes and every one above are credentialed by On-call Cred (js/run.js). The
     // Exchange's trader explains it instead if you see him first; one flag for both (js/relic-exchange.js).
-    const backedOpen = mine >= rankAt('B');
+    const backedOpen = mine >= rankAt('A');
     if (backedOpen && !sv.flags.credTold) {
       sv.flags.credTold = true; S.persist();
       await U.dialog([

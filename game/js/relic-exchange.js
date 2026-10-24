@@ -32,7 +32,7 @@
   async function open() {
     const sv = S.save, rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
     // Once: how Cred-backed relics work (js/run.js), unless Wen told you first. One flag for both (js/main.js cafe).
-    if (mine >= rankAt('B') && !sv.flags.credTold) {
+    if (mine >= rankAt('A') && !sv.flags.credTold) {
       sv.flags.credTold = true; S.persist();
       await U.dialog([
         { s: 'trader', t: 'Fair warning: these are credentialed. Under 5 On-call Cred, they sit there like bad stock.' },
