@@ -46,6 +46,8 @@
     openingbell: 'ringing-bell', tradinghalt: 'stop-sign', genesis: 'scroll-quill', clearing: 'scales'
   };
   const icon = (name, color) => SD.art.icon(name, color) || SD.art.glyph('note', color);
+  // A keepsake's or relic's icon by its id, for lists outside the shops (Menu > Relics, js/relic-toggles.js).
+  SH.icon = (id, color) => icon(ICONS[id] || 'note', color);
   // A plain padlock: the Game-icons one turns to mush at 13px.
   const lockIcon = () => '<svg class="si-lock" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3" y="7" width="10" height="8" rx="2" fill="currentColor"/></svg>';
 

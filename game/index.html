@@ -205,6 +205,35 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .opt:hover:not(:disabled) { background: #f1f7ff; transform: translateY(-1px); }
 .opt.on { background: #dcebff; box-shadow: 0 3px 0 var(--blue-d); border-color: var(--blue-d); }
 .opt.struck { text-decoration: line-through; }
+/* Menu > Relics (js/relic-toggles.js): one switch row per owned relic. */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.rt-help { margin: 0 0 8px; }
+.rt-top { display: grid; gap: 8px; }
+.rt-q { width: 100%; box-sizing: border-box; min-height: 44px; padding: 9px 12px; font: 600 16px var(--f-body); border: 2px solid var(--ink); border-radius: 10px; background: #fff; }
+.rt-f { margin: 0; }
+.rt-f .tab { min-height: 36px; min-width: 64px; }
+/* button.on[aria-pressed] (below) would paint the picked filter pale blue under white text: keep the .tab look. */
+.rt-f .tab.on[aria-pressed="true"] { background: var(--blue); color: #fff; box-shadow: 0 3px 0 var(--blue-d); }
+.rt-list { max-height: min(52vh, 480px); overflow-y: auto; overscroll-behavior: contain; margin-top: 8px; padding: 2px 4px 6px; border-top: 2px dashed var(--line); }
+.rt-g[hidden], .rt-row[hidden] { display: none; }
+.rt-gh { margin: 12px 2px 0; font: 700 12px var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.rt-g .opts { margin-top: 6px; }
+.rt-none { margin: 14px 2px; }
+.rt-legend { margin: 6px 0 0; }
+.rt-foot { margin-top: 10px; }
+.rt-row { display: flex; align-items: center; gap: 10px; }
+.rt-row .rt-ic { flex: 0 0 30px; width: 30px; height: 30px; }
+.rt-row .rt-ic svg { width: 100%; height: 100%; }
+.rt-row .rt-tx { flex: 1; min-width: 0; }
+.rt-row .rt-tx small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
+.rt-row .rt-sw { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; font: 700 11px var(--f-body); }
+.rt-row .rt-sw i { position: relative; width: 38px; height: 22px; border-radius: 11px; background: #2fa35f; border: 2px solid var(--ink); transition: background .15s; }
+.rt-row .rt-sw i::after { content: ''; position: absolute; top: 2px; left: 18px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
+.rt-row.off { background: #f3f1f7; }
+.rt-row.off .rt-tx b { color: var(--muted); }
+.rt-row.off .rt-sw i { background: #c9c4d6; }
+.rt-row.off .rt-sw i::after { left: 2px; }
+@media (prefers-reduced-motion: reduce) { .rt-row .rt-sw i, .rt-row .rt-sw i::after { transition: none; } }
 .conf { border-top: 2px dashed var(--line); padding-top: 12px; margin-top: 6px; }
 .conf-b { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .conf-b button { flex: 1 1 90px; background: #fff; }
@@ -1092,6 +1121,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/rollouts-mirror.js"></script>
 <script src="js/rollouts-quests.js"></script>
 <script src="js/relic-exchange.js"></script>
+<script src="js/relic-toggles.js"></script>
 <script src="js/card-exchange.js"></script>
 <script src="js/sidequest-reviews.js"></script>
 <script src="js/review-bank.js"></script>

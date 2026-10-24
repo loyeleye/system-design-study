@@ -12,7 +12,7 @@
   function fresh() {
     return {
       v: 1, econ: 2, sched: SCHED, name: 'Ash', loop: 1, xp: 0, level: 1, shards: 0,
-      relics: [], spec: 'none', concepts: {}, pages: [], links: [], pickups: [],
+      relics: [], relicsOff: [], spec: 'none', concepts: {}, pages: [], links: [], pickups: [],
       flags: {}, stats: { runs: 0, wins: 0, fights: 0, answered: 0, correct: 0 },
       chapter: 1, drawings: 0, mioVisitLoop: 0, run: null, lastRun: null, updatedAt: 0
     };
@@ -125,12 +125,15 @@
     }
     return ups;
   };
+  // Relics you own and haven't switched off in Menu > Relics (js/relic-toggles.js). An off relic does nothing and
+  // shows nothing in a run; it stays owned, so switching it back on costs nothing.
+  S.relicOn = id => S.save.relics.includes(id) && !(S.save.relicsOff || []).includes(id);
   S.maxSla = function () {
     const sv = S.save, Q = SD.quests;
     const dev = Q ? (Q.has('recipe') ? 8 : 0) : 0;
     // The Damp Archives curse drains max SLA while you are down there, until Hiro's recipe lifts it.
     const curse = Q && sv.run && sv.run.ch && Q.curses(sv.run.ch).includes('damp') ? 12 : 0;
-    return 60 + (sv.level - 1) * 4 + (sv.relics.includes('lantern') ? 10 : 0) + (sv.relics.includes('genesis') ? 25 : 0) + (sv.spec === 'warden' ? 15 : 0) + dev - curse
+    return 60 + (sv.level - 1) * 4 + (S.relicOn('lantern') ? 10 : 0) + (S.relicOn('genesis') ? 25 : 0) + (sv.spec === 'warden' ? 15 : 0) + dev - curse
       + (sv.run && sv.run.maxPlus || 0);   // Clear the Books in break rooms (the Clearing House, js/relic-exchange.js)
   };
   // Chapter gates. A main chapter opens when the main chapter before it is cleared. An optional chapter

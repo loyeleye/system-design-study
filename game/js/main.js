@@ -129,6 +129,7 @@
       ${S.save && SD.journal ? '<button class="opt" id="m-journal">Journal: bestiary and achievements</button>' : ''}
       ${S.save && SD.folk ? '<button class="opt" id="m-board">The Brújula Board: where is everyone?</button>' : ''}
       ${SD.guild ? '<button class="opt" id="m-guild">Multiplayer: the Guild Hall</button>' : ''}
+      ${S.save && SD.relicToggles && SD.relicToggles.count().all ? `<button class="opt" id="m-relics">Relics: switch on or off <b>${SD.relicToggles.count().on} of ${SD.relicToggles.count().all} on</b></button>` : ''}
       <button class="opt" id="m-music">Music: <b>${p.music ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-sfx">Sound effects: <b>${p.sfx ? 'On' : 'Off'}</b></button>
       <button class="opt" id="m-say">Say it first: <b>${{ boss: 'Boss questions', all: 'Every question', off: 'Off' }[SD.quiz.sayMode()]}</b></button>
@@ -145,6 +146,8 @@
     const mb = b.querySelector('#m-board'); if (mb) mb.onclick = () => SD.folk.board();
     // Multiplayer (js/guild.js). Also on the title screen.
     const mg = b.querySelector('#m-guild'); if (mg) mg.onclick = () => SD.guild.play();
+    // Switch owned relics on and off (js/relic-toggles.js).
+    const mr = b.querySelector('#m-relics'); if (mr) mr.onclick = () => SD.relicToggles.open(menu);
     b.querySelector('#m-music').onclick = () => { AU.set('music', !p.music); menu(); M.hud(); };
     b.querySelector('#m-sfx').onclick = () => { AU.set('sfx', !p.sfx); menu(); M.hud(); };
     b.querySelector('#m-credits').onclick = credits;
