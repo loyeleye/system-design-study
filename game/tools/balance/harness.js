@@ -168,7 +168,8 @@
       let { dmg } = held || X().resolveIntent(it);
       dmg = SD.meta.mod('dmg', dmg, c);
       if (dmg > 0 && c.budget > 0) { const s = Math.min(c.budget, dmg); c.budget -= s; dmg -= s; }
-      const rel = id => S.save.relics.includes(id);
+      // As the game's own rel() (js/run.js): a credentialed relic is off under SD.run.backCred On-call Cred.
+      const rel = id => S.save.relics.includes(id) && !(R.isBacked && R.isBacked(id) && R.backCred && S.tally() < R.backCred);
       if (dmg > 0 && rel('breaker') && !c.breakerUsed) { c.breakerUsed = true; dmg = 0; }
       if (dmg > 1 && dmg <= 5 && rel('torii')) dmg = 1;
       if (dmg > 0 && rel('bluechip')) dmg--;
@@ -210,7 +211,7 @@
     let v = -incoming(c) + 0.6 * (base.sev - sev) - c.stale * (audit ? 2.5 : 0.4) - (base.sla - run.sla) * 1.0;
     v += (c.hand.length - base.hand) * 2.2;                 // cards drawn
     v += (c.energy - base.energy) * 0;                      // spent Capacity is charged by the per-cost ratio instead
-    if (S.save.relics.includes('croissant')) v += c.energy * 0.8;
+    if (S.save.relics.includes('croissant') && !(R.isBacked && R.backCred && S.tally() < R.backCred)) v += c.energy * 0.8;
     const fz = (c.fuses || []).reduce((a, f) => a + f.mit, 0) - base.fuses; v += fz * 0.6;
     v += ((c.edge || 0) - base.edge) * 3 + ((c.edgeEach || 0) - base.edgeEach) * 6 + ((c.thorns || 0) - base.thorns) * 2;
     if (c.vuln > base.vuln) v += 6;
