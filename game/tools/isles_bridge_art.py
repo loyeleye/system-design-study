@@ -11,7 +11,7 @@ It writes to assets/img/isles:
                the bridges that run north to south)
   bridge-end   the end post and outline where a bridge meets land (flipped or turned for the other ends)
   bridge-stub  a bridge site: the end post and a few planks reaching out over the water
-  lantern-*    the festival lanterns, the red one and three recoloured from it
+  lantern-*    the festival lanterns: red and blue, the colours of the twins' two halls
 and adds their sizes to the I.ART block in js/isles/isles-data.js.
 """
 import colorsys, json, os, re, sys
@@ -36,7 +36,9 @@ save(br.crop((13, 11, 45, 37)), 'bridge')
 save(br.crop((2, 11, 13, 37)), 'bridge-end')
 save(br.crop((2, 11, 30, 37)), 'bridge-stub')
 
-# Lanterns: the red one as drawn, and gold, blue and pink by turning the hue of its paper (not its pole).
+
+# Lanterns: the Twin Islands' mayors hung them (js/isles/twins.js), in the colours of their two town halls, so
+# the red one is as drawn and the blue one has the hue of its paper turned (not its pole).
 ln = Image.open(os.path.join(SRC, 'lantern.png')).convert('RGBA')
 ln = ln.crop(ln.getbbox())
 def turn(im, dh):
@@ -49,10 +51,13 @@ def turn(im, dh):
                 r, g, b = colorsys.hls_to_rgb((h + dh) % 1, l, sat)
                 px[x, y] = (round(r * 255), round(g * 255), round(b * 255), a)
     return out
-for name, dh in [('red', 0), ('gold', 0.12), ('blue', 0.55), ('pink', 0.9)]:
+for name, dh in [('red', 0), ('blue', 0.6)]:
     save(turn(ln, dh), 'lantern-' + name)
 
 block = '  // <isles-art> Made by tools/isles_art.py: sprite sheet and object sizes in assets/img/isles.\n  I.ART = ' + json.dumps(art) + ';\n  // </isles-art>'
 s = re.sub(r'  // <isles-art>.*?// </isles-art>', lambda _: block, s, flags=re.S)
 open(data, 'w').write(s)
+for gone in ['lantern-gold', 'lantern-pink', 'bridge-rope']:
+    art['objects'].pop(gone, None)
+    if os.path.exists(os.path.join(OUT, gone + '.webp')): os.remove(os.path.join(OUT, gone + '.webp'))
 print({k: art['objects'][k] for k in art['objects'] if k.startswith(('bridge', 'lantern'))})

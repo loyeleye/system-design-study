@@ -876,20 +876,33 @@
   };
   // One piece of PixelLab bridge (tools/isles_bridge_art.py) on tile (x, y). Pieces are drawn running west to east with
   // land to the west; ang turns them (a quarter turn runs them north to south) and flip mirrors them. dx moves a piece
-  // along its run, in its own pixels.
-  function bridgePiece(name, x, y, ang, flip, dx) {
+  // along its run and dy across it, in its own pixels (by default it is centred across the run).
+  function bridgePiece(name, x, y, ang, flip, dx, dy) {
     const im = ipic(name), sz = I.ART && I.ART.objects[name];
     if (!sz || !ok(im)) return false;
     const k = ts / 32, w = Math.round(sz[0] * k), h = Math.round(sz[1] * k);
     ctx.save(); ctx.translate(Math.round((x + 0.5) * ts), Math.round((y + 0.5) * ts)); ctx.rotate(ang); if (flip) ctx.scale(-1, 1);
-    ctx.drawImage(im, Math.round(-ts / 2 + (dx || 0) * k), Math.round(-h / 2), w, h);
+    ctx.drawImage(im, Math.round(-ts / 2 + (dx || 0) * k), dy == null ? Math.round(-h / 2) : Math.round(dy * k), w, h);
     ctx.restore();
     return true;
   }
   // How to turn an end piece so its land side faces (ox, oy), away from the rest of the bridge.
   const endTurn = (ox, oy) => ox < 0 ? [0, false] : ox > 0 ? [0, true] : oy < 0 ? [Math.PI / 2, false] : [-Math.PI / 2, false];
+  const SIDES = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  const DECK = 13 / 32;   // half the deck's width, in tiles
+  // A rope handrail: harbour rope tied to the tops of two posts (screen pixels), sagging in the middle on spans that run
+  // east to west, in the bridge's own colours and pixels.
+  const ROPE = ['#d8b07a', '#7c554c', '#371b23'];
+  function rope(ax, ay, bx, by, sag) {
+    const k = ts / 32, n = Math.max(1, Math.round(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) / k)), p = Math.ceil(k);
+    for (let i = 0; i <= n; i++) {
+      const f = i / n, x = Math.round(ax + (bx - ax) * f), y = Math.round(ay + (by - ay) * f + Math.round(sag * Math.sin(Math.PI * f)) * k);
+      ctx.fillStyle = ROPE[i % 3 ? 0 : 1]; ctx.fillRect(x, y, p, p);
+      ctx.fillStyle = ROPE[2]; ctx.fillRect(x, y + p, p, p);
+    }
+  }
   function drawBridges(t) {
-    const lanterns = [];
+    const rails = [], posts = new Map(), lanterns = [];
     Object.keys(BT).forEach(id => {
       if (!I.bridges.some(b => b.id === id)) return;
       const tiles = BT[id], done = I.bridgeBuilt(id), bridge = I.bridges.find(b => b.id === id);
@@ -913,16 +926,41 @@
           }
           return;
         }
+        // Where the bridge turns a corner, the span it comes in on runs to the middle of the corner tile, under the
+        // span it turns onto, so the two join.
+        const prev = tiles[i - 1], next = tiles[i + 1], corner = prev && next && prev[0] !== next[0] && prev[1] !== next[1];
+        if (corner) {
+          const [ix, iy] = prev;
+          ctx.save(); ctx.beginPath();
+          ctx.rect((x + (ix > x ? 0.5 : ix < x ? -0.5 : 0)) * ts, (y + (iy > y ? 0.5 : iy < y ? -0.5 : 0)) * ts, ts, ts); ctx.clip();
+          bridgePiece('bridge', x, y, iy === y ? 0 : Math.PI / 2, ix > x || iy > y);
+          ctx.restore();
+        }
         bridgePiece('bridge', x, y, horiz ? 0 : Math.PI / 2, false);
         if (end) { const [ang, flip] = endTurn(x - nb[0], y - nb[1]); bridgePiece('bridge-end', x, y, ang, flip, -3); }
-        if (i % 2 === 0 && I.st().festival) {
-          // After the festival, lanterns hang along every bridge.
-          const c = ['red', 'gold', 'blue', 'pink'][(i / 2) % 4], bob = Math.sin(t * 2 + i) * 1.5;
-          lanterns.push(horiz ? [c, (x + 1) * ts, (y + 0.25) * ts + bob] : [c, (x + 0.8) * ts, (y + 1) * ts + bob]);
-        }
+        // Handrails: a post at each corner of the deck and a rope between, on every side that isn't more bridge or the
+        // shore it lands on.
+        const land = end ? [x - nb[0], y - nb[1]] : null;
+        SIDES.forEach(([ox, oy]) => {
+          if ([prev, next].some(q => q && q[0] === x + ox && q[1] === y + oy)) return;
+          if (land && land[0] === ox && land[1] === oy) return;
+          const cx = x + 0.5 + ox * DECK, cy = y + 0.5 + oy * DECK;
+          const a = [(cx - Math.abs(oy) * 0.5) * ts, (cy - Math.abs(ox) * 0.5) * ts], b = [(cx + Math.abs(oy) * 0.5) * ts, (cy + Math.abs(ox) * 0.5) * ts];
+          [a, b].forEach(p => posts.set(p.map(Math.round).join(), p));
+          rails.push([a, b, oy ? 2 : 0]);
+          if (I.st().festival && i % 2 === 1 && (oy < 0 || ox > 0)) {
+            // After the festival, the twin mayors' lanterns (js/isles/twins.js) hang from the handrails: Ha-eun's red
+            // from the East Twin and Ha-jin's blue from the West, every one counted once.
+            lanterns.push([(i - 1) / 2 % 2 ? 'blue' : 'red', (a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + (oy ? 2 : 0) * ts / 32]);
+          }
+        });
       });
     });
-    lanterns.forEach(([c, x, y]) => iobj('lantern-' + c, x, y, 0.8));
+    // Posts first, then the ropes tied near their tops, then the lanterns hanging from the ropes.
+    const top = ts / 32 * 9, sway = Math.sin(t * 2) * 1;
+    posts.forEach(([x, y]) => iobj('bollard', x, y + ts / 32 * 2, 0.4));
+    rails.forEach(([a, b, sag]) => rope(a[0], a[1] - top, b[0], b[1] - top, sag));
+    lanterns.forEach(([c, x, y], j) => iobj('lantern-' + c, x + (j % 2 ? sway : -sway), y - top + ts / 32 * 17, 0.8));
   }
   function drawDocks(t) {
     Object.keys(DOCK).forEach(id => {
