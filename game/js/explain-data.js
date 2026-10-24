@@ -1,20 +1,24 @@
 // Typed answers: explain a concept in your own words, then check it against a rubric (js/quiz.js, type 'explain').
 // S.pickQuestion serves one of these about a third of the time once you've answered the concept right before.
 //
-// { id, c, type: 'explain', q, points: [{ t, keys, ex }], model, why }
+// { id, c, type: 'explain', q, points: [{ t, keys, ex, anti, negOk }], model, why }
 //   q       an open question, the way an interviewer would ask it
 //   points  3 to 5 things a strong answer covers; you need 60% of them (2 of 3, 3 of 4 or 5)
 //     t     the point, in a few plain words (shown on the rubric)
 //     keys  regex fragments; any match counts the point as found. Matched from a word start, case-insensitive,
-//           so 'expir' matches expire, expires and expiry. Keep them specific to the point.
+//           so 'expir' matches expire, expires and expiry. Keep them specific to the point. A match that is negated
+//           ("no ttl needed", "idempotency does not matter") doesn't count.
 //     ex    2 to 4 other ways people say it, casual ones included. A clause of the answer that means about the
 //           same (on-device embeddings, js/embed.js) also counts as found.
+//     anti  optional regex fragments for the trap this point warns about, said as a recommendation ("shard by
+//           timestamp"). A match (not negated: "don't shard by timestamp" is fine) means the point isn't found.
+//     negOk optional: true when the point is itself a "this won't help" claim, so negation near its keys is expected
 //   model   a model answer of two to four sentences
 //   why     optional: one line on why this matters in the interview
 SD.explain = [
   { id: 'x-bk1', c: 'booking', type: 'explain', q: 'Two fans tap Buy on the same seat at the same moment. Walk me through how your design makes sure only one of them gets it.',
     points: [
-      { t: 'Claim the seat atomically, so only one write can win', keys: ['atomic', 'lock(s|ing|ed)? (on |for )?(the |that |a |each )?(seat|row)', 'lock(s|ing|ed)? (on )?it\\b', '(grab|take|acquire)s? (a|the) lock', 'seat.?locks?', 'set ?nx', 'select .*for update', 'compare.and.(set|swap)', 'conditional (write|update)', 'optimistic', 'pessimistic', 'row.level lock', 'version (check|number|column)'], ex: ['only the first request can grab the seat', 'lock the seat row so the second buyer fails', 'the update only succeeds if the seat is still free'] },
+      { t: 'Claim the seat atomically, so only one write can win', anti: ['last.write.wins', 'check (if|whether|that) (the )?seat is (free|available),? then'], keys: ['atomic', 'lock(s|ing|ed)? (on |for )?(the |that |a |each )?(seat|row)', 'lock(s|ing|ed)? (on )?it\\b', '(grab|take|acquire)s? (a|the) lock', 'seat.?locks?', 'set ?nx', 'select .*for update', 'compare.and.(set|swap)', 'conditional (write|update)', 'optimistic', 'pessimistic', 'row.level lock', 'version (check|number|column)'], ex: ['only the first request can grab the seat', 'lock the seat row so the second buyer fails', 'the update only succeeds if the seat is still free'] },
       { t: 'The hold expires on its own if they never pay', keys: ['ttl', 'expir', 'time ?out', 'lease', 'auto.?release'], ex: ['the reservation times out after ten minutes', 'seats go back on sale if they walk away', 'the hold is released automatically'] },
       { t: 'Confirm on payment, and make that confirmation idempotent', keys: ['idempoten', 'dedup', 'webhook', 'payment (callback|confirmation)'], ex: ['use the booking id so a retried payment does not book twice', 'when payment succeeds the hold becomes a booking', 'retries of the confirmation are safe'] }
     ],
@@ -31,9 +35,9 @@ SD.explain = [
 
   { id: 'x-shard1', c: 'sharding', type: 'explain', q: 'Your table no longer fits on one database. How do you choose the shard key, and what can go wrong with it?',
     points: [
-      { t: 'Pick a key that spreads load evenly (high cardinality)', keys: ['cardinality', 'even(ly)?', 'uniform', 'hash(ed)? (of|the|by)', 'distribut'], ex: ['spread the rows across all the machines', 'hash the user id to pick the shard'] },
+      { t: 'Pick a key that spreads load evenly (high cardinality)', keys: ['cardinality', 'even(ly)?', 'uniform', 'hash(ed)? (of|the|by)', 'distribut'], anti: ['(shard|partition|split)(s|ed|ing)? (it |the table |the data |rows )?(by|on) (the )?(timestamps?|time|date|day|created|creation)', '(timestamp|date|created.at|creation time) as the (shard |partition )?key'], ex: ['spread the rows across all the machines', 'hash the user id to pick the shard'] },
       { t: 'Most queries should hit one shard (key follows the access pattern)', keys: ['access pattern', 'single shard', 'one shard', 'scatter', 'fan.out (query|read)', 'cross.shard'], ex: ['a user\'s data lives together so reads stay on one machine', 'avoid queries that have to ask every shard'] },
-      { t: 'Watch for hot shards, e.g. a celebrity or a time-based key', keys: ['hot (shard|key|spot|partition)', 'celebrit', 'skew', 'timestamp', 'monoton'], ex: ['one shard gets all the traffic', 'sharding by date sends every new write to the same place'] },
+      { t: 'Watch for hot shards, e.g. a celebrity or a time-based key', keys: ['hot (shard|key|spot|partition)', 'celebrit', 'skew', 'timestamp', 'monoton'], anti: ['(shard|partition|split)(s|ed|ing)? (it |the table |the data |rows )?(by|on) (the )?(timestamps?|time|date|day|created|creation)', '(timestamp|date|created.at|creation time) as the (shard |partition )?key'], ex: ['one shard gets all the traffic', 'sharding by date sends every new write to the same place'] },
       { t: 'Plan for resharding: consistent hashing or many virtual shards', keys: ['reshard', 'rebalanc', 'consistent hash', 'virtual (node|shard)', 'vnode'], ex: ['adding a machine should move only a little data', 'start with many small logical shards'] }
     ],
     model: 'Choose a high-cardinality key that matches how the data is read, like user id for per-user data, so load spreads evenly and most queries touch one shard. Avoid keys that concentrate traffic: a celebrity account or a timestamp key makes one shard hot. Use consistent hashing or many logical shards mapped onto machines, so adding capacity moves a small slice of data instead of everything.' },
@@ -78,7 +82,7 @@ SD.explain = [
 
   { id: 'x-hotkey1', c: 'hotkey', type: 'explain', q: 'One celebrity\'s key gets 30% of all reads and the shard that owns it is melting. Why won\'t adding more shards help, and what would you do?',
     points: [
-      { t: 'One key always lives on one shard, so more shards change nothing', keys: ['one key (always )?(lives|maps|goes|sits|stays|hashes)', 'same (shard|node|partition|machine)', 'more shards (won|do|does|will|just)', 'adding (more )?shards', 'cannot be split'], ex: ['the key still hashes to the same machine', 'resharding just moves the problem to another box', 'all of that traffic follows the one key'] },
+      { t: 'One key always lives on one shard, so more shards change nothing', negOk: true, keys: ['one key (always )?(lives|maps|goes|sits|stays|hashes)', 'same (shard|node|partition|machine)', 'more shards (won|do|does|will|just)', 'adding (more )?shards', 'cannot be split'], ex: ['the key still hashes to the same machine', 'resharding just moves the problem to another box', 'all of that traffic follows the one key'] },
       { t: 'Replicate the hot key and spread its reads over the copies', keys: ['replicat', 'read replicas?', 'copies of (the|that) key', 'more copies', '(several|many|multiple) (nodes|replicas|copies)'], ex: ['keep copies of that key on several nodes', 'let several replicas serve the reads', 'spread reads of that key over many machines'] },
       { t: 'Split it into salted sub-keys and pick one at random', keys: ['salt', 'suffix', 'sub.?keys?', 'split (the|that|it) (key|into)', 'key ?#', 'key_\\d'], ex: ['store it as ten keys with a random suffix', 'append a number to the key and pick one at random', 'break the counter into pieces and add them up'] },
       { t: 'Cache it locally in each app server, or at the CDN', keys: ['local (in.?memory |in.?process )?cache', 'in.?process', 'app server.s memory', 'near cache', 'l1 cache', 'cdn'], ex: ['each app server keeps its own short-lived copy', 'cache it in the app\'s own memory for a second', 'serve it from the edge so it never reaches the shard'] }
