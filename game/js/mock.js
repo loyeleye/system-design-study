@@ -15,8 +15,9 @@
 //
 // Self-contained: needs SD.mock (mock-data.js) and SD.wb.parts (whiteboard-data.js). Uses SD.art, SD.concepts,
 // SD.icons and SD.audio when the main game has loaded them, and SD.quiz.rubric (quiz.js) with SD.embed (embed.js) to
-// read typed answers.
-//   SD.mock.interview(root, { pid, pace, think, store }) -> Promise<result>   think: 'type' (default), 'say' or 'off'
+// read typed answers, and the Design Board (board-data.js, board.js) for the high-level design when it is loaded.
+//   SD.mock.interview(root, { pid, pace, think, hld, store }) -> Promise<result>   think: 'type' (default), 'say' or 'off'
+//                                                                hld: 'draw' (default, on the board) or 'pick'
 //   SD.mock.menu(root, { store, open, onResult })        -> the problem list, settings and history
 //   SD.mock.solo()                                       -> the main game's entry (Ploy on the Isles, and the Practice hub)
 (function () {
@@ -34,6 +35,12 @@
   // Answer first: 'type' 1 to 3 sentences before the options (the default), 'say' it aloud first, or 'off'.
   // Older saves stored true (said aloud, now typed) or false.
   M.think = v => v === false || v === 'off' ? 'off' : v === 'say' ? 'say' : 'type';
+  // The high-level design: 'draw' it on the Design Board (js/board.js) when the problem has one, or 'pick' the parts
+  // of each flow from a palette.
+  M.hld = v => v === 'pick' ? 'pick' : 'draw';
+  // Mock problems that share a Design Board problem (js/board-data.js), by id.
+  M.boards = { url: 'url', limiter: 'limiter', tickets: 'tickets', feed: 'feed', rides: 'rider', chat: 'chat', video: 'video', crawler: 'crawler', llmchat: 'llm' };
+  M.boardFor = pid => SD.board && SD.board.play && SD.boardData && SD.boardData[M.boards[pid]] ? M.boards[pid] : null;
   // What a strong typed answer covers: the question's own rubric (js/mock-typed.js), else one built from its right
   // option (SD.quiz.autoPoints), else null when there is nothing to type for.
   M.points = (key, q) => (key && SD.mock.typed && SD.mock.typed[key]) || (SD.quiz && SD.quiz.autoPoints ? SD.quiz.autoPoints(q) : null);
@@ -281,6 +288,7 @@
         estOk: 'Close enough to win! What does that tell you?',
         estBad: 'Ooh, so close, and yet! Here\'s how I\'d get it.',
         hld: 'Big round! The high-level design. Walk me through one request at a time, like a board-game turn.',
+        hldBoard: 'Big round! Here\'s a blank board. Draw your design, then walk each request through your own boxes.',
         hldNext: 'Level two: the other flow!',
         hm: 'Ooh, plot twist!',
         hldOk: 'I can follow that path all the way! Point!',
@@ -339,7 +347,7 @@
         ents: 'What are the core things this system stores?', api: 'Good. Now the API. What would you write?', apiOk: 'Mm. Yes.', apiBad: 'Hm. Let me show you what I\'d expect.',
         est: 'Do you want to do any back-of-the-envelope math?', estTell: 'I\'ll just tell you, then. {x}.', estSlow: 'That\'s... a lot of math. OK. Just the one that matters, then:', estGo: 'Go on.',
         estOk: 'Close enough. What does that tell you?', estBad: 'That\'s a bit off. Here\'s how I\'d get it.',
-        hld: 'Let\'s see the high-level design. Walk me through one request at a time.', hldNext: 'Now the other flow.', hm: 'Hm.',
+        hld: 'Let\'s see the high-level design. Walk me through one request at a time.', hldBoard: 'Here\'s the whiteboard. Draw the design, then trace each request through it.', hldNext: 'Now the other flow.', hm: 'Hm.',
         hldOk: 'OK. I follow that.', hldGap: 'There\'s a gap. I\'ve marked it.', hldExtra: 'It works. Some of that isn\'t pulling its weight, though.',
         divePick: 'Good. Where would you like to go deep? Pick the part you think matters most.', tap: 'Gary taps the board.',
         diveYes: 'Yes. That\'s where I\'d look too.', diveOther: 'Sure. And after that I want to hear about one more thing.', diveNext: 'Next: {x}.',
@@ -676,8 +684,9 @@
     const sorted = set => [...set].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     async function design() {
       enter('hld');
-      const H = P.hld;
-      for (let fi = 0; fi < H.flows.length; fi++) {
+      const H = P.hld, bid = M.hld(opts.hld) === 'draw' && M.boardFor(P.id);
+      if (bid) await drawBoard(bid);
+      else for (let fi = 0; fi < H.flows.length; fi++) {
         const F = H.flows[fi], sel = new Set();
         let nudged = null;
         speak(L(fi ? 'hldNext' : 'hld'));
@@ -738,6 +747,28 @@
       answers.push({ c: H.why.c, ok: r.ok, conf: r.conf });
       const t = await reveal(H.why, r, '', { think: true, key, title: 'Why that part is there' });
       credit('trade', t, r.ok ? 2 : 0, 2, 'why the key part is there');
+    }
+    // Draw it: the Design Board in the round's stage. The round has already asked the requirements and estimated, so the
+    // board skips its own; no load test or "why is this here?" (the why question follows). Placing and wiring boxes is
+    // slower than tapping chips, so the clock runs at up to 2× meanwhile. Credit: up to 3, as the two palette flows give,
+    // from the checks passed less the board's penalty for extra boxes.
+    async function drawBoard(bid) {
+      speak(L('hldBoard'));
+      emit({ k: 'board', id: bid });
+      setRate(Math.min(pace.x, 2));
+      let r;
+      try {
+        r = await Promise.race([SD.board.play(bid, { root: stage, noIntake: true, noLoad: true, noDefend: true, noTut: true }), timeUpP.then(() => { throw TIMEUP; })]);
+      } finally { setRate(pace.x); }
+      const s = r.score;
+      add('design', 3 * Math.max(0, s.passed - s.penalty) / s.max);
+      emit({ k: 'boardDone', passed: s.passed, max: s.max, ok: s.ok });
+      if (s.perfect) note('design', true, `Drew a design that passed all ${s.max} checks with nothing extra.`);
+      else note('design', s.ok, `The drawn design passed ${s.passed} of ${s.max} checks (${s.need} needed).`);
+      s.results.filter(x => !x.ok).forEach(x => { note('design', false, `Missed: ${x.c.text}`); lessons.push({ t: x.c.text, why: x.c.why }); });
+      if (s.extras.length) note('design', false, `Drew ${s.extras.length === 1 ? 'a box' : s.extras.length + ' boxes'} that no flow needed.`);
+      if (s.direct.length) note('design', false, 'Let users reach a store directly instead of through a server.');
+      speak(L(s.perfect ? 'hldOk' : s.ok ? 'hldExtra' : 'hldGap'));
     }
     // A typed answer's credit on its rubric line, on top of what the multiple choice earned (never below it).
     function credit(k, t, got, full, what) {
@@ -934,7 +965,7 @@
     opts = opts || {};
     const store = opts.store || defaultStore;
     const open = opts.open || (() => true);
-    const data = () => { const d = store.load() || {}; d.best = d.best || {}; d.runs = d.runs || []; d.pace = M.pace(d.pace); d.think = M.think(d.think); return d; };
+    const data = () => { const d = store.load() || {}; d.best = d.best || {}; d.runs = d.runs || []; d.pace = M.pace(d.pace); d.think = M.think(d.think); d.hld = M.hld(d.hld); return d; };
     const shelf = () => {
       const d = data();
       root.innerHTML = `<div class="mi">
@@ -942,6 +973,7 @@
           <p class="mi-small">The round runs in the interview's real order: requirements, entities and API, an estimate, the high-level design, two deep dives, then your questions. You're scored on a senior-level rubric, and the verdict can down-level you.</p>
           <div class="mi-row"><span class="mi-small"><b>Pace</b></span><div class="mi-pick" role="group" aria-label="Pace">${Object.keys(PACES).map(k => `<button type="button" data-pace="${k}" class="${d.pace === k ? 'on' : ''}">${PACES[k].label}<small>${PACES[k].sub}</small></button>`).join('')}</div></div>
           <div class="mi-row"><span class="mi-small"><b>Answer first</b></span><div class="mi-pick" role="group" aria-label="Answer first">${[['type', 'Type it', '1 to 3 sentences, then options'], ['say', 'Say it', 'aloud, then options'], ['off', 'Off', 'options at once']].map(([k, l, sub]) => `<button type="button" data-think="${k}" class="${d.think === k ? 'on' : ''}">${l}<small>${sub}</small></button>`).join('')}</div></div>
+          <div class="mi-row"><span class="mi-small"><b>Design</b></span><div class="mi-pick" role="group" aria-label="High-level design">${[['draw', 'Draw it', 'on a blank board'], ['pick', 'Pick parts', 'for each flow']].map(([k, l, sub]) => `<button type="button" data-hld="${k}" class="${d.hld === k ? 'on' : ''}">${l}<small>${sub}</small></button>`).join('')}</div></div>
           <p class="mi-small mi-muted">The clock counts a real round's 45 minutes, sped up to fit the pace you pick, and runs at real speed while you type. Talk through every answer out loud, as you would in the room.</p></div>
         <div class="mi-probs">${SD.mock.problems.map(p => {
           const ok = open(p), b = d.best[p.id];
@@ -951,12 +983,13 @@
         ${d.runs.length ? `<div class="mi-card" style="margin-top:12px"><h3>Recent mocks</h3><ul class="mi-hist">${d.runs.slice(-5).reverse().map(r => `<li>${new Date(r.at).toLocaleDateString()} · ${esc((SD.mock.problems.find(p => p.id === r.pid) || {}).name || r.pid)} · <b class="${VERDICT[r.verdict].cls}">${VERDICT[r.verdict].label}${r.verdict === 'mid' ? ' (mid)' : r.verdict !== 'no' ? ' (senior)' : ''}</b> · ${r.mins} min</li>`).join('')}</ul>
           <p class="mi-small mi-muted">Hire-level verdicts so far: ${d.runs.filter(r => r.verdict === 'senior' || r.verdict === 'strong').length} senior, ${d.runs.filter(r => r.verdict === 'mid').length} mid.</p></div>` : ''}</div>`;
       root.querySelectorAll('[data-pace]').forEach(b => b.onclick = () => { const x = data(); x.pace = b.dataset.pace; store.save(x); sfx('card'); shelf(); });
+      root.querySelectorAll('[data-hld]').forEach(b => b.onclick = () => { const x = data(); x.hld = M.hld(b.dataset.hld); store.save(x); sfx('card'); shelf(); });
       root.querySelectorAll('[data-think]').forEach(b => b.onclick = () => { const x = data(); x.think = M.think(b.dataset.think); store.save(x); sfx('card'); shelf(); });
       root.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { sfx('ok'); play(b.dataset.p); });
     };
     async function play(pid) {
       const d = data();
-      const res = await M.interview(root, { pid, pace: d.pace, think: d.think });
+      const res = await M.interview(root, { pid, pace: d.pace, think: d.think, hld: d.hld });
       const x = data();
       x.runs.push({ pid, at: res.at, verdict: res.verdict, mins: res.mins, grades: res.grades });
       if (x.runs.length > 30) x.runs = x.runs.slice(-30);

@@ -289,65 +289,7 @@ blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a
 .rubric input { margin-top: 3px; }
 .rubric .rp.differ { border-color: #f0b35a; }
 .rubric .rp-gap { color: #a15c00; }
-/* Design Board (js/board.js) */
-.bd .bd-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-.bd .bd-mini { padding: 2px 10px; font-size: 0.85em; }
-.bd .bd-brief { background: #f7f4ff; border-radius: 10px; padding: 6px 10px; margin: 6px 0; }
-.bd .bd-brief p { margin: 2px 0; }
-.bd .bd-board { position: relative; width: 100%; aspect-ratio: 4 / 4.8; margin: 6px 0; background: #fff; border: 3px solid var(--ink); border-radius: 12px;
-  background-image: radial-gradient(#d9d2ea 1.2px, transparent 1.2px); background-size: 25% 16.666%; background-position: 12.5% 8.333%; }
-.bd .bd-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; color: var(--ink); }
-.bd .bd-lines line { stroke: currentColor; stroke-width: 3; opacity: 0.55; }
-.bd .bd-lines line.lit { stroke: #2f9e63; opacity: 1; stroke-width: 5; color: #2f9e63; }
-.bd .bd-grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(6, 1fr); }
-.bd .bd-cell { background: none; border: 0; box-shadow: none; padding: 0; margin: 0; min-height: 0; border-radius: 10px; }
-.bd .bd-cell.open { outline: 2px dashed #b9a6ff; outline-offset: -6px; }
-.bd .bd-node { position: relative; margin: 6px 5px; padding: 2px; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-  background: #fff8e6; border: 2px solid var(--ink); border-radius: 10px; box-shadow: 0 2px 0 var(--ink); font-size: 0.68em; line-height: 1.1; font-weight: 700; text-align: center; }
-.bd .bd-node svg { width: 22px; height: 22px; }
-.bd .bd-node.users { background: #e9f3ff; }
-.bd .bd-node.pick { outline: 3px solid #4a7dff; }
-.bd .bd-node.can { outline: 3px dashed #2f9e63; }
-.bd .bd-node.on { background: #e9fbf2; border-color: #2f9e63; }
-.bd .bd-node:disabled { opacity: 0.45; }
-.bd .bd-node.on:disabled { opacity: 1; }
-.bd .bd-board.view .bd-node:disabled { opacity: 1; }
-.bd .bd-step { position: absolute; top: -8px; right: -6px; background: #2f9e63; color: #fff; border-radius: 999px; font-style: normal; font-size: 0.95em; padding: 0 6px; }
-.bd .bd-note { min-height: 2.6em; margin: 4px 0; font-size: 0.9em; }
-.bd .bd-tray { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
-.bd .bd-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 0.8em; border-radius: 999px; }
-.bd .bd-chip svg { width: 16px; height: 16px; }
-.bd .bd-chip.sel { background: #4a7dff; color: #fff; }
-.bd .bd-tools { gap: 6px; flex-wrap: wrap; }
-.bd .bd-flow { background: #e9fbf2; border-radius: 10px; padding: 6px 10px; }
-.bd .bd-flow p { margin: 2px 0 0; }
-.bd .bd-checks { padding-left: 0; list-style: none; }
-.bd .bd-checks li { margin: 6px 0; padding: 6px 8px; border-radius: 8px; background: #f6f6f6; }
-.bd .bd-checks li.ok { background: #e9fbf2; }
-.bd .bd-checks li.bad { background: #fff1f1; }
-.bd .bd-checks li.warn { background: #fff6dd; }
-/* Load test (js/board-load.js): instance counts, how busy each box is, sizing controls */
-.bd .bd-count { position: absolute; bottom: -7px; left: -5px; background: var(--ink); color: #fff; border-radius: 999px; font-style: normal; font-size: 0.75em; padding: 0 5px; }
-.bd .bd-util { position: absolute; top: -8px; right: -6px; background: #fff; border: 2px solid var(--ink); border-radius: 999px; font-style: normal; font-size: 0.7em; padding: 0 4px; }
-.bd .bd-node.st-ok { background: #e9fbf2; border-color: #2f9e63; }
-.bd .bd-node.st-warn { background: #fff6dd; border-color: #d99a00; }
-.bd .bd-node.st-bad { background: #ffe3e3; border-color: #d93a3a; }
-.bd .bd-node.st-down { background: #dddddd; border-color: #777; }
-.bd .bd-node.st-down span { text-decoration: line-through; }
-.bd .bd-size { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-.bd .bd-size > div { flex: 1; }
-.bd .bd-size button { min-width: 44px; font-size: 1.2em; padding: 4px 0; }
-.bd .bd-budget { font-weight: bold; margin: 4px 0; }
-.bd .bd-budget.bad { color: #c02f2f; }
-.bd .bd-round { font-size: 1.4em; margin: 6px 0 2px; }
-/* Desktop: the brief, flows and tray on the left, the board on the right, both inside the window, so you never
-   scroll between picking a part and placing it. The board is sized from the window's height. */
-@media (min-width: 900px) {
-  .win.bd:has(.bd-board) { width: min(1200px, 96vw); }
-  .win.bd .win-b:has(> .bd-board) { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); column-gap: 20px; align-content: start; }
-  .win.bd .win-b:has(> .bd-board) > * { grid-column: 1; }
-  .win.bd .win-b:has(> .bd-board) > .bd-board { grid-column: 2; grid-row: 1 / span 30; justify-self: center; width: auto; height: min(calc(100vh - 120px), 720px); max-width: 100%; margin: 0; }
-}
+/* Design Board: js/board.js injects its own styles (B.css) */
 /* Practice hub (js/practice.js) */
 .practice section { border: 2px solid var(--ink); border-radius: 12px; background: #fff; padding: 10px 14px; margin: 0 0 12px; }
 .practice h3 { margin: 0 0 4px; font-family: var(--f-head); }

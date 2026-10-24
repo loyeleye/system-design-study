@@ -32,8 +32,25 @@
     sv.flags['entered' + (ch || 1)] = true;
     S.persist();
     SD.main.show('run');
-    gateFx(() => R.showMap(), ch);
+    gateFx(() => drawFirst().then(() => R.showMap()), ch);
   };
+  // Before the dungeon: draw the boss's design on the Design Board now, while the requirements are fresh, instead of
+  // at the boss door. The result is kept in the run and its head start applies when the boss fight begins
+  // (boardStep). Skipping costs nothing: the board then comes up at the boss as before.
+  async function drawFirst() {
+    const run = S.save.run, id = run && SD.board && SD.board.forBoss(run.bossId);
+    // The first board comes at the boss door with Pip's tour; after that, every run offers it up front.
+    if (!id || run.board || !S.save.flags.boardTut || (chap().hooks && chap().hooks.boss)) return;
+    const e = SD.enemies[run.bossId];
+    const p = U.panel(`<p>${U.esc(e ? e.short || e.name : 'This dungeon\'s boss')} waits at the bottom: <b>${U.esc(SD.boardData[id].name)}</b>. Draw the design now, before the dungeon, and its head start carries into the boss fight. Or skip, and draw it at the boss door.</p>
+      <div class="row"><button class="ghost" id="db-skip">Skip for now</button><button class="primary" id="db-go">Draw the design first</button></div>`, { title: 'DESIGN BOARD', noClose: true });
+    const go = await new Promise(res => { p.querySelector('#db-go').onclick = () => res(true); p.querySelector('#db-skip').onclick = () => res(false); });
+    U.closePanel();
+    if (!go) return;
+    const b = await SD.board.bossStep(run.bossId);
+    if (S.save.run !== run) return;
+    run.board = b; S.persist();
+  }
   R.resume = function () {
     SD.main.show('run');
     const run = S.save.run;
@@ -1528,7 +1545,10 @@
   // Returns null when this boss has no board, else { ok } after adding its buffs.
   async function boardStep(eid, buffs) {
     if (!SD.board || !SD.board.forBoss(eid)) return null;
-    const b = await SD.board.bossStep(eid);
+    // Drawn before the dungeon (drawFirst): the same head start, without drawing it twice.
+    const kept = S.save.run && S.save.run.board;
+    if (kept) U.system('YOUR DESIGN', kept.ok ? 'The design you drew before the dungeon holds. Its head start applies now.' : 'The design you drew before the dungeon didn\'t pass, so no head start.', kept.ok ? 'gold' : undefined);
+    const b = kept || await SD.board.bossStep(eid);
     buffs.sevScale *= b.sevMult; buffs.bonusEnergy += b.bonusEnergy;
     return b;
   }
@@ -1625,6 +1645,8 @@
     const concepts = Object.keys(run.log.concepts);
     sv.lastRun = { won, mins, at: Date.now() };
     const ch = run.ch || 1, boss = run.bossId || SD.chapters[ch].boss;
+    // Redraw: practise this dungeon's Design Board again straight from the postmortem, while the run is fresh.
+    const redraw = SD.board && SD.practice && SD.practice.board && SD.board.forBoss(boss);
     let rareNew = null;
     if (won) {
       const firstClear = !sv.flags['ch' + ch];
@@ -1645,14 +1667,17 @@
       ${pinsUsed ? `<p class="muted small">Kagemaru's ${pinsUsed === 1 ? 'pinned card goes' : pinsUsed + ' pinned cards go'} back to him. "Ah ha ha. Better luck next loop."</p>` : ''}
       ${pinsKept ? `<p class="muted small">Kagemaru's ${pinsKept === 1 ? 'pinned card stays' : pinsKept + ' pinned cards stay'} in your deck. "Ah ha ha. Keep winning, then."</p>` : ''}
       <p class="muted small">You spent about ${mins} minute${mins === 1 ? '' : 's'} in focused mode. Take five away from the screen before the next run; your brain keeps working on it in diffuse mode.</p>
-      <button class="primary" id="pm-ok">Continue</button>`, { title: 'POSTMORTEM', noClose: true });
-    b.querySelector('#pm-ok').onclick = async () => {
+      <div class="row">${redraw ? '<button class="ghost" id="pm-redraw">Redraw the board</button>' : ''}<button class="primary" id="pm-ok">Continue</button></div>`, { title: 'POSTMORTEM', noClose: true });
+    const go = async first => {
       U.closePanel();
+      if (first) await first();
       if (won) await U.dialog(SD.story[SD.enemies[boss].win || SD.chapters[ch].win]);
       else await U.dialog(SD.story.cascade);
       SD.main.toHub(true);
       if (rareNew) setTimeout(() => U.system('RARE CARD UNLOCKED', `${U.esc(SD.cards[rareNew].name)} can now turn up in rewards and shops, in every dungeon.`, 'gold'), 1500);
     };
+    b.querySelector('#pm-ok').onclick = () => go();
+    if (redraw) b.querySelector('#pm-redraw').onclick = () => go(() => SD.practice.board(redraw));
   }
   // The pieces js/arc.js builds chapter runs from.
   R.api = { fight, refight, restore, useNote, target, groupFor, rewards, cardChoices, cafe, campfire, eventNode, whiteboard, pickCard, findNode, endRun, gateFx, win, mitigate, absorb, hasInfra, combat: () => C };

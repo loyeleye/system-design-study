@@ -76,6 +76,21 @@ const server = http.createServer((req, res) => {
   // Design Board practice, two columns.
   await page.evaluate(() => { SD.practice.open(); });
   await page.click('[data-board="url"]');
+  // Requirements and an estimate first: the brief's numbers stay hidden until you ask.
+  await page.waitForSelector('#bd-ask-done');
+  const win = () => page.$eval('.win.bd', w => w.textContent);
+  check(!/100 million/.test(await win()) && !(await page.$('.bd-board')), 'the board opens on the requirements, with the numbers hidden');
+  await page.click('[data-ask="1"]');
+  check(/go viral/.test(await win()), 'asking a question shows its answer');
+  await page.click('#bd-ask-done');
+  await page.waitForSelector('#bd-est');
+  check(/100 million new links/.test(await win()) && /didn't ask, so the interviewer tells you/.test(await win()), 'the scale fact is told when you didn\'t ask it');
+  check(await page.$eval('#bd-est-go', b => b.disabled), 'the estimate waits for a number');
+  await page.fill('#bd-est', '4k');
+  await page.click('#bd-est-go');
+  check(/CLOSE ENOUGH/.test(await win()) && /The full brief/.test(await win()), 'a close estimate is called close, and the full brief appears');
+  await shot(page, 'board-intake');
+  await page.click('#bd-draw');
   for (let i = 0; i < 10 && await page.evaluate(() => !document.querySelector('#dialog').hidden); i++) { await page.keyboard.press('Enter'); await page.waitForTimeout(150); }
   await page.waitForSelector('.win.bd .bd-board');
   check(await title(page) === 'DESIGN BOARD · PRACTICE', 'a board opens in practice');
@@ -169,7 +184,7 @@ const server = http.createServer((req, res) => {
 
   // ---- Phone board: one column, as before ----
   page = await open(390, 844, 2);
-  await page.evaluate(() => { SD.state.save.flags.boardTut = true; SD.board.play('url', { title: 'DESIGN BOARD · PRACTICE' }); });
+  await page.evaluate(() => { SD.state.save.flags.boardTut = true; SD.board.play('url', { title: 'DESIGN BOARD · PRACTICE', noIntake: true }); });
   await page.waitForSelector('.win.bd .bd-board');
   const ph = await page.evaluate(() => { const b = document.querySelector('.bd-board').getBoundingClientRect(), t = document.querySelector('.bd-tray').getBoundingClientRect(); return { b: b.top, t: t.top }; });
   check(ph.t > ph.b, 'on a phone the tray stays under the board');
