@@ -38,7 +38,7 @@
         const shelves = ['A', 'S', 'Ancient'].filter(r => shown(rankAt(SHELF[r]))).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
           return { label: r === 'Ancient' ? 'Under the counter: Ancient' : `${r}-Rank shelf`, lock: ok ? null : SHELF[r] + '-Rank',
-            items: SD.exchangeShop.filter(it => it.rank === r).map(it => ({ id: it.id, name: it.name, text: ok ? SD.shop.backedText(it) : it.text, cost: it.cost, lock: SHELF[r] + '-Rank',
+            items: SD.exchangeShop.filter(it => it.rank === r).map(it => ({ id: it.id, name: it.name, text: ok ? SD.shop.backedText(it) : it.text, backed: ok && SD.shop.isBacked(it), cost: it.cost, lock: SHELF[r] + '-Rank',
               state: SD.shop.state({ owned: sv.relics.includes(it.id), locked: !ok, cost: it.cost, have: sv.shards }) })) };
         });
         SD.shop.panel({

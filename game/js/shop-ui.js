@@ -20,7 +20,8 @@
   const SH = SD.shop = {};
   SH.CONFIRM_AT = 300;
   // Relics backed by On-call Cred (js/run.js R.isBacked) say so on their tile, and both relic shops say what yours is.
-  SH.backedText = it => it.text + (SD.run && SD.run.isBacked && SD.run.isBacked(it.id) ? ` Backed: works at ${SD.run.backCred}+ On-call Cred.` : '');
+  SH.isBacked = it => !!(SD.run && SD.run.isBacked && SD.run.isBacked(it.id));
+  SH.backedText = it => it.text + (SH.isBacked(it) ? (it.id === 'satchel' ? ` The extra draw needs ${SD.run.backCred}+ On-call Cred.` : ` Needs ${SD.run.backCred}+ On-call Cred.`) : '');
   SH.credNote = () => SD.run && SD.run.backCred ? `🎯 Backed keepsakes need ${SD.run.backCred}+ On-call Cred. Yours: <b>${SD.state.tally()}</b>.` : '';
   const num = x => Number(x).toLocaleString('en-US');
   const esc = s => U.esc(String(s));
@@ -66,7 +67,7 @@
       const off = it.state !== 'buy' ? ' disabled' : '';
       if (it.card) return `<div class="shop-card s-${it.state}${sel}" data-buy="${key}"${off ? ' aria-disabled="true"' : ''}>${U.cardHtml({ id: it.card }, { i: '', dim: it.state === 'owned' || it.state === 'locked' || it.state === 'sold' })}${tag(it, w)}</div>`;
       return `<button class="shop-it s-${it.state}${sel}" data-buy="${key}"${off}><span class="si-ic">${icon(it.icon || ICONS[it.id] || 'swap-bag', 'currentColor')}</span>
-        <span class="si-b"><b>${esc(it.name)}</b><span class="small">${esc(it.text)}</span>${tag(it, w)}</span></button>`;
+        <span class="si-b"><b>${it.backed ? `<span class="si-backed" title="Backed: works at ${SD.run.backCred}+ On-call Cred" aria-label="Backed by On-call Cred">🎯</span> ` : ''}${esc(it.name)}</b><span class="small">${esc(it.text)}</span>${tag(it, w)}</span></button>`;
     };
     const sections = (o.sections || []).filter(s => s.items.length || s.note).map(s => {
       const cards = s.items.some(it => it.card);

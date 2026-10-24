@@ -491,7 +491,7 @@
     const render = () => {
       // Gifts (gift: true) are never for sale: they sit on their own shelf once a friend has given you one.
       const sale = SD.metaShop.filter(it => !it.gift), gifts = SD.metaShop.filter(it => it.gift && sv.relics.includes(it.id));
-      const item = (it, open) => ({ id: it.id, name: it.name, text: open ? SD.shop.backedText(it) : it.text, cost: it.cost, lock: it.rank + '-Rank',
+      const item = (it, open) => ({ id: it.id, name: it.name, text: open ? SD.shop.backedText(it) : it.text, backed: open && SD.shop.isBacked(it), cost: it.cost, lock: it.rank + '-Rank',
         state: SD.shop.state({ owned: sv.relics.includes(it.id), locked: !open, cost: it.cost, have: sv.shards }) });
       const ranks = SD.ranks.filter(r => sale.some(it => it.rank === r)), shown = SD.shop.shown(ranks.map(rankAt), mine);
       const shelves = tab === 'lessons' ? [] : ranks.filter(r => shown(rankAt(r))).map(r => {
