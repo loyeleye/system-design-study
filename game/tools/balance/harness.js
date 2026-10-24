@@ -432,7 +432,7 @@
     RUN = { cfg, seed: cfg.seed, errs: [], rooms: [], q: 0, qok: 0, plays: 0, turns: 0, offers: 0, picked: [], bought: [], removed: 0, tea: 0, rests: 0, upgrades: 0, clears: 0, events: 0, retries: 0, unknown: {}, ended: false, by: {}, board: null, boss: false };
     timers.length = 0;
     game = seeded('start', cfg.seed); Math.random = () => game(); quizR = seeded('quiz0', cfg.seed); bot = seeded('bot0', cfg.seed);
-    U.closePanel(); window.__slaPlus = cfg.slaPlus || 0; window.__sevx = cfg.sevx || 1; window.__dmgx = cfg.dmgx || 0; window.__noGary = !!cfg.noGary; if (SD.run && 'backCred' in SD.run) SD.run.backCred = cfg.backCred || 0; window.__lastPicks = [];
+    U.closePanel(); window.__slaPlus = cfg.slaPlus || 0; window.__sevx = cfg.sevx || 1; window.__dmgx = cfg.dmgx || 0; window.__noGary = !!cfg.noGary; if (SD.run && 'backCred' in SD.run) { if (SIM.backCred0 == null) SIM.backCred0 = SD.run.backCred; SD.run.backCred = cfg.backCred != null ? cfg.backCred : SIM.backCred0; } window.__lastPicks = [];
     SD.debug.build(cfg.ch, cfg.rank || null, 0, cfg.quests ? 'done' : null);
     const sv = S.save;
     if (cfg.level) sv.level = cfg.level;

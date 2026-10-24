@@ -22,7 +22,7 @@ A job (`SIM.run(cfg)`) takes `{ seed, arm, dungeon, ch, rank, asc, quests, relic
 - `accBy`: per-payoff overrides, by the question's channel: `diagnose` (the pre-fight diagnosis), `prep` (the boss's requirements, estimation and design steps), `deep` (the boss's deep-dive chain), `board` (the Design Board) and `other`.
 - The Design Board is modelled, not drawn: the real `SD.board.bossStep` runs, and `SD.board.play` returns a result where each stage goes right at the board channel's accuracy (the checks pass, the design is clean, the load test holds, the load test is clean), then the defend question is asked like any other.
 - `relics`, `card`, `take`, `slaPlus`: the relic and card study's arms (Oct 20).
-- `cred`: On-call Cred carried into the run. Unset starts at 0; `'warm'` fills the 20-answer window as a player at `acc` would have. `backCred` sets `SD.run.backCred`, the Cred the backed relics also need (where the build has it). Every answer goes into the Cred window and is announced as the real quiz does (`SD.meta` `'answer'`).
+- `cred`: On-call Cred carried into the run. Unset starts at 0; `'warm'` fills the 20-answer window as a player at `acc` would have. `backCred` overrides `SD.run.backCred`, the Cred the credentialed relics need (where the build has it); left out, the game's own value stands. Every answer goes into the Cred window and is announced as the real quiz does (`SD.meta` `'answer'`).
 
 The bot is a strong combat player (it tries every card in hand against the next enemy move) and a simple economist (rarity-first picks, one café buy, rest under 60% SLA). Read the numbers as relative strength, not human win rates.
 
