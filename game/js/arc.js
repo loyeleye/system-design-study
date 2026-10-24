@@ -182,7 +182,7 @@
     boss(eid) { bossFight(eid); return true; },
     end(won, incident, quit) {
       const r = run(), c = chap();
-      if (quit || won) return false;
+      if (quit || won || r.arc.final) return false;
       // Death: retry the floor from its snapshot. Each of Seymour's tapes plays once.
       const canRetry = c.death === 'snapshot' || (c.death === 'tape' && A.tapesLeft(r) > 0);
       if (!canRetry) return false;
@@ -338,18 +338,7 @@
   // Seymour's tape: one question on the incident that beat you, then the same fight again at full SLA (R.api.refight).
   // Right, and the incident keeps the damage you did; wrong, and it's back at full Severity. Returns false when there's
   // no fight to go back to, and the tape restarts the floor instead.
-  async function tapeRestore(r) {
-    const C = api().combat(), e = C && (C.foes ? C.foes[C.fi].e : C.e);
-    if (!C || !C.spec || !e) return false;
-    const q = SD.concepts[e.concept] && S.pickQuestion ? S.pickQuestion(e.concept, []) : null;
-    const res = q ? await Q.ask(q, { title: 'SEYMOUR\'S TAPE', context: (SD.concepts[e.concept] || {}).name, tally: true, stakeNote: `Right, and ${e.name} keeps the damage you did.` }) : { ok: true };
-    const keep = !!res.ok;
-    r.arc.tapesUsed = (r.arc.tapesUsed || 0) + 1; r.arc.tapeUsed = true;
-    S.persist();
-    U.system(keep ? 'RESTORE TESTED' : 'RESTORED, NOT TESTED', keep ? `Back on your feet at full SLA. ${U.esc(e.name)} still has the damage you did.` : `Back on your feet at full SLA, but ${U.esc(e.name)} is back at full Severity.`, keep ? 'gold' : 'red');
-    floorFx('RESTORING FROM TAPE...', () => { if (!api().refight(keep)) R.showMap(); });
-    return true;
-  }
+  const tapeRestore = r => api().restore({ title: 'SEYMOUR\'S TAPE', use: () => { r.arc.tapesUsed = (r.arc.tapesUsed || 0) + 1; r.arc.tapeUsed = true; }, fx: go => floorFx('RESTORING FROM TAPE...', go) });
 
   // Death: a different voice each chapter, then back to the start of the floor with the snapshot (chapters 7-8), or
   // Seymour's tape (9-10: tapeRestore).
@@ -364,7 +353,8 @@
     const b = U.panel(`<div class="verdict bad">DOWN ON FLOOR ${r.arc.floor + 1}</div>
       <p>${U.esc(incident || 'An incident')} took you down.</p>
       <p>${tape ? `Seymour's backup tape, on Ayo's drive, puts you back in this fight at full SLA. First, one question on what went wrong: right, and ${U.esc(incident || 'the incident')} keeps the damage you did; wrong, and it's back at full Severity. Each tape plays once. ${A.tapesLeft(r) > 1 ? `You have ${A.tapesLeft(r)} left.` : 'This is your last one: another death ends the run.'}` : 'Uptima\'s snapshot puts you back at the very start of this floor, with your deck, SLA and bits as you entered it.'}</p>
-      <div class="row"><button class="primary" id="arc-retry">${tape ? 'Play the tape' : 'Retry the floor'}</button><button class="ghost" id="arc-home">Go home</button></div>`, { title: tape ? 'RESTORE FROM TAPE' : 'RESTORE FROM SNAPSHOT', noClose: true });
+      ${r.notes ? `<p class="muted small">Or read Wen's notebook (${r.notes} left): answer one question, and you're back in this fight at full SLA${tape ? ', and you keep the tape' : ' instead of at the start of the floor'}.</p>` : ''}
+      <div class="row"><button class="primary" id="arc-retry">${tape ? 'Play the tape' : 'Retry the floor'}</button>${r.notes ? '<button id="arc-note">📓 Read the notebook</button>' : ''}<button class="ghost" id="arc-home">Go home</button></div>`, { title: tape ? 'RESTORE FROM TAPE' : 'RESTORE FROM SNAPSHOT', noClose: true });
     b.querySelector('#arc-retry').onclick = async () => {
       U.closePanel();
       if (tape && await tapeRestore(r)) return;
@@ -376,7 +366,9 @@
       S.persist();
       floorFx(tape ? 'RESTORING FROM TAPE...' : 'SNAPSHOT RESTORED', () => R.showMap());
     };
-    b.querySelector('#arc-home').onclick = () => { U.closePanel(); r.arc.final = true; api().endRun(false, incident); };
+    const nb = b.querySelector('#arc-note');
+    if (nb) nb.onclick = async () => { U.closePanel(); if (!(await api().useNote())) b.querySelector('#arc-retry').onclick(); };
+    b.querySelector('#arc-home').onclick = () => { U.closePanel(); r.arc.final = true; r.notes = 0; api().endRun(false, incident); };
   }
 
   // ---------- Cutscenes between floors ----------
