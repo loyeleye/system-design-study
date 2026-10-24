@@ -8,10 +8,10 @@ In 94% of the multiple choice questions the right answer is the longest option, 
 
 ## Rules for every multiple choice question
 
-A multiple choice question is any object literal with `opts: [...]` and a numeric `a:` (the index of the right option). This includes question-bank entries (`type: 'mc'`), boss `design` questions, quest `ask` questions, events and anything else shaped like that. Leave `type: 'num'`, `'order'` and `'multi'` questions alone.
+A multiple choice question is any object literal with `opts: [...]` and a numeric `a:` (the index of the right option). This includes question-bank entries (`type: 'mc'`), boss `design` questions, quest `ask` questions, events and anything else shaped like that. The same rules cover the other shapes the quests use: `right:` or `ans:` in place of `a:` (predict steps), `opts: [{ t, ok, why }]` (Explodia's timed rounds and other quest games, where `why` on each wrong option is its "why not"), and charades rounds, where `a` is the right answer as a string and `opts` holds the wrong ones. Leave `type: 'num'`, `'order'` and `'multi'` questions alone.
 
 1. **Keep** `id`, `c`, `type`, `a` (the index of the right answer) and the *meaning* of the right answer. Other files key help text by question id, so the right answer must still say the same thing. You may tighten the question text `q` slightly, but don't change what it asks.
-2. **Balance lengths.** All options should be similar length. The right answer must not be more than 25% longer than the longest wrong option, and across your file it should be the longest option only about a quarter to a third of the time (sometimes it should be the shortest). Usually this means: shorten the right answer by moving detail into `why`, and make the wrong options fuller.
+2. **Balance lengths.** All options should be similar length. The right answer must not be more than 15% longer than the longest wrong option, and across your file it should be the longest option only about a quarter to a third of the time, never more than 40% (sometimes it should be the shortest). A tie with a wrong option counts as longest. Usually this means: shorten the right answer by moving detail into `why`, and make the wrong options fuller.
 3. **Make every wrong option plausible and real.** Each should be something a reasonable mid-level engineer might pick: a real technique, product or pattern used in the wrong place, or a common misconception, stated with the same confidence and specificity as the right answer. No jokes, no absolutes like "Never" or "Always", no obviously silly options, no "All of the above".
 4. **Every wrong option must be clearly wrong for the question as asked.** Accuracy beats cleverness. If an option is defensible in some reading, change it. Have a senior engineer's eye: technical claims must be correct.
 5. **Add `no: [...]`**, an array the same length as `opts`, aligned by index: `null` at the right answer's index, and for each wrong option one or two short sentences (aim for under 30 words) saying why it is wrong *here*, and when it is a real technique, what it IS the right tool for. This is how the game introduces new ideas, so make these lines teach.
@@ -40,5 +40,5 @@ After:
 
 ## Checking your work
 
-- `cd /home/user/system-design-study/game && node tools/question_lint.js` lists every flagged question across the game (right answer too long, or missing `no` lines). New questions should not be flagged.
-- `node tools/question_lint.js --ids id1,id2` prints questions in full.
+- `cd /home/user/system-design-study/game && node tools/question_lint.js` lists every flagged question across the game (right answer too long, or missing `no` lines) and every file where the right answer is the longest in more than 40% of its questions. New questions should not be flagged; `--strict` exits 1 if anything is.
+- `node tools/question_lint.js --ids id1,id2` prints questions in full (an id, or a path the lint printed for a question without one).

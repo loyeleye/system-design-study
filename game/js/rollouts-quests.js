@@ -85,7 +85,7 @@
         { t: 'Roll back the debit\'s transaction on Hari\'s shard', why: 'That transaction committed long ago and can\'t be rolled back. Undoing it takes a new write: the compensating credit.' },
         { t: 'Hold locks on both wallets until the Cloud is back', why: 'That is two-phase commit\'s way, and it blocked when its coordinator went down, freezing both wallets. Sagas avoid the locks and undo instead.' }] },
       { type: 'choose', q: 'Hari\'s balance says 0. He swears he had 20 before the soup. How do you settle it?', opts: [
-        { t: 'Replay his wallet\'s event log, every credit and debit, in order', ok: true, why: 'With event sourcing the list of events is the truth and the balance is worked out from it: 20 in, 12 out, 12 back makes 20. Snapshots keep long replays quick.' },
+        { t: 'Replay every credit and debit in his wallet\'s log', ok: true, why: 'With event sourcing the list of events is the truth and the balance is worked out from it: 20 in, 12 out, 12 back makes 20. Snapshots keep long replays quick.' },
         { t: 'Trust the balance row, since it holds the latest value', why: 'The latest value is the one in dispute. A balance overwritten in place can\'t tell you how it got there.' },
         { t: 'Ask the diner how much it received from him', why: 'The diner\'s books cover the diner. They can\'t show Hari\'s other credits and debits.' },
         { t: 'Restore last night\'s backup of the balances table', why: 'That throws away every honest transfer since last night, and still can\'t say which number is right.' }] }
@@ -106,7 +106,7 @@
         { t: 'Nothing, as long as both watches were set each morning', why: 'Watches drift apart within hours, and two bids can land on the same tick. Setting them each morning narrows the gap; it never gives one order.' },
         { t: 'They should have used the time on each bidder\'s watch', why: 'Then every bidder decides the order, and anyone can set their watch back. The stall has to decide the order itself.' }] },
       { type: 'choose', q: 'The stall\'s tally sheet blows into the canal at noon. How does Bitna rebuild the morning\'s sales exactly?', opts: [
-        { t: 'Replay the numbered bids, in ticket order, by the same rules', ok: true, why: 'Matching is deterministic: the same bids in the same order always give the same sales. It is how an exchange\'s standby keeps up, and how a lost book is rebuilt.' },
+        { t: 'Replay the numbered bids in order, same rules', ok: true, why: 'Matching is deterministic: the same bids in the same order always give the same sales. It is how an exchange\'s standby keeps up, and how a lost book is rebuilt.' },
         { t: 'Ask each buyer what they paid, and add it all up', why: 'Memories disagree and half the buyers have gone home. The numbered stream is the record; replay it.' },
         { t: 'Sort the bids by the time each one was written on', why: 'Written times are the two-watches problem again. The ticket number is the order.' }] }
     ],

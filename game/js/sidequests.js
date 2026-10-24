@@ -153,17 +153,17 @@
             intro: 'Aigerim\'s diary is a log. Every entry is appended, nothing is edited. Here\'s how real systems forget.',
             rounds: [
               { type: 'choose', q: 'In a log-structured store, how do you delete a key without editing old pages?', opts: [
-                { t: 'Append a tombstone that says "this key is deleted"; compaction drops the older values later', ok: true, why: 'Reads see the tombstone first and treat the key as gone, and compaction eventually removes both.' },
-                { t: 'Tear the old page out', why: 'Editing old segments breaks every replica and every reader that trusts them.' },
-                { t: 'Write "please ignore" in the margin', why: 'That is a tombstone with no compaction. Aigerim does this already. It isn\'t enough.' }] },
+                { t: 'Append a tombstone that marks the key deleted', ok: true, why: 'Reads see the tombstone first and treat the key as gone. Compaction later drops the tombstone and the older values together.' },
+                { t: 'Find the old entry and overwrite it in place', why: 'Editing old segments breaks the append-only rule, and every replica and reader that trusts them.' },
+                { t: 'Rewrite every segment without that key, now', why: 'That is compaction for a single key, run on every delete: far too slow. A tombstone now, compaction later in bulk.' }] },
               { type: 'tap', q: 'The tombstone is written. Where else do copies of the hero\'s sleeping schedule still live? Tap them all.',
                 chips: [{ t: 'Old log segments', sub: 'until compaction', ok: true }, { t: 'Replicas', sub: 'two cousins in the east', ok: true }, { t: 'Backups', sub: 'Seymour\'s tapes', ok: true },
                   { t: 'A cache', sub: 'her memory', ok: true }, { t: 'The hero', sub: 'he slept through it' }],
                 why: 'Data spreads: segments, replicas, caches and backups all hold copies, and backups are deliberately hard to change.', hint: 'Anything that copied the page before you deleted it.' },
               { type: 'choose', q: 'How do you make every copy unreadable at once, backups included?', opts: [
-                { t: 'Encrypt each person\'s pages with their own key, keep keys in a separate key store, and delete the key', ok: true, why: 'Crypto-shredding: without the key, every copy in every backup is just noise. Nothing old is edited.' },
-                { t: 'Find and edit every backup tape', why: 'Seymour would never forgive you, and you would miss one.' },
-                { t: 'Stop making backups', why: 'Then a fire deletes everything, including the pages you wanted to keep.' }] },
+                { t: 'Give each person their own key, then delete it', ok: true, why: 'Crypto-shredding: encrypt each person\'s pages with their own key, kept in a separate key store. Without the key, every copy in every backup is just noise. Nothing old is edited.' },
+                { t: 'Restore each backup, delete them, back up again', why: 'Seymour would never forgive you, and you would miss one. Backups are built to be hard to change.' },
+                { t: 'Stop taking backups, so old copies age out', why: 'Then a fire deletes everything, and the backups you already have still hold the pages for months.' }] },
               { type: 'order', q: 'Put crypto-shredding in order, for one person.', chips: ['Give the person their own data key', 'Encrypt their entries with it before appending', 'Store the key apart from the data', 'To forget them, delete the key', 'Old entries and backups stay, but can\'t be read'],
                 why: 'The log stays append-only and every replica stays identical. Only one small key is ever deleted.' }
             ],
@@ -249,13 +249,13 @@
                 chips: [{ t: 'Stew', sub: 'takes 4 hours', ok: true }, { t: 'Bread', sub: 'takes all night', ok: true }, { t: 'Tea', sub: 'needs boiling water, 2 min' }, { t: 'Rice balls', sub: 'slow, eaten every floor', ok: true }, { t: 'An ice cream', sub: 'melts in an hour' }],
                 why: 'Precompute what is slow to make and read often. Things that go stale fast are made at the last moment.', hint: 'Slow to make and eaten a lot: make it ahead.' },
               { type: 'choose', q: 'The stew is cooked at 9 p.m. You leave at 6 a.m. What do you do in the morning?', opts: [
-                { t: 'Warm it up and pack it before you go, so the first bite isn\'t cold', ok: true, why: 'Cache warming: load what you know will be needed before the first request, so nobody pays the cold start.' },
-                { t: 'Cook a new stew', why: 'That throws away the precomputed work.' },
-                { t: 'Eat it cold on floor one', why: 'The first request after a cold start is always the slow one.' }] },
+                { t: 'Warm it up and pack it before you go', ok: true, why: 'Cache warming: load what you know will be needed before the first request, so nobody pays the cold start and the first bite isn\'t cold.' },
+                { t: 'Cook a fresh stew when you wake up', why: 'That throws away the precomputed work, and you miss the 6 a.m. start.' },
+                { t: 'Pack it cold and heat it at the first stop', why: 'That is a cold start: the first request (your first bite, on floor one) pays for the slow part. Warm it before traffic arrives.' }] },
               { type: 'choose', q: 'Gary might add a croissant to your box. When should the box be repacked?', opts: [
-                { t: 'When its contents change, or when they would go stale, whichever comes first', ok: true, why: 'Invalidate on write, and set a TTL for things that spoil. Both, not either.' },
-                { t: 'Never. Boxes are forever.', why: 'That is how a croissant gets "cached since 1987".' },
-                { t: 'Every five minutes, just in case', why: 'You would spend the whole dungeon repacking lunch.' }] }
+                { t: 'When it changes, or when it would go stale', ok: true, why: 'Invalidate on write, and set a TTL for things that spoil, whichever comes first. Both, not either.' },
+                { t: 'Only when Gary says he added something', why: 'That handles changes but not spoiling. Things that go stale on their own need a TTL too, or a croissant gets "cached since 1987".' },
+                { t: 'Every five minutes, changed or not', why: 'You would spend the whole dungeon repacking lunch, and the box could still be five minutes stale.' }] }
             ],
             done: '<p>Precompute what is slow and popular, warm it before traffic arrives, and invalidate on change or by TTL. A materialized view is a packed lunch for your queries.</p>' } },
           { ask: { id: 'sq-lunch', c: 'cache', type: 'mc', q: 'A service is slow right after every deploy because its cache starts empty. What helps?', opts: ['Warm the cache with the hottest keys before sending it traffic', 'Give entries an infinite TTL so nothing expires and has to be refetched', 'Switch eviction from LRU to LFU so the most popular keys stay cached', 'Add more app servers so each one handles fewer requests while it is cold'], a: 0, no: [null, 'The cache is empty because the deploy restarted it, not because entries expired, so the TTL changes nothing. Infinite TTLs also serve stale data.', 'Eviction only runs when the cache is full, and an empty cache evicts nothing. LFU helps when popularity is stable and scans would flush an LRU.', 'The slow part is every miss hitting the database. More servers, each with its own empty cache, send it even more misses. Scale out when CPU is the limit.'], why: 'Cold caches send every request to the database at once. Preloading the hot set (or shifting traffic gradually) avoids the cold-start spike.' } },
@@ -287,13 +287,13 @@
             intro: 'First the target, then the budget, then the people. Brigade rules!',
             rounds: [
               { type: 'choose', q: 'What should the realm\'s SLO be about?', opts: [
-                { t: 'Something users notice: 99.9% of respawns succeed within 2 seconds, over 30 days', ok: true, why: 'An SLO measures what users feel, over a window, with a target that isn\'t 100%.' },
-                { t: 'CPU stays under 70%', why: 'Users don\'t feel CPU. They feel errors and waiting.' },
-                { t: '100% uptime forever', why: 'Then there is no error budget, nobody can ever ship anything, and somebody gets paged for ten thousand years.' }] },
+                { t: '99.9% of respawns done within 2 s, over 30 days', ok: true, why: 'An SLO measures something users notice, over a window, with a target that isn\'t 100%.' },
+                { t: 'Server CPU stays under 70% for the whole month', why: 'Users don\'t feel CPU. They feel errors and waiting. CPU belongs on a dashboard.' },
+                { t: '100% of respawns succeed, every single day', why: 'Then there is no error budget, nobody can ever ship anything, and somebody gets paged for ten thousand years.' }] },
               { type: 'choose', q: 'The realm has spent its whole error budget for the month by the 12th. What now?', opts: [
-                { t: 'Freeze risky releases and spend the time on reliability until the budget recovers', ok: true, why: 'That is what the budget is for: it decides when to go fast and when to fix things.' },
+                { t: 'Freeze risky releases and work on reliability', ok: true, why: 'Until the budget recovers. That is what the budget is for: it decides when to go fast and when to fix things.' },
                 { t: 'Lower the SLO to 90% so the budget comes back', why: 'Moving the target to hit it is a classic. Users still notice.' },
-                { t: 'Page the apprentice harder', why: 'Suzu is now glaring at Uptima.' }] },
+                { t: 'Add more on-call staff and keep shipping', why: 'Faster response helps, but every release keeps burning a budget that is already gone. Suzu is now glaring at Uptima.' }] },
               { type: 'tap', q: 'Tap everything a fair on-call rotation needs.',
                 chips: [{ t: 'A primary and a secondary', ok: true }, { t: 'Shifts that end', ok: true }, { t: 'Handover notes', ok: true }, { t: 'A runbook for every alert', ok: true },
                   { t: 'Follow-the-sun across time zones', ok: true }, { t: 'One person, forever' }, { t: 'Page for every CPU spike' }],
@@ -367,20 +367,20 @@
             intro: 'Two ways to deliver news. Let\'s pick, for each poster, which one fits.',
             rounds: [
               { type: 'choose', q: 'Fan-out on write means:', opts: [
-                { t: 'When someone posts, copy it into every follower\'s timeline right away, so reading a timeline is one quick lookup', ok: true, why: 'Writes do the work so reads are cheap. Great when reads far outnumber posts.' },
-                { t: 'Every reader asks every person they follow for new posts when they open the app', why: 'That\'s fan-out on read: cheap writes, expensive reads.' },
-                { t: 'Nobody gets the post', why: 'Explodia would explode, metaphorically. Then literally.' }] },
+                { t: 'Copy each new post into every follower\'s timeline', ok: true, why: 'Writes do the work, right away, so reading a timeline is one quick lookup. Great when reads far outnumber posts.' },
+                { t: 'Each reader pulls from everyone they follow on open', why: 'That\'s fan-out on read: cheap writes, expensive reads.' },
+                { t: 'Store each post once and cache hot timelines', why: 'That is fan-out on read with a cache in front. Fan-out on write does the copying up front so a read is one lookup.' }] },
               { type: 'tap', q: 'Which posters should Lyra still fan out on write (copy to every follower)?',
                 chips: [{ t: 'Marta', sub: '40 followers', ok: true }, { t: 'Fen', sub: '300 followers', ok: true }, { t: 'Explodia', sub: '10,000,000 followers' }, { t: 'Gong', sub: '2,000 followers', ok: true }, { t: 'Uptima', sub: '9,000,000 followers (bought)' }],
                 why: 'Ordinary accounts fan out on write. Celebrities are the exception: copying one post ten million times is the slow part.', hint: 'Look at the follower counts.' },
               { type: 'choose', q: 'So how do Explodia\'s followers see her explosion?', opts: [
-                { t: 'When a follower opens their songbook, merge in recent posts from the few celebrities they follow at read time', ok: true, why: 'The hybrid: push for normal accounts, pull for celebrities, merged when the timeline is read.' },
-                { t: 'Lyra writes faster', why: 'Ten million writes per post does not get cheap.' },
-                { t: 'Explodia stops exploding', why: 'Unacceptable. She would rather die. She nearly does, daily.' }] },
+                { t: 'Merge celebrity posts in when the timeline is read', ok: true, why: 'The hybrid: push for normal accounts, pull for the few celebrities a follower follows, merged when they open their songbook.' },
+                { t: 'Copy her post to all ten million timelines in batches', why: 'Batching doesn\'t change the count. Ten million writes per post is still the slow part, and Lyra still writes them all.' },
+                { t: 'Push her posts only to followers who are online', why: 'Still millions of copies per post, just fewer at once, and everyone offline misses it. Celebrities are pulled at read time instead.' }] },
               { type: 'choose', q: 'The timeline is usually fast, but 1 request in 100 takes 3 seconds. Which number should you watch?', opts: [
-                { t: 'The 99th percentile (p99) response time, not the average', ok: true, why: 'Averages hide the slow tail, and the slowest requests often belong to your most active users (DDIA chapter 1).' },
-                { t: 'The average, it looks fine', why: 'The average says 50 ms. The person waiting 3 seconds disagrees.' },
-                { t: 'The fastest request', why: 'The fastest request is never the problem.' }] }
+                { t: 'The p99 response time', ok: true, why: 'The 99th percentile, not the average. Averages hide the slow tail, and the slowest requests often belong to your most active users (DDIA chapter 1).' },
+                { t: 'The mean response time', why: 'The average says 50 ms. The person waiting 3 seconds disagrees.' },
+                { t: 'The median (p50) response time', why: 'The median is the typical request: half are faster. It hides the 1 in 100 that takes 3 seconds.' }] }
             ],
             done: '<p>Fan out on write for most accounts so reading is cheap, pull celebrities\' posts at read time, and measure the tail (p99), not the average. That is the Twitter timeline from DDIA chapter 1.</p>' } }] },
         { at: 'explodia', hint: 'Tell Explodia how to reach every follower at once.', do: [
@@ -415,13 +415,13 @@
                 chips: [{ t: 'library.pingsby/Scroll?id=7', ok: true }, { t: 'LIBRARY.pingsby/scroll?id=7', ok: true }, { t: 'library.pingsby/scroll?id=7#top', ok: true }, { t: 'library.pingsby/scroll?id=8' }],
                 why: 'Normalise URLs (case of the host, fragments, parameter order) before checking the seen set, or you crawl the same page forever.', hint: 'Ignore case in the host and anything after #.' },
               { type: 'choose', q: 'The Grand Library got eleven thousand visits this morning. What stops that?', opts: [
-                { t: 'A queue per site with a delay between requests to the same host, and obey robots.txt', ok: true, why: 'Politeness: one site never sees a flood, while many sites are crawled in parallel.' },
-                { t: 'More pigeons', why: 'Twenty-two thousand visits. Lexi has escalated to encyclopaedias.' },
-                { t: 'Crawl only at night', why: 'The library is open at night. Lexi lives there.' }] },
+                { t: 'A queue per host with a delay, obeying robots.txt', ok: true, why: 'Politeness: a delay between requests to the same host, so one site never sees a flood, while many sites are crawled in parallel.' },
+                { t: 'More crawler workers, fetching in parallel', why: 'More workers means more visits at once. Twenty-two thousand visits. Lexi has escalated to encyclopaedias.' },
+                { t: 'Crawl that site only at night, at full speed', why: 'The library is open at night. Lexi lives there. A flood at 2 a.m. is still a flood.' }] },
               { type: 'choose', q: 'A strange site generates a new link on every page, forever ("calendar, next month, next month..."). What do you do?', opts: [
-                { t: 'Cap depth and pages per site, and detect traps that keep producing new URLs', ok: true, why: 'Crawler traps are infinite. Limits per host and per path keep one site from eating the crawl.' },
-                { t: 'Follow it to the end', why: 'There is no end. That\'s the trap. The pigeon is still flying.' },
-                { t: 'Delete the internet', why: 'Uptima suggests this every time something is hard.' }] }
+                { t: 'Cap depth and pages per site, and spot traps', ok: true, why: 'Crawler traps keep producing new URLs forever. Limits per host and per path keep one site from eating the crawl.' },
+                { t: 'Rely on the seen set to stop the loop', why: 'The seen set stops you visiting the same URL twice. A trap makes a new URL every time, so it never repeats. The pigeon is still flying.' },
+                { t: 'Skip every URL that has query parameters', why: 'Plenty of real pages live behind ?id=7, and a trap can use plain paths. Limits per host and path are what stop it.' }] }
             ],
             done: '<p>A frontier of URLs, a politeness queue per host with robots.txt, URL normalisation and a seen set (often a Bloom filter), content hashes to skip duplicate pages, and limits against crawler traps.</p>' } },
           { ask: { id: 'sq-crawler', c: 'crawler', type: 'mc', q: 'How should a crawler avoid fetching the same page twice across billions of URLs?', opts: ['Normalise URLs, check a seen set, and hash page content to catch copies', 'Keep visited URLs in one sorted list and binary search it for each link', 'Follow each site\'s robots.txt, which lists the pages it wants crawled', 'Send a HEAD request first and skip pages whose ETag you have already seen'], a: 0, no: [null, 'Billions of URLs will not fit in one machine\'s memory, and every insert shifts the list. A Bloom filter or a sharded key-value store checks in constant time.', 'robots.txt lists what you must not crawl; it is a politeness rule, not dedup. Even a sitemap cannot stop one page appearing under many URLs.', 'A HEAD is still a request per URL, and ETags are only unique per resource on one server. They suit cheap re-crawls of one URL with If-None-Match.'], why: 'Normalising plus a fast membership check (a Bloom filter or a key-value store) stops URL repeats; content fingerprints catch mirrors and copies under different URLs.' } }] },
@@ -455,13 +455,13 @@
               { type: 'order', q: 'Put what happened in order.', chips: ['Akane takes the lock with a 30-second lease', 'Akane pauses for 40 seconds', 'The lease expires; Gong takes the lock', 'Gong writes the budget', 'Akane wakes up and writes, still thinking she holds it'],
                 why: 'A process can pause at any moment (a long garbage collection, a thought about Gong). The lease ran out underneath it.' },
               { type: 'choose', q: 'How does the budget ledger reject Akane\'s late write?', opts: [
-                { t: 'Each lock grant comes with a fencing token that always goes up; the ledger rejects any write with a token lower than one it has seen', ok: true, why: 'Gong\'s token is 34, Akane\'s is 33. The ledger has seen 34, so 33 is refused. No trust in clocks needed.' },
+                { t: 'A fencing token that rises with each grant', ok: true, why: 'Each lock grant carries a number that always goes up, and the ledger rejects any write with a lower one than it has seen. Gong\'s token is 34, Akane\'s is 33, so 33 is refused. No trust in clocks needed.' },
                 { t: 'Akane checks her watch before writing', why: 'Her watch was paused too. Clocks can\'t be trusted across machines (or presidents).' },
-                { t: 'Make the lease longer', why: 'Any pause longer than the lease brings the problem straight back.' }] },
+                { t: 'A longer lease, so it can\'t expire mid-write', why: 'Any pause longer than the lease brings the problem straight back.' }] },
               { type: 'choose', q: 'Gong asks why the ledger has to do the checking, not the lock service.', opts: [
-                { t: 'Only the resource sees the writes in the order they land; the lock service can\'t stop a paused client from waking up and writing', ok: true, why: 'The storage is the last line of defence, so it enforces the token.' },
-                { t: 'Because the lock service is lazy', why: 'It isn\'t lazy. It just can\'t see the future.' },
-                { t: 'It doesn\'t have to', why: 'Then you get a bigger gong and a tea set.' }] }
+                { t: 'Only the ledger sees the order writes land in', ok: true, why: 'The lock service can\'t stop a paused client from waking up and writing. The storage is the last line of defence, so it enforces the token.' },
+                { t: 'Checking each write would overload the lock service', why: 'Load isn\'t the reason. Even a fast lock service can\'t see a write a paused client sends after its lease ran out.' },
+                { t: 'It doesn\'t: the lock service can revoke the lease', why: 'Revoking tells a paused client nothing. When it wakes it writes anyway, so the ledger has to refuse it.' }] }
             ],
             done: '<p>A lease can expire under a paused client, so a lock alone isn\'t enough. Fencing tokens, numbers that rise with every grant and are checked by the storage, turn a stale lock-holder into a rejected write (DDIA chapter 8).</p>' } },
           { ask: { id: 'sq-love', c: 'locks', type: 'mc', q: 'A client holding a lease pauses for longer than the lease, then writes. What prevents corruption?', opts: ['A fencing token the storage checks, rejecting writes with an older token', 'A longer lease, set well above the longest pause you have measured', 'Checking the lease is still valid on your local clock right before writing', 'Taking the lock with Redlock across five Redis nodes instead of one'], a: 0, no: [null, 'Pauses from garbage collection or a VM migration have no upper bound, so some pause will outlast any lease. Longer leases only slow recovery after a crash.', 'The pause can hit between the check and the write, and local clocks drift. Only the storage, at write time, can tell the write is stale.', 'More nodes make the lock harder to lose, but a paused client still writes after its lease ends. Redlock hands out no fencing token to check.'], why: 'Pauses can be arbitrarily long, so no lease is long enough. The storage must reject the stale writer.' } },
@@ -489,13 +489,13 @@
             intro: 'One anvil, one coin slot, one croissant per customer. Let\'s make it so.',
             rounds: [
               { type: 'choose', q: 'A customer presses "buy" seven times for one croissant. How does the machine know?', opts: [
-                { t: 'The first press makes a purchase ID; every retry sends the same ID, and the machine charges each ID only once', ok: true, why: 'An idempotency key: the server remembers IDs it has handled and returns the same result for repeats.' },
+                { t: 'Every retry carries the same purchase ID', ok: true, why: 'An idempotency key: the first press makes the ID, every retry sends it, and the machine charges each ID only once, returning the same result for repeats.' },
                 { t: 'Ignore presses within one second of each other', why: 'Some retries come after a second. Some real second purchases come within one.' },
-                { t: 'Charge seven times and refund six', why: 'Refunds cost money and trust. Hero #12 cries oil.' }] },
+                { t: 'Lock the button until the first charge returns', why: 'That stops double taps on one screen, but not a retry after a lost reply, or from a second device.' }] },
               { type: 'choose', q: 'The machine is busy. Should the customer\'s app retry instantly and forever?', opts: [
-                { t: 'Retry with exponential backoff and a little random jitter, and give up after a few tries', ok: true, why: 'Instant retries from everyone at once is a retry storm. Backoff and jitter spread them out.' },
-                { t: 'Yes, as fast as possible', why: 'Every customer at the camp does this at once, and the machine falls over.' },
-                { t: 'Never retry', why: 'Then a lost reply means a lost croissant.' }] },
+                { t: 'Exponential backoff with jitter, then give up', ok: true, why: 'Instant retries from everyone at once is a retry storm. Backoff and a little random jitter spread them out, and a cap stops them after a few tries.' },
+                { t: 'Retry instantly, but only up to three times', why: 'Every customer at the camp retries at the same moment, three times over, and the busy machine falls over.' },
+                { t: 'Never retry; show the customer an error', why: 'Then a lost reply means a lost croissant. Most failures under load are brief.' }] },
               { type: 'tap', q: 'Which actions are safe to retry without an idempotency key?',
                 chips: [{ t: 'Read the price', ok: true }, { t: 'Set the price to 3 shards', ok: true }, { t: 'Charge 3 shards' }, { t: 'Add 1 croissant to the order' }, { t: 'Look up stock', ok: true }],
                 why: 'Reads and "set to" writes give the same result if repeated. "Charge" and "add one" don\'t.', hint: 'Would doing it twice change anything?' }
@@ -533,9 +533,9 @@
             intro: 'Timeline first, then why, then what we change. Nobody is the root cause. Not even Uptima. (Especially not Uptima, she says.)',
             rounds: [
               { type: 'choose', q: 'Uptima\'s Purification stood the dummy back up. What was that?', opts: [
-                { t: 'Mitigation: it stopped the symptom for now, but nothing about the cause changed', ok: true, why: 'A restart buys time. If you stop there, the outage comes back on schedule.' },
-                { t: 'The root cause fix', why: 'It fell over again ten minutes later.' },
-                { t: 'Divine intervention', why: 'Uptima would like it on record that this is the correct answer. It is not.' }] },
+                { t: 'Mitigation: the symptom stopped, not the cause', ok: true, why: 'A restart buys time, but nothing about the cause changed. If you stop there, the outage comes back on schedule.' },
+                { t: 'The root-cause fix, since the dummy is standing', why: 'It fell over again ten minutes later. Standing isn\'t fixed.' },
+                { t: 'A rollback to the last known good state', why: 'Nothing was undone; it was a restart. A rollback is also mitigation, when a bad change caused it. (Uptima would like it on record that it was divine.)' }] },
               { type: 'order', q: 'Ask "why" until you reach something you can change.', chips: ['The dummy fell over', 'Its stake was loose', 'The ground is soft since the rain started', 'The stake was never sunk past the topsoil', 'Nobody checks stakes after rain'],
                 why: 'Five whys walks from the symptom to a process gap. "Check stakes after rain" is an action item; "Kaito hit it" is not.' },
               { type: 'tap', q: 'Which lines belong in a blameless postmortem?',
@@ -600,9 +600,9 @@
               { type: 'order', q: 'Put a SWIM-style check in order.', chips: ['Ping Gary directly', 'No answer: ask a few others to ping him for you (indirect probes)', 'Still nothing: mark him suspect, not dead', 'Wait out a suspicion timeout for any sign of life', 'Only then declare him dead and spread the news'],
                 why: 'Indirect probes rule out a bad link between you and him; the suspicion period rules out a pause. Then you fail over.' },
               { type: 'choose', q: 'Seymour wants a one-second timeout "to be safe". What happens?', opts: [
-                { t: 'Healthy people who pause for a second get declared dead, and you fail over for no reason', ok: true, why: 'Short timeouts mean false positives, and a false failover can be worse than waiting.' },
-                { t: 'Gary is found faster', why: 'Gary is in a bathroom. Speed doesn\'t help.' },
-                { t: 'Nothing, timeouts are free', why: 'Every timeout trades false alarms against slow detection.' }] }
+                { t: 'Anyone who pauses for a second is declared dead', ok: true, why: 'And you fail over for no reason. Short timeouts mean false positives, and a false failover can be worse than waiting.' },
+                { t: 'Gary is found faster, so failover starts sooner', why: 'Gary is in a bathroom. Speed doesn\'t help, and a one-second timeout mostly catches pauses, not crashes.' },
+                { t: 'Nothing changes, since heartbeats still flow', why: 'Every timeout trades false alarms against slow detection. One missed beat now counts as a death.' }] }
             ],
             done: '<p>Heartbeats and timeouts suspect; indirect probes and a suspicion period confirm. A single missed ping can\'t tell dead from slow, so a careful detector asks around before it declares anyone gone.</p>' } },
           { ask: { id: 'sq-gary', c: 'failuredet', type: 'mc', q: 'Seymour pings Gary once and gets no answer. What should a failure detector do before declaring Gary dead?', opts: ['Ask other members to ping him, and wait out a suspicion period', 'Declare him dead at once, since a missed ping means the process crashed', 'Ping him much more often, so the next missed reply settles it sooner', 'Lower the ping timeout to one second, so failures are caught sooner'], a: 0, no: [null, 'A missed ping can be a slow node, a long pause or a lost packet. Failing over on one miss causes flapping and can split the cluster.', 'More pings add load but cannot tell slow from dead, so one miss means no more than before. Fast heartbeats help only with a suspicion period.', 'A shorter timeout turns every slow reply into a false alarm. Timeouts should sit above normal worst-case latency, with a suspicion period on top.'], why: 'One timeout can mean a crash, a slow node, a long pause or a broken link. Indirect probes from other members and a suspicion period of several missed heartbeats cut false alarms before failing over, and the timeout still catches a real crash.' } },
