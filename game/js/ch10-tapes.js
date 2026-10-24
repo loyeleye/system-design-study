@@ -27,7 +27,7 @@
         ? '"Your second tape is labelled, dated and in triplicate. Keep it dry."'
         : '"My one backup tape will not be enough for the Promised Day. I made a second. Labelled, dated, verified twice. It is not free. Nothing verified twice is free."'}</p></div>
         <div class="loot"><span>You have <b>${sv.shards}</b> Memory Shards</span><span>Tapes for chapter 10: <b>${SD.arc.tapesOwned(10)}</b> of 3</span></div>
-        <div class="opts"><button class="opt" id="sy-buy" ${have || sv.shards < PRICE ? 'disabled' : ''}><b>A second backup tape</b> · ${have ? 'Owned' : PRICE + ' shards'}<br><span class="small">One more floor retry in chapter 10.</span></button></div>
+        <div class="opts"><button class="opt" id="sy-buy" ${have || sv.shards < PRICE ? 'disabled' : ''}><b>A second backup tape</b> · ${have ? 'Owned' : PRICE + ' shards'}<br><span class="small">One more restore in chapter 10.</span></button></div>
         <div class="row"><button class="ghost" id="sy-chat">Just chat</button></div>`, { title: 'SEYMOUR · BACKUP TAPES', onClose: () => res(true) });
       b.querySelector('#sy-chat').onclick = () => { U.closePanel(); res(false); };
       b.querySelector('#sy-buy').onclick = async () => {
@@ -35,7 +35,7 @@
         sv.shards -= PRICE; flags().c10tape2 = true; S.persist();
         U.closePanel();
         SD.audio.sfx('coin');
-        U.system('BACKUP TAPE GET!', 'Seymour\'s second tape: one more floor retry in chapter 10.', 'gold');
+        U.system('BACKUP TAPE GET!', 'Seymour\'s second tape: one more restore in chapter 10.', 'gold');
         await U.dialog([{ s: 'seymour', t: 'Restore it before you need it. A tape you have never restored is a rumour.', e: 'smug' }, ...hint()]);
         res(true);
       };
@@ -93,7 +93,7 @@
     if (r.score >= 0.75 && !flags().c10tape3) {
       flags().c10tape3 = true; S.persist();
       SD.audio.sfx('coin');
-      U.system('BACKUP TAPE GET!', 'Hero #12 vends slot B7: one more floor retry in chapter 10.', 'gold');
+      U.system('BACKUP TAPE GET!', 'Hero #12 vends slot B7: one more restore in chapter 10.', 'gold');
       await U.dialog([{ s: 'narr', t: 'Clunk. Slot B7 drops a backup tape, labelled in Seymour\'s handwriting: SPARE (3 OF 3). DO NOT VEND.' },
         { s: 'hero12', t: 'THANK YOU FOR YOUR PURCHASE! Please tell Seymour I was holding it for him. Temporarily. A 302 of a tape.', e: 'happy' }]);
     } else if (!flags().c10tape3) {

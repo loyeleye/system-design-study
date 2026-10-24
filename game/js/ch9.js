@@ -3,7 +3,7 @@
 // Alex Xu, System Design Interview Volume 2: distributed email service, S3-like object storage and a real-time
 // gaming leaderboard. Three layers, a boss each (js/arc.js). Going down costs more each layer: the heal between
 // floors shrinks (healDrop). Unread Mail nodes are Kyu's ten billion unread emails. Death plays Seymour's one backup
-// tape, on Ayo's new tape drive; a second death ends the run. At the bottom Kyu says "ARISE", and you have to
+// tape, on Ayo's new tape drive: a question, then the same fight again (js/arc.js); a second death ends the run. At the bottom Kyu says "ARISE", and you have to
 // survive her army for three turns. The chapter ends with the Great Maintenance Window, and Gary leaving Pingsby.
 (function () {
   const A = SD.arc, R = SD.run;
@@ -378,7 +378,7 @@
   const SEYMOUR_TAPE = [
     'The tape! The one backup tape! Ayo, the drive! Hero, hold still, this may sting.',
     'I have kept this tape for ten thousand years for exactly this moment. Please do not make me need it twice.',
-    'Restoring... restoring... Hero, you are being restored from the state you entered this layer with. Your hair may be slightly older.'
+    'Restoring... restoring... Hero, you are being restored mid-incident. Your hair may be slightly older.'
   ];
 
   // The army can't be beaten, only held off: after three of your turns Kyu calls them back.

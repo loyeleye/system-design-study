@@ -1,6 +1,7 @@
 // Chapters 7-10, "season 2" (the Chapters 7-10 doc). One run is one chapter: three short floors (four in chapter 10),
 // each four rows and a boss, run straight into each other with a heal and a cutscene in between. Death retries the
-// floor from a snapshot (Uptima's in chapters 7-8, Seymour's one tape in 9-10). Kyu, the apprentice, has her own
+// floor from a snapshot in chapters 7-8 (Uptima's). In 9-10 Seymour's tape asks one question, then puts you back in
+// the fight you lost at full SLA: right, and the incident keeps the damage you did (Ladi, 2026-10-24, from the sequel). Kyu, the apprentice, has her own
 // map node (a design duel), leaves Runbook pages, and fills a Downtime meter as the story darkens. Lord Latency
 // walks with you and can delay an incident's next move once per fight.
 // Plugs into js/run.js through each arc chapter's `hooks` (SD.arc.hooks), so run.js stays the one combat engine.
@@ -334,7 +335,24 @@
     api().endRun(true);
   }
 
-  // Death: a different voice each chapter, then back to the start of the floor with the snapshot.
+  // Seymour's tape: one question on the incident that beat you, then the same fight again at full SLA (R.api.refight).
+  // Right, and the incident keeps the damage you did; wrong, and it's back at full Severity. Returns false when there's
+  // no fight to go back to, and the tape restarts the floor instead.
+  async function tapeRestore(r) {
+    const C = api().combat(), e = C && (C.foes ? C.foes[C.fi].e : C.e);
+    if (!C || !C.spec || !e) return false;
+    const q = SD.concepts[e.concept] && S.pickQuestion ? S.pickQuestion(e.concept, []) : null;
+    const res = q ? await Q.ask(q, { title: 'SEYMOUR\'S TAPE', context: (SD.concepts[e.concept] || {}).name, tally: true, stakeNote: `Right, and ${e.name} keeps the damage you did.` }) : { ok: true };
+    const keep = !!res.ok;
+    r.arc.tapesUsed = (r.arc.tapesUsed || 0) + 1; r.arc.tapeUsed = true;
+    S.persist();
+    U.system(keep ? 'RESTORE TESTED' : 'RESTORED, NOT TESTED', keep ? `Back on your feet at full SLA. ${U.esc(e.name)} still has the damage you did.` : `Back on your feet at full SLA, but ${U.esc(e.name)} is back at full Severity.`, keep ? 'gold' : 'red');
+    floorFx('RESTORING FROM TAPE...', () => { if (!api().refight(keep)) R.showMap(); });
+    return true;
+  }
+
+  // Death: a different voice each chapter, then back to the start of the floor with the snapshot (chapters 7-8), or
+  // Seymour's tape (9-10: tapeRestore).
   async function retry(incident) {
     const r = run(), c = chap();
     r.arc.deaths++;
@@ -345,10 +363,11 @@
     const tape = c.death === 'tape';
     const b = U.panel(`<div class="verdict bad">DOWN ON FLOOR ${r.arc.floor + 1}</div>
       <p>${U.esc(incident || 'An incident')} took you down.</p>
-      <p>${tape ? `Seymour's backup tape, on Ayo's drive, puts you back at the start of this floor with the deck you entered it with, fully healed. Each tape plays once. ${A.tapesLeft(r) > 1 ? `You have ${A.tapesLeft(r)} left.` : 'This is your last one: another death ends the run.'}` : 'Uptima\'s snapshot puts you back at the very start of this floor, with your deck, SLA and bits as you entered it.'}</p>
+      <p>${tape ? `Seymour's backup tape, on Ayo's drive, puts you back in this fight at full SLA. First, one question on what went wrong: right, and ${U.esc(incident || 'the incident')} keeps the damage you did; wrong, and it's back at full Severity. Each tape plays once. ${A.tapesLeft(r) > 1 ? `You have ${A.tapesLeft(r)} left.` : 'This is your last one: another death ends the run.'}` : 'Uptima\'s snapshot puts you back at the very start of this floor, with your deck, SLA and bits as you entered it.'}</p>
       <div class="row"><button class="primary" id="arc-retry">${tape ? 'Play the tape' : 'Retry the floor'}</button><button class="ghost" id="arc-home">Go home</button></div>`, { title: tape ? 'RESTORE FROM TAPE' : 'RESTORE FROM SNAPSHOT', noClose: true });
-    b.querySelector('#arc-retry').onclick = () => {
+    b.querySelector('#arc-retry').onclick = async () => {
       U.closePanel();
+      if (tape && await tapeRestore(r)) return;
       const s = r.arc.snap;
       // A tape also restores you fully healed (Ladi, 2026-10-20); a snapshot keeps the SLA you entered with.
       r.deck = clone(s.deck); r.sla = tape ? S.maxSla() : s.sla; r.bits = s.bits; r.map = clone(s.map); r.gary = s.gary; r.mercy = s.mercy;

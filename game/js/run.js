@@ -555,6 +555,8 @@
     C.sev = C.max = Math.round(e.sev * mod('sev', scale, C));
     // Group fights: each member gets its own severity, intent, load and weakness notes (see SD.groupFights).
     const extra = groupFor(eid, opts);
+    // What refight() needs to set the same fight up again.
+    C.spec = { eid, opts, group: extra };
     if (extra.length) {
       const G = SD.groupFights.scale, n = extra.length + 1, knownBy = { [eid]: C.known };
       C.foes = [eid].concat(extra).map((id, i) => {
@@ -577,6 +579,27 @@
     if (opts.diagnose) diagnose(go); else go();
   }
   const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
+  // Seymour's tape (js/arc.js, chapters 9 and 10): the fight you lost, again, at full SLA with a fresh hand. keep: each
+  // incident keeps the damage you did (and its place in its pattern, and the turn count a survival fight counts);
+  // otherwise it starts again at full Severity. Fight-wide effects (infra, absorb, statuses) start over either way.
+  function refight(keep) {
+    const old = C, sp = old && old.spec;
+    if (!sp) return false;
+    stash();
+    S.save.run.sla = S.maxSla();
+    fight(sp.eid, Object.assign({}, sp.opts, { diagnose: false, group: sp.group }), old.done);
+    if (keep) {
+      if (C.foes && old.foes) {
+        C.foes.forEach((f, i) => { const g = old.foes[i]; if (g && g.eid === f.eid) Object.assign(f, { sev: g.sev, ii: g.ii, rage: g.rage, dead: g.dead }); });
+        load(Math.max(0, C.foes.findIndex(f => !f.dead)));
+      } else Object.assign(C, { sev: old.sev, ii: old.ii, rage: old.rage });
+      C.turn = Math.max(C.turn, old.turn);
+      C.log = 'Restored from tape, mid-incident. It still has the damage you did.';
+    } else C.log = 'Restored from tape. The incident is back at full Severity.';
+    AU.music(C.boss ? 'boss' : 'battle');
+    renderCombat();
+    return true;
+  }
 
   // Who joins this fight, from SD.groupFights (content.js). Bosses and the tutorial always fight alone.
   // Companions come from the chapter's normal pools, preferring the same tier as the first incident.
@@ -1594,5 +1617,5 @@
     };
   }
   // The pieces js/arc.js builds chapter runs from.
-  R.api = { fight, target, groupFor, rewards, cardChoices, cafe, campfire, eventNode, whiteboard, pickCard, findNode, endRun, gateFx, win, mitigate, absorb, hasInfra, combat: () => C };
+  R.api = { fight, refight, target, groupFor, rewards, cardChoices, cafe, campfire, eventNode, whiteboard, pickCard, findNode, endRun, gateFx, win, mitigate, absorb, hasInfra, combat: () => C };
 })();
