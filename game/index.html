@@ -205,6 +205,21 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .opt:hover:not(:disabled) { background: #f1f7ff; transform: translateY(-1px); }
 .opt.on { background: #dcebff; box-shadow: 0 3px 0 var(--blue-d); border-color: var(--blue-d); }
 .opt.struck { text-decoration: line-through; }
+/* Menu > Relics (js/relic-toggles.js): one switch row per owned relic. */
+.rt-list { max-height: 60vh; overflow-y: auto; padding: 2px 4px 6px; }
+.rt-row { display: flex; align-items: center; gap: 10px; }
+.rt-row .rt-ic { flex: 0 0 30px; width: 30px; height: 30px; }
+.rt-row .rt-ic svg { width: 100%; height: 100%; }
+.rt-row .rt-tx { flex: 1; min-width: 0; }
+.rt-row .rt-tx small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
+.rt-row .rt-sw { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; font: 700 11px var(--f-body); }
+.rt-row .rt-sw i { position: relative; width: 38px; height: 22px; border-radius: 11px; background: #2fa35f; border: 2px solid var(--ink); transition: background .15s; }
+.rt-row .rt-sw i::after { content: ''; position: absolute; top: 2px; left: 18px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
+.rt-row.off { background: #f3f1f7; }
+.rt-row.off .rt-tx b { color: var(--muted); }
+.rt-row.off .rt-sw i { background: #c9c4d6; }
+.rt-row.off .rt-sw i::after { left: 2px; }
+@media (prefers-reduced-motion: reduce) { .rt-row .rt-sw i, .rt-row .rt-sw i::after { transition: none; } }
 .conf { border-top: 2px dashed var(--line); padding-top: 12px; margin-top: 6px; }
 .conf-b { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .conf-b button { flex: 1 1 90px; background: #fff; }
@@ -1092,6 +1107,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/rollouts-mirror.js"></script>
 <script src="js/rollouts-quests.js"></script>
 <script src="js/relic-exchange.js"></script>
+<script src="js/relic-toggles.js"></script>
 <script src="js/card-exchange.js"></script>
 <script src="js/sidequest-reviews.js"></script>
 <script src="js/review-bank.js"></script>

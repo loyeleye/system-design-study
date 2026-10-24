@@ -77,11 +77,13 @@
   const BACKED = ['lantern', 'stamp', 'orderbook', 'marketdepth', 'bluechip', 'pinned', 'croissant', 'sequencer', 'openingbell', 'badge', 'heartbeat', 'interest'];
   R.backCred = 5;
   const credOk = () => !R.backCred || S.tally() >= R.backCred;
-  const owns = id => S.save.relics.includes(id);
+  // Owned and switched on (Menu > Relics, js/relic-toggles.js): a switched-off relic has no effect and no UI.
+  const owns = id => S.relicOn(id);
+  const anyBacked = () => BACKED.some(owns);
   const rel = id => owns(id) && (!BACKED.includes(id) || credOk());
   // For the shops and the quiz: which relics are backed, and whether to show On-call Cred on a run's questions.
   R.isBacked = id => BACKED.includes(id);
-  R.showCred = () => !!S.save.run && !$('#screen-run').hidden && S.save.relics.some(id => BACKED.includes(id));
+  R.showCred = () => !!S.save.run && !$('#screen-run').hidden && anyBacked();
   // Pip's Monocle: "Ask Pip" crosses out one wrong option, PIP_CHARGES times per dungeon run (js/quiz.js).
   // An answer that used it counts as a Guess, so the hint never props up mastery or Cred.
   const PIP_CHARGES = 2;
@@ -94,7 +96,7 @@
     const run = S.save.run;
     if (!run || $('#screen-run').hidden) return;
     const on = credOk();
-    if (C && S.save.relics.some(id => BACKED.includes(id)) && run.credOn !== undefined && run.credOn !== on) C.log = (C.log ? C.log + ' ' : '') + (on ? `On-call Cred ${S.tally()}: your credentialed relics wake.` : `On-call Cred under ${R.backCred}: your credentialed relics go quiet.`);
+    if (C && anyBacked() && run.credOn !== undefined && run.credOn !== on) C.log = (C.log ? C.log + ' ' : '') + (on ? `On-call Cred ${S.tally()}: your credentialed relics wake.` : `On-call Cred under ${R.backCred}: your credentialed relics go quiet.`);
     run.credOn = on;
   }); };
   const curse = id => SD.quests.curses((S.save.run && S.save.run.ch) || 1).includes(id);
@@ -1435,7 +1437,7 @@
     if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
     if (C.vuln) chips.push('<span class="chip">Load-tested: mitigation +50%</span>');
     if (C.edge || C.edgeEach) chips.push(`<span class="chip" title="Every card that mitigates does ${C.edge || 0} more">Throughput ${C.edge || 0}${C.edgeEach ? ` (+${C.edgeEach} a turn)` : ''}</span>`);
-    if (S.save.relics.some(id => BACKED.includes(id))) chips.push(credOk() ? `<span class="chip" title="On-call Cred ${S.tally()}: your credentialed relics work">Cred ${S.tally()}: relics on</span>` : `<span class="chip stale" title="Your credentialed relics need ${R.backCred} On-call Cred to work; you have ${S.tally()}">Cred ${S.tally()}: relics quiet</span>`);
+    if (anyBacked()) chips.push(credOk() ? `<span class="chip" title="On-call Cred ${S.tally()}: your credentialed relics work">Cred ${S.tally()}: relics on</span>` : `<span class="chip stale" title="Your credentialed relics need ${R.backCred} On-call Cred to work; you have ${S.tally()}">Cred ${S.tally()}: relics quiet</span>`);
     if (C.thorns || C.tthorns) chips.push(`<span class="chip" title="Every incident that hits you takes this much">Thorns ${(C.thorns || 0) + (C.tthorns || 0)}</span>`);
     if (C.hold) chips.push(`<span class="chip">Guard held${C.hold > 20 ? '' : `: ${C.hold} turn${C.hold > 1 ? 's' : ''}`}</span>`);
     if (C.regen && C.regen.length) chips.push(`<span class="chip">Warm Pool: +${C.regen.reduce((a, r) => a + r.n, 0)} next turn</span>`);
