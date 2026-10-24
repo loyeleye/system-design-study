@@ -74,6 +74,11 @@
       if ($('#dialog').hidden) return;
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); }
     });
+    // Enter or Space on a panel's button presses that button and nothing behind it: the village would otherwise also
+    // talk to whoever stands next to you.
+    $('#panel').addEventListener('keydown', e => {
+      if ((e.key === 'Enter' || e.key === ' ') && $('#dialog').hidden && e.target.closest && e.target.closest('button, [role=button], a[href]')) e.stopPropagation();
+    });
   };
 
   // ---- Cutscene stage and flashes ----
@@ -117,11 +122,13 @@
     opts = opts || {};
     const p = $('#panel');
     p.innerHTML = `<div class="win ${opts.cls || ''}" role="dialog" aria-modal="true">
-      <div class="win-h"><span>${U.esc(opts.title || 'SYSTEM')}</span>${opts.noClose ? (U.quitGame ? '<button class="x quit" id="panel-quit" aria-label="Leave the mini-game">✕ Leave</button>' : '') : '<button class="x" id="panel-x" aria-label="Close">✕</button>'}</div>
+      <div class="win-h">${opts.back ? '<button class="x back" id="panel-back" aria-label="Back to menu" title="Back to menu">‹</button>' : ''}<span>${U.esc(opts.title || 'SYSTEM')}</span>${opts.noClose ? (U.quitGame ? '<button class="x quit" id="panel-quit" aria-label="Leave the mini-game">✕ Leave</button>' : '') : '<button class="x" id="panel-x" aria-label="Close">✕</button>'}</div>
       <div class="win-b">${html}</div></div>`;
     p.hidden = false;
     if (!opts.noClose) $('#panel-x').onclick = () => { U.closePanel(); if (opts.onClose) opts.onClose(); };
     else if (U.quitGame) $('#panel-quit').onclick = () => U.quitGame();
+    // opts.back: a ‹ button before the title that goes back to where this panel was opened from (the menu).
+    if (opts.back) $('#panel-back').onclick = opts.back;
     return p.querySelector('.win-b');
   };
   U.closePanel = function () { $('#panel').hidden = true; $('#panel').innerHTML = ''; };

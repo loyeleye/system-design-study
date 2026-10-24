@@ -88,7 +88,7 @@
     const hp = $('#hud-practice'); if (hp) hp.onclick = () => SD.practice.open();
     SD.hub.npcMarks = marks;
     sndClose(false); sndButton($('#hud-snd'));
-    $('#hud-menu').onclick = menu;
+    $('#hud-menu').onclick = () => menu();
     if (SD.journal) SD.journal.wire($('#hud'));
     SD.hub.markers = {
       A: sv.flags.primedLoop !== sv.loop || SD.lessons.hasNew('A'), H: sv.mioVisitLoop !== sv.loop || SD.lessons.hasNew('H'),
@@ -118,64 +118,109 @@
     e.preventDefault();
     const on = AU.toggleMute();
     sndClose(false); sndSync();
-    if (!$('#panel').hidden && $('#panel .win-h span').textContent === 'MENU') menu();
+    menuSync();
     if (on && AU.prefs.sfx) AU.sfx('ok');
   });
 
-  function menu() {
-    const p = AU.prefs;
-    const b = U.panel(`<div class="opts">
-      <button class="opt" id="m-help">How to play</button>
-      ${S.save && SD.journal ? '<button class="opt" id="m-journal">Journal: bestiary and achievements</button>' : ''}
-      ${S.save && SD.folk ? '<button class="opt" id="m-board">The Brújula Board: where is everyone?</button>' : ''}
-      ${SD.guild ? '<button class="opt" id="m-guild">Multiplayer: the Guild Hall</button>' : ''}
-      ${S.save && SD.relicToggles && SD.relicToggles.count().all ? `<button class="opt" id="m-relics">Relics: switch on or off <b>${SD.relicToggles.count().on} of ${SD.relicToggles.count().all} on</b></button>` : ''}
-      <button class="opt" id="m-music">Music: <b>${p.music ? 'On' : 'Off'}</b></button>
-      <button class="opt" id="m-sfx">Sound effects: <b>${p.sfx ? 'On' : 'Off'}</b></button>
-      <button class="opt" id="m-say">Say it first: <b>${{ boss: 'Boss questions', all: 'Every question', off: 'Off' }[SD.quiz.sayMode()]}</b></button>
-      <button class="opt" id="m-typed">Typed answers: <b>${S.save && S.save.typed === false ? 'Off' : 'On'}</b></button>
-      <button class="opt" id="m-name">Change name</button>
-      ${S.cloud && S.cloud.where === 'code' ? '<button class="opt" id="m-code">Play on another device: your save code</button>' : ''}
-      <button class="opt" id="m-credits">Credits</button>
-      <button class="opt" id="m-reset">Erase save and start over</button></div>
-      <p class="muted small">Progress saves automatically${!S.cloud ? ' in this browser' : S.cloud.where === 'claude' ? ' to your claude.ai account, so it follows you across devices' : ', and your save code brings it to another device'}.</p>`, { title: 'MENU' });
-    b.querySelector('#m-help').onclick = help;
+  // The menu, grouped: Play (other screens), Settings (switches that change in place, so focus stays put), Save, About,
+  // and Erase on its own at the bottom. Sub-panels opened from here get a ‹ back to the menu. ↑ and ↓ move between
+  // items; ← and → pick within Say it first.
+  const SAY_LABELS = { boss: 'Bosses', all: 'All', off: 'Off' };
+  function menu(focusId) {
+    const p = AU.prefs, sv = S.save;
+    const tile = (id, ic, name, sub) => `<button type="button" class="mnu-tile" id="${id}"><span class="mnu-ic" aria-hidden="true">${ic}</span><b>${name}</b><small>${sub}</small></button>`;
+    const sw = (id, name, on, desc) => `<button type="button" class="mnu-row snd-sw" role="switch" id="${id}" aria-checked="${on}"${desc ? ` aria-describedby="${id}-d"` : ''}>
+      <span class="mnu-l"><b>${name}</b>${desc ? `<small id="${id}-d">${desc}</small>` : ''}</span><i aria-hidden="true"></i></button>`;
+    const nav = (id, name, val) => `<button type="button" class="mnu-row mnu-nav" id="${id}"><span class="mnu-l"><b>${name}</b></span>${val ? `<span class="mnu-v">${val}</span>` : ''}<span class="mnu-go" aria-hidden="true">›</span></button>`;
+    const say = SD.quiz.sayMode();
+    const b = U.panel(`<div class="mnu">
+      <section aria-labelledby="mh-play"><h3 class="mnu-h" id="mh-play">Play</h3><div class="mnu-tiles">
+        ${tile('m-help', '📖', 'How to play', 'Controls and rules')}
+        ${sv && SD.journal ? tile('m-journal', '📓', 'Journal', 'Bestiary and achievements') : ''}
+        ${sv && SD.folk ? tile('m-board', '🧭', 'Brújula Board', 'Where is everyone?') : ''}
+        ${SD.guild ? tile('m-guild', '⚔️', 'Guild Hall', 'Multiplayer') : ''}
+      </div></section>
+      <section aria-labelledby="mh-set"><h3 class="mnu-h" id="mh-set">Settings</h3><div class="mnu-list">
+        ${sw('m-music', 'Music', p.music)}
+        ${sw('m-sfx', 'Sound effects', p.sfx)}
+        <div class="mnu-row mnu-say"><span class="mnu-l"><b id="m-say-l">Say it first</b><small id="m-say-d">Hide the choices until you've answered in your own words.</small></span>
+          <span class="seg" role="radiogroup" id="m-say" aria-labelledby="m-say-l" aria-describedby="m-say-d">${SD.quiz.SAY_MODES.map(m =>
+            `<button type="button" role="radio" data-v="${m}" aria-checked="${m === say}" tabindex="${m === say ? 0 : -1}">${SAY_LABELS[m]}</button>`).join('')}</span></div>
+        ${sw('m-typed', 'Typed answers', !(sv && sv.typed === false), 'Sometimes explain a concept instead of picking an answer.')}
+        ${sv && SD.relicToggles && SD.relicToggles.count().all ? nav('m-relics', 'Relics', `${SD.relicToggles.count().on} of ${SD.relicToggles.count().all} on`) : ''}
+      </div></section>
+      <section aria-labelledby="mh-save"><h3 class="mnu-h" id="mh-save">Save</h3><div class="mnu-list">
+        ${sv ? nav('m-name', 'Hero name', U.esc(sv.name)) : ''}
+        ${S.cloud && S.cloud.where === 'code' ? nav('m-code', 'Play on another device', 'Save code') : ''}
+      </div>
+      <p class="muted small mnu-note">Progress saves automatically${!S.cloud ? ' in this browser' : S.cloud.where === 'claude' ? ' to your claude.ai account, so it follows you across devices' : ', and your save code brings it to another device'}.</p></section>
+      <section aria-labelledby="mh-about"><h3 class="mnu-h" id="mh-about">About</h3><div class="mnu-list">${nav('m-credits', 'Credits')}</div></section>
+      <div class="mnu-danger"><button type="button" class="danger" id="m-reset">Erase save and start over</button></div>
+      <p class="muted small mnu-keys"><kbd>M</kbd> menu · <kbd>V</kbd> mute · <kbd>↑</kbd> <kbd>↓</kbd> move</p></div>`, { title: 'MENU' });
+    const on = (id, f) => { const el = b.querySelector('#' + id); if (el) el.onclick = f; };
+    // Back from a sub-panel lands on the item that opened it.
+    const back = id => () => menu(id);
+    on('m-help', () => help(back('m-help')));
     // On phones the Journal leaves the HUD to make room for Practice, so it lives here too.
-    const mj = b.querySelector('#m-journal'); if (mj) mj.onclick = () => SD.journal.open();
+    on('m-journal', () => SD.journal.open());
     // Bru's board of who is where right now (js/folk.js).
-    const mb = b.querySelector('#m-board'); if (mb) mb.onclick = () => SD.folk.board();
+    on('m-board', () => SD.folk.board());
     // Multiplayer (js/guild.js). Also on the title screen.
-    const mg = b.querySelector('#m-guild'); if (mg) mg.onclick = () => SD.guild.play();
-    // Switch owned relics on and off (js/relic-toggles.js).
-    const mr = b.querySelector('#m-relics'); if (mr) mr.onclick = () => SD.relicToggles.open(menu);
-    b.querySelector('#m-music').onclick = () => { AU.set('music', !p.music); menu(); M.hud(); };
-    b.querySelector('#m-sfx').onclick = () => { AU.set('sfx', !p.sfx); menu(); M.hud(); };
-    b.querySelector('#m-credits').onclick = credits;
+    on('m-guild', () => SD.guild.play());
+    on('m-music', () => { AU.set('music', !AU.prefs.music); menuSync(); M.hud(); });
+    on('m-sfx', () => { AU.set('sfx', !AU.prefs.sfx); if (AU.prefs.sfx) AU.sfx('ok'); menuSync(); M.hud(); });
     // Say it first (js/quiz.js): hide multiple choice options until you've answered in your own words.
-    b.querySelector('#m-say').onclick = () => {
+    const seg = b.querySelector('#m-say');
+    const pick = (v, focus) => {
       if (!S.save) return;
-      const m = SD.quiz.SAY_MODES; S.save.sayFirst = m[(m.indexOf(SD.quiz.sayMode()) + 1) % m.length]; S.persist(); menu();
+      S.save.sayFirst = v; S.persist();
+      seg.querySelectorAll('[role=radio]').forEach(r => { const is = r.dataset.v === v; r.setAttribute('aria-checked', is); r.tabIndex = is ? 0 : -1; if (is && focus) r.focus(); });
+    };
+    seg.onclick = e => { const r = e.target.closest('[role=radio]'); if (r) pick(r.dataset.v, true); };
+    seg.onkeydown = e => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      const m = SD.quiz.SAY_MODES, i = m.indexOf(SD.quiz.sayMode());
+      pick(m[(i + (e.key === 'ArrowRight' ? 1 : m.length - 1)) % m.length], true);
     };
     // Typed answers (js/explain-data.js, checked on-device by js/embed.js): sometimes explain a concept instead of picking.
-    b.querySelector('#m-typed').onclick = () => { if (!S.save) return; S.save.typed = S.save.typed === false; S.persist(); menu(); };
-    b.querySelector('#m-name').onclick = () => askName(() => { U.closePanel(); M.hud(); });
-    const mc = b.querySelector('#m-code'); if (mc) mc.onclick = saveCode;
-    b.querySelector('#m-reset').onclick = () => {
-      const c = U.panel('<p>Erase everything: levels, cheat sheet pages, Mio\'s drawings? Uptima will pretend she never met you. This cannot be undone.</p><div class="row"><button class="danger" id="r-y">Erase</button><button class="ghost" id="r-n">Cancel</button></div>', { title: 'ARE YOU SURE?' });
+    on('m-typed', () => { if (!S.save) return; S.save.typed = S.save.typed === false; S.persist(); menuSync(); });
+    // Relic switches (js/relic-toggles.js).
+    on('m-relics', () => SD.relicToggles.open(back('m-relics')));
+    on('m-name', () => askName(() => { M.hud(); menu('m-name'); }));
+    on('m-code', () => saveCode(back('m-code')));
+    on('m-credits', () => credits(back('m-credits')));
+    on('m-reset', () => {
+      const c = U.panel('<p>Erase everything: levels, cheat sheet pages, Mio\'s drawings? Uptima will pretend she never met you. This cannot be undone.</p><div class="row"><button class="danger" id="r-y">Erase</button><button class="ghost" id="r-n">Cancel</button></div>', { title: 'ARE YOU SURE?', back: back('m-reset') });
       c.querySelector('#r-y').onclick = () => { S.reset(); U.closePanel(); M.title(); };
-      c.querySelector('#r-n').onclick = U.closePanel;
-    };
+      c.querySelector('#r-n').onclick = back('m-reset');
+      c.querySelector('#r-n').focus();
+    });
+    b.querySelector('.mnu').addEventListener('keydown', e => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      const items = [...b.querySelectorAll('.mnu button:not([tabindex="-1"])')], i = items.indexOf(document.activeElement);
+      e.preventDefault();
+      items[i < 0 ? 0 : (i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+    });
+    const f = (focusId && b.querySelector('#' + focusId)) || b.querySelector('.mnu button');
+    if (f) f.focus({ preventScroll: !focusId });
+  }
+  // Brings the menu's switches up to date in place (after a click, or V muting from anywhere).
+  function menuSync() {
+    if ($('#panel').hidden || $('#panel .win-h span').textContent !== 'MENU') return;
+    const set = (id, v) => { const el = $('#' + id); if (el) el.setAttribute('aria-checked', v); };
+    set('m-music', AU.prefs.music); set('m-sfx', AU.prefs.sfx); set('m-typed', !(S.save && S.save.typed === false));
   }
   // Cloudflare build (js/cloud.js): the save code that carries this save to another device. Anyone with the code
   // can load the save, so it's shown only here.
-  function saveCode() {
+  function saveCode(back) {
     const code = SD.cloud.saves.code(), pretty = code.match(/.{4}/g).join('-');
     const c = U.panel(`<p class="small">To keep playing on another device, open the game there, go to Menu > Play on another device, and type this code. Keep it to yourself: anyone with it can load your save.</p>
       <p><b id="sc-code" style="font: 600 17px var(--f-head); letter-spacing: 1px; word-break: break-all;">${pretty}</b></p>
       <div class="row"><button class="ghost" id="sc-copy">Copy code</button></div>
       <label class="num">Code from another device <input id="sc-in" maxlength="48" autocomplete="off" spellcheck="false"></label>
       <div class="row"><button class="primary" id="sc-use">Use that save here</button></div>
-      <p class="muted small" id="sc-msg"></p>`, { title: 'SAVE CODE' });
+      <p class="muted small" id="sc-msg"></p>`, { title: 'SAVE CODE', back });
     const msg = c.querySelector('#sc-msg');
     c.querySelector('#sc-copy').onclick = e => {
       try { navigator.clipboard.writeText(pretty).then(() => { e.target.textContent = 'Copied'; }, () => { e.target.textContent = 'Copy failed'; }); } catch (err) { e.target.textContent = 'Copy failed'; }
@@ -192,7 +237,7 @@
       M.hud();
     };
   }
-  function credits() {
+  function credits(back) {
     U.panel(`<p class="small">Free art and music, used with thanks. Full details are in CREDITS.md in the game's repository.</p>
       <ul class="links small">
         <li><b>Portraits:</b> "Character Portrait ~ Maid" by Jupiter's Daughter; "LPC Anime Portrait #2" and "Sara, Trevor, Puck Anime Portrait and Expressions" by ZaPaper, commissioned through ZeNeRIA29; "Maid YOYO" and "boy" by Aeihu; "Brown haired hero" by Ironthunder, with thanks to Markeus Brumfield and Frank Ni (all CC BY 3.0, OpenGameArt). "Animated Nordic Warrior Sprite + Bust" by Sevarihk and "Kuudere VIsual novel Sprite" by LisadiKaprio (CC BY 4.0). "Business Man" by Grahhhhh (CC0).</li>
@@ -200,9 +245,9 @@
         <li><b>Village, monsters, emotes, particles, jingles and sound effects:</b> Kenney (www.kenney.nl), CC0.</li>
         <li><b>Places and night sounds:</b> "Slow Clock Ticking" Sound Effect By Nicole Marie T (CC BY 4.0). Waves and doorbell by qubodup, seagulls by Rango Mango, fire by AntumDeluge, anvils by themightyglider and vishwajai, chimes by pwl, weights by bmaczero and crickets by wolfgang (CC0, OpenGameArt).</li>
         <li><b>Icons:</b> Game-icons.net by Lorc, Delapouite and contributors (CC BY 3.0).</li>
-        <li><b>Fonts:</b> Fredoka and Nunito (SIL Open Font License).</li></ul>`, { title: 'CREDITS', cls: 'wide' });
+        <li><b>Fonts:</b> Fredoka and Nunito (SIL Open Font License).</li></ul>`, { title: 'CREDITS', cls: 'wide', back });
   }
-  function help() {
+  function help(back) {
     U.panel(`<ul class="links">
       <li><b>Village.</b> Walk with WASD or arrow keys, or tap where you want to go. Walk into doors to enter, and into people to talk. Press M to open or close the menu, and V to mute or unmute the sound.</li>
       <li><b>Runs.</b> The Dungeon gate takes you down into Prod: a branching path of incidents, whiteboards, cafés and break rooms, ending at a boss. A run takes about 20 minutes.</li>
@@ -213,7 +258,7 @@
       <li><b>Town quests.</b> A villager with a <b>!</b> has a story quest for you; a <b>?</b> means they are waiting on you. Quests send you around town and teach through mini-games. Each one ends with a <b>Plot Device</b>: a permanent upgrade for every future run.</li>
       <li><b>Curses.</b> Deeper dungeons are harder and cursed. The right Plot Device lifts a curse for good, so explore the town between runs. The Quests button shows which quest lifts which curse.</li>
       <li><b>Gary.</b> Sometimes Gary wanders into a fight and fixes it in one commit. Explain why his fix worked for bonus XP.</li>
-      <li><b>Loops.</b> If SLA hits zero, you respawn on the same morning. You keep XP, shards, cards unlocked and everything you learned.</li></ul>`, { title: 'HOW TO PLAY', cls: 'wide' });
+      <li><b>Loops.</b> If SLA hits zero, you respawn on the same morning. You keep XP, shards, cards unlocked and everything you learned.</li></ul>`, { title: 'HOW TO PLAY', cls: 'wide', back });
   }
   function askName(done) {
     const b = U.panel(`<p class="small">Name, please. The goddess needs it for the paperwork.</p><label class="num">Hero name <input id="nm" maxlength="16" value="${U.esc(S.save.name)}"></label><button class="primary" id="nm-ok">Sign here</button>`, { title: 'HERO REGISTRATION FORM', noClose: true });
@@ -242,7 +287,7 @@
     $('#title-actions').innerHTML = has
       ? `<button class="primary" id="t-go">Continue · Loop ${sv.loop}</button>${pr}${mp}<button class="ghost" id="t-help">How to play</button>`
       : `<button class="primary" id="t-new">New game</button>${mp}<button class="ghost" id="t-help">How to play</button>`;
-    $('#t-help').onclick = help;
+    $('#t-help').onclick = () => help();
     // Multiplayer (js/guild.js) from the title too. A party link (#join-CODE) opens it straight away.
     const tg = $('#t-guild');
     if (tg) { tg.onclick = () => SD.guild.play({ after: 'title' }); if (SD.guild.pending()) SD.guild.play({ after: 'title' }); }
