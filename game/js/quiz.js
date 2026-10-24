@@ -53,6 +53,11 @@
     opts = opts || {};
     return new Promise(resolve => {
       const t0 = Date.now();
+      // opts.tally (an expedition's questions, js/raid.js): each confidence button shows what it does to the
+      // confidence tally (SD.state.tally), and the feedback's verdict carries the tally before and after. opts.heal(ok, tally), when
+      // given, says on the Continue button what this answer heals; opts.stakeNote adds a line under the buttons.
+      const T = opts.tally && SD.state.tally && SD.state.TALLY ? SD.state.TALLY : null, tal0 = T ? SD.state.tally() : 0;
+      const sgn = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
       const limit = opts.timer > 0 ? opts.timer * 1000 : 0;
       let clock = null, late = false;
       const stop = () => { if (clock) { clearInterval(clock); clock = null; } };
@@ -121,7 +126,8 @@
         const words = t => t.trim().split(/\s+/).filter(Boolean).length;
         const ready = q.type === 'mc' ? pick != null : q.type === 'num' ? true : q.type === 'order' ? order.length === q.items.length : q.type === 'explain' ? words(typed) >= 3 : multi.size > 0;
         h += `<div class="conf"><span class="muted small">Commit your answer. How sure are you?</span><div class="conf-b">
-          <button data-c="0" ${ready ? '' : 'disabled'}>Guess</button><button data-c="1" ${ready ? '' : 'disabled'}>Think so</button><button data-c="2" ${ready ? '' : 'disabled'}>Sure</button></div></div>`;
+          ${['Guess', 'Think so', 'Sure'].map((t, i) => `<button data-c="${i}" ${ready ? '' : 'disabled'}>${t}${T ? `<small class="stake"><span class="up">${sgn(T[i][0])}</span> / <span class="dn">${sgn(T[i][1])}</span></small>` : ''}</button>`).join('')}</div>
+          ${T ? `<p class="muted small stake-help">🎯 Your On-call Cred is <b>${tal0}</b>. Right / wrong moves it by the numbers on each button. Say how sure you really are.${opts.stakeNote ? ' ' + U.esc(opts.stakeNote) : ''}</p>` : ''}</div>`;
         const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
         b.querySelectorAll('[data-o]').forEach(el => el.onclick = () => { pick = +el.dataset.o; render(); });
         b.querySelectorAll('[data-ord]').forEach(el => el.onclick = () => { order.push(+el.dataset.ord); render(); });
@@ -246,7 +252,18 @@
         if (q.type === 'explain') right = q.model;
         const over = !ok && conf === 2;
         if (SD.audio) SD.audio.sfx(ok ? 'right' : 'wrong');
-        let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : late ? 'TIME\'S UP!' : 'NOT QUITE!'}</div>`;
+        // On-call Cred (opts.tally) rides on the verdict as a badge, so the answer and the why stay right under it; what
+        // the answer heals goes on the Continue button, the moment it happens (Ladi, Oct 24).
+        let cred = '', healTxt = '', credMore = '';
+        if (T) {
+          const t1 = SD.state.tally(), d = t1 - tal0, st = (T[conf] || T[0])[ok ? 0 : 1];
+          const why = `${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}, ${ok ? 'right' : 'wrong'}: ${sgn(st)}${d !== st ? `. Cred counts your last 20 answers, at most ${SD.state.TALLY_MAX}` : ''}`;
+          cred = `<span class="cred-badge ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}" title="${U.esc(why)}" aria-label="On-call Cred ${tal0} to ${t1}. ${U.esc(why)}">🎯 Cred ${tal0} → <b>${t1}</b> <span class="tally-d">${sgn(d)}</span></span>`;
+          healTxt = opts.heal ? opts.heal(ok, t1) : '';
+          // The same, spelled out, in the pinned footer above Continue, where a phone always sees it (no hover needed).
+          credMore = `<details class="cred-more"><summary>🎯 Why Cred ${sgn(d)}?</summary><p>You said <b>${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}</b> and were ${ok ? 'right' : 'wrong'}: ${sgn(st)}.${d !== st ? ` Cred counts only your last 20 answers and never goes above ${SD.state.TALLY_MAX}, so it moved ${sgn(d)}.` : ''} Every answer you commit moves it: Guess ${sgn(T[0][0])} / ${sgn(T[0][1])}, Think so ${sgn(T[1][0])} / ${sgn(T[1][1])}, Sure ${sgn(T[2][0])} / ${sgn(T[2][1])}.${opts.credNote ? ' ' + U.esc(opts.credNote) : ''}</p></details>`;
+        }
+        let h = `<div class="verdict-row"><div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : late ? 'TIME\'S UP!' : 'NOT QUITE!'}</div>${cred}</div>`;
         if (over) h += `<p class="warn small">You were sure and it was wrong. That gap is the most valuable thing you found today, so this comes back first.</p>`;
         if (ok && conf === 0) h += `<p class="muted small">A lucky guess is not knowledge yet. It will come back soon.</p>`;
         h += recap(right);
@@ -304,7 +321,7 @@
           ])].slice(0, 3);
           h += `<div class="compass"><div class="q-ctx">Confusion compass <span class="muted small">(optional)</span></div><p class="small">What tripped you up? Tap one to save it to your notebook.</p>
             <div class="opts">${prompts.map((p, i) => `<button class="opt" data-p="${i}">${U.esc(p)}</button>`).join('')}</div></div>`;
-          h += `<div class="q-foot"><button class="primary" id="q-next">Continue</button></div>`;
+          h += `<div class="q-foot">${credMore}<button class="primary" id="q-next">Continue${healTxt ? ` <span class="heal-on">· ${U.esc(healTxt)}</span>` : ''}</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
           const nx = b.querySelector('#q-next');
@@ -317,7 +334,7 @@
           });
           nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
         } else {
-          h += `<div class="q-foot"><button class="primary" id="q-next">Continue</button></div>`;
+          h += `<div class="q-foot">${credMore}<button class="primary" id="q-next">Continue${healTxt ? ` <span class="heal-on">· ${U.esc(healTxt)}</span>` : ''}</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
           b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };

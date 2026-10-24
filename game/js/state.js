@@ -4,6 +4,7 @@
   const DAY = 86400000;
   // Review intervals in days by box: forget about 20-30% before testing again (1 week to 1 month).
   const BOX_DAYS = [0, 1, 3, 7, 14, 30];
+  const TALLY_N = 20;
 
   function fresh() {
     return {
@@ -186,6 +187,8 @@
     else c.box = conf === 2 ? 0 : Math.max(0, c.box - 1);
     c.due = Date.now() + BOX_DAYS[c.box] * DAY;
     S.save.stats.answered++; if (ok) S.save.stats.correct++;
+    // The confidence tally's window (S.tally below).
+    S.save.tally = (Array.isArray(S.save.tally) ? S.save.tally : []).concat([[ok ? 1 : 0, [0, 1, 2].includes(conf) ? conf : 0]]).slice(-TALLY_N);
     // A notebook page appears once a concept is answered right twice in a row.
     const last = c.hist.slice(-2);
     if (last.length === 2 && last.every(h => h.ok) && !S.save.pages.includes(id)) {
@@ -206,6 +209,15 @@
     if (recent.length >= 4 && rate >= 0.75) { stage = 3; label = 'Fluency'; }
     if (recent.length >= 5 && rate === 1 && fastOk >= 4 && c.box >= 3) { stage = 4; label = 'Mastered'; }
     return { stage, label, rate };
+  };
+  // The confidence tally (Ladi, Oct 23, ported from Isekai'd Into the Cloud): the last TALLY_N answers you committed,
+  // anywhere in the game, each scored by how sure you said you were. Guess: right +1, wrong 0. Think so: +2, -1.
+  // Sure: +3, -5. It's capped at TALLY_MAX after each answer, so three confident misses take a full tally back to 0
+  // and nobody coasts. An expedition's debrief heals by it (js/raid.js).
+  S.TALLY = [[1, 0], [2, -1], [3, -5]];
+  S.TALLY_MAX = 15;
+  S.tally = function () {
+    return (Array.isArray(S.save.tally) ? S.save.tally : []).reduce((a, x) => Math.max(-S.TALLY_MAX, Math.min(S.TALLY_MAX, a + ((S.TALLY[x[1]] || S.TALLY[0])[x[0] ? 0 : 1]))), 0);
   };
   // Concepts that are due or weak first, then interleave the rest.
   S.pickConcepts = function (n, pool) {

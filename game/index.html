@@ -209,6 +209,21 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .conf-b { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .conf-b button { flex: 1 1 90px; background: #fff; }
 .conf-b button[data-c="2"]:not(:disabled) { background: var(--sun); }
+/* The confidence tally's stakes on each button, and its change after an answer (expeditions only, js/quiz.js). */
+.conf-b .stake { display: block; font: 700 11px var(--f-body); letter-spacing: .02em; opacity: .85; }
+.conf-b .stake .up { color: #17834f; } .conf-b .stake .dn { color: #c43a3a; }
+.stake-help { margin: 6px 0 0; }
+.verdict-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-bottom: 10px; }
+.verdict-row .verdict { margin-bottom: 0; }
+.cred-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 20px; background: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.cred-badge.up { background: #e6f8ee; } .cred-badge.dn { background: #ffe9e9; }
+.cred-badge .tally-d { font: 700 15px var(--f-head); }
+.cred-badge.up .tally-d { color: #17834f; } .cred-badge.dn .tally-d { color: #c43a3a; }
+#q-next .heal-on { font-weight: 700; opacity: .9; }
+.cred-more { margin: 0 0 8px; font-size: 13px; }
+.cred-more summary { cursor: pointer; font-weight: 800; color: var(--muted); list-style-position: inside; }
+.cred-more summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+.cred-more p { margin: 6px 0 0; max-height: 30vh; overflow-y: auto; }
 .num { display: flex; align-items: center; gap: 10px; margin: 12px 0; flex-wrap: wrap; font-weight: 700; }
 .num input { flex: 1 1 140px; min-width: 0; background: #fff; border: 3px solid var(--ink); color: var(--ink); padding: 10px 12px; font: 600 18px var(--f-head); border-radius: 12px; }
 .order-done { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; margin: 10px 0; }
