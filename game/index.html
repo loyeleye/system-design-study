@@ -340,6 +340,22 @@ blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a
 .bd .bd-budget { font-weight: bold; margin: 4px 0; }
 .bd .bd-budget.bad { color: #c02f2f; }
 .bd .bd-round { font-size: 1.4em; margin: 6px 0 2px; }
+/* Desktop: the brief, flows and tray on the left, the board on the right, both inside the window, so you never
+   scroll between picking a part and placing it. The board is sized from the window's height. */
+@media (min-width: 900px) {
+  .win.bd:has(.bd-board) { width: min(1200px, 96vw); }
+  .win.bd .win-b:has(> .bd-board) { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); column-gap: 20px; align-content: start; }
+  .win.bd .win-b:has(> .bd-board) > * { grid-column: 1; }
+  .win.bd .win-b:has(> .bd-board) > .bd-board { grid-column: 2; grid-row: 1 / span 30; justify-self: center; width: auto; height: min(calc(100vh - 120px), 720px); max-width: 100%; margin: 0; }
+}
+/* Practice hub (js/practice.js) */
+.practice section { border: 2px solid var(--ink); border-radius: 12px; background: #fff; padding: 10px 14px; margin: 0 0 12px; }
+.practice h3 { margin: 0 0 4px; font-family: var(--f-head); }
+.practice .pr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 8px 0 4px; }
+.practice .pr-list .opt { padding: 8px 10px; }
+.practice .row { align-items: center; gap: 12px; }
+#hud .practice-btn { background: var(--sun); }
+@media (max-width: 600px) { #hud #hud-journal { display: none; } }
 .say-first { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #fff8e6; border: 2px dashed #e7b84a; }
 .say-first p { margin: 0 0 8px; }
 .helpbox { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #f1ecff; border: 2px solid #b9a6ff; }
@@ -1089,6 +1105,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/achievements.js"></script>
 <script src="js/ascension.js"></script>
 <script src="js/journal.js"></script>
+<script src="js/practice.js"></script>
 <script src="js/main.js"></script>
 <script src="js/northroad.js"></script>
 <script src="js/club-art.js"></script>

@@ -2,7 +2,7 @@
 
 A timed system design round (45 interview minutes, played in 5 to 15 real ones) with Ploy, the Eventual Isles game-club president, as the interviewer, scored on a senior-level rubric. Ladi picked it on 2026-10-18 from a list of ideas for the game ("the closest thing to the real interview").
 
-To play it on its own, serve `game/` (for example `python3 -m http.server` inside `game/`) and open `mock.html`. `mock.html?p=chat` opens one problem straight away. In the main game, talk to Ploy in her cove on the Eventual Isles once chapter 3 is cleared.
+To play it on its own, serve `game/` (for example `python3 -m http.server` inside `game/`) and open `mock.html`. `mock.html?p=chat` opens one problem straight away. In the main game, open **Practice** on the HUD or the title screen once chapter 1 is cleared (each problem opens with its own chapter), or talk to Ploy in her cove on the Eventual Isles once the Isles open after chapter 3. The Practice hub links `mock.html` when the game runs from its files.
 
 ## The round
 
@@ -69,7 +69,7 @@ XP and Memory Shards by verdict: strong hire 120 XP and 150 shards, senior hire 
 - `game/js/mock.js` — the round, the debrief and the menu. Self-contained: it injects its own styles under `.mi` and needs only `SD.mock` and `SD.wb.parts` (from `whiteboard-data.js`, so the parts palette shares names and icons with Smudge). It uses `SD.art`, `SD.cast`, `SD.concepts`, `SD.icons` and `SD.audio` when they are loaded.
   - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, concepts, spent, mins, cut }`.
   - `SD.mock.menu(root, { store, open, onResult, pid })` shows the problem list and runs rounds.
-  - `SD.mock.solo()` is the main game's entry: the panel, the save-backed store (`sv.mock`), spaced review and rewards. The new Eventual Isles NPC offers it, and it stays locked until chapter 3 is cleared. Gary no longer offers it.
+  - `SD.mock.solo()` is the main game's entry: the panel, the save-backed store (`sv.mock`), spaced review and rewards. Ploy on the Eventual Isles and the Practice hub (`js/practice.js`) offer it, and it stays locked until chapter 1 is cleared. Gary no longer offers it.
 - `game/mock.html` — the standalone page.
 
 ## Hook-ups in shared files
