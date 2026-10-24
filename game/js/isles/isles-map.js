@@ -95,7 +95,9 @@
   // Build the tile grid: '~' sea, '.' grass, 'p' dirt path, ',' boards and plazas, 'T' tree, 'L' prop, '#' landmark.
   const G = [];
   for (let y = 0; y < HT; y++) G.push(new Array(W).fill('~'));
-  const hash = (x, y) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
+  // Coasts, trees and props are scattered by this hash. It counts rows from where the map's top was before it grew six
+  // rows north, so every island keeps the shape it had.
+  const hash = (x, y) => ((x * 73856093) ^ ((y - 6) * 19349663)) >>> 0;
   const set = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < HT) G[y][x] = c; };
   const get = (x, y) => (x < 0 || y < 0 || x >= W || y >= HT) ? '~' : G[y][x];
   function blob([x0, y0, x1, y1], ragged) {
@@ -114,7 +116,7 @@
   path([[0, 26], [9, 26], [9, 13], [12, 13]]); path([[9, 26], [9, 36], [12, 36]]); path([[9, 36], [9, 48], [28, 48]]); path([[9, 24], [12, 24]]); path([[9, 29], [12, 29]]);
   path([[9, 23], [9, 23]]);
   path([[9, 13], [9, 4], [5, 4], [5, 3]]);   // up into the hills, to the cave
-  path([[18, 13], [23, 13], [23, 18]]); path([[23, 13], [27, 13]]); path([[26, 10], [26, 8]]); path([[23, 10], [28, 10]]);
+  path([[18, 13], [23, 13], [23, 18]]); path([[23, 13], [27, 13]]); path([[26, 10], [26, 8]]); path([[23, 10], [28, 10]]); path([[27, 10], [27, 13]]);
   path([[18, 36], [23, 36], [23, 31]]); path([[23, 36], [28, 36]]);
   path([[31, 24], [35, 24], [35, 29]]); path([[35, 24], [40, 22]]); path([[35, 22], [40, 22]]);
   path([[44, 14], [48, 14], [48, 18]]); path([[47, 8], [47, 9], [44, 9], [44, 14]]); path([[46, 18], [50, 18]]);
