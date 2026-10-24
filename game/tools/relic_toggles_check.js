@@ -74,7 +74,7 @@ const server = http.createServer((req, res) => {
   await page.fill('#rt-q', '');
   await page.click('#panel .rt-row[data-id="genesis"]');
   check((await shown()).split(',').length === 6, 'clearing the search shows every relic again');
-  await page.click('#rt-back');
+  await page.click('#panel-back');
   check(/4 of 6 on/.test(await page.$eval('#m-relics', b => b.textContent)), 'Back to menu, which says 4 of 6 on');
   await page.evaluate(() => SD.ui.closePanel());
 

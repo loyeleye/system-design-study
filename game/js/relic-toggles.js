@@ -1,7 +1,7 @@
 // Menu > Relics: every keepsake and relic you own, each with an on/off switch (Ladi, Oct 24). A switched-off relic
 // stays owned but does nothing and shows nothing in a run: Pip's Monocle off means no diagnosis and no "Ask Pip".
 // The switches are S.save.relicsOff, read through S.relicOn (js/state.js); the effects check it in js/run.js.
-// Self-contained so any menu can open it: SD.relicToggles.open(back), where back reopens the menu it came from.
+// Self-contained so any menu can open it: SD.relicToggles.open(back), where back reopens the menu it came from (the ‹ in the panel's header).
 // The panel (UX pass, Ladi, Oct 24): a search box and All / On / Off filters pinned above a scrolling list grouped by
 // where each relic came from; switches flip in place (no redraw, focus stays put) and a live region says what changed;
 // one button turns everything shown on or off.
@@ -31,11 +31,8 @@
   T.open = function (back) {
     const gs = groups(), list = [].concat(...gs.map(g => g.items));
     const cred = id => SD.run && SD.run.isBacked && SD.run.isBacked(id);
-    const backBtn = back ? '<button class="ghost" id="rt-back">Back to menu</button>' : '';
     if (!list.length) {
-      const b = U.panel(`<p>You don't own any relics yet. Grandma Wen sells keepsakes at the Cache Café, for Memory Shards.</p>
-        ${backBtn ? `<div class="row">${backBtn}</div>` : ''}`, { title: 'RELICS' });
-      const bk = b.querySelector('#rt-back'); if (bk) bk.onclick = back;
+      U.panel(`<p>You don't own any relics yet. Grandma Wen sells keepsakes at the Cache Café, for Memory Shards.</p>`, { title: 'RELICS', back });
       return;
     }
     const row = it => `<button class="opt rt-row" role="switch" data-id="${it.id}">
@@ -50,8 +47,8 @@
       <div class="rt-list">${gs.map((g, i) => `<section class="rt-g" data-g="${i}"><h4 class="rt-gh">${U.esc(g.label)}</h4><div class="opts">${g.items.map(row).join('')}</div></section>`).join('')}
         <p class="muted small rt-none" id="rt-none" hidden></p></div>
       ${list.some(it => cred(it.id)) ? `<p class="muted small rt-legend">🎯 Credentialed: works only while your On-call Cred is ${(SD.run && SD.run.backCred) || 5} or more.</p>` : ''}
-      <div class="row rt-foot">${backBtn}<button class="ghost" id="rt-bulk"></button></div>
-      <p class="sr-only" id="rt-say" aria-live="polite"></p>`, { title: 'RELICS', cls: 'rt-win' });
+      <div class="row rt-foot"><button class="ghost" id="rt-bulk"></button></div>
+      <p class="sr-only" id="rt-say" aria-live="polite"></p>`, { title: 'RELICS', cls: 'rt-win', back });
 
     const qi = b.querySelector('#rt-q'), bulk = b.querySelector('#rt-bulk'), say = b.querySelector('#rt-say');
     const byId = id => list.find(it => it.id === id);
@@ -106,7 +103,6 @@
       say.textContent = `${rows.length} relic${rows.length === 1 ? '' : 's'} switched ${on ? 'on' : 'off'}.`;
       sync(rows);
     };
-    const bk = b.querySelector('#rt-back'); if (bk) bk.onclick = back;
     sync();
   };
 })();
