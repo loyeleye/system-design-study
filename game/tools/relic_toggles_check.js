@@ -45,7 +45,35 @@ const server = http.createServer((req, res) => {
   check(await page.$eval('#panel .rt-row[data-id="pipeye"]', b => b.getAttribute('aria-checked')) === 'false', "Pip's Monocle switches off");
   check(JSON.stringify(await page.evaluate(() => JSON.parse(localStorage.getItem('last-uptime-save-debug') || '{}').relicsOff)) === '["pipeye","genesis"]', 'the switches are saved');
   check(await page.evaluate(() => SD.state.maxSla()) === sla - 25, 'the Genesis Ledger off takes away its +25 max SLA');
-  if (process.argv[2]) { await page.waitForTimeout(800); await page.screenshot({ path: process.argv[2] }); await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300); await page.screenshot({ path: process.argv[2].replace(/\.png$/, '-phone.png') }); await page.setViewportSize({ width: 1280, height: 800 }); }
+  if (process.argv[2]) { await page.$eval('#panel .rt-list', l => { l.scrollTop = 0; }); await page.mouse.move(0, 0); await page.waitForTimeout(800); await page.screenshot({ path: process.argv[2] }); await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300); await page.screenshot({ path: process.argv[2].replace(/\.png$/, '-phone.png') }); await page.setViewportSize({ width: 1280, height: 800 }); }
+  // Search: filters by name and description as you type, and keeps the query when you flip a switch.
+  const shown = () => page.$$eval('#panel .rt-row', r => r.filter(x => !x.hidden).map(x => x.dataset.id).join(','));
+  check(await page.$$eval('#panel .rt-gh', h => h.map(x => x.textContent).join('|')) === "Grandma Wen's keepsakes|The Exchange's relics", 'rows are grouped by where they came from');
+  await page.fill('#rt-q', 'pips monocle');
+  check(await shown() === 'pipeye', `searching "pips monocle" shows only Pip's Monocle (${await shown()})`);
+  await page.fill('#rt-q', 'max sla');
+  check(await shown() === 'lantern,genesis', `searching "max sla" finds it in descriptions (${await shown()})`);
+  check(/All 2/.test(await page.$eval('#panel [data-f="all"]', t => t.textContent)) && /Off 1/.test(await page.$eval('#panel [data-f="off"]', t => t.textContent)), 'the filter counts follow the search');
+  await page.click('#panel .rt-row[data-id="lantern"]');
+  check(await page.$eval('#rt-q', i => i.value) === 'max sla' && await shown() === 'lantern,genesis', 'flipping a switch keeps the search');
+  check(await page.evaluate(() => document.activeElement && document.activeElement.dataset.id) === 'lantern', 'focus stays on the switch you flipped');
+  check(/^Lucky Rubber Duck off\.$/.test(await page.$eval('#rt-say', p => p.textContent)), 'the change is announced');
+  if (process.argv[2]) { await page.waitForTimeout(300); await page.screenshot({ path: process.argv[2].replace(/\.png$/, '-search.png') }); }
+  check(/Turn these 2 on/.test(await page.$eval('#rt-bulk', x => x.textContent)), 'the bulk button offers to turn the 2 shown on');
+  await page.click('#rt-bulk');
+  check(await page.evaluate(() => SD.state.relicOn('lantern') && SD.state.relicOn('genesis') && !SD.state.relicOn('pipeye')), 'it turns on only the shown ones');
+  await page.click('#panel [data-f="off"]');
+  await page.fill('#rt-q', '');
+  check(await shown() === 'pipeye', 'the Off filter shows only switched-off relics');
+  await page.click('#panel .rt-row[data-id="pipeye"]');
+  check(await shown() === 'pipeye', "a row you switch on stays put under the Off filter until you change it");
+  await page.click('#panel .rt-row[data-id="pipeye"]');
+  await page.click('#panel [data-f="all"]');
+  await page.fill('#rt-q', 'zzz');
+  check(await shown() === '' && !(await page.$eval('#rt-none', p => p.hidden)) && await page.$eval('#rt-bulk', x => x.hidden), 'no match says so and hides the bulk button');
+  await page.fill('#rt-q', '');
+  await page.click('#panel .rt-row[data-id="genesis"]');
+  check((await shown()).split(',').length === 6, 'clearing the search shows every relic again');
   await page.click('#rt-back');
   check(/4 of 6 on/.test(await page.$eval('#m-relics', b => b.textContent)), 'Back to menu, which says 4 of 6 on');
   await page.evaluate(() => SD.ui.closePanel());

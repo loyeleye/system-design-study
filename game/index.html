@@ -206,7 +206,21 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .opt.on { background: #dcebff; box-shadow: 0 3px 0 var(--blue-d); border-color: var(--blue-d); }
 .opt.struck { text-decoration: line-through; }
 /* Menu > Relics (js/relic-toggles.js): one switch row per owned relic. */
-.rt-list { max-height: 60vh; overflow-y: auto; padding: 2px 4px 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.rt-help { margin: 0 0 8px; }
+.rt-top { display: grid; gap: 8px; }
+.rt-q { width: 100%; box-sizing: border-box; min-height: 44px; padding: 9px 12px; font: 600 16px var(--f-body); border: 2px solid var(--ink); border-radius: 10px; background: #fff; }
+.rt-f { margin: 0; }
+.rt-f .tab { min-height: 36px; min-width: 64px; }
+/* button.on[aria-pressed] (below) would paint the picked filter pale blue under white text: keep the .tab look. */
+.rt-f .tab.on[aria-pressed="true"] { background: var(--blue); color: #fff; box-shadow: 0 3px 0 var(--blue-d); }
+.rt-list { max-height: min(52vh, 480px); overflow-y: auto; overscroll-behavior: contain; margin-top: 8px; padding: 2px 4px 6px; border-top: 2px dashed var(--line); }
+.rt-g[hidden], .rt-row[hidden] { display: none; }
+.rt-gh { margin: 12px 2px 0; font: 700 12px var(--f-head); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.rt-g .opts { margin-top: 6px; }
+.rt-none { margin: 14px 2px; }
+.rt-legend { margin: 6px 0 0; }
+.rt-foot { margin-top: 10px; }
 .rt-row { display: flex; align-items: center; gap: 10px; }
 .rt-row .rt-ic { flex: 0 0 30px; width: 30px; height: 30px; }
 .rt-row .rt-ic svg { width: 100%; height: 100%; }
