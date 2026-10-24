@@ -1,6 +1,9 @@
 // Save data, progression and spaced review.
 (function () {
   const KEY = 'last-uptime-save-v1';
+  // Review scheduler version. Saves from before 2 had boxes raised by massed and guessed answers (expert panel,
+  // Oct 23); revive() replays their history under the current rules once.
+  const SCHED = 2;
   const DAY = 86400000;
   // Review intervals in days by box: forget about 20-30% before testing again (1 week to 1 month).
   const BOX_DAYS = [0, 1, 3, 7, 14, 30];
@@ -8,7 +11,7 @@
 
   function fresh() {
     return {
-      v: 1, econ: 2, name: 'Ash', loop: 1, xp: 0, level: 1, shards: 0,
+      v: 1, econ: 2, sched: SCHED, name: 'Ash', loop: 1, xp: 0, level: 1, shards: 0,
       relics: [], spec: 'none', concepts: {}, pages: [], links: [], pickups: [],
       flags: {}, stats: { runs: 0, wins: 0, fights: 0, answered: 0, correct: 0 },
       chapter: 1, drawings: 0, mioVisitLoop: 0, run: null, lastRun: null, updatedAt: 0
@@ -23,6 +26,7 @@
   function revive(json) {
     const d = JSON.parse(json);
     if ((d.econ || 1) < 2) { d.shards = (d.shards || 0) * 20; d.econ = 2; }
+    if ((d.sched || 1) < SCHED) { for (const id in d.concepts || {}) rescheduleOld(d.concepts[id]); d.sched = SCHED; }
     return Object.assign(fresh(), d);
   }
 
@@ -177,15 +181,36 @@
     if (!c.seen) { c.seen = true; c.due = Date.now(); return true; }
     return false;
   };
-  // conf: 0 guess, 1 think so, 2 sure. Overconfident misses come back soonest (gap seeking).
+  // Calendar day of a timestamp, in the player's time zone.
+  const dayOf = t => new Date(t).toDateString();
+  // A right answer that wasn't a Guess. Answers recorded without a confidence (older callers) count as Think so.
+  const known = h => h.ok && h.conf !== 0;
+  // One answer's effect on a concept's review box. Only a spaced success raises it: the concept was due, its box
+  // hasn't gone up already today, and the answer wasn't a Guess. So a boss chain that asks about booking three
+  // times counts as one review, and a lucky guess is logged but moves nothing. A miss drops the box (a confident
+  // miss back to 0) and brings the concept back soonest (gap seeking).
+  function schedule(c, ok, conf, t) {
+    if (known({ ok, conf }) && c.due <= t && !(c.up && dayOf(c.up) === dayOf(t))) {
+      c.box = Math.min(BOX_DAYS.length - 1, c.box + 1); c.up = t; c.due = t + BOX_DAYS[c.box] * DAY;
+    } else if (!ok) { c.box = conf === 2 ? 0 : Math.max(0, c.box - 1); c.due = t + BOX_DAYS[c.box] * DAY; }
+  }
+  // An old save's concept, replayed from box 0 through its answer history under schedule(). It keeps the lower of
+  // the two boxes, so an over-promoted concept drops back and comes up for review; a long history cut to its last
+  // 12 answers can only drop, never rise.
+  function rescheduleOld(c) {
+    if (!c || !Array.isArray(c.hist) || !c.hist.length) return;
+    const r = { box: 0, due: c.hist[0].t || 0 };
+    c.hist.forEach(h => schedule(r, h.ok, h.conf, h.t || 0));
+    if (r.box < (c.box || 0)) { c.box = r.box; c.due = Math.min(c.due || Infinity, r.due); }
+    if (r.up) c.up = r.up;
+  }
+  // conf: 0 guess, 1 think so, 2 sure. ms is kept in the history but plays no part in mastery.
   S.recordAnswer = function (id, ok, conf, ms) {
-    const c = S.concept(id);
+    const c = S.concept(id), now = Date.now();
     c.seen = true;
-    c.hist.push({ ok, conf, ms, t: Date.now() });
+    c.hist.push({ ok, conf, ms, t: now });
     if (c.hist.length > 12) c.hist.shift();
-    if (ok) c.box = Math.min(BOX_DAYS.length - 1, c.box + (conf === 2 ? 1 : conf === 1 ? 1 : 0) + (c.box === 0 ? 1 : 0));
-    else c.box = conf === 2 ? 0 : Math.max(0, c.box - 1);
-    c.due = Date.now() + BOX_DAYS[c.box] * DAY;
+    schedule(c, ok, conf, now);
     S.save.stats.answered++; if (ok) S.save.stats.correct++;
     // The confidence tally's window (S.tally below).
     S.save.tally = (Array.isArray(S.save.tally) ? S.save.tally : []).concat([[ok ? 1 : 0, [0, 1, 2].includes(conf) ? conf : 0]]).slice(-TALLY_N);
@@ -201,13 +226,15 @@
     const c = S.concept(id);
     const h = c.hist;
     if (!h.length) return { stage: 0, label: 'Unseen', rate: 0 };
+    // A right Guess is logged but isn't counted as known. Speed plays no part: the interview rewards a clear
+    // explanation, not a fast tap. Mastered is the last five known, on at least three different days, box 3 or higher.
     const recent = h.slice(-5);
-    const rate = recent.filter(x => x.ok).length / recent.length;
-    const fastOk = recent.filter(x => x.ok && x.ms < 12000).length;
+    const rate = recent.filter(known).length / recent.length;
+    const days = new Set(recent.map(x => dayOf(x.t))).size;
     let stage = 1, label = 'Accuracy';
-    if (h.some(x => x.ok)) { stage = 2; label = 'Consistency'; }
+    if (h.some(known)) { stage = 2; label = 'Consistency'; }
     if (recent.length >= 4 && rate >= 0.75) { stage = 3; label = 'Fluency'; }
-    if (recent.length >= 5 && rate === 1 && fastOk >= 4 && c.box >= 3) { stage = 4; label = 'Mastered'; }
+    if (recent.length >= 5 && rate === 1 && days >= 3 && c.box >= 3) { stage = 4; label = 'Mastered'; }
     return { stage, label, rate };
   };
   // The confidence tally (Ladi, Oct 23, ported from Isekai'd Into the Cloud): the last TALLY_N answers you committed,
