@@ -129,7 +129,7 @@ const server = http.createServer((req, res) => {
   check(await title(page) === 'PRACTICE', 'closing the mock brings the hub back for the next rep');
   await page.click('#panel-x');
 
-  // Once-a-day shard bonuses: a passing board and a full chain each pay once a day.
+  // Daily shard bonuses: a passing board pays once a day; chains pay 15 a right answer, up to 45 a day.
   const bonus = await page.evaluate(async () => {
     const sv = SD.state.save, play = SD.board.play, ask = SD.quiz.ask;
     SD.board.play = async () => ({ ok: true, perfect: true, load: null, defended: false });
@@ -140,15 +140,20 @@ const server = http.createServer((req, res) => {
     await tap('[data-board="url"]'); out.board1 = sv.shards - s0;
     await tap('[data-board="url"]'); out.board2 = sv.shards - s0;
     const s1 = sv.shards;
+    let calls = 0;
+    SD.quiz.ask = async () => ({ ok: calls++ === 0 });
+    await tap('[data-chain]'); out.chain0 = sv.shards - s1;
+    SD.quiz.ask = async () => ({ ok: true });
     await tap('[data-chain]'); out.chain1 = sv.shards - s1;
     await tap('[data-chain]'); out.chain2 = sv.shards - s1;
     out.after = hub();
     SD.board.play = play; SD.quiz.ask = ask;
     return out;
   });
-  check(/first passing board pays 60/.test(bonus.before) && /first full chain pays 40/.test(bonus.before), 'the hub names today\'s board and chain bonuses');
+  check(/first passing board pays 60/.test(bonus.before) && /right answer pays 15 shards, up to 45/.test(bonus.before), 'the hub names today\'s board and chain bonuses');
   check(bonus.board1 === 60 && bonus.board2 === 60, `a passing board pays 60 shards once a day (got ${bonus.board1}, then ${bonus.board2 - bonus.board1} more)`);
-  check(bonus.chain1 === 40 && bonus.chain2 === 40, `a full chain pays 40 shards once a day (got ${bonus.chain1}, then ${bonus.chain2 - bonus.chain1} more)`);
+  check(bonus.chain0 === 15, `a chain that breaks after one right answer still pays 15 (got ${bonus.chain0})`);
+  check(bonus.chain1 === 45 && bonus.chain2 === 45, `chains pay 15 a right answer, 45 a day at most (got ${bonus.chain1}, then ${bonus.chain2 - bonus.chain1} more)`);
   check(!/pays/.test(bonus.after), 'the bonus lines go once they are paid');
   if (!await page.evaluate(() => SD.practice.BONUS.checked)) console.log('note the practice shard bonuses (js/practice.js, SD.practice.BONUS) still wait on the phase 7 economy check');
 
