@@ -431,3 +431,132 @@ SD.boardData = {
     }
   }
 };
+
+// Before the board (SD.board.play): the requirements and one estimate, so the brief's numbers are earned by asking.
+// { prompt, ask: [{ q, a, good }], est: { q, unit, lo, hi, ans, why } }
+//   prompt  the brief without its numbers
+//   ask     questions the player may ask; ask[0] is the scale question, told anyway if not asked. good: false marks
+//           a question that jumps to a solution or doesn't change the design (its answer says why)
+//   est     the number that drives the design; lo..hi counts as close enough
+(function (I) { Object.keys(I).forEach(k => { if (SD.boardData[k]) SD.boardData[k].intake = I[k]; }); })({
+  url: {
+    prompt: 'Turn long links into short codes and send anyone who opens one to the long URL.',
+    ask: [
+      { q: 'How many new links a month, and how often is each one opened?', a: '100 million new links a month, and about 100 redirects for every new link.', good: true },
+      { q: 'Are some links much more popular than others?', a: 'Yes: a few links go viral and get most of the clicks for a day.', good: true },
+      { q: 'Can a link be edited or deleted after it is made?', a: 'No editing. Links live for years, so storage keeps growing.', good: true },
+      { q: 'Should I use MySQL or Cassandra?', a: 'That\'s your call later. Find out what the system has to do first.', good: false }
+    ],
+    est: { q: 'About how many redirects a second does the service handle on average?', unit: 'redirects a second', lo: 2000, hi: 8000, ans: 'About 4,000 a second', why: '100 million links × 100 redirects is 10^10 a month. A month is about 2.6 × 10^6 seconds, so roughly 3,900 a second, and a few times that at peak. Reads dwarf writes, which is why the redirect path gets a cache.' }
+  },
+  limiter: {
+    prompt: 'Limit each client to a fixed number of requests across a whole fleet of API servers. Short bursts are fine; anything over the limit is turned away before it costs a server any work.',
+    ask: [
+      { q: 'What is the limit, and how many API servers share it?', a: '100 requests a minute per client, across 20 API servers behind a load balancer.', good: true },
+      { q: 'What happens to a request over the limit?', a: 'It gets a 429 Too Many Requests straight away.', good: true },
+      { q: 'Does the limit have to be exact to the request?', a: 'Close is fine; a few extra in a burst won\'t hurt. Twenty times the limit would.', good: true },
+      { q: 'Which programming language is the API in?', a: 'It doesn\'t change the design. The limiter has to work for any service behind it.', good: false }
+    ],
+    est: { q: 'If each server counted on its own, how many requests a minute could one client get through?', unit: 'requests a minute', lo: 1900, hi: 2100, ans: '2,000 a minute', why: 'The load balancer spreads a client over all 20 servers, and each one would allow 100: 20 × 100 = 2,000, twenty times the limit. That is why the count has to live in one shared, fast store.' }
+  },
+  tickets: {
+    prompt: 'Fans search for events and view seat maps, booking must never sell one seat twice, and a huge crowd arrives the moment a big show goes on sale.',
+    ask: [
+      { q: 'How many fans arrive for a big on-sale, and how fast?', a: '10 million fans, most of them in the first minute, each sending about one request.', good: true },
+      { q: 'Can two fans ever get the same seat?', a: 'Never. A double-sold seat is the one thing that must not happen.', good: true },
+      { q: 'How long does a fan get to pay once they pick a seat?', a: 'Ten minutes on hold, then the seat goes back on sale.', good: true },
+      { q: 'Should the seat map be a canvas or SVG?', a: 'A front-end detail. It doesn\'t change what the back end must survive.', good: false }
+    ],
+    est: { q: 'About how many requests a second hit the system in that first minute?', unit: 'requests a second', lo: 100000, hi: 300000, ans: 'About 170,000 a second', why: '10 million in 60 seconds is about 170,000 a second, far more than one seat database can take. A waiting room lets fans in at a rate booking can handle.' }
+  },
+  feed: {
+    prompt: 'People post updates and scroll a home feed of posts from everyone they follow, and opening the app must feel instant.',
+    ask: [
+      { q: 'How many posts a second, and how do reads compare?', a: '10,000 posts a second at peak, and reads outnumber posts about 100 to 1.', good: true },
+      { q: 'How many people does a typical user follow? Any huge accounts?', a: 'A few hundred. A handful of celebrities have tens of millions of followers.', good: true },
+      { q: 'Must a new post show up in feeds instantly?', a: 'Within a few seconds is fine. Opening the feed must be instant.', good: true },
+      { q: 'Should the feed use React or a native app?', a: 'Either way, the server has to answer the same reads.', good: false }
+    ],
+    est: { q: 'About how many feed reads a second at peak?', unit: 'reads a second', lo: 500000, hi: 2000000, ans: 'About 1,000,000 a second', why: '10,000 posts × 100 reads per post is a million reads a second. Building each feed on read would be far too slow, so feeds are built ahead (fan-out on write) and served from a cache.' }
+  },
+  rider: {
+    prompt: 'Riders request a ride and get the nearest free driver within seconds. Every driver online keeps sending their location, and one driver must never be matched to two riders.',
+    ask: [
+      { q: 'How many drivers are online, and how often do they send their location?', a: '40,000 drivers online on a busy night, each sending their location every 4 seconds.', good: true },
+      { q: 'How many ride requests a second?', a: 'About 200 a second normally, much more when a stadium empties.', good: true },
+      { q: 'Can one driver be offered to two riders at once?', a: 'Offered maybe, matched never. Claiming a driver must be atomic.', good: true },
+      { q: 'Which map provider should I use for the app?', a: 'Not the hard part here. Finding nearby drivers fast is.', good: false }
+    ],
+    est: { q: 'About how many location updates a second does the system take?', unit: 'updates a second', lo: 5000, hi: 20000, ans: '10,000 a second', why: '40,000 drivers ÷ 4 seconds is 10,000 writes a second, fifty times the ride requests. Those writes go to a fast in-memory geo index, never the trip database.' }
+  },
+  chat: {
+    prompt: 'One-to-one messages delivered in real time, kept for people who are offline, and never lost. Many people stay connected all evening.',
+    ask: [
+      { q: 'How many people, and how many messages do they send?', a: '50 million people a day, each sending about 35 messages, mostly in the evening.', good: true },
+      { q: 'What happens when the person you message is offline?', a: 'The message waits and arrives when they reconnect. Nothing may be lost.', good: true },
+      { q: 'Do we keep message history?', a: 'Yes, on the server, so a new phone can load old chats.', good: true },
+      { q: 'Can we use emoji reactions?', a: 'Nice to have, and out of scope today.', good: false }
+    ],
+    est: { q: 'About how many messages a second at the evening peak?', unit: 'messages a second', lo: 10000, hi: 40000, ans: 'About 20,000 a second', why: '50 million × 35 is about 1.75 billion a day. A day is about 10^5 seconds, so 17,500 a second on average, and around 20,000 at the evening peak. Every one is saved before it is delivered.' }
+  },
+  kv: {
+    prompt: 'put(key, value) and get(key) for billions of keys, on hundreds of machines that fail every day. Always writable, consistency you can tune, and fast even for the slowest requests.',
+    ask: [
+      { q: 'How many puts and gets a second?', a: 'On a busy evening, 30,000 puts and 60,000 gets a second.', good: true },
+      { q: 'How many copies of each key do we keep?', a: 'Three replicas, on three different machines.', good: true },
+      { q: 'Is it fine to read a slightly stale value?', a: 'For most callers, yes. They can ask for stronger reads when they need them.', good: true },
+      { q: 'Should keys be strings or integers?', a: 'Strings. Either way they get hashed, so it doesn\'t change the design.', good: false }
+    ],
+    est: { q: 'With every key on three replicas, about how many replica writes a second do the storage nodes take?', unit: 'writes a second', lo: 60000, hi: 120000, ans: '90,000 a second', why: '30,000 puts × 3 replicas is 90,000 writes a second across the nodes. Consistent hashing with virtual nodes spreads them, and a quorum (W = 2) lets one slow replica lag without stalling the put.' }
+  },
+  video: {
+    prompt: 'Creators upload videos of any size, and viewers watch on any device and connection without buffering. One video can get millions of views in an hour.',
+    ask: [
+      { q: 'How much video is uploaded?', a: 'About 500 hours of video every minute.', good: true },
+      { q: 'What devices and connections do viewers use?', a: 'Everything from phones on 3G to 4K TVs, so each video needs several qualities.', good: true },
+      { q: 'How soon after upload must a video be watchable?', a: 'Within minutes is fine. The upload itself must never be lost.', good: true },
+      { q: 'Which video player library should we use?', a: 'A client choice. It doesn\'t change the pipeline behind it.', good: false }
+    ],
+    est: { q: 'About how many hours of new video arrive in a day?', unit: 'hours a day', lo: 500000, hi: 1000000, ans: 'About 720,000 hours a day', why: '500 hours × 1,440 minutes is 720,000 hours a day, each encoded into several qualities. That is far too much to encode in the upload request, so a queue feeds a pool of transcoders.' }
+  },
+  crawler: {
+    prompt: 'Crawl the web for the search engine and store every page for the indexer. Never hammer a site, skip URLs you have already seen, and don\'t get lost in crawler traps.',
+    ask: [
+      { q: 'How many pages, and how often must we crawl them all?', a: 'A billion pages, every ten days.', good: true },
+      { q: 'How big is a typical page?', a: 'About 100 KB of HTML.', good: true },
+      { q: 'How fast may we hit one site?', a: 'Politely: about one request a second per site, and obey robots.txt.', good: true },
+      { q: 'Should we render JavaScript-heavy pages?', a: 'Not in this version. Fetch the HTML.', good: false }
+    ],
+    est: { q: 'About how many pages a second must the crawler fetch?', unit: 'pages a second', lo: 800, hi: 1600, ans: 'About 1,160 a second', why: '10^9 pages ÷ 864,000 seconds in ten days is about 1,160 a second, around 100 MB a second of HTML. No one machine does that politely, so a frontier queue feeds many fetchers.' }
+  },
+  region: {
+    prompt: 'Take a one-region service worldwide. Users on every continent should get fast answers, losing a whole region must not take the service down, and each user\'s data must stay correct.',
+    ask: [
+      { q: 'Where is the service today, and how fast must it answer?', a: 'One region on the US East coast. The goal is under 100 ms for users everywhere.', good: true },
+      { q: 'How far is Tokyo from US East?', a: 'About 11,000 km.', good: true },
+      { q: 'Can two regions accept writes to the same user\'s data?', a: 'Avoid it: each user\'s data must stay correct.', good: true },
+      { q: 'Which cloud provider should we pick?', a: 'Any of them has regions on every continent. Decide the design first.', good: false }
+    ],
+    est: { q: 'About how long is one round trip from Tokyo to US East, in milliseconds?', unit: 'ms', lo: 100, hi: 250, ans: 'About 150 ms', why: 'Light in fibre covers about 200 km a millisecond, so 11,000 km each way is about 110 ms there and back before any routing. One region can never answer Tokyo in under 100 ms: you need copies close to users.' }
+  },
+  llm: {
+    prompt: 'Many people chat with one model over long conversations. Answers should start appearing in under a second, harmful requests are refused, chats can be resumed, and the GPU bill must not eat the kingdom.',
+    ask: [
+      { q: 'How many messages a second, and how long are the replies?', a: 'About 440 follow-ups a second tonight, with replies of about 500 tokens.', good: true },
+      { q: 'How many tokens a second can one model-server pool make?', a: 'About 100,000 tokens a second.', good: true },
+      { q: 'Do many people ask the same questions?', a: 'Yes, about 200 common questions a second.', good: true },
+      { q: 'Should the chat bubbles be blue or green?', a: 'Out of scope. The GPUs are the problem.', good: false }
+    ],
+    est: { q: 'About how many tokens a second must the model generate for the follow-ups?', unit: 'tokens a second', lo: 150000, hi: 300000, ans: '220,000 a second', why: '440 messages × 500 tokens is 220,000 tokens a second: at least three model-server pools before any spike. Streaming makes the first token fast, and caching common answers keeps them off the GPUs.' }
+  },
+  rag: {
+    prompt: 'A support bot answers customers from the Guild\'s help articles, cites the article it used, hands off to a person when unsure, and picks up edited articles quickly. It must never invent a policy.',
+    ask: [
+      { q: 'How many help articles, and how long are they?', a: '50,000 articles, and each one splits into about 4 chunks.', good: true },
+      { q: 'How fresh must answers be after an article changes?', a: 'Within the hour.', good: true },
+      { q: 'What should the bot do when it isn\'t sure?', a: 'Say so and hand off to a person. Never guess a policy.', good: true },
+      { q: 'Can we just fine-tune the model on the articles?', a: 'It wouldn\'t cite sources or pick up edits within the hour. Keep it as an option, not the design.', good: false }
+    ],
+    est: { q: 'About how many chunks does the vector index hold?', unit: 'chunks', lo: 100000, hi: 400000, ans: 'About 200,000 chunks', why: '50,000 articles × 4 chunks is 200,000 vectors, small enough for one index with replicas. Re-embedding only the edited article\'s chunks keeps answers fresh within the hour.' }
+  }
+});

@@ -125,6 +125,8 @@
   }
 
   // ---- Design Board practice: XP and a record, no boss buff ----
+  // Also the postmortem's Redraw (js/run.js).
+  P.board = id => board(id);
   async function board(id) {
     const res = await SD.board.play(id, { title: 'DESIGN BOARD · PRACTICE' });
     const held = !res.load || res.load.ok, perfect = res.perfect && (!res.load || res.load.perfect);

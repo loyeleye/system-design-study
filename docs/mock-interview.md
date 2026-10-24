@@ -13,7 +13,7 @@ It follows Hello Interview's delivery order, which the bosses already use, with 
 | Requirements | 5 min | Ask clarifying questions (each costs a minute; bad ones get written down), then sort statements into feature, quality or out of scope. The interviewer corrects the scope before you move on. | Problem navigation |
 | Entities & API | 5 min | Pick the core entities, then the API. | Solution design |
 | Estimate | 3 min | Choose what to estimate (the number that changes the design, everything for 10 years, or nothing), then type the number. | Trade-offs (the choice), Technical depth (the number) |
-| High-level design | 12 min | For each of two flows, pick the parts from a palette and watch the request path draw itself. A missing part gets one nudge, phrased as a scenario ("One server dies at lunch. Who stops sending it traffic?"). Extra machinery counts against you. Then the interviewer asks why the key part is there. | Solution design, Trade-offs |
+| High-level design | 12 min | On problems with a Design Board, draw the design on a blank board and trace each request through it (see **Design: Draw it** below). Otherwise, for each of two flows, pick the parts from a palette and watch the request path draw itself. A missing part gets one nudge, phrased as a scenario ("One server dies at lunch. Who stops sending it traffic?"). Extra machinery counts against you. Then the interviewer asks why the key part is there. | Solution design, Trade-offs |
 | Deep dives | 15 min | You pick the first dive from four topics: the real bottleneck, two fair ones, and a bikeshed ("the colour of the Copy link button"). The interviewer picks the second. Each dive is a question, a nudge and retry if you miss, then "what does that cost you?". | Navigation (the pick), Technical depth, Trade-offs |
 | Your questions | 5 min | "Any questions for me?" | Trade-offs & communication (small bonus) |
 
@@ -32,6 +32,8 @@ The rubrics live in `game/js/mock-typed.js`, keyed `<problem>.<dive>` and `<prob
 The debrief lists what you typed and how many points each made, and **Copy debrief** includes them. In Pair Mock the human interviewer sees each typed answer and the ticks.
 
 **Boss deep dives** in the main game work the same way for the opening question (`opts.typeFirst` in `SD.quiz.ask`, with a rubric built from the right option; the two questions too short to type for keep the say-it gate). A typed answer at the pass mark lands the deep dive even after a wrong pick (12 severity instead of 16, and a chain carries on); any point made lands 6. Deep-dive chain practice in the Practice hub counts it the same way.
+
+**Design: Draw it** (the default). Nine problems share a board with the main game's Design Board (`SD.mock.boards`: URL Shortener, Rate Limiter, Ticket Booking, News Feed, Ride Hailing, Chat App, Video Platform, Web Crawler, LLM Chat Service). On those, the high-level design phase opens the board inside the round (`SD.board.play` with `root`), and you place parts from a tray with decoys, connect them, and trace each flow through your own boxes. The round has already asked the requirements and estimated, so the board shows the full brief at once and skips its own intake, its load test and its "why is this here?" (the round's why question follows). Placing boxes is slower than tapping chips, so the clock runs at no more than 2× while you draw. Solution design gets up to 3 points, the same as the two palette flows: 3 × (checks passed − the board's penalty for extra boxes) ÷ checks. Every failed check goes in the notes and in "what a senior answer covers". **Pick parts** keeps the palette, and problems without a board always use it. `node tools/mock_board_check.js` plays a round with the board in the browser.
 
 ## The rubric and the verdict
 
@@ -84,7 +86,7 @@ XP and Memory Shards by verdict: strong hire 120 XP and 150 shards, senior hire 
 - `game/js/mock-data.js` — phases and budgets, the rubric, the nudges per part, the wrap-up questions, and the 20 problems (`SD.mock.problems`, listed by chapter).
 - `game/js/mock-typed.js` — what a strong typed answer covers, per "why" question and deep dive.
 - `game/js/mock.js` — the round, the debrief and the menu. Self-contained: it injects its own styles under `.mi` and needs only `SD.mock` and `SD.wb.parts` (from `whiteboard-data.js`, so the parts palette shares names and icons with Smudge). It uses `SD.art`, `SD.cast`, `SD.concepts`, `SD.icons` and `SD.audio` when they are loaded.
-  - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, typed, concepts, spent, mins, cut }`.
+  - `SD.mock.interview(root, { pid, pace, think, hld })` resolves to `{ verdict, grades, notes, lessons, answers, typed, concepts, spent, mins, cut }`.
   - `SD.mock.menu(root, { store, open, onResult, pid })` shows the problem list and runs rounds.
   - `SD.mock.solo()` is the main game's entry: the panel, the save-backed store (`sv.mock`), spaced review and rewards. Ploy on the Eventual Isles and the Practice hub (`js/practice.js`) offer it, and it stays locked until chapter 1 is cleared. Gary no longer offers it.
 - `game/mock.html` — the standalone page.
@@ -96,7 +98,7 @@ Two small edits, both on this branch:
 1. `game/index.html`: load `js/mock-data.js` and `js/mock.js` right after `js/whiteboard.js`.
 2. The Eventual Isles NPC calls `SD.mock.solo()`. Gary's hook in `main.js` was removed.
 
-New save fields, created on first use: `sv.mock` (`{ pace, think, best, runs }`, where `think` is `'type'`, `'say'` or `'off'`) and `sv.flags.mockSenior` (problems with a senior hire, for the one-time bonus).
+New save fields, created on first use: `sv.mock` (`{ pace, think, hld, best, runs }`, where `think` is `'type'`, `'say'` or `'off'` and `hld` is `'draw'` or `'pick'`) and `sv.flags.mockSenior` (problems with a senior hire, for the one-time bonus).
 
 ## Not built yet
 

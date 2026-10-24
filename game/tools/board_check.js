@@ -4,7 +4,7 @@
 //   node tools/board_check.js        every problem: parts exist, the reference design is laid out legally and scores
 //                                    perfect, and a naive design (users -> server -> database) fails. With a load test:
 //                                    the reference sizing fits the budget and holds every round, and one instance of
-//                                    everything does not
+//                                    everything does not. The intake hides the numbers and its estimate is in range
 //   node tools/board_check.js --load [id]   also print how busy each reference box is in every round
 //
 // Warnings (not failures) name reference boxes that no check needs: fine in a strong design, but worth a look.
@@ -106,6 +106,18 @@ for (const [id, prob] of Object.entries(SD.boardData)) {
       console.log(`${id}: reference sizing costs ${spent} of ${L.budget}; one of everything holds ${ones.held} of ${ones.rounds.length}`);
       t.rounds.forEach((e, i) => console.log(`  ${e.name.padEnd(28)} ` + Object.entries(t.results[i].nodes).map(([n, st]) => `${n}${st.live !== st.count ? '(' + st.live + '/' + st.count + ')' : ''} ${st.util === Infinity ? 'DOWN' : Math.round(st.util * 100) + '%'}`).join('  ')));
     }
+  }
+  // The requirements and estimate the board asks first: the prompt hides the brief's numbers, the scale question
+  // comes first, at least one question is a poor one, and the estimate's range makes sense.
+  const I = prob.intake;
+  if (!I) errs.push('no intake (requirements and an estimate before the board)');
+  else {
+    if (/\d/.test(I.prompt)) errs.push('the intake prompt gives away a number: ' + I.prompt);
+    if (!I.ask || I.ask.length < 3 || !I.ask[0].good) errs.push('the intake needs 3+ questions, the first a good (scale) one');
+    else if (!I.ask.some(x => !x.good)) errs.push('the intake has no poor question to learn from');
+    const E = I.est || {};
+    if (!(E.lo > 0 && E.hi > E.lo && E.q && E.unit && E.ans && E.why)) errs.push('the intake estimate needs q, unit, lo < hi, ans and why');
+    else if (!(SD.mock.parseNum(E.ans.replace(/^about /i, '').split(' ')[0]) >= E.lo && SD.mock.parseNum(E.ans.replace(/^about /i, '').split(' ')[0]) <= E.hi)) errs.push(`the estimate's answer (${E.ans}) is outside ${E.lo}..${E.hi}`);
   }
   // A naive design: users -> one server -> one database, used for every flow.
   const db = prob.tray.find(p => p === 'sql' || p === 'nosql') || 'sql';

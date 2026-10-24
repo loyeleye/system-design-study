@@ -40,7 +40,7 @@ const ANSWERS = {
 
   // The menu: the setting defaults to Type it, and an old save's true still means typed.
   await page.goto(base + 'mock.html');
-  await page.evaluate(() => localStorage.setItem('sd-mock-v1', JSON.stringify({ pace: 'standard', think: true })));
+  await page.evaluate(() => localStorage.setItem('sd-mock-v1', JSON.stringify({ pace: 'standard', think: true, hld: 'pick' })));
   await page.reload();
   await page.waitForSelector('[data-think]');
   check(await page.$eval('[data-think="type"]', b => b.classList.contains('on')), 'an old save (think: true) shows Answer first: Type it');
