@@ -21,7 +21,8 @@
   SH.CONFIRM_AT = 300;
   // Relics backed by On-call Cred (js/run.js R.isBacked) say so on their tile, and both relic shops say what yours is.
   SH.isBacked = it => !!(SD.run && SD.run.isBacked && SD.run.isBacked(it.id));
-  SH.backedText = it => it.text + (SH.isBacked(it) ? (it.id === 'satchel' ? ` The extra draw needs ${SD.run.backCred}+ On-call Cred.` : ` Needs ${SD.run.backCred}+ On-call Cred.`) : '');
+  // The 🎯 says it, with the shop's note above as its legend; only the Bag of Holding, credentialed in part, spells it out.
+  SH.backedText = it => it.text + (SH.isBacked(it) && it.id === 'satchel' ? ' 🎯 Only the extra draw is credentialed.' : '');
   SH.credNote = () => SD.run && SD.run.backCred ? `🎯 Credentialed keepsakes need ${SD.run.backCred}+ On-call Cred. Yours: <b>${SD.state.tally()}</b>.` : '';
   const num = x => Number(x).toLocaleString('en-US');
   const esc = s => U.esc(String(s));
