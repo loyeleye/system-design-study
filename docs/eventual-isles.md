@@ -93,6 +93,9 @@ action each; `k` in their `I.ART` entry scales them to stand as tall as the firs
 `tools/isles_v3_prep.py V3 SRC/chars` lays the v3 downloads out (the raw files are in the project's shared folder under
 `isles-art-raw/v3/`), then `tools/isles_art.py SRC` builds the sheets, objects and portraits and rewrites the `I.ART`
 sizes block in `isles-data.js`; the rest of the raw files are under `isles-art-raw/`.
+The bridges (the building sites at each end, the finished planks and the festival lanterns) are cut from one PixelLab
+footbridge and one lantern by `tools/isles_bridge_art.py SRC` (raw files under `isles-bridge-raw/`); the map turns the
+pieces for bridges that run north to south.
 
 | What | Files | Drawn by |
 | --- | --- | --- |

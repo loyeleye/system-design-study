@@ -874,34 +874,55 @@
       box(cx - ts * 0.2, Y + h - ts * 0.6, ts * 0.4, ts * 0.6, '#8a5a3c', 2);
     }
   };
+  // One piece of PixelLab bridge (tools/isles_bridge_art.py) on tile (x, y). Pieces are drawn running west to east with
+  // land to the west; ang turns them (a quarter turn runs them north to south) and flip mirrors them. dx moves a piece
+  // along its run, in its own pixels.
+  function bridgePiece(name, x, y, ang, flip, dx) {
+    const im = ipic(name), sz = I.ART && I.ART.objects[name];
+    if (!sz || !ok(im)) return false;
+    const k = ts / 32, w = Math.round(sz[0] * k), h = Math.round(sz[1] * k);
+    ctx.save(); ctx.translate(Math.round((x + 0.5) * ts), Math.round((y + 0.5) * ts)); ctx.rotate(ang); if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(im, Math.round(-ts / 2 + (dx || 0) * k), Math.round(-h / 2), w, h);
+    ctx.restore();
+    return true;
+  }
+  // How to turn an end piece so its land side faces (ox, oy), away from the rest of the bridge.
+  const endTurn = (ox, oy) => ox < 0 ? [0, false] : ox > 0 ? [0, true] : oy < 0 ? [Math.PI / 2, false] : [-Math.PI / 2, false];
   function drawBridges(t) {
+    const lanterns = [];
     Object.keys(BT).forEach(id => {
       if (!I.bridges.some(b => b.id === id)) return;
-      const tiles = BT[id], done = I.bridgeBuilt(id);
-      const both = I.bridges.find(b => b.id === id).islands.every(I.islandOpen);
+      const tiles = BT[id], done = I.bridgeBuilt(id), bridge = I.bridges.find(b => b.id === id);
+      const both = bridge.islands.every(I.islandOpen), ready = !done && I.bridgeReady(bridge);
+      if (!done && !both) return;
       tiles.forEach(([x, y], i) => {
         const end = i === 0 || i === tiles.length - 1;
         if (!done && !end) return;
-        if (!done && !both) return;
-        const horiz = (tiles[i + 1] || tiles[i - 1])[1] === y;
-        ctx.fillStyle = done ? '#c99a6a' : 'rgba(201,154,106,.7)'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-        if (horiz) { rr(x * ts - 1, (y + 0.2) * ts, ts + 2, ts * 0.6, 2); ctx.fill(); ctx.stroke(); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x * ts + k * ts / 4, (y + 0.2) * ts); ctx.lineTo(x * ts + k * ts / 4, (y + 0.8) * ts); ctx.stroke(); } }
-        else { rr((x + 0.2) * ts, y * ts - 1, ts * 0.6, ts + 2, 2); ctx.fill(); ctx.stroke(); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo((x + 0.2) * ts, y * ts + k * ts / 4); ctx.lineTo((x + 0.8) * ts, y * ts + k * ts / 4); ctx.stroke(); } }
-        if (done && i % 2 === 0 && I.st().festival) {
-          // After the festival, lanterns hang along every bridge.
-          const lx = (x + 0.5) * ts, ly = (y + (horiz ? 0.1 : 0.5)) * ts + Math.sin(t * 2 + i) * 2;
-          ctx.fillStyle = ['#ff6b6b', '#ffd34d', '#7fd1ff', '#ff9ec4'][(i / 2) % 4]; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.ellipse(lx, ly, ts * 0.12, ts * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        }
+        const nb = tiles[i + 1] || tiles[i - 1], horiz = nb[1] === y;
         if (!done) {
-          // A building site: posts, a sign, and a glow once both ends are finished.
-          const ready = I.bridgeReady(I.bridges.find(b => b.id === id));
-          ctx.fillStyle = ready ? '#ffe14d' : '#fffaf0'; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-          rr((x + 0.25) * ts, (y - 0.35) * ts + (ready ? Math.sin(t * 4) * 2 : 0), ts * 0.5, ts * 0.32, 3); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = INK; ctx.font = `700 ${ts * 0.22}px Fredoka, sans-serif`; ctx.textAlign = 'center'; ctx.fillText(ready ? '!' : '…', (x + 0.5) * ts, (y - 0.12) * ts + (ready ? Math.sin(t * 4) * 2 : 0));
+          // A bridge site: the first planks reach out from the shore, with a post in the water where the next ones go.
+          const [ang, flip] = endTurn(x - nb[0], y - nb[1]);
+          bridgePiece('bridge-stub', x, y, ang, flip, -3);
+          iobj('bollard', (nb[0] + 0.5) * ts, (nb[1] + 0.75) * ts, 0.45);
+          if (ready) {
+            // Both ends are finished: the bridge can be built.
+            const X = (x + 0.5) * ts, Y = (y - 0.3) * ts + Math.sin(t * 4) * 3;
+            ctx.fillStyle = '#ffe14d'; ctx.strokeStyle = INK; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(X, Y, ts * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = INK; ctx.font = `700 ${ts * 0.3}px Fredoka, sans-serif`; ctx.textAlign = 'center'; ctx.fillText('!', X, Y + ts * 0.1);
+          }
+          return;
+        }
+        bridgePiece('bridge', x, y, horiz ? 0 : Math.PI / 2, false);
+        if (end) { const [ang, flip] = endTurn(x - nb[0], y - nb[1]); bridgePiece('bridge-end', x, y, ang, flip, -3); }
+        if (i % 2 === 0 && I.st().festival) {
+          // After the festival, lanterns hang along every bridge.
+          const c = ['red', 'gold', 'blue', 'pink'][(i / 2) % 4], bob = Math.sin(t * 2 + i) * 1.5;
+          lanterns.push(horiz ? [c, (x + 1) * ts, (y + 0.25) * ts + bob] : [c, (x + 0.8) * ts, (y + 1) * ts + bob]);
         }
       });
     });
+    lanterns.forEach(([c, x, y]) => iobj('lantern-' + c, x, y, 0.8));
   }
   function drawDocks(t) {
     Object.keys(DOCK).forEach(id => {
