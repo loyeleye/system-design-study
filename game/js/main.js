@@ -479,12 +479,13 @@
     // Keepsakes past the first shelf unlock with your Guild rank. The next shelf up shows, locked, as a preview; the
     // ones after it stay hidden until then (SD.shop.shown).
     const rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
-    // Once, when the B shelf opens: its keepsakes and every one above are backed by On-call Cred (js/run.js).
+    // Once, when the B shelf opens: its keepsakes and every one above are backed by On-call Cred (js/run.js). The
+    // Exchange's trader explains it instead if you see him first; one flag for both (js/relic-exchange.js).
     const backedOpen = mine >= rankAt('B');
     if (backedOpen && !sv.flags.credTold) {
       sv.flags.credTold = true; S.persist();
       await U.dialog([
-        { s: 'wen', t: 'A new shelf for you, dear. These keepsakes only work for someone who knows their stuff: they need 5 On-call Cred.' },
+        { s: 'wen', t: 'A new shelf for you, dear. These keepsakes are credentialed: they only work for someone with 5 On-call Cred.' },
         { s: 'wen', t: 'Cred is your last twenty answers. Be honest: a sure miss costs 5, and a wrong Guess costs nothing.' }
       ]);
     }
