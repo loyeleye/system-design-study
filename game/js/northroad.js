@@ -709,7 +709,7 @@
   // else paces a tile or two from where they stand. Nobody moves while a conversation is open, and anyone you
   // walk up to stops on the spot, finishes their step and turns to face you. The sparring heroes have their own beat,
   // and anyone marked `still` (a dancer on her spot, js/nari.js) stays put.
-  const STILL = { hero77: 1, hero256: 1, hero12: 1, hero404: 1, aigerim: 1, marta: 1 };
+  const STILL = { hero77: 1, hero256: 1, hero12: 1, hero404: 1 };
   const toward = (a, P) => Math.abs(P.x - a.x) > Math.abs(P.y - a.y) ? (P.x > a.x ? 'east' : 'west') : (P.y > a.y ? 'south' : 'north');
   function fade(a, to, done) {
     const from = a.alpha == null ? 1 : a.alpha, t0 = performance.now();
