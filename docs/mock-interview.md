@@ -21,7 +21,17 @@ At 45:00 the round ends wherever you are, and anything you didn't reach scores z
 
 **Pace.** The clock counts a real round's 45 interview minutes, sped up because answers are multiple choice (Ladi, Oct 18: a round should take 5 to 15 minutes). Quick runs it at 9× (5 real minutes), Standard at 4.5× (10 real minutes, the default) and Relaxed at 3× (15 real minutes). Untimed drops the clock and the Time line from the rubric. Actions cost interview minutes on top of the clock: a clarifying question 1, a nudge 2, a targeted estimate 2, the ten-year estimate 6, a bikeshed 2. Pause hides the question while the clock is stopped.
 
-**Think aloud** (on by default). Justification and deep-dive questions hide their options until you tap "I've said it", so you generate an answer before you recognise one. Those questions also take a confidence level (Guess, Think so, Sure). Being sure and wrong costs a point on Trade-offs, as in the rest of the game.
+**Answer first: Type it** (the default). For the "why is that there?" question and each deep dive you type one to three sentences before the options appear (the Oct 23 expert panel's top fix: produce before you recognise). The clock runs at real speed while you type, since typing stands in for saying it. "Not sure. Show the options" skips it at no cost. After the reveal you tick the points your answer made, with nothing ticked for you; then **Check my ticks** shows the game's reading (`SD.quiz.rubric`, key terms plus on-device embeddings, with negation and trap detection) as a second opinion, flagging disagreements. Your ticks are the score.
+
+A typed answer only ever adds. At the pass mark (`SD.quiz.need`: 2 of 2 or 2 of 3) it earns the line's full credit for that question (Technical depth for a dive, Trade-offs for the "why"), half for any point made, and the line keeps the better of that and what the multiple choice earned. So someone who explains the mechanism but is tripped up by the options still gets the depth credit, and someone who skips typing loses nothing they had before. Ladi's assumption is that players get the multiple choice right 20 to 50% of the time, so the step is meant to reward, not punish.
+
+The rubrics live in `game/js/mock-typed.js`, keyed `<problem>.<dive>` and `<problem>.why`, two or three points each. A question without one (for example a new problem) gets a rubric built from its right option (`SD.quiz.autoPoints`): the words only the right option uses, so typing a wrong option back finds nothing. `node tools/mock_typed_check.js` checks every rubric: the right option plus its explanation must pass, and no wrong option may. `node tools/mock_typed_round_check.js` plays a round in the browser.
+
+**Say it** keeps the old gate ("I've said it. Show the options"), and **Off** shows options at once. Saves from before this change that had Think aloud on now get Type it. Every justification and deep-dive pick also takes a confidence level (Guess, Think so, Sure). Being sure and wrong costs a point on Trade-offs, as in the rest of the game.
+
+The debrief lists what you typed and how many points each made, and **Copy debrief** includes them. In Pair Mock the human interviewer sees each typed answer and the ticks.
+
+**Boss deep dives** in the main game work the same way for the opening question (`opts.typeFirst` in `SD.quiz.ask`, with a rubric built from the right option; the two questions too short to type for keep the say-it gate). A typed answer at the pass mark lands the deep dive even after a wrong pick (12 severity instead of 16, and a chain carries on); any point made lands 6. Deep-dive chain practice in the Practice hub counts it the same way.
 
 ## The rubric and the verdict
 
@@ -72,8 +82,9 @@ XP and Memory Shards by verdict: strong hire 120 XP and 150 shards, senior hire 
 ## Files
 
 - `game/js/mock-data.js` — phases and budgets, the rubric, the nudges per part, the wrap-up questions, and the 20 problems (`SD.mock.problems`, listed by chapter).
+- `game/js/mock-typed.js` — what a strong typed answer covers, per "why" question and deep dive.
 - `game/js/mock.js` — the round, the debrief and the menu. Self-contained: it injects its own styles under `.mi` and needs only `SD.mock` and `SD.wb.parts` (from `whiteboard-data.js`, so the parts palette shares names and icons with Smudge). It uses `SD.art`, `SD.cast`, `SD.concepts`, `SD.icons` and `SD.audio` when they are loaded.
-  - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, concepts, spent, mins, cut }`.
+  - `SD.mock.interview(root, { pid, pace, think })` resolves to `{ verdict, grades, notes, lessons, answers, typed, concepts, spent, mins, cut }`.
   - `SD.mock.menu(root, { store, open, onResult, pid })` shows the problem list and runs rounds.
   - `SD.mock.solo()` is the main game's entry: the panel, the save-backed store (`sv.mock`), spaced review and rewards. Ploy on the Eventual Isles and the Practice hub (`js/practice.js`) offer it, and it stays locked until chapter 1 is cleared. Gary no longer offers it.
 - `game/mock.html` — the standalone page.
@@ -85,7 +96,7 @@ Two small edits, both on this branch:
 1. `game/index.html`: load `js/mock-data.js` and `js/mock.js` right after `js/whiteboard.js`.
 2. The Eventual Isles NPC calls `SD.mock.solo()`. Gary's hook in `main.js` was removed.
 
-New save fields, created on first use: `sv.mock` (`{ pace, think, best, runs }`) and `sv.flags.mockSenior` (problems with a senior hire, for the one-time bonus).
+New save fields, created on first use: `sv.mock` (`{ pace, think, best, runs }`, where `think` is `'type'`, `'say'` or `'off'`) and `sv.flags.mockSenior` (problems with a senior hire, for the one-time bonus).
 
 ## Not built yet
 

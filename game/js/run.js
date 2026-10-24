@@ -908,8 +908,11 @@
       else {
         // Pick the id once: a rnd() inside find() rolls again for every question and can match none.
         const id = rnd(C.e.deep), q = SD.questions.find(x => x.id === id);
-        const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."' });
-        if (r.ok) { mitigate(16, `DEEP DIVE LANDED! ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
+        const r = await Q.ask(q, { title: '[BOSS] DEEP DIVE', context: 'The interviewer leans in: "Go deeper."', typeFirst: true });
+        // A typed answer that made its points lands too, a little softer, even when the options tripped you up.
+        const t = r.typed, made = t && t.score >= t.need;
+        if (r.ok || made) { mitigate(r.ok ? 16 : 12, r.ok ? `DEEP DIVE LANDED! ${C.e.short} staggers.` : `Your own answer held, even if the options tripped you up. ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
+        else if (t && t.score) { mitigate(6, `Part of your own answer landed. ${C.e.short} presses on.`, 'hit'); AU.sfx('hit'); }
         else C.log = `The deep dive slipped. ${C.e.short} cackles and presses on.`;
       }
       if (settle()) return;
@@ -922,8 +925,9 @@
   async function deepChain(chain) {
     let right = 0;
     for (let i = 0; i < chain.length; i++) {
-      const r = await Q.ask(chain[i], { title: '[BOSS] DEEP DIVE', context: i ? `Counter-question ${i} of ${chain.length - 1}: the interviewer pushes on your answer.` : 'The interviewer leans in: "Go deeper."' });
-      if (!r.ok) break;
+      // The opening question is typed first; an answer that made its points holds even if the pick missed.
+      const r = await Q.ask(chain[i], { title: '[BOSS] DEEP DIVE', context: i ? `Counter-question ${i} of ${chain.length - 1}: the interviewer pushes on your answer.` : 'The interviewer leans in: "Go deeper."', typeFirst: !i });
+      if (!r.ok && !(r.typed && r.typed.score >= r.typed.need)) break;
       right++;
     }
     const all = right === chain.length;

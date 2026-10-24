@@ -146,9 +146,11 @@
     for (let i = 0; i < n; i++) {
       const res = await SD.quiz.ask(c.qs[i], {
         title: 'DEEP DIVE · PRACTICE',
-        context: c.chain ? (i ? `${e.short || e.name} · counter-question ${i} of ${n - 1}` : `${e.short || e.name} leans in: "Go deeper."`) : `${e.short || e.name} · ${i + 1}/${n}`
+        context: c.chain ? (i ? `${e.short || e.name} · counter-question ${i} of ${n - 1}` : `${e.short || e.name} leans in: "Go deeper."`) : `${e.short || e.name} · ${i + 1}/${n}`,
+        typeFirst: !i
       });
-      if (res.ok) right++;
+      // As in the fight, a typed opening answer that made its points holds even if the pick missed.
+      if (res.ok || (res.typed && res.typed.score >= res.typed.need)) right++;
       else if (c.chain) break;
     }
     const r = rec(), k = r.chains[id];

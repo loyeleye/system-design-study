@@ -84,6 +84,33 @@ const server = http.createServer((req, res) => {
   await page.waitForSelector('#q-confirm');
   check(await page.$$eval('#panel [data-r]', els => els.every(e => e.disabled && !e.checked)), 'with no answer the rubric is shown, unticked and locked');
 
+  // 4. A boss's opening deep-dive question (opts.typeFirst): type before the options, pick wrong, tick the points the
+  // answer made; it still counts (r.typed at the pass mark), and the verdict says so.
+  await page.evaluate(() => SD.ui.closePanel());
+  await page.evaluate(() => {
+    window.__res = null;
+    const q = SD.questions.find(x => x.type === 'mc' && SD.quiz.autoPoints(x) && SD.quiz.autoPoints(x).length === 1);
+    window.__q = q;
+    SD.quiz.ask(q, { noRecord: true, title: '[BOSS] DEEP DIVE', typeFirst: true }).then(r => { window.__res = r; });
+  });
+  await page.waitForSelector('#q-said-text');
+  check(!(await page.$('#panel [data-o]')), 'boss deep dive: no options while typing');
+  await page.fill('#q-said-text', await page.evaluate(() => 'I would say: ' + __q.opts[__q.a]));
+  await page.click('#q-said');
+  await page.click(await page.evaluate(() => `#panel [data-o="${(__q.a + 1) % __q.opts.length}"]`));
+  await page.click('#panel [data-c="1"]');
+  await page.waitForSelector('#q-check');
+  check((await ticked()).every(t => !t), 'boss deep dive: nothing pre-ticked');
+  await page.click('#panel [data-r="0"]');
+  await page.click('#q-check');
+  await page.waitForSelector('#q-confirm');
+  check(/Game: found/.test(await page.$eval('#panel', el => el.textContent)), 'boss deep dive: the game finds the right option\'s key terms');
+  await page.click('#q-confirm');
+  check(/counts even though the pick missed/.test(await verdict()), 'boss deep dive: the verdict says the typed answer counts');
+  await page.click('#q-next');
+  await page.waitForFunction(() => window.__res);
+  check(await page.evaluate(() => !__res.ok && __res.typed && __res.typed.score >= __res.typed.need), 'boss deep dive: resolves wrong pick with a passing typed answer');
+
   check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await browser.close(); server.close();
   console.log(fail ? `${fail} failed` : 'all passed');

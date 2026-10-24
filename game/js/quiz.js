@@ -71,7 +71,7 @@
       const good = keys.find(m => p.negOk || !m.not);
       if (good) return { hit: 'key', ev: good.ev };
       let best = 0, ev = '', exNeg = false;
-      for (const ex of [p.t].concat(p.ex || [])) {
+      for (const ex of p.noSim ? [] : [p.t].concat(p.ex || [])) {
         const pv = E && E.ready ? E.vec(ex) : null;
         if (!pv) continue;
         for (const [c, v] of cv) { const s = E.cos(v, pv); if (s > best) { best = s; ev = c; exNeg = hasNeg(ex); } }
@@ -88,6 +88,37 @@
     return out;
   };
   Q.need = n => Math.ceil(n * 0.6);
+
+  // A rubric for a multiple-choice question that has none written (the mock's own live in js/mock-typed.js): the
+  // right option split into its move and its reason ("Serve the hot code from the cache | so the database only sees
+  // the first miss"). Its key terms are the words only the right option uses, so typing a wrong option back finds
+  // nothing.
+  const STOP = new Set(('the a an and or but so of to in on at by for with from into onto than then that this these those it its is are was were ' +
+    'be been being as if only each every one two three all any some more most less very just also not no can will would should could must may ' +
+    'might do does did has have had their them they there here what which who when where why how your you our we us per via about over under ' +
+    'after before up down out off again own other others same such use uses used using make makes made keep keeps get gets put puts let lets ' +
+    'new old first last next once still even much many few way ways thing things give gives like example ones sees hits take takes sets tell ' +
+    'tells send sends plus rest pass runs run need needs needed instead rather').split(' '));
+  const SUF = ['ations', 'ation', 'ency', 'ing', 'ies', 'ed', 'es', 's', 'ly'];
+  const stem = w => { w = w.toLowerCase(); for (const s of SUF) if (w.length - s.length >= 4 && w.endsWith(s)) return w.slice(0, -s.length); return w; };
+  const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  Q.autoPoints = function (q) {
+    const right = q.opts[q.a], rest = q.opts.filter((o, i) => i !== q.a).join(' ') + ' ' + q.q;
+    let cl = right.split(/\s*(?:;|:|,\s+(?=(?:so|and|then|which|but)\b)|\s(?=(?:so|because)\b))\s*/i)
+      .map(s => s.replace(/^(?:so|and|then|which|but|because)\s+/i, '').trim()).filter(s => s.split(/\s+/).length >= 3);
+    if (!cl.length) cl = [right];
+    if (cl.length > 2) cl = [cl[0], cl.slice(1).join(', ')];
+    const pts = cl.map(c => {
+      const words = c.match(/[A-Za-z][A-Za-z0-9-]*|\d[\w.,]*/g) || [];
+      const keys = [...new Set(words.filter(w => (w.length >= 4 || /^[A-Z0-9]{2,}$/.test(w)) && !STOP.has(w.toLowerCase())).map(stem))]
+        .filter(k => !new RegExp('\\b' + reEsc(k), 'i').test(rest)).map(reEsc);
+      // Wrong options are written to sound like the right one, so meaning alone can't tell them apart: a point is
+      // found by its key terms only (noSim), and a clause with none is dropped.
+      return { t: c[0].toUpperCase() + c.slice(1), keys, ex: [c], noSim: true };
+    }).filter(p => p.keys.length);
+    // Null when nothing in the right option sets it apart ("Within a partition only"): too short to type for.
+    return pts.length ? pts : null;
+  };
 
   // q: {c, type: mc|num|order|multi|explain, q, opts, a, no, lo, hi, unit, items, ans, why, points, model}
   // no: optional, one line per option saying why that option is wrong here (null at a), shown after answering.
@@ -140,6 +171,10 @@
       }, 250);
       let thinking = sayFirst(q, opts);
       let pick = null, order = [], multi = new Set(), typed = '';
+      // opts.typeFirst (a boss's opening deep-dive question, js/run.js): type 1 to 3 sentences instead of saying it,
+      // then tick what it covered after you commit. The rubric is the question's own, or built from its right option.
+      const said = { pts: thinking && opts.typeFirst ? (q.points || Q.autoPoints(q)) : null, text: '', res: null };
+      if (said.pts && SD.embed) SD.embed.load();
       if (q.type === 'explain' && SD.embed) SD.embed.load();
       let optOrder = null;
       if (q.type === 'mc') optOrder = shuffle(q.opts.map((o, i) => i));
@@ -149,6 +184,18 @@
       const concept = SD.concepts[q.c];
       function render() {
         let h = `<div class="q-ctx">${U.esc(opts.context || (concept ? concept.name : 'Question'))}</div>${limit ? bar() : ''}<p class="q-q">${U.esc(q.q)}</p>`;
+        if (thinking && said.pts) {
+          h += `<div class="say-first"><p>Type your answer first: one to three sentences, the way you'd say it in the room. After you pick, you tick what it covered, and a good one lands even if the options trip you up.</p>
+            <textarea id="q-said-text" class="q-text" rows="3" maxlength="600" placeholder="Name the mechanism, then why it works here."></textarea>
+            <div class="conf-b"><button class="ghost" id="q-said-skip">Not sure. Show the options</button><button class="primary" id="q-said" disabled>That's my answer</button></div></div>`;
+          const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
+          const ta = b.querySelector('#q-said-text'), sb = b.querySelector('#q-said');
+          ta.oninput = () => { sb.disabled = ta.value.trim().split(/\s+/).filter(Boolean).length < 3; };
+          sb.onclick = () => { said.text = ta.value.trim(); thinking = false; render(); };
+          b.querySelector('#q-said-skip').onclick = () => { said.text = ''; thinking = false; render(); };
+          setTimeout(() => ta.focus(), 50);
+          return;
+        }
         if (thinking) {
           h += `<div class="say-first"><p>Answer it in your own words first, out loud or in your head, the way you would in the room.</p>
             <button class="primary" id="q-said">I've said it. Show the options</button></div>`;
@@ -158,6 +205,7 @@
           sb.focus();
           return;
         }
+        if (said.text) h += `<blockquote class="typed">${U.esc(said.text)}</blockquote>`;
         if (q.type === 'mc') {
           h += '<div class="opts">' + optOrder.map(i => `<button class="opt${pick === i ? ' on' : ''}${hidden === i ? ' struck' : ''}" data-o="${i}" ${hidden === i ? 'disabled' : ''}>${U.esc(q.opts[i])}</button>`).join('') + '</div>';
         } else if (q.type === 'num') {
@@ -214,7 +262,36 @@
         let page = null;
         if (q.c && !opts.noRecord) page = SD.state.recordAnswer(q.c, ok, conf, ms);
         SD.state.persist();
+        if (said.text) return tickSaid(() => feedback(ok, conf, ms, page, score));
         feedback(ok, conf, ms, page, score);
+      }
+      // The answer typed before the options (opts.typeFirst): tick the points it made, nothing pre-ticked, then see
+      // the game's reading (Q.rubric) as a second opinion, as checkTyped does. The ticks are said.res.
+      async function tickSaid(done) {
+        const E = SD.embed, pts = said.pts, ticks = pts.map(() => false), need = Q.need(pts.length);
+        let found = null;
+        const draw = () => {
+          let h = `<div class="q-ctx">Before the verdict: your own answer</div><p class="q-q">${U.esc(q.q)}</p><blockquote class="typed">${U.esc(said.text)}</blockquote>
+            <div class="q-ctx">A strong answer covers</div><div class="rubric">${pts.map((p, i) => {
+              const sees = found && (found[i].hit === 'key' || found[i].hit === 'close');
+              const gap = !found ? '' : ticks[i] && !sees ? 'You ticked this; the game didn\'t find it. Check your answer says it.' : !ticks[i] && sees ? 'The game found this; you didn\'t tick it.' : '';
+              const note = found ? `<br><span class="muted small">Game: ${found[i].hit === 'key' ? `found "${U.esc(found[i].ev)}"` : found[i].hit === 'not' ? `"${U.esc(found[i].ev)}" is there, but your answer seems to rule it out` : found[i].hit === 'trap' ? `"${U.esc(found[i].ev)}" is the trap` : found[i].hit === 'maybe' ? 'named, but not explained' : 'not found'}</span><span class="rp-gap small">${gap ? '<br>' + gap : ''}</span>` : '';
+              return `<label class="rp${ticks[i] ? ' on' : ''}${gap ? ' differ' : ''}"><input type="checkbox" data-r="${i}" ${ticks[i] ? 'checked' : ''}> <span><b>${U.esc(p.t)}</b>${note}</span></label>`;
+            }).join('')}</div>`;
+          h += found ? `<p class="muted small">Your ticks are the score: change any you disagree with. ${need} of ${pts.length} lands the deep dive even if your pick was wrong.</p><button class="primary" id="q-confirm">Confirm</button>`
+            : `<p class="muted small">Tick each point your answer really made. Then the game shows what it found.</p><button class="primary" id="q-check">Check my ticks</button>`;
+          const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
+          b.querySelectorAll('[data-r]').forEach(el => el.onchange = () => { ticks[+el.dataset.r] = el.checked; if (found) draw(); else el.closest('.rp').classList.toggle('on', el.checked); });
+          const chk = b.querySelector('#q-check');
+          if (chk) chk.onclick = async () => {
+            chk.disabled = true;
+            if (E && !E.ready && !E.failed) await Promise.race([E.load(), new Promise(r => setTimeout(r, 4000))]);
+            found = Q.rubric(said.text, pts); draw();
+          };
+          const cf = b.querySelector('#q-confirm');
+          if (cf) cf.onclick = () => { said.res = { score: ticks.filter(Boolean).length, n: pts.length, need }; done(); };
+        };
+        draw();
       }
       // Typed answer: the player ticks the points their answer made first, with nothing pre-ticked, since pre-ticks
       // anchor self-scoring. Then the game's reading (Q.rubric) comes in as a second opinion, disagreements flagged,
@@ -339,6 +416,7 @@
         if (ok && conf === 0) h += `<p class="muted small">A lucky guess is not knowledge yet. It will come back soon.</p>`;
         h += recap(right);
         if (q.type === 'explain') h += `<p class="muted small">You covered ${score} of ${q.points.length} points.</p>`;
+        if (said.res) h += `<p class="small">${said.res.score >= said.res.need ? `<b>Your own answer made ${said.res.score} of ${said.res.n} points</b>, so it counts${ok ? '' : ' even though the pick missed'}.` : `Your own answer made ${said.res.score} of ${said.res.n} points.`}</p>`;
         const showAns = q.type !== 'explain' && (!ok || conf === 0) && !q.tiers;
         h += `<div class="why">${showAns ? `<p class="why-a"><span class="q-ctx">Answer</span><b>${U.esc(right)}</b></p>` : ''}<p>${U.esc(q.why || '')}</p></div>`;
         // A ranking can name each rung (bad, good, great) and say why it sits there: the ranking is the lesson.
@@ -403,12 +481,12 @@
             SD.state.persist();
             b.querySelectorAll('[data-p]').forEach(x => x.classList.toggle('on', x === el));
           });
-          nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
+          nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
         } else {
           h += `<div class="q-foot">${credMore}<button class="primary" id="q-next">Continue${healTxt ? ` <span class="heal-on">· ${U.esc(healTxt)}</span>` : ''}</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
-          b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
+          b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
           b.querySelector('#q-next').focus();
         }
         if (page) U.system('CHEAT SHEET PAGE RESTORED!', U.esc(SD.concepts[q.c].name) + ': a page in Uptima\'s handwriting fades back in.', 'gold');

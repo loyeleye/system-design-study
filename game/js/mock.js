@@ -8,12 +8,15 @@
 //   - The interviewer nudges with a scenario when your design is missing a part, as real interviewers do. A nudge costs time
 //     and half the credit.
 //   - You choose the first deep dive. Picking the real bottleneck is a senior signal; picking a bikeshed is not.
-//   - Think aloud: options stay hidden until you have said your answer, and you commit with a confidence level.
+//   - Type it first: for the "why" question and each deep dive you type 1 to 3 sentences before the options appear,
+//     then tick what your answer covered (js/mock-typed.js). An answer that covers it earns the credit even if the
+//     options then trip you up. You commit each pick with a confidence level.
 //   - The verdict can down-level you: "Hire at mid level" is a real outcome.
 //
 // Self-contained: needs SD.mock (mock-data.js) and SD.wb.parts (whiteboard-data.js). Uses SD.art, SD.concepts,
-// SD.icons and SD.audio when the main game has loaded them.
-//   SD.mock.interview(root, { pid, pace, think, store }) -> Promise<result>
+// SD.icons and SD.audio when the main game has loaded them, and SD.quiz.rubric (quiz.js) with SD.embed (embed.js) to
+// read typed answers.
+//   SD.mock.interview(root, { pid, pace, think, store }) -> Promise<result>   think: 'type' (default), 'say' or 'off'
 //   SD.mock.menu(root, { store, open, onResult })        -> the problem list, settings and history
 //   SD.mock.solo()                                       -> the main game's entry (Ploy on the Isles, and the Practice hub)
 (function () {
@@ -28,6 +31,12 @@
   // The clock counts a real round's 45 interview minutes, sped up so a multiple-choice round takes 5 to 15 real minutes.
   const PACES = M.paces = { quick: { label: 'Quick', sub: '5 real minutes', x: 9 }, standard: { label: 'Standard', sub: '10 real minutes', x: 4.5 }, relaxed: { label: 'Relaxed', sub: '15 real minutes', x: 3 }, untimed: { label: 'Untimed', sub: 'practice, no clock', x: 4.5, free: true } };
   M.pace = k => PACES[k] ? k : 'standard';
+  // Answer first: 'type' 1 to 3 sentences before the options (the default), 'say' it aloud first, or 'off'.
+  // Older saves stored true (said aloud, now typed) or false.
+  M.think = v => v === false || v === 'off' ? 'off' : v === 'say' ? 'say' : 'type';
+  // What a strong typed answer covers: the question's own rubric (js/mock-typed.js), else one built from its right
+  // option (SD.quiz.autoPoints), else null when there is nothing to type for.
+  M.points = (key, q) => (key && SD.mock.typed && SD.mock.typed[key]) || (SD.quiz && SD.quiz.autoPoints ? SD.quiz.autoPoints(q) : null);
   const CONF = [['Guess', 0], ['Think so', 1], ['Sure', 2]];
   const ORDER = ['users', 'cdn', 'waitroom', 'lb', 'gateway', 'limiter', 'socket', 'app', 'idgen', 'counter', 'hold', 'cache', 'feedcache', 'search', 'sql', 'nosql', 'queue', 'worker', 'transcode', 'stream', 'notify', 'blob'];
   const VERDICT = {
@@ -142,6 +151,18 @@
 .mi-why { background: #fff; border-left: 5px solid var(--mi-blue); border-radius: 8px; padding: 8px 12px; margin: 10px 0 0; font-size: 14px; }
 .mi-why.bad { border-left-color: var(--mi-red); }
 .mi-why.good { border-left-color: var(--mi-mint); }
+.mi-type { background: repeating-linear-gradient(-45deg, #f6f3fd, #f6f3fd 8px, #efeaf9 8px, #efeaf9 16px); border: 3px dashed var(--mi-violet); border-radius: 12px; padding: 10px 12px; }
+.mi-type p { margin: 0 0 6px; }
+.mi textarea.mi-text { display: block; width: 100%; box-sizing: border-box; font: 15px/1.45 var(--f-body, system-ui); color: var(--mi-ink); background: #fff; border: 3px solid var(--mi-ink); border-radius: 10px; padding: 8px 10px; resize: vertical; min-height: 80px; }
+.mi textarea.mi-text:focus { outline: 3px solid var(--mi-sun); outline-offset: 1px; }
+.mi-said { margin: 0 0 10px; padding: 6px 10px; border-left: 5px solid var(--mi-violet); background: #f6f3fd; border-radius: 8px; font-style: italic; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mi-typed { margin-top: 12px; }
+.mi-rps { display: grid; gap: 6px; }
+.mi-rp { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; background: #fff; border: 2.5px solid var(--mi-ink); border-radius: 10px; padding: 6px 10px; cursor: pointer; }
+.mi-rp input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: #1f8a57; }
+.mi-rp.on { background: #e7fbef; }
+.mi-rp.differ { border-style: dashed; border-color: #b07800; }
+.mi-gap { color: #8a5a00; font-weight: 700; }
 .mi-think { background: repeating-linear-gradient(-45deg, #f6f3fd, #f6f3fd 8px, #efeaf9 8px, #efeaf9 16px); border: 3px dashed var(--mi-violet); border-radius: 12px; padding: 14px; text-align: center; }
 
 /* Requirements sort */
@@ -337,20 +358,24 @@
     opts = opts || {};
     const P = SD.mock.problems.find(p => p.id === opts.pid) || SD.mock.problems[0];
     const pace = PACES[M.pace(opts.pace)];
-    const think = opts.think !== false;
+    // How you answer the "why" and the deep dives: 'type' 1 to 3 sentences first, 'say' it aloud first, or 'off'.
+    const think = M.think(opts.think);
+    if (think === 'type' && SD.embed) SD.embed.load();
     const W = M.who(opts.interviewer);
     const L = (k, x) => String(W.lines[k] != null ? W.lines[k] : M.interviewers.gary.lines[k]).replace('{x}', x == null ? '' : x);
 
-    // Clock: interview minutes = real time × pace + the minutes actions cost. Pausing stops it.
-    const T = { start: Date.now(), paused: 0, pausedAt: 0, extra: 0 };
-    const mins = () => ((T.pausedAt || Date.now()) - T.start - T.paused) / 60000 * pace.x + T.extra;
+    // Clock: interview minutes = real time × pace + the minutes actions cost. Pausing stops it. While you type an
+    // answer it runs at real speed (rate 1), as if you were saying it: typing is slower than tapping, not thinking.
+    const T = { base: 0, from: Date.now(), rate: pace.x, pausedAt: 0, extra: 0 };
+    const mins = () => T.base + ((T.pausedAt || Date.now()) - T.from) / 60000 * T.rate + T.extra;
+    const setRate = r => { const now = T.pausedAt || Date.now(); T.base += (now - T.from) / 60000 * T.rate; T.from = now; T.rate = r; };
     const spent = { };
     let phase = null, phaseAt = 0, warned = {}, over = false;
 
     // Scoring: points per rubric line, the interviewer's notes, and what to study.
     const got = { nav: 0, design: 0, depth: 0, trade: 0 };
     const notes = { nav: [], design: [], depth: [], trade: [], time: [] };
-    const lessons = [], answers = [];
+    const lessons = [], answers = [], typed = [];
     const add = (k, n) => { got[k] += n; };
     // Pair Mock (js/pair-mock.js) watches the round through these events. Each is small and refers to the
     // problem data by index, so the interviewer's page renders it from its own copy of SD.mock.problems.
@@ -396,7 +421,7 @@
     }
     const iv = setInterval(tick, 250);
     if (!pace.free) $('.mi-pause').onclick = () => {
-      if (T.pausedAt) { T.paused += Date.now() - T.pausedAt; T.pausedAt = 0; $('.mi-pause').textContent = 'Pause'; stage.hidden = false; pausedCard.remove(); }
+      if (T.pausedAt) { T.from += Date.now() - T.pausedAt; T.pausedAt = 0; $('.mi-pause').textContent = 'Pause'; stage.hidden = false; pausedCard.remove(); }
       else { T.pausedAt = Date.now(); $('.mi-pause').textContent = 'Resume'; stage.hidden = true; stage.after(pausedCard); }
     };
     const pausedCard = document.createElement('div');
@@ -414,33 +439,102 @@
     const next = (label) => `<div class="mi-row mi-end"><button class="mi-btn go mi-next" type="button">${esc(label || 'Continue')}</button></div>`;
     const onNext = res => { stage.querySelector('.mi-next').onclick = () => { sfx('ok'); res(); }; };
 
-    // A multiple-choice answer. think: options stay hidden until you've said yours aloud. conf: commit with confidence.
-    // Returns { ok, conf, pick } where pick is the index into q.opts.
+    // A multiple-choice answer. o.think: produce your own answer before the options appear (typed, or said aloud,
+    // per the round's setting). o.conf: commit with confidence. o.key names its rubric in SD.mock.typed.
+    // Returns { ok, conf, pick, typed } where pick is the index into q.opts and typed is what you wrote ('' if nothing).
     async function choose(q, o) {
       o = o || {};
       const order = shuffle(q.opts.map((t, i) => i)).filter(i => !(o.skip || []).includes(i));
       const head = `${o.tag ? `<span class="mi-tag">${esc(o.tag)}</span>` : ''}<p class="mi-q">${esc(q.q)}</p>`;
-      if (o.think && think) {
+      let text = '';
+      if (o.think && think === 'type' && M.points(o.key, q)) text = await typeFirst(head);
+      else if (o.think && think !== 'off') {
         await step(`<div class="mi-card">${head}<div class="mi-think"><p>Say your answer out loud first, as you would in the room.</p><button class="mi-btn go mi-next" type="button">I've said it. Show the options</button></div></div>`, onNext);
       }
       let sel = -1;
-      return step(`<div class="mi-card">${head}<div class="mi-opts">${order.map(i => `<button class="mi-opt" type="button" data-i="${i}">${esc(q.opts[i])}</button>`).join('')}</div>
+      return step(`<div class="mi-card">${head}${text ? `<blockquote class="mi-said">${esc(text)}</blockquote>` : ''}<div class="mi-opts">${order.map(i => `<button class="mi-opt" type="button" data-i="${i}">${esc(q.opts[i])}</button>`).join('')}</div>
         <div class="mi-row mi-end">${o.conf ? CONF.map(([l, c]) => `<button class="mi-btn mi-commit" type="button" data-c="${c}" disabled>${l}</button>`).join('') : '<button class="mi-btn go mi-commit" type="button" data-c="1" disabled>Answer</button>'}</div></div>`, res => {
         stage.querySelectorAll('.mi-opt').forEach(b => b.onclick = () => {
           sel = +b.dataset.i; sfx('card');
           stage.querySelectorAll('.mi-opt').forEach(x => x.classList.toggle('sel', x === b));
           stage.querySelectorAll('.mi-commit').forEach(x => { x.disabled = false; });
         });
-        stage.querySelectorAll('.mi-commit').forEach(b => b.onclick = () => res({ ok: sel === q.a, conf: +b.dataset.c, pick: sel }));
+        stage.querySelectorAll('.mi-commit').forEach(b => b.onclick = () => res({ ok: sel === q.a, conf: +b.dataset.c, pick: sel, typed: text }));
       });
     }
-    // Show the result of a choice, then wait for Continue.
-    function reveal(q, r, extra) {
+    // Type it first: 1 to 3 sentences before the options. The clock runs at real speed meanwhile. Resolves with the
+    // text, or '' if you'd rather see the options (no penalty: the typed answer can only add credit).
+    async function typeFirst(head) {
+      setRate(1);
+      try {
+        return await step(`<div class="mi-card">${head}<div class="mi-type">
+          <p class="mi-small">Type your answer first: one to three sentences, the way you'd say it in the room. The clock runs at real speed while you type.</p>
+          <textarea class="mi-text" rows="3" maxlength="600" aria-label="Your answer" placeholder="Name the mechanism, then why it works here."></textarea>
+          <div class="mi-row mi-end"><button class="mi-btn sm mi-skip" type="button">Not sure. Show the options</button><button class="mi-btn go mi-next" type="button" disabled>That's my answer</button></div>
+          <p class="mi-small mi-muted">Read on your device; nothing you type leaves the browser. After the reveal you tick what it covered, and it can only add to your score.</p></div></div>`, res => {
+          const ta = stage.querySelector('.mi-text'), go = stage.querySelector('.mi-next');
+          const words = () => ta.value.trim().split(/\s+/).filter(Boolean).length;
+          ta.oninput = () => { go.disabled = words() < 3; };
+          ta.onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !go.disabled) go.click(); };
+          go.onclick = () => { const t = ta.value.trim(); sfx('ok'); emit({ k: 'typed', text: t.slice(0, 600) }); res(t); };
+          stage.querySelector('.mi-skip').onclick = () => { sfx('card'); emit({ k: 'typed', text: '' }); res(''); };
+          setTimeout(() => ta.focus(), 30);
+        });
+      } finally { setRate(pace.x); }
+    }
+    // Show the result of a choice, then wait for Continue. o.key: the question's rubric. If you typed an answer first,
+    // you tick the points it made (nothing is ticked for you), then the game's reading comes in as a second opinion
+    // with any disagreement flagged, as in the game's typed questions (js/quiz.js). Your ticks are the score.
+    // Resolves with { score, n, need } for a typed answer, or null.
+    function reveal(q, r, extra, o) {
+      o = o || {};
       sfx(r.ok ? 'right' : 'wrong');
+      const pts = o.think && think === 'type' ? M.points(o.key, q) : null;
+      const said = pts && r.typed;
+      const rub = !pts ? '' : said ? `<div class="mi-typed"><span class="mi-tag">Your answer, before the options</span><blockquote class="mi-said">${esc(r.typed)}</blockquote>
+          <p class="mi-small mi-tick-help">Tick each point your answer really made. Nothing is ticked for you.</p>
+          <div class="mi-rps">${pts.map((p, i) => `<label class="mi-rp"><input type="checkbox" data-r="${i}"> <span><b>${esc(p.t)}</b><span class="mi-game"></span></span></label>`).join('')}</div></div>`
+        : `<div class="mi-typed"><span class="mi-tag">A strong answer covers</span><ul class="mi-lessons">${pts.map(p => `<li>${esc(p.t)}</li>`).join('')}</ul></div>`;
       return step(`<div class="mi-card"><p class="mi-q">${esc(q.q)}</p><div class="mi-opts">${q.opts.map((t, i) => i === q.a || i === r.pick ? `<div class="mi-opt ${i === q.a ? 'good' : 'bad'}">${esc(t)}</div>` : '').join('')}</div>
         ${!r.ok && q.no && q.no[r.pick] ? `<div class="mi-why bad"><b>Why not yours:</b> ${esc(q.no[r.pick])}</div>` : ''}
-        <div class="mi-why ${r.ok ? 'good' : 'bad'}">${esc(q.why)}</div>${extra || ''}${next()}</div>`, onNext);
+        <div class="mi-why ${r.ok ? 'good' : 'bad'}">${esc(q.why)}</div>${extra || ''}${rub}
+        <div class="mi-row mi-end">${said ? '<button class="mi-btn go mi-check" type="button">Check my ticks</button>' : ''}<button class="mi-btn go mi-next" type="button" ${said ? 'hidden' : ''}>Continue</button></div></div>`, res => {
+        const ticks = pts ? pts.map(() => false) : [];
+        let found = null;
+        const flag = () => stage.querySelectorAll('.mi-rp').forEach((el, i) => {
+          if (!found) return;
+          const sees = found[i].hit === 'key' || found[i].hit === 'close';
+          el.classList.toggle('differ', ticks[i] !== sees);
+          el.querySelector('.mi-game').innerHTML = `<br><span class="mi-small mi-muted">Game: ${evText(found[i])}</span>${ticks[i] && !sees ? '<br><span class="mi-small mi-gap">You ticked this; the game didn\'t find it. Check your answer says it.</span>' : !ticks[i] && sees ? '<br><span class="mi-small mi-gap">The game found this; you didn\'t tick it.</span>' : ''}`;
+        });
+        stage.querySelectorAll('[data-r]').forEach(el => el.onchange = () => { ticks[+el.dataset.r] = el.checked; el.closest('.mi-rp').classList.toggle('on', el.checked); flag(); });
+        const chk = stage.querySelector('.mi-check');
+        if (chk) chk.onclick = async () => {
+          chk.disabled = true; chk.textContent = 'Reading your answer...';
+          const E = SD.embed;
+          if (E && !E.ready && !E.failed) await Promise.race([E.load(), new Promise(ok => setTimeout(ok, 4000))]);
+          found = SD.quiz && SD.quiz.rubric ? SD.quiz.rubric(r.typed, pts) : pts.map(() => ({ hit: null }));
+          chk.remove(); flag();
+          stage.querySelector('.mi-tick-help').textContent = `${E && E.ready ? 'The game reads key terms and meaning, so it can miss a good paraphrase.' : 'Only exact terms were checked this time.'} Your ticks are the score: change any you disagree with.`;
+          const nx = stage.querySelector('.mi-next'); nx.hidden = false; nx.focus();
+        };
+        stage.querySelector('.mi-next').onclick = () => {
+          sfx('ok');
+          if (!said) return res(null);
+          const score = ticks.filter(Boolean).length, need = SD.quiz && SD.quiz.need ? SD.quiz.need(pts.length) : Math.ceil(pts.length * 0.6);
+          emit({ k: 'ticks', score, n: pts.length });
+          typed.push({ t: o.title || q.q, text: r.typed, score, n: pts.length, need, points: pts.filter((p, i) => ticks[i]).map(p => p.t) });
+          res({ score, n: pts.length, need });
+        };
+      });
     }
+    const evText = f => f.hit === 'key' ? `found "${esc(f.ev)}"` : f.hit === 'close' ? `sounds like "${esc(f.ev)}"`
+      : f.hit === 'not' ? `"${esc(f.ev)}" is there, but your answer seems to rule it out`
+        : f.hit === 'trap' ? `"${esc(f.ev)}" is the trap this point warns about`
+          : f.hit === 'maybe' ? (f.bare ? `"${esc(f.ev)}" is named, but not explained` : `maybe: "${esc(f.ev)}"`) : 'not found';
+    // Credit a typed answer earns on its line, out of full: all of it at the pass mark, half for any point made.
+    // It never takes anything away: the line gets the better of this and what the multiple choice earned.
+    const typedCredit = (t, full) => !t ? 0 : t.score >= t.need ? full : t.score ? full / 2 : 0;
 
     // ----- Phase 1: requirements -----
     async function requirements() {
@@ -634,14 +728,23 @@
       }
       // The "why is that there?" question.
       speak(esc(H.why.q.replace(/^"|"$/g, '')));
-      const r = await choose(H.why, { tag: 'Justify a choice', think: true, conf: true });
+      const key = P.id + '.why';
+      const r = await choose(H.why, { tag: 'Justify a choice', think: true, conf: true, key });
       emit({ k: 'pick', what: 'why', pick: r.pick, ok: r.ok, conf: r.conf });
       calibrate(r, 'the design');
       add('trade', r.ok ? 2 : 0);
       note('trade', r.ok, r.ok ? 'Justified the key design choice with the workload, not a buzzword.' : 'Couldn\'t say why the key part was there.');
       if (!r.ok) lessons.push({ t: 'Why that part', why: H.why.why });
       answers.push({ c: H.why.c, ok: r.ok, conf: r.conf });
-      await reveal(H.why, r);
+      const t = await reveal(H.why, r, '', { think: true, key, title: 'Why that part is there' });
+      credit('trade', t, r.ok ? 2 : 0, 2, 'why the key part is there');
+    }
+    // A typed answer's credit on its rubric line, on top of what the multiple choice earned (never below it).
+    function credit(k, t, got, full, what) {
+      if (!t) return;
+      const c = typedCredit(t, full);
+      if (c > got) { add(k, c - got); note(k, true, `Your own answer on ${what} made ${t.score} of ${t.n} points before you saw the options.`); }
+      else if (t.score >= t.need) note(k, true, `Explained ${what} in your own words before seeing the options.`);
     }
     // A confident miss is the most valuable gap: it lowers Trade-offs and goes in the notes.
     function calibrate(r, what) {
@@ -686,24 +789,28 @@
       if (k) speak(L('diveNext', esc(lc(d.title))));
       const tag = `Deep dive ${k + 1} of 2 · ${d.title}`;
       emit({ k: 'divenow', id: d.id });
-      let r = await choose(d, { tag, think: true, conf: true });
+      const key = P.id + '.' + d.id;
+      let r = await choose(d, { tag, think: true, conf: true, key });
+      const said = r.typed;
       emit({ k: 'pick', what: 'dive', id: d.id, pick: r.pick, ok: r.ok, conf: r.conf });
       calibrate(r, lc(d.title));
       answers.push({ c: d.c, ok: r.ok, conf: r.conf });
-      if (r.ok) { add('depth', 2); note('depth', true, `Nailed ${lc(d.title)} on the first try.`); }
+      let depth = 0;
+      if (r.ok) { depth = 2; add('depth', 2); note('depth', true, `Nailed ${lc(d.title)} on the first try.`); }
       else {
         T.extra += COST.nudge; sfx('wrong');
         speak(`${L('hm')} ${esc(d.nudge)}`);
         emit({ k: 'nudge', text: d.nudge });
         const r2 = await choose(d, { tag: tag + ' · after a nudge', conf: false, skip: [r.pick] });
         emit({ k: 'pick', what: 'dive', id: d.id, pick: r2.pick, ok: r2.ok, retry: true });
-        if (r2.ok) { add('depth', 1); note('depth', false, `Got ${lc(d.title)} after a nudge.`); }
+        if (r2.ok) { depth = 1; add('depth', 1); note('depth', false, `Got ${lc(d.title)} after a nudge.`); }
         else note('depth', false, `Missed ${lc(d.title)}, even after a nudge.`);
         lessons.push({ t: d.title, why: d.why });
-        r = r2;
+        r = Object.assign(r2, { typed: said });
       }
       speak(L(r.ok ? 'diveOk' : 'diveBad'));
-      await reveal(d, r);
+      const t = await reveal(d, r, '', { think: true, key, title: d.title });
+      credit('depth', t, depth, 2, lc(d.title));
       speak(esc(d.f.q));
       const f = await choose(d.f, { tag: tag + ' · the trade-off' });
       emit({ k: 'pick', what: 'follow', id: d.id, pick: f.pick, ok: f.ok });
@@ -773,7 +880,7 @@
         : avg >= 3 && g.nav >= 3 && g.depth >= 3 && g.trade >= 3 && min >= 2 ? 'senior'
           : avg >= 2.4 && g.design >= 3 ? 'mid' : 'no';
       const concepts = [...new Set(answers.filter(a => !a.ok).map(a => a.c))];
-      return { ok: verdict !== 'no', verdict, pid: P.id, grades: g, scores: s, avg, notes, lessons, answers, concepts, cut, mins: Math.round(mins()), spent: Object.assign({}, spent), pace: M.pace(opts.pace), who: W.id, at: Date.now() };
+      return { ok: verdict !== 'no', verdict, pid: P.id, grades: g, scores: s, avg, notes, lessons, answers, typed, concepts, cut, mins: Math.round(mins()), spent: Object.assign({}, spent), pace: M.pace(opts.pace), who: W.id, at: Date.now() };
     }
 
     return run();
@@ -798,6 +905,8 @@
         const u = res.spent[p.id], w = Math.min(100, (u || 0) / (p.min * 2) * 100);
         return `<div><span>${esc(p.name)}</span><b><i class="${u > p.min ? 'over' : ''}" style="width:${w}%"></i><u style="left:50%"></u></b><span>${u === undefined ? 'not reached' : fmt(u) + ' / ' + p.min + 'm'}</span></div>`;
       }).join('')}</div><p class="mi-small mi-muted">The line marks each phase's budget.</p></div>`}
+      ${(res.typed || []).length ? `<div class="mi-card"><h3>What you typed first</h3><ul class="mi-lessons">${res.typed.map(t => `<li><b>${esc(t.t)}</b> <span class="mi-small mi-muted">· ${t.score} of ${t.n} points${t.score >= t.need ? ', full credit' : t.score ? ', half credit' : ''}</span><blockquote class="mi-said">${esc(t.text)}</blockquote></li>`).join('')}</ul>
+        <p class="mi-small mi-muted">Producing the answer before you see the options is the interview skill. A typed answer that covers the points earns the credit even when an option trips you up.</p></div>` : ''}
       ${res.lessons.length ? `<div class="mi-card"><h3>What a senior answer covers</h3><ul class="mi-lessons">${res.lessons.map(l => `<li><b>${esc(l.t)}.</b> ${esc(l.why)}</li>`).join('')}</ul>
         ${res.concepts.length ? `<p class="mi-small">Going into your review: ${res.concepts.map(c => `<b>${esc(conceptName(c))}</b>`).join(', ')}.</p>` : ''}</div>` : ''}
       <div class="mi-row mi-end">${actions.map((a, i) => `<button class="mi-btn ${a.go ? 'go' : ''}" type="button" data-a="${i}">${esc(a.label)}</button>`).join('')}</div></div>`;
@@ -813,6 +922,7 @@
       out.push(`${r.name}: ${res.grades[r.id]}/4 (${SD.mock.scoreNames[res.grades[r.id]]})`);
       (res.notes[r.id] || []).forEach(n => out.push(`  ${n.good ? '+' : '-'} ${n.t}`));
     });
+    if ((res.typed || []).length) { out.push('', 'Typed before the options:'); res.typed.forEach(t => out.push(`  - ${t.t} (${t.score} of ${t.n} points): ${t.text}`)); }
     if (res.lessons.length) { out.push('', 'To study:'); res.lessons.forEach(l => out.push(`  - ${l.t}: ${l.why}`)); }
     return out.join('\n');
   };
@@ -824,15 +934,15 @@
     opts = opts || {};
     const store = opts.store || defaultStore;
     const open = opts.open || (() => true);
-    const data = () => { const d = store.load() || {}; d.best = d.best || {}; d.runs = d.runs || []; d.pace = M.pace(d.pace); if (d.think === undefined) d.think = true; return d; };
+    const data = () => { const d = store.load() || {}; d.best = d.best || {}; d.runs = d.runs || []; d.pace = M.pace(d.pace); d.think = M.think(d.think); return d; };
     const shelf = () => {
       const d = data();
       root.innerHTML = `<div class="mi">
         <div class="mi-card"><div class="mi-top" style="grid-template-columns:auto 1fr">${face(M.who().id, 64, 'happy')}<div class="mi-bubble"><p>${esc(M.who().intro)}</p></div></div>
           <p class="mi-small">The round runs in the interview's real order: requirements, entities and API, an estimate, the high-level design, two deep dives, then your questions. You're scored on a senior-level rubric, and the verdict can down-level you.</p>
           <div class="mi-row"><span class="mi-small"><b>Pace</b></span><div class="mi-pick" role="group" aria-label="Pace">${Object.keys(PACES).map(k => `<button type="button" data-pace="${k}" class="${d.pace === k ? 'on' : ''}">${PACES[k].label}<small>${PACES[k].sub}</small></button>`).join('')}</div></div>
-          <div class="mi-row"><span class="mi-small"><b>Think aloud</b></span><div class="mi-pick" role="group" aria-label="Think aloud"><button type="button" data-think="1" class="${d.think ? 'on' : ''}">On<small>options hidden until you've said yours</small></button><button type="button" data-think="0" class="${d.think ? '' : 'on'}">Off<small>options shown at once</small></button></div></div>
-          <p class="mi-small mi-muted">The clock counts a real round's 45 minutes, sped up to fit the pace you pick. Talk through every answer out loud, as you would in the room.</p></div>
+          <div class="mi-row"><span class="mi-small"><b>Answer first</b></span><div class="mi-pick" role="group" aria-label="Answer first">${[['type', 'Type it', '1 to 3 sentences, then options'], ['say', 'Say it', 'aloud, then options'], ['off', 'Off', 'options at once']].map(([k, l, sub]) => `<button type="button" data-think="${k}" class="${d.think === k ? 'on' : ''}">${l}<small>${sub}</small></button>`).join('')}</div></div>
+          <p class="mi-small mi-muted">The clock counts a real round's 45 minutes, sped up to fit the pace you pick, and runs at real speed while you type. Talk through every answer out loud, as you would in the room.</p></div>
         <div class="mi-probs">${SD.mock.problems.map(p => {
           const ok = open(p), b = d.best[p.id];
           return `<button class="mi-prob ${ok ? '' : 'locked'}" type="button" data-p="${p.id}" ${ok ? '' : 'disabled'}><span class="mi-tag">${ok ? 'Chapter ' + p.ch : '🔒 Clear chapter ' + p.ch}</span><strong>${esc(p.name)}</strong><span class="mi-small mi-muted">Like ${esc(p.like)}</span><br>
@@ -841,7 +951,7 @@
         ${d.runs.length ? `<div class="mi-card" style="margin-top:12px"><h3>Recent mocks</h3><ul class="mi-hist">${d.runs.slice(-5).reverse().map(r => `<li>${new Date(r.at).toLocaleDateString()} · ${esc((SD.mock.problems.find(p => p.id === r.pid) || {}).name || r.pid)} · <b class="${VERDICT[r.verdict].cls}">${VERDICT[r.verdict].label}${r.verdict === 'mid' ? ' (mid)' : r.verdict !== 'no' ? ' (senior)' : ''}</b> · ${r.mins} min</li>`).join('')}</ul>
           <p class="mi-small mi-muted">Hire-level verdicts so far: ${d.runs.filter(r => r.verdict === 'senior' || r.verdict === 'strong').length} senior, ${d.runs.filter(r => r.verdict === 'mid').length} mid.</p></div>` : ''}</div>`;
       root.querySelectorAll('[data-pace]').forEach(b => b.onclick = () => { const x = data(); x.pace = b.dataset.pace; store.save(x); sfx('card'); shelf(); });
-      root.querySelectorAll('[data-think]').forEach(b => b.onclick = () => { const x = data(); x.think = b.dataset.think === '1'; store.save(x); sfx('card'); shelf(); });
+      root.querySelectorAll('[data-think]').forEach(b => b.onclick = () => { const x = data(); x.think = M.think(b.dataset.think); store.save(x); sfx('card'); shelf(); });
       root.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { sfx('ok'); play(b.dataset.p); });
     };
     async function play(pid) {
