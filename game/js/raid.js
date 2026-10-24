@@ -147,6 +147,9 @@
   RD.expeditions = () => (SD.expeditions || []).filter(x => { try { return floorsOf(x).length >= 2 && x.opens(); } catch (e) { return false; } });
   // Difficulty goes with length (Ladi, 2026-10-20), and each expedition's sev and dmg tune it to its level.
   const LEVELS = { 2: 'Easy', 3: 'Medium', 4: 'Hard', 5: 'Master' };
+  // What a leader with none open sees: expeditions open from the leader's own save, and the first (Every Time You
+  // Die) needs chapter 2 cleared, not just reached.
+  RD.LOCKED = 'None open yet. The first opens once your save has cleared chapter 2; the leader\'s save decides.';
   RD.level = x => LEVELS[floorsOf(x).length] || '';
   const xpX = (x, k) => Math.max(0.5, Math.min(2, +(x || {})[k] || 1));
   // A floor's chapter: the dungeon its map looks like, else its boss's.
@@ -2156,7 +2159,7 @@
       const open = RD.expeditions(), h = here();
       const kyu = kyuBoss();
       const fl = x ? floorsOf(x) : [];
-      const pickX = hosting && !G.rs ? (open.length ? `<label class="pt-lbl" for="rd-xp">Expedition<select id="rd-xp">${open.map(e => `<option value="${esc(e.id)}" ${e.id === G.xp ? 'selected' : ''}>${esc(e.name)} · ${RD.level(e)}, ${floorsOf(e).length} floors</option>`).join('')}</select></label>` : '<span class="mi-tag">Expedition</span><small class="mi-muted">None open yet. Reach chapter 2 for the first.</small>')
+      const pickX = hosting && !G.rs ? (open.length ? `<label class="pt-lbl" for="rd-xp">Expedition<select id="rd-xp">${open.map(e => `<option value="${esc(e.id)}" ${e.id === G.xp ? 'selected' : ''}>${esc(e.name)} · ${RD.level(e)}, ${floorsOf(e).length} floors</option>`).join('')}</select></label>` : `<span class="mi-tag">Expedition</span><small class="mi-muted">${RD.LOCKED}</small>`)
         : `<span class="mi-tag">Expedition${G.rs ? ' · resuming' : ''}</span><b>${esc(x ? x.name : 'None yet')}</b><small class="mi-muted">${G.rs ? `Floor ${G.fl + 1} of ${fl.length}. Seats come back by name, or tap yours.` : `${esc((G.players[G.host] || {}).n || 'The leader')} picks the expedition.`}</small>`;
       const floors = x ? `<b>${esc(x.name)}</b>: ${esc(x.blurb || '')} ${fl.map((f, i) => `${i + 1}. ${esc(f.name)} (${esc(SD.enemies[f.boss].name)})`).join(' · ')}` : '';
       // A resumed expedition: the saved seats, and a button for each empty one this player could be.
@@ -2168,7 +2171,7 @@
         note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café: then you answer a question and fight on. No shards; this one is for practice.${seats}`,
         addBot: hosting && !G.rs && all().length < MAX_PLAYERS ? () => send({ k: 'bot' }) : null,
         botChamp: hosting && !G.rs ? (k, c) => send({ k: 'botc', b: k, c }) : null,
-        startWhy: () => (!x ? 'No expedition is open yet.' : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
+        startWhy: () => (!x ? (hosting ? 'No expedition is open in your save yet.' : 'No expedition is open in the leader\'s save yet.') : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
         start,
         bind: rt => {
           const sl = rt.querySelector('#rd-xp'); if (sl) sl.onchange = () => { G.xp = sl.value; fixBots(); push(); };
