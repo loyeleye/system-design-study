@@ -248,7 +248,7 @@
       est: { c: 'estimation', q: 'Step 2, Estimation. 500 hours of video are uploaded every minute. Hours uploaded per day?', unit: 'hours/day', lo: 600000, hi: 850000, ans: '~720,000 (500 x 60 x 24)', why: 'Nearly three-quarters of a million hours a day, each transcoded into five or more renditions: transcoding is a huge parallel batch job, and storage grows by petabytes.' },
       design: { c: 'video', q: 'Step 3, Design. A viewer on a shaky phone connection presses play. How do they get smooth video?', opts: ['Several bitrates in short segments from a CDN, picked per segment by the player', 'Send the original file and let TCP congestion control match the link speed', 'Have the origin re-encode the stream live to match each viewer\'s speed', 'Let the viewer pick a quality once, then buffer a full minute before playing'], a: 0, no: [null, 'TCP will slow down to fit the link, but a 4K stream needs more bits per second than a shaky phone has, so playback stalls.', 'Encoding live for each viewer burns server CPU per stream, millions of times over. Transcode once into a ladder at upload and let the CDN cache it.', 'A one-off choice cannot follow a signal that changes every few seconds, and a long upfront buffer makes every video slow to start.'], why: 'Each upload is transcoded once into a ladder of bitrates cut into short segments. Adaptive bitrate lets the player step down when the signal drops and back up when it recovers, and the CDN keeps the bytes close.' },
       startCard: 'transcode',
-      go: 'Now stop the buffering. At half severity, expect a deep dive.'
+      go: 'Now stop the buffering. On your second turn, expect a deep dive.'
     },
     crawlqueen: {
       concepts: ['crawler', 'queue', 'blob', 'search'],
@@ -264,7 +264,7 @@
       est: { c: 'estimation', q: 'Step 2, Estimation. Crawl 1 billion pages in 10 days. Pages per second?', unit: 'pages/s', lo: 900, hi: 1400, ans: '~1,160 (10^9 / 864,000)', why: 'About a thousand pages a second, around 100 MB/s of HTML: many fetcher machines, and a frontier that keeps each site to a polite pace.' },
       design: { c: 'crawler', q: 'Step 3, Design. How do you crawl fast without hammering any one site?', opts: ['One queue per site with a delay between hits, and many fetchers across sites', 'One shared FIFO queue of every URL, drained by many fetchers at full speed', 'Fetch over HTTP/2, so each site gets one connection with many parallel streams', 'Spread each site\'s requests across many IPs so none trips its rate limit'], a: 0, no: [null, 'Pages link mostly to their own site, so a shared queue hands many fetchers the same site at once. Nothing in it paces a site.', 'HTTP/2 multiplexing saves connections and handshakes, but parallel streams are still parallel requests to one server. It speeds up page loads, not politeness.', 'The site serves just as many requests, only from more addresses. That dodges its rate limit instead of respecting it, and gets you blocked.'], why: 'Per-site queues turn politeness into a property of the frontier, while thousands of sites in parallel keep total throughput high.' },
       startCard: 'frontier',
-      go: 'Now outpace the Queen, politely. At half severity, expect a deep dive.'
+      go: 'Now outpace the Queen, politely. On your second turn, expect a deep dive.'
     },
     lordlatency: {
       concepts: ['multiregion', 'dns', 'cdn', 'replication'],
@@ -280,7 +280,7 @@
       est: { c: 'estimation', q: 'Step 2, Estimation. Light in fibre covers about 200 km per millisecond. Tokyo to a server in Virginia is about 11,000 km. Minimum round trip, in ms?', unit: 'ms', lo: 90, hi: 140, ans: '~110 ms (2 x 11,000 / 200)', why: 'Over 100 ms before the server does anything at all. No code makes light faster: put a region near the user.' },
       design: { c: 'multiregion', q: 'Step 3, Design. How do you serve the whole world fast, and survive a region failing?', opts: ['Several regions behind GeoDNS, a CDN, and data replicated between regions', 'Keep one region, and have the CDN cache every page and API response', 'Run in several regions, with each write copied to all of them before answering', 'Spread one region across three availability zones with automatic failover'], a: 0, no: [null, 'A CDN cannot cache personalised responses or writes, so those still cross the ocean, and when the one region dies, everything dynamic dies with it.', 'Every write would wait on the farthest region, a few hundred ms each time. Synchronous copies belong between nearby zones; across oceans, replicate asynchronously.', 'Zones are separate buildings in one area. They survive a data centre fire, not a region outage, and far-away users still wait 300 ms.'], why: 'Nearby regions cut the latency, health-checked GeoDNS moves users when a region dies, a CDN serves static files from the edge, and asynchronous replication keeps writes fast at the cost of a few seconds of possible loss on failover.' },
       startCard: 'geodns',
-      go: 'Now bring the realm closer to everyone. At half severity, expect a deep dive.'
+      go: 'Now bring the realm closer to everyone. On your second turn, expect a deep dive.'
     }
   });
 

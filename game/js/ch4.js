@@ -230,7 +230,7 @@
       est: { c: 'estimation', q: 'Step 2, Estimation. 2 million active drivers each send a location every 4 seconds. Location writes per second?', unit: 'writes/s', lo: 350000, hi: 650000, ans: '~500,000 (2 x 10^6 / 4)', why: 'Half a million writes a second, each overwriting the last: keep live locations in memory (Redis GEO, sharded by region), not in a relational table.' },
       design: { c: 'geo', q: 'Step 3, Design. A rider asks for the nearest drivers. How do you find them?', opts: ['Query an in-memory geo index for the rider\'s cell and its neighbours', 'SELECT drivers ORDER BY distance to the rider, with an index on (lat, lng)', 'Keep each driver\'s location in Redis under their ID and scan for the closest', 'Publish the request to every driver\'s app and take the first to reply'], a: 0, no: [null, 'A B-tree on (lat, lng) narrows only latitude, and sorting by a computed distance reads every row. The table could not take 500,000 location writes a second either.', 'Keys by driver ID answer "where is driver 42?" for live tracking, but they have no spatial order, so finding the closest scans millions of keys.', 'That pushes every request to two million phones, and the first reply comes from the fastest network, not the nearest driver. Pub/sub suits fan-out where every subscriber needs the message.'], why: 'A cell plus its neighbours turns a planet-wide search into a few small lookups, and keeping live driver locations in memory (Redis GEO, sharded by region) handles the update rate. Then lock the chosen driver with an expiry while they accept.' },
       startCard: 'geohash',
-      go: 'Now match riders under surge. At half severity, expect a deep dive.'
+      go: 'Now match riders under surge. On your second turn, expect a deep dive.'
     },
     chatwyrm: {
       concepts: ['realtime', 'queue', 'chash', 'failure'],
@@ -246,7 +246,7 @@
       est: { c: 'estimation', q: 'Step 2, Estimation. 500 million people are online at once and one chat server holds about 50,000 open connections. How many chat servers?', unit: 'servers', lo: 7000, hi: 14000, ans: '~10,000 (5 x 10^8 / 5 x 10^4)', why: 'Ten thousand stateful servers, so you need a registry of which server holds each user, and pub/sub to route a message between them.' },
       design: { c: 'realtime', q: 'Step 3, Design. Bob sends Alice a message while her phone is off. What happens?', opts: ['Persist it in her inbox, then deliver it when her phone reconnects', 'Hold it in the chat server\'s memory and retry until she reconnects', 'Send it as a push notification, which holds it until her phone is on', 'Keep it queued on Bob\'s phone and retry until Alice comes online'], a: 0, no: [null, 'A restart or deploy loses it, and Alice may reconnect to a different server. Write the message to durable storage before Bob sees his first tick.', 'APNs and FCM are best effort: they collapse, expire and size-limit messages. Push is the right way to wake her app so it fetches from the inbox.', 'Then both phones must be online at the same time, and Bob\'s may be off when hers comes back. The server is the always-on middleman.'], why: 'Persist first, then deliver: the message is safe in her inbox (a durable per-user queue), her reconnect drains it, and her phone\'s ack turns the tick into "delivered".' },
       startCard: 'wsgate',
-      go: 'Now keep a thousand mouths talking. At half severity, expect a deep dive.'
+      go: 'Now keep a thousand mouths talking. On your second turn, expect a deep dive.'
     },
     colossus: {
       concepts: ['chash', 'consistency', 'clocks', 'failure'],
@@ -262,7 +262,7 @@
       est: { c: 'estimation', q: 'Step 2, Estimation. 10 billion keys of 1 KB each, every key stored 3 times. Total storage, in TB?', unit: 'TB', lo: 25, hi: 40, ans: '~30 TB (10^10 x 1 KB x 3)', why: 'Thirty terabytes is far past one machine: partition keys across many nodes, and plan for nodes joining and leaving every day.' },
       design: { c: 'chash', q: 'Step 3, Design. How do you decide which nodes store a key?', opts: ['Hash it onto a ring of virtual nodes; the next N machines hold it', 'hash(key) mod the node count, with copies on the next two nodes', 'A master node that records which machines hold every key', 'Fixed alphabetical ranges per machine, set when the cluster starts'], a: 0, no: [null, 'Change the node count and almost every key moves. Modulo is fine when the count never changes, such as a fixed number of Kafka partitions.', 'Billions of entries, and every request waits on one node, which breaks "always writable". Bigtable and HBase keep a directory of key ranges, not single keys.', 'Real keys are skewed, so some ranges run hot, and adding machines means splitting and moving ranges. Range partitioning earns its keep when you need range scans.'], why: 'On a ring, adding or losing a node moves only its neighbours\' keys, virtual nodes even out the load, and the next N distinct machines clockwise hold the replicas.' },
       startCard: 'ring',
-      go: 'Now hold every key in the realm. At half severity, expect a deep dive.'
+      go: 'Now hold every key in the realm. On your second turn, expect a deep dive.'
     }
   });
 

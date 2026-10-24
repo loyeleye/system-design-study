@@ -25,6 +25,7 @@
     // Chapters with two bosses pick one per run, favouring one you have not beaten yet.
     const c = SD.chapters[ch || 1], all = c.bosses || [c.boss], fresh = all.filter(id => !sv.flags['beat-' + id]);
     sv.run.bossId = rnd(fresh.length ? fresh : all);
+    listen();
     emit('runStart', sv.run);
     sv.run.sla = S.maxSla();   // after the run exists, so this dungeon's curses apply
     hook('start', sv.run);
@@ -52,6 +53,7 @@
     run.board = b; S.persist();
   }
   R.resume = function () {
+    listen();
     SD.main.show('run');
     const run = S.save.run;
     if (run.pending) { const node = findNode(run.pending); if (node) return enterNode(node); }
@@ -68,6 +70,24 @@
   const dev = id => SD.quests.has(id);
   // Keepsakes from Grandma Wen's café.
   const rel = id => S.save.relics.includes(id);
+  // The Exchange's five strongest relics (the S and Ancient shelves but Trading Halt) are backed by knowledge: they work
+  // only while your last answer in the run was right (run.backed; every run starts backed). A miss switches them off
+  // until your next right answer, so what they are worth grows with what you know.
+  const BACKED = ['badge', 'heartbeat', 'interest', 'openingbell', 'sequencer'];
+  // R.backCred: On-call Cred (S.tally) they also need, if ever they should be weaker still. 0, so off (bot-tested Oct 24).
+  R.backCred = 0;
+  const backed = () => (!S.save.run || S.save.run.backed !== false) && (!R.backCred || S.tally() >= R.backCred);
+  const relB = id => rel(id) && backed();
+  // js/meta.js loads after this file, so the listener goes on when a run starts or resumes.
+  let listening = false;
+  const listen = () => { if (listening || !SD.meta || !SD.meta.on) return; listening = true; SD.meta.on('answer', r => {
+    const run = S.save.run;
+    if (!run || !r || $('#screen-run').hidden) return;
+    const was = backed();
+    run.backed = !!(r.ok || (r.typed && r.typed.score >= r.typed.need));
+    const now = backed();
+    if (was !== now && C && BACKED.some(rel)) C.log = (C.log ? C.log + ' ' : '') + (now ? 'Your answer backs your relics again.' : 'A miss: your backed relics go quiet until your next right answer.');
+  }); };
   const curse = id => SD.quests.curses((S.save.run && S.save.run.ch) || 1).includes(id);
   function gateFx(done, ch) {
     const fx = document.createElement('div');
@@ -591,7 +611,8 @@
     }
     if (opts.bonusEnergy) C.diagBonus += opts.bonusEnergy;
     if (opts.reveal) { Object.keys(e.weak).forEach(t => C.known.add('w:' + t)); Object.keys(e.resist).forEach(t => C.known.add('r:' + t)); }
-    if (opts.startCard) C.draw.unshift({ id: opts.startCard, up: false, uid: 999 });
+    // A clean Design Board starts two copies of the boss's counter card (startCopies), anything else that earns it one.
+    if (opts.startCard) for (let i = 0; i < (opts.startCopies || 1); i++) C.draw.unshift({ id: opts.startCard, up: false, uid: 999 - i });
     run.firstFight = false;
     (C.foes ? C.foes.map(f => f.eid) : [eid]).forEach(id => emit('fight', id, C));
     const go = () => { beginTurn(); };
@@ -758,7 +779,7 @@
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
     C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
       + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry
-      + (rel('openingbell') ? 1 : 0);   // the Exchange's relics (js/relic-exchange.js)
+      + (relB('openingbell') ? 1 : 0);   // the Exchange's relics (js/relic-exchange.js)
     // The Lucky Bit flips at the start of every fight: heads is 1 more Capacity on the first turn.
     if (C.turn === 1 && rel('luckybit') && Math.random() < 0.5) { C.energy++; C.log = (C.log ? C.log + ' ' : '') + 'The Lucky Bit lands heads: +1 Capacity.'; }
     C.energy = Math.max(0, mod('energy', C.energy, C));
@@ -780,7 +801,7 @@
     if (C.regen) { C.regen.forEach(r => { C.sh.any += r.n; r.left--; }); C.regen = C.regen.filter(r => r.left > 0); }
     if (C.edgeEach) C.edge = (C.edge || 0) + C.edgeEach;
     if (C.turn === 1 && rel('standby')) C.sh.any += 8;
-    if (C.turn > 1 && rel('heartbeat') && sv.run) sv.run.sla = Math.min(S.maxSla(), sv.run.sla + 3);
+    if (C.turn > 1 && relB('heartbeat') && sv.run) sv.run.sla = Math.min(S.maxSla(), sv.run.sla + 3);
     C.turnPlayed = 0; C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
@@ -820,11 +841,11 @@
     // such card each fight, and the Rubber Stamp doubles every 5th one in a run.
     let plus = 0, times = 1, used = false;
     if (d.mit || d.pow || d.xcost || d.slam || d.rca) {
-      if (rel('badge')) plus += 3;
+      if (relB('badge')) plus += 3;
       if (rel('whistle') && !C.whistled) { plus += 8; C.whistled = true; }
       if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
       // Compound Interest (js/relic-exchange.js): every 3rd such card in a fight adds 2 to every one after it.
-      if (rel('interest')) { plus += C.interest || 0; C.mits = (C.mits || 0) + 1; if (C.mits % 3 === 0) C.interest = (C.interest || 0) + 2; }
+      if (relB('interest')) { plus += C.interest || 0; C.mits = (C.mits || 0) + 1; if (C.mits % 3 === 0) C.interest = (C.interest || 0) + 2; }
       // Throughput, from Rico's cards (js/club-shops.js): every card that mitigates does that much more, Hot Path three times over.
       plus += (C.edge || 0) * (d.edgeX || 1);
     }
@@ -912,13 +933,15 @@
     if (d.draw) drawN(d.draw);
     // The Exchange's relics that count cards: the Sequencer every 3rd card in a turn, the Order Book every 10th in a fight.
     C.turnPlayed = (C.turnPlayed || 0) + 1; C.fightPlayed = (C.fightPlayed || 0) + 1;
-    if (rel('sequencer') && C.turnPlayed % 3 === 0) C.sh.any += 4;
+    if (relB('sequencer') && C.turnPlayed % 3 === 0) C.sh.any += 4;
     if (rel('orderbook') && C.fightPlayed % 10 === 0) drawN(1);
     // Replay: the card's effects go again, one at a time, until the incident is down.
     if (!again && d.kind !== 'infra') for (let k = (d.replay || 0) + (c.replay || 0); k > 0; k--) { if (settle()) return; await playCard(-1, c); if (C.over) return; }
     if (msg) C.log = msg;
     if (settle()) return;
-    if (C.boss && !C.deepAsked && C.sev <= C.max / 2) {
+    // The deep dive comes on your second turn, after your first card, so every boss fight gets one (it used to wait for
+    // half Severity, which a struggling player seldom reached). Not in the survive and scripted fights (Severity 999).
+    if (C.boss && !C.deepAsked && C.turn >= 2 && C.e.sev < 999) {
       C.deepAsked = true;
       renderCombat();
       if (C.e.chain) await deepChain(C.e.chain);
@@ -938,19 +961,19 @@
   }
 
   // A boss's counter-question chain: the opening question, then follow-ups that push on your answer ("and if Redis
-  // restarts?"), the way interviewers probe. A wrong answer ends the chain; each right one hits harder.
+  // restarts?"), the way interviewers probe. Every question is asked, a miss included, and each right one hits; all
+  // right adds a bonus.
   async function deepChain(chain) {
     let right = 0;
     for (let i = 0; i < chain.length; i++) {
       // The opening question is typed first; an answer that made its points holds even if the pick missed.
-      const r = await Q.ask(chain[i], { title: '[BOSS] DEEP DIVE', context: i ? `Counter-question ${i} of ${chain.length - 1}: the interviewer pushes on your answer.` : 'The interviewer leans in: "Go deeper."', typeFirst: !i });
-      if (!r.ok && !(r.typed && r.typed.score >= r.typed.need)) break;
-      right++;
+      const r = await Q.ask(chain[i], { title: '[BOSS] DEEP DIVE', context: i ? `Counter-question ${i} of ${chain.length - 1}: the interviewer pushes on the answer.` : 'The interviewer leans in: "Go deeper."', typeFirst: !i });
+      if (r.ok || (r.typed && r.typed.score >= r.typed.need)) right++;
     }
     const all = right === chain.length;
     if (!right) C.log = `The deep dive slipped. ${C.e.short} cackles and presses on.`;
     else if (all) { mitigate(8 * right + 6, `DEEP DIVE LANDED! You held up to every counter-question. ${C.e.short} staggers.`, 'crit'); U.shake('.foe'); AU.sfx('crit'); }
-    else { mitigate(8 * right, `${right} of ${chain.length} deep-dive answers held before a counter-question caught you.`, 'hit'); AU.sfx('hit'); }
+    else { mitigate(8 * right, `${right} of ${chain.length} deep-dive answers held. ${C.e.short} reels.`, 'hit'); AU.sfx('hit'); }
   }
 
   function absorb(n, order) {
@@ -1402,6 +1425,7 @@
     if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
     if (C.vuln) chips.push('<span class="chip">Load-tested: mitigation +50%</span>');
     if (C.edge || C.edgeEach) chips.push(`<span class="chip" title="Every card that mitigates does ${C.edge || 0} more">Throughput ${C.edge || 0}${C.edgeEach ? ` (+${C.edgeEach} a turn)` : ''}</span>`);
+    if (BACKED.some(rel)) chips.push(backed() ? '<span class="chip" title="Your last answer was right, so your backed relics work">Relics backed</span>' : '<span class="chip stale" title="Your last answer missed. Answer one right to wake your backed relics">Relics quiet</span>');
     if (C.thorns || C.tthorns) chips.push(`<span class="chip" title="Every incident that hits you takes this much">Thorns ${(C.thorns || 0) + (C.tthorns || 0)}</span>`);
     if (C.hold) chips.push(`<span class="chip">Guard held${C.hold > 20 ? '' : `: ${C.hold} turn${C.hold > 1 ? 's' : ''}`}</span>`);
     if (C.regen && C.regen.length) chips.push(`<span class="chip">Warm Pool: +${C.regen.reduce((a, r) => a + r.n, 0)} next turn</span>`);
@@ -1552,6 +1576,13 @@
     buffs.sevScale *= b.sevMult; buffs.bonusEnergy += b.bonusEnergy;
     return b;
   }
+  // A clean board (no mistakes, and a clean load test where there is one) puts a second copy of the boss's counter card
+  // in your starting hand, on top of the one a right design earns.
+  function cleanBoard(bd, buffs) {
+    if (!bd || !bd.clean || !buffs.startCard) return;
+    buffs.startCopies = 2;
+    U.system('A CLEAN DESIGN!', `Not one mistake: a second ${U.esc(SD.cards[buffs.startCard].name)} starts in your hand.`, 'gold');
+  }
   async function boss(done) {
     if (hook('boss', bossId(), done)) return;
     if ((S.save.run.ch || 1) === 2) return boss2(done);
@@ -1577,10 +1608,11 @@
     const r3 = await Q.ask({ c: 'delivery', type: 'mc', q: 'Step 3, API. Which API fits?', opts: api, a: 0, no: apiNo, why: 'Creating is a POST that returns the code. Following a link is a plain GET answered with a 302 redirect, so browsers just work.' },{ title: '[BOSS] API', context: 'Delivery framework · 3 of 3' });
     if (r3.ok) { buffs.startCard = 'counter'; U.system('DESIGN READY!', 'Counter Ranges + Base62 starts in your hand.', 'gold'); }
     const bd = await boardStep('ledger', buffs);
+    cleanBoard(bd, buffs);
     S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok, board: bd && bd.ok };
     S.persist();
-    U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now build it under load. At half severity, expect a deep dive.', 'gold');
-    fight('ledger', { boss: true, reveal: r1.ok || r3.ok || !!(bd && bd.ok), sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
+    U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now build it under load. On your second turn, expect a deep dive.', 'gold');
+    fight('ledger', { boss: true, reveal: r1.ok || r3.ok || !!(bd && bd.ok), sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard, startCopies: buffs.startCopies }, () => endRun(true));
   }
   async function boss2() {
     AU.music('boss');
@@ -1604,10 +1636,11 @@
     const r3 = await Q.ask({ c: 'ratelimit', type: 'mc', q: 'Step 3, Design. Clients may burst a little but must average 100 requests a minute. Which algorithm?', opts: algos, a: 0, no: algosNo, why: 'A token bucket allows short bursts up to its size and enforces the average with its refill rate. A fixed window lets 2x through at the edges, and a leaky bucket smooths output instead of allowing bursts.' },{ title: '[BOSS] DESIGN', context: 'Delivery framework · 3 of 3' });
     if (r3.ok) { buffs.startCard = 'tokenbucket'; U.system('DESIGN READY!', 'Token Bucket starts in your hand.', 'gold'); }
     const bd = await boardStep('latencyboss', buffs);
+    cleanBoard(bd, buffs);
     S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok, board: bd && bd.ok };
     S.persist();
-    U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now hold the line under his legions. At half severity, expect a deep dive.', 'gold');
-    fight('latencyboss', { boss: true, reveal: r1.ok || r3.ok || !!(bd && bd.ok), sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
+    U.system('[BOSS] HIGH-LEVEL DESIGN', 'Now hold the line under his legions. On your second turn, expect a deep dive.', 'gold');
+    fight('latencyboss', { boss: true, reveal: r1.ok || r3.ok || !!(bd && bd.ok), sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard, startCopies: buffs.startCopies }, () => endRun(true));
   }
 
   // Chapter 3 onwards: each boss's framework steps live in SD.bossDesign (content.js).
@@ -1626,10 +1659,11 @@
     const bd = await boardStep(eid, buffs);
     const r3 = bd || await Q.ask(Object.assign({ type: 'mc' }, d.design), { title: '[BOSS] DESIGN', context: 'Delivery framework · 3 of 3' });
     if (r3.ok) { buffs.startCard = d.startCard; U.system('DESIGN READY!', `${U.esc(SD.cards[d.startCard].name)} starts in your hand.`, 'gold'); }
+    cleanBoard(bd, buffs);
     S.save.run.boss = { r1: r1.ok, r2: r2.ok, r3: r3.ok };
     S.persist();
     U.system('[BOSS] HIGH-LEVEL DESIGN', d.go, 'gold');
-    fight(eid, { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard }, () => endRun(true));
+    fight(eid, { boss: true, reveal: r1.ok || r3.ok, sevScale: buffs.sevScale, bonusEnergy: buffs.bonusEnergy, startCard: buffs.startCard, startCopies: buffs.startCopies }, () => endRun(true));
   }
 
   // ---------- End of run: postmortem ----------

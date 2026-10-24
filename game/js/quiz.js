@@ -169,6 +169,8 @@
         const nw = el.querySelector('.qt-now'); if (nw && band >= 0) nw.textContent = BAND_NAMES[band];
         el.querySelectorAll('.qt-b').forEach(b => b.classList.toggle('on', +b.dataset.b === band));
       }, 250);
+      // Every answer is announced (SD.meta 'answer'), for what keys off your last answer: js/run.js's backed relics.
+      const settle = res => { if (SD.meta && SD.meta.emit) SD.meta.emit('answer', res, q); resolve(res); };
       let thinking = sayFirst(q, opts);
       let pick = null, order = [], multi = new Set(), typed = '';
       // opts.typeFirst (a boss's opening deep-dive question, js/run.js): type 1 to 3 sentences instead of saying it,
@@ -481,12 +483,12 @@
             SD.state.persist();
             b.querySelectorAll('[data-p]').forEach(x => x.classList.toggle('on', x === el));
           });
-          nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
+          nx.onclick = () => { U.closePanel(); settle({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
         } else {
           h += `<div class="q-foot">${credMore}<button class="primary" id="q-next">Continue${healTxt ? ` <span class="heal-on">· ${U.esc(healTxt)}</span>` : ''}</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
-          b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
+          b.querySelector('#q-next').onclick = () => { U.closePanel(); settle({ ok, conf, ms, score, timeout: !!late, typed: said.res }); };
           b.querySelector('#q-next').focus();
         }
         if (page) U.system('CHEAT SHEET PAGE RESTORED!', U.esc(SD.concepts[q.c].name) + ': a page in Uptima\'s handwriting fades back in.', 'gold');
