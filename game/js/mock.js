@@ -15,7 +15,7 @@
 // SD.icons and SD.audio when the main game has loaded them.
 //   SD.mock.interview(root, { pid, pace, think, store }) -> Promise<result>
 //   SD.mock.menu(root, { store, open, onResult })        -> the problem list, settings and history
-//   SD.mock.solo()                                       -> the main game's entry (the Eventual Isles NPC, after chapter 3)
+//   SD.mock.solo()                                       -> the main game's entry (Ploy on the Isles, and the Practice hub)
 (function () {
   const M = SD.mock = SD.mock || {};
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -893,9 +893,10 @@
   });
 
   // The solo mock interview in the game: the problem list, the round and the debrief, with rewards.
-  // Offered by the Eventual Isles NPC, and unlocked once chapter 3 is cleared (when the Isles open).
+  // Offered by the Eventual Isles NPC (once chapter 3 opens the Isles) and by the Practice hub (js/practice.js), and
+  // unlocked once chapter 1 is cleared; each problem opens with its own chapter.
   //   await SD.mock.solo({ title })
-  M.unlocked = () => !!(SD.state && SD.state.save && SD.state.save.flags.ch3);
+  M.unlocked = () => !!(SD.state && SD.state.save && SD.state.save.flags.ch1);
   M.solo = async function (o) {
     o = o || {};
     const S = SD.state, U = SD.ui, AU = SD.audio, sv = S && S.save;

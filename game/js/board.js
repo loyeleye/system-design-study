@@ -13,6 +13,8 @@
   const parts = () => SD.wb.parts;
   const icon = name => SD.icons && SD.icons[name] ? `<svg viewBox="0 0 512 512" aria-hidden="true">${SD.icons[name]}</svg>` : '';
   const sfx = n => { if (SD.audio) SD.audio.sfx(n); };
+  // Two columns from 900px (index.html's .win.bd rules).
+  const wide = () => !!(window.matchMedia && matchMedia('(min-width: 900px)').matches);
 
   // ---- Graph helpers (also used by the checks and by tools/board_check.js) ----
   const key = (a, b) => a < b ? a + '|' + b : b + '|' + a;
@@ -162,8 +164,9 @@
         });
         p.querySelectorAll('[data-cell]').forEach(b => b.onclick = () => {
           const [r, c] = b.dataset.cell.split(',').map(Number);
-          // The first box placed folds the requirements away, so the board and its buttons fit on a phone.
-          if (sel) { if (nodes.length === 1) showBrief = false; nodes.push({ id: 'n' + (++seq), p: sel, r, c }); sel = null; note = ''; sfx('ok'); }
+          // The first box placed folds the requirements away, so the board and its buttons fit on a phone. On a wide
+          // screen the board has its own column and the requirements stay up, as they would on a real whiteboard.
+          if (sel) { if (nodes.length === 1 && !wide()) showBrief = false; nodes.push({ id: 'n' + (++seq), p: sel, r, c }); sel = null; note = ''; sfx('ok'); }
           else if (pick) { const n = nodeById(pick); n.r = r; n.c = c; pick = null; note = ''; }
           draw();
         });
@@ -182,7 +185,7 @@
         });
         p.querySelector('#bd-rm').onclick = () => { nodes = nodes.filter(n => n.id !== pick); edges = edges.filter(e => e[0] !== pick && e[1] !== pick); pick = null; note = ''; draw(); };
         p.querySelector('#bd-clear').onclick = () => { nodes = nodes.slice(0, 1); edges = []; pick = sel = null; note = ''; draw(); };
-        p.querySelector('#bd-next').onclick = () => { phase = 'trace'; fi = 0; path = ['u']; showBrief = false; note = ''; sfx('ok'); trace(); };
+        p.querySelector('#bd-next').onclick = () => { phase = 'trace'; fi = 0; path = ['u']; showBrief = wide(); note = ''; sfx('ok'); trace(); };
       }
       function trace() {
         const f = prob.flows[fi];

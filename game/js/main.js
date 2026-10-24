@@ -74,7 +74,8 @@
       <div class="hud-mid"><div class="hud-name">${U.esc(sv.name)} <span class="muted">Lv ${sv.level} · Loop ${sv.loop}${SD.clock ? ' · ' + SD.clock.label() : ''}</span></div>
         <div class="bar xp"><i style="width:${sv.xp / need * 100}%"></i></div></div>
       <span class="hud-chip">Shards <b>${sv.shards}</b></span>
-      ${due ? `<span class="hud-chip due">${due} review${due > 1 ? 's' : ''} due</span>` : ''}
+      ${due ? `<button class="hud-chip due" id="hud-due" title="Start a review now">${due} review${due > 1 ? 's' : ''} due</button>` : ''}
+      ${SD.practice ? SD.practice.button('hud-practice') : ''}
       <button class="ghost" id="hud-quests">Quests${newQ ? ` <b class="badge">${newQ}</b>` : ''}</button>
       ${SD.journal ? SD.journal.button() : ''}
       <button class="ghost" id="hud-codex">Cheat sheet</button>
@@ -82,6 +83,9 @@
       <button class="ghost" id="hud-menu" aria-label="Menu (M)" title="Menu (M)">☰</button>`;
     $('#hud-codex').onclick = () => U.codex();
     $('#hud-quests').onclick = () => SD.quests.log();
+    // The due chip starts the Quest Board's review right here; the Practice hub is js/practice.js.
+    const hd = $('#hud-due'); if (hd) hd.onclick = () => M.review().then(M.hud);
+    const hp = $('#hud-practice'); if (hp) hp.onclick = () => SD.practice.open();
     SD.hub.npcMarks = marks;
     sndClose(false); sndButton($('#hud-snd'));
     $('#hud-menu').onclick = menu;
@@ -122,6 +126,7 @@
     const p = AU.prefs;
     const b = U.panel(`<div class="opts">
       <button class="opt" id="m-help">How to play</button>
+      ${S.save && SD.journal ? '<button class="opt" id="m-journal">Journal: bestiary and achievements</button>' : ''}
       ${S.save && SD.folk ? '<button class="opt" id="m-board">The Brújula Board: where is everyone?</button>' : ''}
       ${SD.guild ? '<button class="opt" id="m-guild">Multiplayer: the Guild Hall</button>' : ''}
       <button class="opt" id="m-music">Music: <b>${p.music ? 'On' : 'Off'}</b></button>
@@ -134,6 +139,8 @@
       <button class="opt" id="m-reset">Erase save and start over</button></div>
       <p class="muted small">Progress saves automatically${!S.cloud ? ' in this browser' : S.cloud.where === 'claude' ? ' to your claude.ai account, so it follows you across devices' : ', and your save code brings it to another device'}.</p>`, { title: 'MENU' });
     b.querySelector('#m-help').onclick = help;
+    // On phones the Journal leaves the HUD to make room for Practice, so it lives here too.
+    const mj = b.querySelector('#m-journal'); if (mj) mj.onclick = () => SD.journal.open();
     // Bru's board of who is where right now (js/folk.js).
     const mb = b.querySelector('#m-board'); if (mb) mb.onclick = () => SD.folk.board();
     // Multiplayer (js/guild.js). Also on the title screen.
@@ -228,14 +235,16 @@
     const sv = S.save;
     const has = sv.flags.prologue;
     const mp = SD.guild ? '<button class="ghost" id="t-guild">Multiplayer</button>' : '';
+    const pr = SD.practice ? SD.practice.button('t-practice') : '';
     $('#title-actions').innerHTML = has
-      ? `<button class="primary" id="t-go">Continue · Loop ${sv.loop}</button>${mp}<button class="ghost" id="t-help">How to play</button>`
+      ? `<button class="primary" id="t-go">Continue · Loop ${sv.loop}</button>${pr}${mp}<button class="ghost" id="t-help">How to play</button>`
       : `<button class="primary" id="t-new">New game</button>${mp}<button class="ghost" id="t-help">How to play</button>`;
     $('#t-help').onclick = help;
     // Multiplayer (js/guild.js) from the title too. A party link (#join-CODE) opens it straight away.
     const tg = $('#t-guild');
     if (tg) { tg.onclick = () => SD.guild.play({ after: 'title' }); if (SD.guild.pending()) SD.guild.play({ after: 'title' }); }
     if (has) $('#t-go').onclick = () => M.toHub(false);
+    const tp = $('#t-practice'); if (tp) tp.onclick = () => SD.practice.open();
     else $('#t-new').onclick = coldOpen;
   };
 
@@ -592,15 +601,20 @@
     await new Promise(res => {
       resolveBoard = res;
       b.querySelector('#dq-x').onclick = () => { U.closePanel(); res(); };
-      b.querySelector('#dq-go').onclick = async () => {
-        const r = await Q.session(5, { title: '[DAILY QUEST] REVIEW' });
-        const right = r.filter(x => x.ok).length;
-        if (!done) { sv.flags.dailyDate = today(); sv.shards += 100; SD.run.gainXp(40); U.system('DAILY QUEST COMPLETE!', `${right}/5 correct. +40 XP, +100 shards.`, 'gold'); }
-        else { SD.run.gainXp(right * 6); U.system('PRACTICE COMPLETE', `${right}/5 correct. +${right * 6} XP.`); }
-        S.persist(); res();
-      };
+      b.querySelector('#dq-go').onclick = () => M.review().then(res);
     });
   }
+  // The daily quest's review: five questions, due and weak concepts first. The Quest Board, the HUD's due chip and
+  // the Practice hub's weak spots (opts.pool, js/practice.js) all run it, and the first one each day pays the quest.
+  M.review = async function (opts) {
+    opts = opts || {};
+    const sv = S.save, done = sv.flags.dailyDate === today();
+    const r = await Q.session(5, { title: opts.title || '[DAILY QUEST] REVIEW', pool: opts.pool || null });
+    const right = r.filter(x => x.ok).length, n = r.length;
+    if (!done) { sv.flags.dailyDate = today(); sv.shards += 100; SD.run.gainXp(40); U.system('DAILY QUEST COMPLETE!', `${right}/${n} correct. +40 XP, +100 shards.`, 'gold'); }
+    else { SD.run.gainXp(right * 6); U.system('PRACTICE COMPLETE', `${right}/${n} correct. +${right * 6} XP.`); }
+    S.persist();
+  };
 
   async function gate() {
     const sv = S.save;
