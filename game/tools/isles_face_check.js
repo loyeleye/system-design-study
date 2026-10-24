@@ -186,7 +186,7 @@ const server = http.createServer((req, res) => {
   // In their rooms: each resident at their own spot, facing what they're doing there at that time of day, and a
   // storm guest (the Admiral in the bank) on the open floor, not on anyone's spot.
   const ROOMS = [
-    ['school', 'morning', ['kids', 'saule'], { saule: [6, 4, 'south'], kid1: [4, 6, 'east'], kid2: [7, 7, 'north'], kid3: [8, 6, 'west'] }],
+    ['school', 'morning', ['kids', 'saule'], { saule: [6, 4, 'south'], kid1: [3, 6, 'east'], kid2: [9, 6, 'west'], kid3: [8, 6, 'west'] }],
     ['bank', 'afternoon', ['farida'], { farida: [5, 4, 'north'] }],
     ['bank', 'night', ['farida', 'mutex'], { farida: [9, 4, 'east'] }],
     ['club', 'morning', ['ploy'], { ploy: [8, 4, 'north'] }],
