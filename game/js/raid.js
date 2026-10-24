@@ -1993,7 +1993,7 @@
         const typed = q.type === 'explain';
         const title = r.t === 'board' ? 'WHITEBOARD' : r.t === 'reward' ? (second ? 'DEBRIEF · DUE REVIEW' : 'DEBRIEF') : String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase();
         // A debrief says what the answer heals (the host caps it by what the team is missing and what's healed this fight).
-        const heal = r.t === 'reward' ? (ok, t) => (!ok ? 'No heal this time.' : r.lo && r.lo[me.peer] ? `The team heals ${LOW_HEAL} SLA.` : `The team heals up to ${healOf(t)} SLA.`) : null;
+        const heal = r.t === 'reward' ? (ok, t) => (!ok ? 'no heal' : `team heals ${r.lo && r.lo[me.peer] ? LOW_HEAL : healOf(t)} SLA`) : null;
         const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new Cred, up to ${HEAL} SLA.`) : '' });
         send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout, conf: res.conf, tal: myTally() });
       });

@@ -54,8 +54,8 @@
     return new Promise(resolve => {
       const t0 = Date.now();
       // opts.tally (an expedition's questions, js/raid.js): each confidence button shows what it does to the
-      // confidence tally (SD.state.tally), and the feedback shows the tally before and after. opts.heal(ok, tally),
-      // when given, adds a line on what this answer heals, and opts.stakeNote a line under the buttons.
+      // confidence tally (SD.state.tally), and the feedback's verdict carries the tally before and after. opts.heal(ok, tally), when
+      // given, says on the Continue button what this answer heals; opts.stakeNote adds a line under the buttons.
       const T = opts.tally && SD.state.tally && SD.state.TALLY ? SD.state.TALLY : null, tal0 = T ? SD.state.tally() : 0;
       const sgn = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
       const limit = opts.timer > 0 ? opts.timer * 1000 : 0;
@@ -252,15 +252,20 @@
         if (q.type === 'explain') right = q.model;
         const over = !ok && conf === 2;
         if (SD.audio) SD.audio.sfx(ok ? 'right' : 'wrong');
-        let h = `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : late ? 'TIME\'S UP!' : 'NOT QUITE!'}</div>`;
+        // On-call Cred (opts.tally) rides on the verdict as a badge, so the answer and the why stay right under it; what
+        // the answer heals goes on the Continue button, the moment it happens (Ladi, Oct 24).
+        let cred = '', healTxt = '';
+        if (T) {
+          const t1 = SD.state.tally(), d = t1 - tal0, st = (T[conf] || T[0])[ok ? 0 : 1];
+          const why = `${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}, ${ok ? 'right' : 'wrong'}: ${sgn(st)}${d !== st ? `. Cred counts your last 20 answers, at most ${SD.state.TALLY_MAX}` : ''}`;
+          cred = `<span class="cred-badge ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}" title="${U.esc(why)}" aria-label="On-call Cred ${tal0} to ${t1}. ${U.esc(why)}">🎯 Cred ${tal0} → <b>${t1}</b> <span class="tally-d">${sgn(d)}</span></span>`;
+          healTxt = opts.heal ? opts.heal(ok, t1) : '';
+        }
+        let h = `<div class="verdict-row"><div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : late ? 'TIME\'S UP!' : 'NOT QUITE!'}</div>${cred}</div>`;
         if (over) h += `<p class="warn small">You were sure and it was wrong. That gap is the most valuable thing you found today, so this comes back first.</p>`;
         if (ok && conf === 0) h += `<p class="muted small">A lucky guess is not knowledge yet. It will come back soon.</p>`;
         h += recap(right);
         if (q.type === 'explain') h += `<p class="muted small">You covered ${score} of ${q.points.length} points.</p>`;
-        if (T) {
-          const t1 = SD.state.tally(), d = t1 - tal0, hl = opts.heal ? opts.heal(ok, t1) : '';
-          h += `<div class="tally-delta ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}"><span>🎯 Cred ${tal0} → <b>${t1}</b></span><span class="tally-d">${sgn(d)}</span><span class="muted small">${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}, ${ok ? 'right' : 'wrong'}: ${sgn((T[conf] || T[0])[ok ? 0 : 1])}${d !== (T[conf] || T[0])[ok ? 0 : 1] ? ` (Cred counts your last 20 answers, at most ${SD.state.TALLY_MAX})` : ''}</span>${hl ? `<span class="tally-heal">${U.esc(hl)}</span>` : ''}</div>`;
-        }
         const showAns = q.type !== 'explain' && (!ok || conf === 0) && !q.tiers;
         h += `<div class="why">${showAns ? `<p class="why-a"><span class="q-ctx">Answer</span><b>${U.esc(right)}</b></p>` : ''}<p>${U.esc(q.why || '')}</p></div>`;
         // A ranking can name each rung (bad, good, great) and say why it sits there: the ranking is the lesson.
@@ -314,7 +319,7 @@
           ])].slice(0, 3);
           h += `<div class="compass"><div class="q-ctx">Confusion compass <span class="muted small">(optional)</span></div><p class="small">What tripped you up? Tap one to save it to your notebook.</p>
             <div class="opts">${prompts.map((p, i) => `<button class="opt" data-p="${i}">${U.esc(p)}</button>`).join('')}</div></div>`;
-          h += `<div class="q-foot"><button class="primary" id="q-next">Continue</button></div>`;
+          h += `<div class="q-foot"><button class="primary" id="q-next">Continue${healTxt ? ` <span class="heal-on">· ${U.esc(healTxt)}</span>` : ''}</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
           const nx = b.querySelector('#q-next');
@@ -327,7 +332,7 @@
           });
           nx.onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
         } else {
-          h += `<div class="q-foot"><button class="primary" id="q-next">Continue</button></div>`;
+          h += `<div class="q-foot"><button class="primary" id="q-next">Continue${healTxt ? ` <span class="heal-on">· ${U.esc(healTxt)}</span>` : ''}</button></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           help(b);
           b.querySelector('#q-next').onclick = () => { U.closePanel(); resolve({ ok, conf, ms, score, timeout: !!late }); };
