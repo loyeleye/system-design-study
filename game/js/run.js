@@ -68,25 +68,30 @@
   const bossId = () => (S.save.run && S.save.run.bossId) || chap().boss;
   // Plot Devices (town quest rewards) and this dungeon's active curses.
   const dev = id => SD.quests.has(id);
-  // Keepsakes from Grandma Wen's café.
-  const rel = id => S.save.relics.includes(id);
-  // The Exchange's five strongest relics (the S and Ancient shelves but Trading Halt) are backed by knowledge: they work
-  // only while your last answer in the run was right (run.backed; every run starts backed). A miss switches them off
-  // until your next right answer, so what they are worth grows with what you know.
-  const BACKED = ['badge', 'heartbeat', 'interest', 'openingbell', 'sequencer'];
-  // R.backCred: On-call Cred (S.tally) they also need, if ever they should be weaker still. 0, so off (bot-tested Oct 24).
-  R.backCred = 0;
-  const backed = () => (!S.save.run || S.save.run.backed !== false) && (!R.backCred || S.tally() >= R.backCred);
-  const relB = id => rel(id) && backed();
-  // js/meta.js loads after this file, so the listener goes on when a run starts or resumes.
+  // Keepsakes from Grandma Wen's café and the Exchange. The ones that act in a fight from the B shelf up are backed by
+  // knowledge (Ladi, Oct 24): they work only while your On-call Cred (S.tally: your last 20 answers anywhere, weighed
+  // by how sure you said you were) is R.backCred or more, so what they are worth grows with what you know (bots tried
+  // 5, 7 and 10 at 35% right). The rest stay on: the E and C shelves (a first relic shouldn't wait for Cred), gifts,
+  // those that act outside a fight, where the Cred chip isn't showing, max SLA (js/state.js), Trading Halt's one save,
+  // the Escrow Vault and Pip's Monocle, a study aid. The Bag of Holding's draw is backed, its fourth choice isn't.
+  const BACKED = ['torii', 'standby', 'breaker', 'drip', 'lantern', 'stamp', 'orderbook', 'marketdepth', 'bluechip', 'pinned', 'croissant',
+    'sequencer', 'openingbell', 'badge', 'heartbeat', 'interest', 'satchel'];
+  R.backCred = 5;
+  const credOk = () => !R.backCred || S.tally() >= R.backCred;
+  const owns = id => S.save.relics.includes(id);
+  const rel = id => owns(id) && (!BACKED.includes(id) || credOk());
+  // For the shops and the quiz: which relics are backed, and whether to show On-call Cred on a run's questions.
+  R.isBacked = id => BACKED.includes(id);
+  R.showCred = () => !!S.save.run && !$('#screen-run').hidden && S.save.relics.some(id => BACKED.includes(id));
+  // js/meta.js loads after this file, so the listener goes on when a run starts or resumes. The answer is already in
+  // the Cred window (js/state.js recordAnswer), so it compares with what the last answer left (run.credOn).
   let listening = false;
-  const listen = () => { if (listening || !SD.meta || !SD.meta.on) return; listening = true; SD.meta.on('answer', r => {
+  const listen = () => { if (listening || !SD.meta || !SD.meta.on) return; listening = true; SD.meta.on('answer', () => {
     const run = S.save.run;
-    if (!run || !r || $('#screen-run').hidden) return;
-    const was = backed();
-    run.backed = !!(r.ok || (r.typed && r.typed.score >= r.typed.need));
-    const now = backed();
-    if (was !== now && C && BACKED.some(rel)) C.log = (C.log ? C.log + ' ' : '') + (now ? 'Your answer backs your relics again.' : 'A miss: your backed relics go quiet until your next right answer.');
+    if (!run || $('#screen-run').hidden) return;
+    const on = credOk();
+    if (C && S.save.relics.some(id => BACKED.includes(id)) && run.credOn !== undefined && run.credOn !== on) C.log = (C.log ? C.log + ' ' : '') + (on ? `On-call Cred ${S.tally()}: your backed relics wake.` : `On-call Cred under ${R.backCred}: your backed relics go quiet.`);
+    run.credOn = on;
   }); };
   const curse = id => SD.quests.curses((S.save.run && S.save.run.ch) || 1).includes(id);
   function gateFx(done, ch) {
@@ -431,7 +436,7 @@
       if (basics.length) { const c = basics[Math.floor(Math.random() * basics.length)]; c.up = true; U.system('DUSTED OFF', U.esc(SD.cards[c.id].name) + '+'); }
     }
     if (opts.boss) return done();
-    const n = S.save.relics.includes('satchel') ? 4 : 3;
+    const n = owns('satchel') ? 4 : 3;
     const picks = cardChoices(n);
     const b = U.panel(`<div class="loot"><span>+${bits} bits</span><span>+${xp} XP</span><span>+${shards} shard${shards > 1 ? 's' : ''}</span></div>
       <p class="muted">Choose a card to add to your deck.</p>
@@ -508,7 +513,7 @@
     // The Guild Membership Card's lounge perk: a second pick in every break room.
     if (rel('membercard') && !second) { const fin = done; done = () => campfire(fin, true); }
     const again = () => campfire(done, true);
-    const heal = mod('heal', Math.round(S.maxSla() * (0.3 + (S.save.relics.includes('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0))));
+    const heal = mod('heal', Math.round(S.maxSla() * (0.3 + (rel('teapot') ? 0.15 : 0) + (dev('recipe') ? 0.1 : 0))));
     // The Exchange's Clearing House (js/relic-exchange.js) adds Clear the Books.
     const clear = rel('clearing');
     const b = U.panel(`<p>A quiet break room between floors: a squashy sofa, a humming vending machine, and Pip burning popcorn in the microwave. Your focus loosens, and the ideas you fought with start to settle on their own.</p>
@@ -741,7 +746,7 @@
     const others = Q.shuffle(Object.keys(SD.enemies).filter(k => k !== C.eid && !SD.enemies[k].boss && !SD.enemies[k].tutorial && !SD.enemies[k].raid && (SD.enemies[k].ch || 1) <= ch)).slice(0, 3);
     const optsIds = Q.shuffle([C.eid, ...others]);
     const q = { c: e.concept, type: 'mc', q: `Symptoms: ${e.symptom} Which incident is this?`, opts: optsIds.map(k => SD.enemies[k].name), a: optsIds.indexOf(C.eid), why: Object.values(e.weak)[0] };
-    const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight', hideOne: S.save.relics.includes('pipeye') });
+    const r = await Q.ask(q, { title: 'DIAGNOSE!', context: 'Read the symptoms before the fight', hideOne: rel('pipeye') });
     if (r.ok) {
       // The Unindexed Stacks curse: you know what it is, but you can't find the fix in time.
       const bonus = curse('stacks') ? 0 : dev('bookmark') ? 2 : 1;
@@ -777,9 +782,9 @@
     const metro = C.turn > 1 && rel('metronome') && (C.played || 0) <= 3 ? 3 : 0;
     C.played = 0;
     // Dead Air (chapter 4 curse): the first turn starts a Capacity short.
-    C.energy = 3 + (C.turn === 1 && sv.relics.includes('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
+    C.energy = 3 + (C.turn === 1 && rel('thermos') ? 1 : 0) + (C.turn === 1 ? C.diagBonus : 0) - (C.turn === 1 && curse('deadair') ? 1 : 0)
       + (rel('drip') && C.turn % 3 === 0 ? 1 : 0) + C.carry
-      + (relB('openingbell') ? 1 : 0);   // the Exchange's relics (js/relic-exchange.js)
+      + (rel('openingbell') ? 1 : 0);   // the Exchange's relics (js/relic-exchange.js)
     // The Lucky Bit flips at the start of every fight: heads is 1 more Capacity on the first turn.
     if (C.turn === 1 && rel('luckybit') && Math.random() < 0.5) { C.energy++; C.log = (C.log ? C.log + ' ' : '') + 'The Lucky Bit lands heads: +1 Capacity.'; }
     C.energy = Math.max(0, mod('energy', C.energy, C));
@@ -801,7 +806,7 @@
     if (C.regen) { C.regen.forEach(r => { C.sh.any += r.n; r.left--; }); C.regen = C.regen.filter(r => r.left > 0); }
     if (C.edgeEach) C.edge = (C.edge || 0) + C.edgeEach;
     if (C.turn === 1 && rel('standby')) C.sh.any += 8;
-    if (C.turn > 1 && relB('heartbeat') && sv.run) sv.run.sla = Math.min(S.maxSla(), sv.run.sla + 3);
+    if (C.turn > 1 && rel('heartbeat') && sv.run) sv.run.sla = Math.min(S.maxSla(), sv.run.sla + 3);
     C.turnPlayed = 0; C.choice = null; C.throttle = false; C.backoff = false; C.shed = false; C.hb = false; C.merge = false; C.handoff = false; C.failover = false; C.killswitch = false; C.streaming = false; C.sandbox = false; C.steplimit = false;
     C.infra.forEach(c => {
       const d = SD.cards[c.id];
@@ -841,11 +846,11 @@
     // such card each fight, and the Rubber Stamp doubles every 5th one in a run.
     let plus = 0, times = 1, used = false;
     if (d.mit || d.pow || d.xcost || d.slam || d.rca) {
-      if (relB('badge')) plus += 3;
+      if (rel('badge')) plus += 3;
       if (rel('whistle') && !C.whistled) { plus += 8; C.whistled = true; }
       if (rel('stamp')) { const run = sv.run; run.stamp = (run.stamp || 0) + 1; if (run.stamp % 5 === 0) times = 2; }
       // Compound Interest (js/relic-exchange.js): every 3rd such card in a fight adds 2 to every one after it.
-      if (relB('interest')) { plus += C.interest || 0; C.mits = (C.mits || 0) + 1; if (C.mits % 3 === 0) C.interest = (C.interest || 0) + 2; }
+      if (rel('interest')) { plus += C.interest || 0; C.mits = (C.mits || 0) + 1; if (C.mits % 3 === 0) C.interest = (C.interest || 0) + 2; }
       // Throughput, from Rico's cards (js/club-shops.js): every card that mitigates does that much more, Hot Path three times over.
       plus += (C.edge || 0) * (d.edgeX || 1);
     }
@@ -933,7 +938,7 @@
     if (d.draw) drawN(d.draw);
     // The Exchange's relics that count cards: the Sequencer every 3rd card in a turn, the Order Book every 10th in a fight.
     C.turnPlayed = (C.turnPlayed || 0) + 1; C.fightPlayed = (C.fightPlayed || 0) + 1;
-    if (relB('sequencer') && C.turnPlayed % 3 === 0) C.sh.any += 4;
+    if (rel('sequencer') && C.turnPlayed % 3 === 0) C.sh.any += 4;
     if (rel('orderbook') && C.fightPlayed % 10 === 0) drawN(1);
     // Replay: the card's effects go again, one at a time, until the incident is down.
     if (!again && d.kind !== 'infra') for (let k = (d.replay || 0) + (c.replay || 0); k > 0; k--) { if (settle()) return; await playCard(-1, c); if (C.over) return; }
@@ -1425,7 +1430,7 @@
     if (C.jitter) chips.push('<span class="chip">Jitter ready</span>');
     if (C.vuln) chips.push('<span class="chip">Load-tested: mitigation +50%</span>');
     if (C.edge || C.edgeEach) chips.push(`<span class="chip" title="Every card that mitigates does ${C.edge || 0} more">Throughput ${C.edge || 0}${C.edgeEach ? ` (+${C.edgeEach} a turn)` : ''}</span>`);
-    if (BACKED.some(rel)) chips.push(backed() ? '<span class="chip" title="Your last answer was right, so your backed relics work">Relics backed</span>' : '<span class="chip stale" title="Your last answer missed. Answer one right to wake your backed relics">Relics quiet</span>');
+    if (S.save.relics.some(id => BACKED.includes(id))) chips.push(credOk() ? `<span class="chip" title="On-call Cred ${S.tally()}: your backed relics work">Cred ${S.tally()}: relics on</span>` : `<span class="chip stale" title="Your backed relics need ${R.backCred} On-call Cred to work; you have ${S.tally()}">Cred ${S.tally()}: relics quiet</span>`);
     if (C.thorns || C.tthorns) chips.push(`<span class="chip" title="Every incident that hits you takes this much">Thorns ${(C.thorns || 0) + (C.tthorns || 0)}</span>`);
     if (C.hold) chips.push(`<span class="chip">Guard held${C.hold > 20 ? '' : `: ${C.hold} turn${C.hold > 1 ? 's' : ''}`}</span>`);
     if (C.regen && C.regen.length) chips.push(`<span class="chip">Warm Pool: +${C.regen.reduce((a, r) => a + r.n, 0)} next turn</span>`);

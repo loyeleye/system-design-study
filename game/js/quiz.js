@@ -136,6 +136,8 @@
       // opts.tally (an expedition's questions, js/raid.js): each confidence button shows what it does to the
       // confidence tally (SD.state.tally), and the feedback's verdict carries the tally before and after. opts.heal(ok, tally), when
       // given, says on the Continue button what this answer heals; opts.stakeNote adds a line under the buttons.
+      // A run's questions show it too while you carry a relic backed by Cred (js/run.js R.showCred).
+      if (!opts.tally && SD.run && SD.run.showCred && SD.run.showCred()) opts = Object.assign({ tally: true, stakeNote: `Your backed relics work at ${SD.run.backCred}+ Cred.` }, opts);
       const T = opts.tally && SD.state.tally && SD.state.TALLY ? SD.state.TALLY : null, tal0 = T ? SD.state.tally() : 0;
       const sgn = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
       const limit = opts.timer > 0 ? opts.timer * 1000 : 0;
