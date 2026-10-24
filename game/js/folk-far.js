@@ -87,22 +87,22 @@
 
   F.isles = {
     // Ferry Landing
-    leilani: { afternoon: [10, 23, 'east'], evening: 'room:office', night: 'room:office' },   // watches for the ferry from the harbour square, then tea with Kwame over the ferry log
+    leilani: { afternoon: [10, 29, 'east'], evening: 'room:office', night: 'room:office' },   // watches for the ferry from the harbour square, then tea with Kwame over the ferry log
     kwame: { evening: 'room:office', night: 'home' },   // files the ferry log, then sleeps aboard
-    saule: { morning: 'room:school', afternoon: [9, 27, 'east'], evening: [4, 29, 'east'], night: 'home' },   // milk tea, an eye on the class at break, then sweeping the step
-    kids: { morning: 'room:school', evening: [10, 24, 'east'], night: 'home' },   // watch the ferry come in
+    saule: { morning: 'room:school', afternoon: [9, 33, 'east'], evening: [4, 35, 'east'], night: 'home' },   // milk tea, an eye on the class at break, then sweeping the step
+    kids: { morning: 'room:school', evening: [10, 30, 'east'], night: 'home' },   // watch the ferry come in
     // The Ledger
     farida: { afternoon: 'room:bank', night: 'room:bank' },   // counts the vault, and counts it again by lamplight
-    mutex: { afternoon: [27, 7, 'south'], night: 'home' },   // keeps watch over his harbour from the top of the path
+    mutex: { afternoon: [27, 13, 'south'], night: 'home' },   // keeps watch over his harbour from the top of the path
     // The Mill: the sunset from the shore
-    tomas: { evening: [23, 33, 'west'], night: 'room:mill' },
-    bloom: { evening: [24, 33, 'west'], night: 'room:mill' },
+    tomas: { evening: [23, 39, 'west'], night: 'room:mill' },
+    bloom: { evening: [24, 39, 'west'], night: 'room:mill' },
     // The Tower: down to the pier for the evening ferry, which might bring a map from Minh
-    lucia: { morning: 'room:tower', evening: [35, 21, 'south'], night: 'room:tower' },
+    lucia: { morning: 'room:tower', evening: [35, 27, 'south'], night: 'room:tower' },
     // The Fish Market: the far end of the market floor, looking back along the stalls
-    ruth: { afternoon: [50, 6, 'west'], night: 'home' },
+    ruth: { afternoon: [50, 12, 'west'], night: 'home' },
     // The Map & Tool Shop: by the pier, looking across the water to the Tower
-    minh: { morning: 'room:shop', evening: [48, 26, 'west'], night: 'room:shop' },
+    minh: { morning: 'room:shop', evening: [48, 32, 'west'], night: 'room:shop' },
     // The Twins: each mayor works in their own hall, and comes out to argue across the water
     hajin: { afternoon: 'room:hallW', night: 'room:hallW' },
     haeun: { afternoon: 'room:hallE', night: 'room:hallE' },
@@ -111,6 +111,6 @@
     nok: { evening: 'room:club', night: 'home' },
     kai: { evening: 'room:club', night: 'home' },
     arjun: { evening: 'room:club', night: 'home' },
-    meron: { morning: [11, 40, 'west'], evening: 'room:club', night: 'home' }   // gathers herbs on the mainland path
+    meron: { morning: [11, 46, 'west'], evening: 'room:club', night: 'home' }   // gathers herbs on the mainland path
   };
 })();

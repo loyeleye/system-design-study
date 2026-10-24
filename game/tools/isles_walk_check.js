@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
   console.log(`${Object.keys(sheets).length} islander sheets checked`);
 
   // Walking: open the Isles by the Tide Pool Game Club, move the clock on, and watch the islanders go.
-  await page.evaluate(() => { SD.isles.st().intro = true; SD.isles.st().waveSeen = 4; SD.isles.st().pos = [18, 44]; SD.isles.open(); });
+  await page.evaluate(() => { SD.isles.st().intro = true; SD.isles.st().waveSeen = 4; SD.isles.st().pos = [18, 50]; SD.isles.st().north = 6; SD.isles.open(); });
   // Click through any story card the debug save brings up, so the map is in view.
   for (let i = 0; i < 8; i++) { await page.waitForTimeout(300); await page.keyboard.press('Enter'); }
   await page.evaluate(() => SD.clock.set('evening', 'test', true));
