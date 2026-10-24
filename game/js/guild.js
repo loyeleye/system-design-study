@@ -56,7 +56,7 @@ select.gh-field { font-size: 15px; }
 .gh-seg button small { font-weight: 600; font-size: 11px; color: var(--mi-muted); }
 .gh-seg button.on { background: var(--mi-ink); color: #fff; } .gh-seg button.on small { color: #d9d2f0; }
 .gh-seg button:disabled { color: var(--mi-muted); cursor: not-allowed; }
-.gh-live { font-style: normal; margin-left: 6px; background: var(--mi-mint); color: #fff; border-radius: 999px; padding: 1px 8px; letter-spacing: .04em; }
+.gh-live { font-style: normal; display: inline-block; white-space: nowrap; margin-left: 6px; background: var(--mi-mint); color: #fff; border-radius: 999px; padding: 1px 8px; letter-spacing: .04em; }
 .gh-live.none { background: #fff; color: var(--mi-muted); border: 1.5px solid #cfc8e0; }
 /* The hall: an accordion of mode cards */
 .gh-acc { display: flex; gap: 12px; height: 400px; }
@@ -66,7 +66,9 @@ select.gh-field { font-size: 15px; }
 .gh-card .art { position: relative; flex: 1; min-height: 0; background: radial-gradient(circle at 50% 70%, rgba(255,255,255,.45), transparent 60%), var(--c1); display: grid; place-items: center; overflow: hidden; }
 .gh-card .meta { background: var(--mi-cream); border-top: 3px solid var(--mi-ink); padding: 12px 14px; display: grid; gap: 6px; }
 .gh-card .meta h3 { font: 700 20px var(--f-head, system-ui); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gh-card .players { font: 700 12px var(--f-body, system-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--mi-muted); }
+/* The count badge stays whole and drops below a long player label on narrow cards */
+.gh-card .players { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font: 700 12px var(--f-body, system-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--mi-muted); }
+.gh-card .players .gh-live { margin-left: 0; }
 .gh-card .more { display: grid; gap: 10px; max-height: 0; opacity: 0; overflow: hidden; transition: max-height .45s, opacity .3s .1s; padding-bottom: 6px; }
 .gh-card.open .more { max-height: 240px; opacity: 1; }
 .gh-card .more p { margin: 0; font-size: 14px; max-width: 46ch; }
