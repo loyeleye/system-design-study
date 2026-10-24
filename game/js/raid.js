@@ -1994,7 +1994,7 @@
         const title = r.t === 'board' ? 'WHITEBOARD' : r.t === 'reward' ? (second ? 'DEBRIEF · DUE REVIEW' : 'DEBRIEF') : String((SD.expeditionEvents[r.ev] || {}).title || 'EVENT').toUpperCase();
         // A debrief says what the answer heals (the host caps it by what the team is missing and what's healed this fight).
         const heal = r.t === 'reward' ? (ok, t) => (!ok ? 'no heal' : `team heals ${r.lo && r.lo[me.peer] ? LOW_HEAL : healOf(t)} SLA`) : null;
-        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new Cred, up to ${HEAL} SLA.`) : '' });
+        const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, credNote: CRED_NOTE, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new Cred, up to ${HEAL} SLA.`) : '' });
         send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout, conf: res.conf, tal: myTally() });
       });
     }
@@ -2015,7 +2015,7 @@
           if (!q) { send({ k: 'qa', id: e.k, ok: false, band: 'slow' }); return; }
           ASKED.add(q.id);
           const typed = q.type === 'explain';
-          const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: mine.c || undefined, title: 'EXPEDITION · ' + String(d.name).toUpperCase(), context: `${(SD.concepts[q.c] || {}).name || 'Question'}${owner && e.p !== me.peer ? ` · for ${owner.n}'s card` : ''}`, tally: true });
+          const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: mine.c || undefined, title: 'EXPEDITION · ' + String(d.name).toUpperCase(), context: `${(SD.concepts[q.c] || {}).name || 'Question'}${owner && e.p !== me.peer ? ` · for ${owner.n}'s card` : ''}`, tally: true, credNote: CRED_NOTE });
           send({ k: 'qa', id: e.k, ok: !!res.ok, band: bandOf(res.ms || 0, typed), sure: res.conf === 2, pts: typed ? res.score | 0 : 0, late: !!res.timeout, conf: res.conf, tal: myTally() });
         });
       });
@@ -2039,6 +2039,7 @@
     // The confidence tally on the HUD (Ladi, Oct 23): what a right debrief answer heals now, a pip per point up to HEAL
     // (red pips below 0), and a tap for how it works.
     const healOf = t => (t < LOW ? LOW_HEAL : Math.min(HEAL, t));
+    const CRED_NOTE = `After each won fight, a right debrief answer heals the team by your Cred, up to ${HEAL} SLA. Under ${LOW}, it's two questions at ${LOW_HEAL} SLA each.`;
     function tallyChip(t) {
       const n = Math.max(-HEAL, Math.min(HEAL, t)), pips = Array.from({ length: HEAL }, (_, i) => `<i class="${n >= 0 ? (i < n ? 'on' : '') : (i < -n ? 'neg' : '')}"></i>`).join('');
       const what = t < LOW ? `Debrief +${LOW_HEAL} ×2` : `Debrief heals <b class="heal">+${healOf(t)}</b>`;

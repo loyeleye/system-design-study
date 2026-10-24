@@ -220,6 +220,10 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .cred-badge .tally-d { font: 700 15px var(--f-head); }
 .cred-badge.up .tally-d { color: #17834f; } .cred-badge.dn .tally-d { color: #c43a3a; }
 #q-next .heal-on { font-weight: 700; opacity: .9; }
+.cred-more { margin: 0 0 8px; font-size: 13px; }
+.cred-more summary { cursor: pointer; font-weight: 800; color: var(--muted); list-style-position: inside; }
+.cred-more summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+.cred-more p { margin: 6px 0 0; max-height: 30vh; overflow-y: auto; }
 .num { display: flex; align-items: center; gap: 10px; margin: 12px 0; flex-wrap: wrap; font-weight: 700; }
 .num input { flex: 1 1 140px; min-width: 0; background: #fff; border: 3px solid var(--ink); color: var(--ink); padding: 10px 12px; font: 600 18px var(--f-head); border-radius: 12px; }
 .order-done { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; margin: 10px 0; }
