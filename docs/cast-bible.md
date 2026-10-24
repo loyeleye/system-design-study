@@ -10,14 +10,15 @@ Backstories, the relationship web, scene outlines and draft schedules for the 14
 
 - **The game wins.** Everything here has to agree with what the game already says: the cast table in `docs/game-design.md`, the idle lines (`IDLE` in `game/js/quests.js`), the once-per-loop lines in `SD.story` (`game/js/content.js`), and the quest and chapter scripts. Each villager's "Canon" line lists what this document builds on. Anything marked **(new)** is invented here, and Ladi can veto it without breaking anything that's already in the game.
 - **Show it, don't tell it.** A backstory reaches the player through idle lines, what's on the walls at home, and scenes. Never as an info dump.
-- **Scenes are short.** Four to eight lines each. Each arc has three or four scenes, and only its last scene lands a system design analogy, as a joke, with an optional review question for that concept.
+- **Scenes are short.** Four to eight lines each. Each arc has three or four scenes, and only its last scene lands a system design analogy, as a joke.
+- **The player names it first.** The last scene stops just before its reveal (usually Pip's line) and Pip asks you what just happened, with three chips. It isn't graded: a pick shows whether that was the idea, and the scene lands it. Then the scene offers one optional review question on the idea it just taught, in interview dress, not a random question for the concept. Both live in `game/js/folk-recall.js`, keyed by the scene's id, and `node game/tools/arc_recall_check.js` checks every arc has them. A new arc's closing scene names its stop, its chips and its question.
 - **Scripted, not points.** An arc moves on by chapter and by being in the right place at the right time block. A scene you've seen stays seen across loops. A scene you miss (because you were in the dungeon that evening) comes back next loop.
 - **Quest business beats the clock.** Anyone with a yellow **!** or a blue **?** stays at their usual spot and skips their schedule. A relationship scene never plays while either villager in it has quest business pending.
 - **Story windows.**
   - Gary is gone from the end of chapter 9 (`flags.garyGone`) until chapter 10 is cleared, so his scenes skip that window.
   - Aigerim roams Pingsby from chapter 3 and moves to the North Road once it opens.
   - Dieynaba stands outside the Cache Café from chapter 5.
-  - During chapter 10 the town is always a stormy night and the clock doesn't move, so only night scenes can play then (see the chapter 10 night table).
+  - During chapter 10 the town is always a stormy night and the clock doesn't move, and everyone is indoors, so only scenes written for the storm play then: Kaito's "The Storm" and Uptima's visit to the bunker (see the chapter 10 night table).
 
 ### Places
 
@@ -102,7 +103,7 @@ The schedule uses these spots. Tile positions are today's, from `game/js/hub.js`
 - **Canon.** Latina, of Mexican heritage, the Guild receptionist (Rank: Overworked). "Bru" is short for Brújula, "compass", because she always knows where every adventurer is. She gives out quests, keeps the prayer logs, mutters "ay, no" and says "EHHH?!" a lot. Your rank pun is hers. She's a core character in chapters 7 to 10, and does "Headcount" in the chapter 10 credits. She keeps the Brújula Board (planned), a page listing where every villager is right now.
 - **Backstory.** **(new)** Marisol is the eldest of six, from a market town far to the south. She grew up as the one who always knew where her brothers and sisters were: who was at the river, who was hiding in the bakery, who had gone off on a dare. The Guild hired her for the same reason. She sends half her pay home through the Pigeon Post every Sunday.
 
-  She's warm, quick and permanently behind. The board runs on heartbeats: villagers tell her when they move. She doesn't trust it, because Doug's entry is always stale (Kevin spoofs it), so after closing she walks the town and checks the doors herself. Nobody knows where Bru goes at night because she goes everywhere. Her own row on the board is blank.
+  She's warm, quick and permanently behind. The board runs on heartbeats: villagers tell her when they move. She doesn't trust it, because Doug's entry is always stale (Kevin spoofs it), so every afternoon she walks the town and checks the doors herself. Nobody knows where Bru goes at night, not even after arc 8. Her own row on the board is blank.
 - **Voice.** Fast, cheerful and overwhelmed. Spanish under her breath ("ay, no", "¡mira!"), with the occasional rubber-stamp sound effect.
 - **At home.** Residential row **(new)**: a cot she rarely uses, photos of five siblings, and a corkboard copy of the Brújula Board covered in red string.
 - **Relationships.** Everyone (arc 8), and Coo especially, at the end.
@@ -189,7 +190,7 @@ Eleven arcs cover all 14 villagers. Gary is in three of them, which suits him: h
 | 1 | The Drawer Marked "G" | Wen and Gary | Gary buys every croissant at half price | A pinned cache entry: LRU forgets the rest, but some keys you pin | `cache` |
 | 2 | Hiro's Notes | Wen and Mio | Mio helped with Hiro's bread and forgets every loop | A write-ahead log: you don't need to remember, you need to replay | `replication` |
 | 3 | Sword #213 | Ayo and Mio | Mio's class trains at the Forge; Ayo's post-mortems | A blameless post-mortem: the promise failed, not the child | `postmortem` |
-| 4 | The Memoir, Second Edition | Lexi and Kaito | Kaito keeps borrowing his own memoir | Log compaction: keep the latest true version of each fact | `indexes` |
+| 4 | The Memoir, Second Edition | Lexi and Kaito | Kaito keeps borrowing his own memoir | Log compaction: keep the latest true version of each fact | `lsm` |
 | 5 | Midnight-ish | Cron and Doug | Kevin's floods and Cron's midnight herd | Jitter: retries that wait the same time still collide | `herd` |
 | 6 | Backup No. 1 | Seymour and Uptima | The blessed 400th backup; "two, and test them" | A backup you've never restored is a hope, not a backup | `replication` |
 | 7 | Croissants on the Altar | Uptima and Gary | "Would Gary come if I put out croissants?" | Observability: the fix comes from reading the logs, not magic | `observe` |
@@ -253,8 +254,8 @@ Each scene below gives its unlock, its place and time block, and what happens. L
 
 1. **The Board.** *When the Brújula Board opens. Any block, `guild`.* Bru shows you the board: every villager, where they are, and when they last checked in. "They tell me when they move. A heartbeat! Doug's says he's in the bakery. Doug is NOT in the bakery. That's Kevin." Her own row says **BRU — ???**.
 2. **Lights On.** *After chapter 7. Night, `guild`.* The Guild window is lit long after closing. Bru is still at the desk updating the board. "Ay, no, go to bed. I'm fine. I'm *fine*."
-3. **Rounds.** *After chapter 8. Night, around town.* You follow her. She walks every door in Pingsby and checks each villager herself, because heartbeats lie. She stops at Gary's footbridge and stares into the dark. "Him, I never find."
-4. **Off Shift.** *After chapter 10 is cleared. Evening, `guild`.* Coo, Lexi and Seymour have each copied the board and drawn up a night rota. Two of them have to agree before anyone is marked missing. Bru tries to argue and loses. Her row finally reads **BRU — home. Off shift.** "The board was me. Just me. If I fell asleep, nobody knew where anybody was." *(Analogy: the service registry is a critical service too. Replicate it, and use a quorum so one tired node isn't a single point of failure. Optional review question on heartbeats, timeouts and false alarms.)*
+3. **Rounds.** *After chapter 8. Afternoon, the `west-bridge`, on her rounds.* You catch up with her. She walks every door in Pingsby and checks each villager herself, because heartbeats lie. She stops at the west footbridge, where Gary goes every night at nine, and stares at the far bank. "Him, I never find."
+4. **Off Shift.** *After chapter 10 is cleared. Evening, `guild`.* Coo, Lexi and Seymour have each copied the board and drawn up a night rota. Two of them have to agree before anyone is marked missing. Bru tries to argue and loses. Her row finally changes: **BRU: ???. Off shift.** (Where she goes stays a mystery; the rota only means she's off.) "The board was me. Just me. If I fell asleep, nobody knew where anybody was." *(Analogy: the service registry is a critical service too. Replicate it, and use a quorum so one tired node isn't a single point of failure. Optional review question on heartbeats, timeouts and false alarms.)*
 
 ### Arc 9: Return to Sender (Coo and Dieynaba)
 
@@ -285,7 +286,7 @@ One table per villager. Each cell is a spot and what they're doing there. "Varia
 
 A villager's position is a pure function of (block, loop, flags). Where a cell says "alternating loops", use `loop % 2`.
 
-**Bru's board entry** is the line the Brújula Board shows for that villager, written as a heartbeat joke. `{spot}` is filled in.
+**Bru's board entry** is the line the Brújula Board shows for that villager, written as a heartbeat joke. `{spot}` is filled in. These lines and the chapter 10 table below are checked against `game/js/folk-data.js` by `node game/tools/cast_check.js`.
 
 ### Gary
 
@@ -294,7 +295,7 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 | `cafe` door, buying the tray | `plaza` bench, eating it | `plaza` (22, 6), standing with coffee; leaves at nine | Nowhere. Not on the board |
 
 - **Variant:** from the end of chapter 9 until chapter 10 is cleared, he's absent in every block.
-- **Board:** "GARY: no heartbeat. Not down. Just asleep." During the window: "GARY: last seen at the temple. Heartbeat missed: all of them."
+- **Board:** "GARY: {spot}. Heartbeat: one "OK" an hour." At night: "GARY: no heartbeat. Not down. Just asleep." During the window: "GARY: last seen at the temple. Heartbeat missed: all of them."
 
 ### Uptima
 
@@ -303,7 +304,7 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 | `temple`, writing Cheat Sheet pages | `cafe:in`, her café shift (maid outfit) | `temple` steps, reading prayers | `temple`, asleep on a cloud |
 
 - **Variant:** after chapter 10, the evening becomes "reading her logs" (arc 7).
-- **Board:** "UPTIMA: {spot}. Says she is 'omnipresent'. She is not."
+- **Board:** "UPTIMA: {spot}. Says she is "omnipresent". She is not."
 
 ### Grandma Wen
 
@@ -322,7 +323,7 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 
 - **Variant:** until quest 2 ("One Anvil, One Man") is done her class hasn't joined the Forge yet, so her mornings alternate between running a school of her own by the `treehouse` (three stuffed toys and a stick) and hanging about the `forge` queue hoping for a job ("I have a BUCKET."). The forge yard anvil is hers from quest 2 on.
 - **Variant:** after chapter 7, on alternating afternoons she's at the North Road gate, watching for her mum.
-- **Board:** "MIO: {spot}. Reports her own location as 'adventure'."
+- **Board:** "MIO: {spot}. Reports her own location as "adventure"."
 
 ### Sir Seymour Backups
 
@@ -337,10 +338,10 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 
 | Morning | Afternoon | Evening | Night |
 | --- | --- | --- | --- |
-| `guild`, the desk | `guild`, the desk | `guild`, the desk, still | Walking rounds: a different door each loop |
+| `guild`, the desk, stamping forms | Walking her rounds: every door from the café to the bunker, starting at a different one each loop | `guild`, the desk, still | Unknown. Not on the map |
 
-- **Variant:** after arc 8 ends, her night is `row:bru`, at home.
-- **Board:** her own row is "BRU: ???" until arc 8 ends, then "BRU: home. Off shift."
+- **Variant:** none. Arc 8 changes her board row, not her night.
+- **Board:** by day "BRU: {spot}. Where else would I be?"; on her rounds "BRU: on her rounds. Every door, every heartbeat, checked by hand."; at night "BRU: ???", and once arc 8 ends, "BRU: ???. Off shift."
 
 ### Ayo
 
@@ -394,7 +395,7 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 | --- | --- | --- | --- |
 | `post` (34, 10), laptop | `plaza`, by the board, laptop | `cafe` terrace, laptop | `farm` fence once arc 5 starts, otherwise `row:doug` |
 
-- **Board:** "DOUG: bakery." (He isn't in the bakery. That's Kevin.) After arc 5: "DOUG: {spot}. Really. Kevin is retired."
+- **Board:** "DOUG: bakery. (He is not in the bakery. That is Kevin.)" After arc 5: "DOUG: {spot}. Really. Kevin is retired."
 
 ### Aigerim
 
@@ -417,24 +418,24 @@ A villager's position is a pure function of (block, loop, flags). Where a cell s
 
 ### Chapter 10: the stormy night
 
-From the end of chapter 9 until chapter 10 is cleared, Pingsby is always night, in rain and thunder, and the clock doesn't move. Everyone holds the post the credits give them, so the town reads as people keeping things running in the dark.
+From the end of chapter 9 until chapter 10 is cleared, Pingsby is always night, in rain and thunder, and the clock doesn't move. Everyone is indoors, each behind their own door or sheltering in the Forge, and they answer through their doors when you knock. Bru's board says it for all of them: "Indoors. Everyone is indoors. I counted twice." This table is `D.STORM` in `game/js/folk-data.js`; what they say is `D.WORRY` (through their doors) and `D.SHELTER` (in the Forge).
 
-| Villager | Where | Doing (from the chapter 10 credits) |
+| Villager | Where (`D.STORM`) | Doing |
 | --- | --- | --- |
 | Gary | Gone | His cold coffee stands where he was (`H.groundExtra`) |
-| Uptima | `temple` | Awake for once, trying the pager |
-| Wen | `cafe:in`, lights on | Packing lunches; the drawer marked "G" fills up |
-| Mio | `plaza`, under an umbrella | MISSING posters, with a croissant |
-| Seymour | `bunker` | One tape. Rebuilding the reader with Ayo (arc 6) |
-| Bru | `guild` | Headcount |
-| Ayo | `forge`, glowing | On-prem. Villagers warm their hands at the door |
-| Coo | `post` | Heartbeats, every five minutes |
-| Lexi | `library` | The archive |
-| Cron | `farm` | No midnight: the herd stays in for once |
-| Kaito | Gary's spot | Keeping it warm (arc 11, scene 3) |
-| Doug | `post` (34, 10) | Kevin, un-retired, pinging everyone's door to check they're in |
-| Aigerim | North Road shop | The Rare Shelf |
-| Dieynaba | `cafe` terrace, under the awning | Attaya for anyone out in the storm |
+| Uptima | `temple:in` | Lighting every candle, trying the pager |
+| Wen | `cafe:in`, lights on | Baking out of habit; the drawer marked "G" fills up |
+| Mio | `treehouse:in` | In a blanket fort, drawing Gary with an umbrella and two croissants |
+| Seymour | `bunker:in` | One tape. Checksumming it, and rebuilding the reader with Ayo (arc 6) |
+| Bru | `guild:in` | Headcount: two hundred and three indoors, one missing |
+| Ayo | `forge:in`, glowing | On-prem. Half the village warms its hands at his fire |
+| Coo | `post:in` | Sitting on the mail to keep it dry. No pigeons fly in this |
+| Lexi | `row:lexi`, at home | The catalogue by candlelight, listening for footsteps |
+| Cron | `forge:in`, sheltering | The herd runs at midnight, and it's always midnight now |
+| Kaito | `row:kaito`, at home | Sheltering in place. Outside it only for his one arc scene, "The Storm" (arc 11, scene 3), in Gary's spot |
+| Doug | `row:doug`, at home | Kevin, un-retired, pinging every door to check everyone's in |
+| Aigerim | `forge:in`, sheltering | Day ??? of the storm. Noted. Underlined |
+| Dieynaba | `post:in` | Attaya on a tray for whoever comes in from the rain |
 
 ## Decisions (2026-10-18)
 
