@@ -29,8 +29,16 @@
   // Only open shelves and the next shelf up show; the ones after it are hidden (SD.shop.shown).
 
   // Resolves true if you shopped, false to let the trader just chat.
-  function open() {
+  async function open() {
     const sv = S.save, rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
+    // Once: how Cred-backed relics work (js/run.js), unless Wen told you first. One flag for both (js/main.js cafe).
+    if (mine >= rankAt('B') && !sv.flags.credTold) {
+      sv.flags.credTold = true; S.persist();
+      await U.dialog([
+        { s: 'trader', t: 'Fair warning: these are credentialed. Under 5 On-call Cred, they sit there like bad stock.' },
+        { s: 'trader', t: 'Cred is your last twenty answers. A sure miss costs 5, a wrong Guess costs nothing. Don\'t bluff the market.' }
+      ]);
+    }
     return new Promise(res => {
       let shopped = false;
       const render = () => {
@@ -38,7 +46,7 @@
         const shelves = ['A', 'S', 'Ancient'].filter(r => shown(rankAt(SHELF[r]))).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
           return { label: r === 'Ancient' ? 'Under the counter: Ancient' : `${r}-Rank shelf`, lock: ok ? null : SHELF[r] + '-Rank',
-            items: SD.exchangeShop.filter(it => it.rank === r).map(it => ({ id: it.id, name: it.name, text: SD.shop.backedText(it), cost: it.cost, lock: SHELF[r] + '-Rank',
+            items: SD.exchangeShop.filter(it => it.rank === r).map(it => ({ id: it.id, name: it.name, text: ok ? SD.shop.backedText(it) : it.text, backed: ok && SD.shop.isBacked(it), cost: it.cost, lock: SHELF[r] + '-Rank',
               state: SD.shop.state({ owned: sv.relics.includes(it.id), locked: !ok, cost: it.cost, have: sv.shards }) })) };
         });
         SD.shop.panel({

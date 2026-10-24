@@ -476,22 +476,23 @@
   async function cafe() {
     const sv = S.save;
     if (sv.flags.wenLoop !== sv.loop) { sv.flags.wenLoop = sv.loop; await U.dialog(SD.story.wen.map(t => ({ s: 'wen', t }))); }
-    // Once: how backed relics work (js/run.js), before the first thing you could buy that needs Cred.
-    if (!sv.flags.credTold) {
-      sv.flags.credTold = true; S.persist();
-      await U.dialog([
-        { s: 'wen', t: 'One thing before you shop, dear. My better keepsakes only work for someone who knows their stuff. They read your On-call Cred.' },
-        { s: 'wen', t: 'Every answer you give, anywhere, counts toward it: your last twenty. Right and sure is +3. Wrong and sure is −5. A wrong guess costs nothing, so say Guess when you\'re guessing.' },
-        { s: 'wen', t: 'At 5 Cred or more, they wake up. Below that, they sleep. The cheap ones on the counter and the C shelf work for anyone, and so do gifts.' }
-      ]);
-    }
     // Keepsakes past the first shelf unlock with your Guild rank. The next shelf up shows, locked, as a preview; the
     // ones after it stay hidden until then (SD.shop.shown).
     const rankAt = r => SD.ranks.indexOf(r), mine = rankAt(S.rank());
+    // Once, when the B shelf opens: its keepsakes and every one above are backed by On-call Cred (js/run.js). The
+    // Exchange's trader explains it instead if you see him first; one flag for both (js/relic-exchange.js).
+    const backedOpen = mine >= rankAt('B');
+    if (backedOpen && !sv.flags.credTold) {
+      sv.flags.credTold = true; S.persist();
+      await U.dialog([
+        { s: 'wen', t: 'A new shelf for you, dear. These keepsakes are credentialed: they only work for someone with 5 On-call Cred.' },
+        { s: 'wen', t: 'Cred is your last twenty answers. Be honest: a sure miss costs 5, and a wrong Guess costs nothing.' }
+      ]);
+    }
     const render = () => {
       // Gifts (gift: true) are never for sale: they sit on their own shelf once a friend has given you one.
       const sale = SD.metaShop.filter(it => !it.gift), gifts = SD.metaShop.filter(it => it.gift && sv.relics.includes(it.id));
-      const item = (it, open) => ({ id: it.id, name: it.name, text: SD.shop.backedText(it), cost: it.cost, lock: it.rank + '-Rank',
+      const item = (it, open) => ({ id: it.id, name: it.name, text: open ? SD.shop.backedText(it) : it.text, backed: open && SD.shop.isBacked(it), cost: it.cost, lock: it.rank + '-Rank',
         state: SD.shop.state({ owned: sv.relics.includes(it.id), locked: !open, cost: it.cost, have: sv.shards }) });
       const ranks = SD.ranks.filter(r => sale.some(it => it.rank === r)), shown = SD.shop.shown(ranks.map(rankAt), mine);
       const shelves = tab === 'lessons' ? [] : ranks.filter(r => shown(rankAt(r))).map(r => {
@@ -502,7 +503,7 @@
         title: 'CACHE CAFÉ · KEEPSAKES', keeper: 'wen', line: "Shards spend the same in every loop, dear. Croissants don't. Gary bought them all.",
         wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' }, rank: true,
         tabs: SD.lessons.tabs('C', 'Keepsakes'), tab, onTab: t => { tab = t; render(); },
-        note: tab === 'lessons' ? '' : SD.shop.credNote(), sections: shelves, extra: tab === 'lessons' ? SD.lessons.buttons('C') : '',
+        note: tab === 'lessons' || !backedOpen ? '' : SD.shop.credNote(), sections: shelves, extra: tab === 'lessons' ? SD.lessons.buttons('C') : '',
         wire: b => SD.lessons.wire(b, id => { lesson = id; }),
         onBuy: x => {
           const it = SD.metaShop.find(y => y.id === x.id);
