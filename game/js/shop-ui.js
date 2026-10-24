@@ -19,6 +19,9 @@
   const U = SD.ui;
   const SH = SD.shop = {};
   SH.CONFIRM_AT = 300;
+  // Relics backed by On-call Cred (js/run.js R.isBacked) say so on their tile, and both relic shops say what yours is.
+  SH.backedText = it => it.text + (SD.run && SD.run.isBacked && SD.run.isBacked(it.id) ? ` Backed: works at ${SD.run.backCred}+ On-call Cred.` : '');
+  SH.credNote = () => SD.run && SD.run.backCred ? `🎯 Backed relics work only while your On-call Cred is ${SD.run.backCred} or more. Yours is <b>${SD.state.tally()}</b>. Cred is your last 20 answers, weighed by how sure you said you were: a right Sure is +3, a wrong one −5, and a wrong Guess costs nothing.` : '';
   const num = x => Number(x).toLocaleString('en-US');
   const esc = s => U.esc(String(s));
   SH.state = o => o.sold ? 'sold' : o.owned ? 'owned' : o.locked ? 'locked' : o.have < o.cost ? 'short' : 'buy';

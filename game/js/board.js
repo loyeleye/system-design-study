@@ -506,6 +506,6 @@
     if (r.ok && held) U.system(perfect ? (r.load ? 'NOTHING BROKE!' : 'CLEAN DESIGN!') : 'THE DESIGN HOLDS!', `${who} starts ${perfect ? 15 : 10}% weaker.`, 'gold');
     else if (r.ok) U.system('RIGHT SHAPE, WRONG SIZE!', `The design was sound but fell over under load. ${who} starts 5% weaker.`, 'gold');
     if (r.defended) U.system('DEFENDED!', 'You explained your box. +1 Capacity on turn 1.', 'gold');
-    return { sevMult: mult, bonusEnergy: r.defended ? 1 : 0, ok: r.ok };
+    return { sevMult: mult, bonusEnergy: r.defended ? 1 : 0, ok: r.ok, clean: !!(r.ok && perfect) };
   };
 })();

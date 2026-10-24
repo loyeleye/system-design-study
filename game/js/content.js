@@ -632,7 +632,7 @@ SD.bossDesign = {
     est: { c: 'estimation', q: 'Step 2, Estimation. A hot show opens: 10M fans each reload the seat map every 10 seconds. Read QPS on that one event?', unit: 'QPS', lo: 700000, hi: 1400000, ans: '~1,000,000 (10^7 / 10)', why: 'A million reads a second on one event: serve the seat map from cache, and put a waiting room in front so only admitted fans reach booking.' },
     design: { c: 'backpressure', q: 'Step 3, Design. Ten million fans arrive the moment sales open. What goes in front of booking?', opts: ['A waiting room that admits fans at booking\'s pace', 'Autoscaled booking servers behind the load balancer', 'A circuit breaker that trips once booking fails', 'A CDN cache in front of the whole booking API'], a: 0, no: [null, 'Autoscaling takes minutes, and the real limits are the database and the same few seats, not the app servers.', 'A breaker trips only after booking is already failing, then turns fans away at random. A waiting room prevents the overload and keeps a fair order.', 'A CDN helps browsing, but purchases are unique writes that cannot be cached, so every one still reaches booking.'], why:'Autoscaling reacts too late and the database is the real limit. A waiting room gives fans a fair place in line and keeps booking healthy; the CDN helps browsing, not booking.' },
     startCard: 'waitroom',
-    go: 'Now hold the box office. At half severity, expect a deep dive.'
+    go: 'Now hold the box office. On your second turn, expect a deep dive.'
   },
   leviathan: {
     concepts: ['fanout', 'cache', 'consistency', 'queue'],
@@ -648,7 +648,7 @@ SD.bossDesign = {
     est: 'fo4',
     design: { c: 'fanout', q: 'Step 3, Design. An account with 50M followers posts. What does your feed service do?', opts: ['Push normal posts; pull celebrity posts at read time', 'Write the post into all 50M feeds before replying', 'Move every account to fan-out on read for good', 'Push it over WebSockets to every online follower'], a: 0, no: [null, 'Fifty million writes before replying takes minutes and floods the feed store. Fan-out on write suits accounts with modest followings.', 'Then every feed load gathers posts from hundreds of accounts, which makes the common read slow. Pulling suits only the few huge accounts.', 'Live push can notify online followers, but the feed must still hold the post for everyone who opens the app later.'], why: 'The hybrid: store the post once, precompute feeds for the common case, and merge in the handful of accounts whose posts would cost millions of writes when each follower reads.' },
     startCard: 'hybridfeed',
-    go: 'Now keep the feed flowing. At half severity, expect a deep dive.'
+    go: 'Now keep the feed flowing. On your second turn, expect a deep dive.'
   }
 };
 

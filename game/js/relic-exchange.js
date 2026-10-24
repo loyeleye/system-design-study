@@ -2,7 +2,8 @@
 // (js/exchange-rooms.js) sells keepsakes as well as panicking: six A-rank and three S-rank ones Grandma Wen doesn't
 // stock, and three Ancient ones nobody else has (the Gold Standard was Wen's Principal Engineer's Badge).
 // Six borrow an idea from a Slay the Spire relic the café doesn't use (named in the comment).
-// They are bought with Memory Shards and kept in S.save.relics like Wen's, so they last through every loop; their
+// Most are backed by knowledge: they work only while your On-call Cred is 5 or more (js/run.js).
+  // They are bought with Memory Shards and kept in S.save.relics like Wen's, so they last through every loop; their
 // effects are in js/run.js (and the Genesis Ledger's in js/state.js). Shelves open with your Guild rank; the Ancient
 // shelf opens at S-Rank. Talk to the trader to browse, or choose to just chat for the trader's usual lines.
 (function () {
@@ -37,12 +38,12 @@
         const shelves = ['A', 'S', 'Ancient'].filter(r => shown(rankAt(SHELF[r]))).map(r => {
           const ok = rankAt(SHELF[r]) <= mine;
           return { label: r === 'Ancient' ? 'Under the counter: Ancient' : `${r}-Rank shelf`, lock: ok ? null : SHELF[r] + '-Rank',
-            items: SD.exchangeShop.filter(it => it.rank === r).map(it => ({ id: it.id, name: it.name, text: it.text, cost: it.cost, lock: SHELF[r] + '-Rank',
+            items: SD.exchangeShop.filter(it => it.rank === r).map(it => ({ id: it.id, name: it.name, text: SD.shop.backedText(it), cost: it.cost, lock: SHELF[r] + '-Rank',
               state: SD.shop.state({ owned: sv.relics.includes(it.id), locked: !ok, cost: it.cost, have: sv.shards }) })) };
         });
         SD.shop.panel({
           title: 'THE EXCHANGE · RELICS', keeper: 'trader', line: 'Everything in the Exchange is down. Except these. These only go up. Mostly the price.',
-          wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' }, rank: true, sections: shelves,
+          wallet: { have: sv.shards, unit: 'Memory Shards', short: 'shards' }, rank: true, note: SD.shop.credNote(), sections: shelves,
           extra: shelves.length ? '' : `<p class="muted small">Nothing for a ${S.rank()}-Rank yet. Come back when your Guild rank is higher.</p>`,
           footer: '<div class="row"><button class="ghost" id="rx-chat">Just chat</button></div>',
           onClose: () => res(shopped || 'closed'),
