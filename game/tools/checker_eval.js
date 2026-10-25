@@ -12,7 +12,7 @@
 //
 // Oct 25, 16 answers: Basic 73% of points (7 false finds, 3 wrong verdicts); Offline Model 80% (2 false finds, 2),
 // 84% when pairs are scored in padded batches as the game does; a few points sit near the threshold.
-// The LLM is checked in the deployed Worker only: tools/grade_worker_check.js covers its plumbing.
+// The LLM: tools/llm_checker_eval.js (95% with the default model).
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const ctx = { SD: { concepts: {} }, console, Math, Date, RegExp, String, URL, location: { href: 'http://localhost/' }, navigator: {}, setTimeout };

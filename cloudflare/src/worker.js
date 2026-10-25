@@ -23,10 +23,11 @@ const GAMES = ['pair', 'show', 'raid']; // the Guild Hall's modes (game/js/guild
 const LISTED = 10; // open tables a directory shows
 const MAX_WATCHERS = 5000; // sockets per directory: hosts plus everyone looking at the Guild Hall
 
-// The LLM answer checker. A typed answer and its rubric are a few hundred tokens, so a grade costs about 5 Neurons
-// on this model: the Workers AI free allocation (10,000 a day) covers about 2,000 grades. Set GRADE_MODEL (a var in
-// wrangler.jsonc) to try another model from the catalog.
-const GRADE_MODEL = '@cf/meta/llama-3.2-3b-instruct';
+// The LLM answer checker. Measured on 16 hand-labelled answers (Oct 25, game/tools/llm_checker_eval.js), this model
+// got 95% of rubric points right, missed none, and took about 2 s; a grade costs about 24 Neurons, so the Workers AI
+// free allocation (10,000 a day) covers about 400 grades. Mistral Small 3.1 24B scored the same, slower, at 18
+// Neurons; Llama 3.1 8B got 87% at 7; Llama 3.2 3B 82% at 4. Set GRADE_MODEL (a var in wrangler.jsonc) to switch.
+const GRADE_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const MAX_ANSWER = 2000, MAX_POINTS = 6, MAX_TEXT = 300;
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -82,7 +83,9 @@ async function grade(req, env, url) {
   try {
     out = await env.AI.run(env.GRADE_MODEL || GRADE_MODEL, { messages: gradePrompt(q, answer, pts), max_tokens: 400, temperature: 0 });
   } catch (e) { return json({ error: 'model' }, 503); }
-  const made = readGrade(out && (out.response ?? out), answer, pts.length);
+  // Workers AI replies { response } on the older models and OpenAI-style { choices } on newer ones.
+  const reply = out && (out.response ?? (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content) ?? out);
+  const made = readGrade(reply, answer, pts.length);
   return made ? json({ made }) : json({ error: 'unreadable' }, 502);
 }
 
@@ -97,13 +100,20 @@ function gradePrompt(q, answer, pts) {
 // The model's reply, checked: one entry per point, and a "made" whose quote isn't in the answer becomes not made.
 const squash = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 function readGrade(reply, answer, n) {
-  let o = reply;
-  if (typeof o === 'string') {
-    const m = o.match(/\{[\s\S]*\}/);
-    if (!m) return null;
-    try { o = JSON.parse(m[0]); } catch (e) { return null; }
-  }
-  const list = o && Array.isArray(o.points) ? o.points : null;
+  let list = null;
+  if (typeof reply === 'string') {
+    // Small models' JSON is often a little off (a missing brace, a quote with no key), so when it doesn't parse,
+    // each point's entry is read on its own.
+    const m = reply.match(/\{[\s\S]*\}/);
+    try { list = m && JSON.parse(m[0]).points; } catch (e) { list = null; }
+    if (!Array.isArray(list)) {
+      list = [];
+      const re = /"n"\s*:\s*(\d+)\s*,\s*"made"\s*:\s*(true|false)(?:\s*,\s*(?:"quote"\s*:\s*)?"((?:[^"\\]|\\.)*)")?/g;
+      let e;
+      while ((e = re.exec(reply))) { let q = e[3] || ''; try { q = JSON.parse('"' + q + '"'); } catch (err) { /* as written */ } list.push({ n: +e[1], made: e[2] === 'true', quote: q }); }
+      if (!list.length) return null;
+    }
+  } else list = reply && Array.isArray(reply.points) ? reply.points : null;
   if (!list) return null;
   const hay = squash(answer);
   return Array.from({ length: n }, (_, i) => {

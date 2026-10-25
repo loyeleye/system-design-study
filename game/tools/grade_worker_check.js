@@ -33,7 +33,7 @@ const ai = reply => { const seen = []; return { seen, run: async (model, input) 
   check(o.made[2].ok, '(a quote that is in the answer counts, whatever the model was told; the prompt is what guards meaning)');
   const msgs = A.seen[0].input.messages;
   check(/untrusted/.test(msgs[0].content) && msgs[1].content.includes('<<<\n' + answer + '\n>>>'), 'the answer goes to the model fenced, marked untrusted');
-  check(/lock the seat row/.test(msgs[1].content) && A.seen[0].model === '@cf/meta/llama-3.2-3b-instruct', 'with the rubric and its examples, to the default model');
+  check(/lock the seat row/.test(msgs[1].content) && A.seen[0].model === '@cf/meta/llama-3.3-70b-instruct-fp8-fast', 'with the rubric and its examples, to the default model');
   // GRADE_MODEL picks another model.
   A = ai('{"points":[]}');
   await worker.fetch(post({ q: '', answer, points }), { AI: A, GRADE_MODEL: '@cf/test/model' });
@@ -43,6 +43,14 @@ const ai = reply => { const seen = []; return { seen, run: async (model, input) 
   check(readGrade('Sure! {"points":[{"n":1,"made":true,"quote":"lock the seat row"}]} Hope that helps', answer, 3).map(m => m.ok).join() === 'true,false,false', 'JSON inside chatter is read; missing points are not made');
   check(readGrade({ points: [{ n: 1, made: 'yes', quote: 'lock the seat row' }] }, answer, 1)[0].ok === false, 'only made: true counts');
   check(readGrade('no json here', answer, 3) === null, 'a reply with no JSON is unreadable');
+  // Seen from Llama 3.1 8B: a missing closing brace, and quotes with no key.
+  check(readGrade('{"points":[{"n":1,"made":true,"quote":"Lock the seat row"},{"n":2,"made":false,"quote":""}]', answer, 2).map(m => m.ok).join() === 'true,false', 'JSON missing its last brace is read point by point');
+  check(readGrade('{"points": [{"n": 1, "made": true, "Lock the seat row"}, {"n": 2, "made": false, ""}]}', answer, 2)[0].quote === 'Lock the seat row', 'a quote with no key is still read');
+  check(readGrade({ choices: 1 }, answer, 1) === null, 'an object with no points is unreadable');
+  // Newer models reply OpenAI-style.
+  const chat = { run: async () => ({ choices: [{ message: { content: '{"points":[{"n":1,"made":true,"quote":"Lock the seat row"}]}' } }] }) };
+  o = await (await worker.fetch(post({ q: '', answer, points }), { AI: chat })).json();
+  check(o.made && o.made[0].ok, 'an OpenAI-style reply ({ choices }) is read too');
   r = await worker.fetch(post({ q: '', answer, points }), { AI: ai('nonsense') });
   check(r.status === 502, 'an unreadable reply is a 502, so the game falls back to Basic');
   r = await worker.fetch(post({ q: '', answer, points }), { AI: ai(new Error('quota')) });

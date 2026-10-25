@@ -67,7 +67,7 @@ On the **Workers Free** plan there is no bill. Past a daily limit, requests to t
 - Static assets: free and unlimited.
 - Worker requests (only `/api/*` runs the Worker): 100,000 a day.
 - Durable Objects (rooms, lobbies, saves): 100,000 requests a day, where WebSocket messages count 20 to 1, and 5 GB of storage.
-- Workers AI (the LLM answer checker, `POST /api/grade`): 10,000 Neurons a day. One grade on `@cf/meta/llama-3.2-3b-instruct` is about 5 Neurons, so roughly 2,000 grades a day. Past that, on Free the checker's requests fail and the game falls back to the Basic checker for the rest of the day; on Workers Paid they're billed at $0.011 per 1,000 Neurons. To try a bigger model, set `"vars": { "GRADE_MODEL": "<model id>" }` in `wrangler.jsonc`.
+- Workers AI (the LLM answer checker, `POST /api/grade`): 10,000 Neurons a day. One grade on `@cf/meta/llama-3.3-70b-instruct-fp8-fast` is about 24 Neurons, so roughly 400 grades a day. (`@cf/meta/llama-3.1-8b-instruct-fp8` is about 7 Neurons, roughly 1,300 a day, but got 87% of rubric points right against 95%: `game/tools/llm_checker_eval.js`.) Past that, on Free the checker's requests fail and the game falls back to the Basic checker for the rest of the day; on Workers Paid they're billed at $0.011 per 1,000 Neurons. To try a bigger model, set `"vars": { "GRADE_MODEL": "<model id>" }` in `wrangler.jsonc`.
 
 If the game outgrows that, **Workers Paid** is $5 a month and includes 10 million Worker requests and 1 million Durable Object requests, then usage pricing. You can stay on Free and nothing is ever charged.
 
