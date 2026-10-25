@@ -315,7 +315,8 @@
           const chk = b.querySelector('#q-check');
           if (chk) chk.onclick = async () => {
             chk.disabled = true; chk.textContent = 'Reading your answer…';
-            found = await reading; draw();
+            found = await reading;
+            if (chk.isConnected) draw(); // not if the player left the session meanwhile (Q.session opts.leave)
           };
           const cf = b.querySelector('#q-confirm');
           if (cf) cf.onclick = () => { said.res = { score: ticks.filter(Boolean).length, n: pts.length, need }; done(); };
@@ -356,7 +357,7 @@
             if (g) { g.innerHTML = gap(i) ? '<br>' + gap(i) : ''; rp.classList.toggle('differ', !!gap(i)); }
           });
           const chk = b.querySelector('#q-check');
-          if (chk) chk.onclick = async () => { chk.disabled = true; chk.textContent = 'Reading your answer…'; found = await reading; compare = true; draw(); };
+          if (chk) chk.onclick = async () => { chk.disabled = true; chk.textContent = 'Reading your answer…'; found = await reading; compare = true; if (chk.isConnected) draw(); };
           const cf = b.querySelector('#q-confirm');
           if (cf) cf.onclick = () => {
             const score = ticks.filter(Boolean).length, ok = !!typed && score >= need;
@@ -519,17 +520,27 @@
   };
 
   // Whiteboard session: n questions, due and weak concepts first, interleaved.
+  // opts.leave: the panels get a ✕ that ends the session early; the answers so far still count, and the
+  // results carry left: true.
   Q.session = async function (n, opts) {
     opts = opts || {};
     const pool = opts.pool || Object.keys(SD.concepts).filter(SD.state.reviewable);
     const picks = SD.state.pickConcepts(n, pool);
     const results = [];
     const used = [];
-    for (let i = 0; i < picks.length; i++) {
-      const q = SD.state.pickQuestion(picks[i], used); used.push(q.id);
-      SD.state.seeConcept(picks[i]);
-      const r = await Q.ask(q, { title: opts.title, context: `${SD.concepts[q.c].name} · ${i + 1}/${picks.length}` });
-      results.push(Object.assign({ c: q.c }, r));
+    const LEFT = {}, before = U.quitGame;
+    const quit = opts.leave ? new Promise(res => { U.quitGame = () => res(LEFT); }) : null;
+    try {
+      for (let i = 0; i < picks.length; i++) {
+        const q = SD.state.pickQuestion(picks[i], used); used.push(q.id);
+        SD.state.seeConcept(picks[i]);
+        const ask = Q.ask(q, { title: opts.title, context: `${SD.concepts[q.c].name} · ${i + 1}/${picks.length}` });
+        const r = await (quit ? Promise.race([ask, quit]) : ask);
+        if (r === LEFT) { U.closePanel(); results.left = true; break; }
+        results.push(Object.assign({ c: q.c }, r));
+      }
+    } finally {
+      if (quit) U.quitGame = before;
     }
     return results;
   };
