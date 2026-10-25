@@ -44,6 +44,7 @@
     'plate-cafe': { slot: 'plate', name: 'Cache Café menu' },
     'plate-tide': { slot: 'plate', name: 'Isles tide chart' },
     'plate-ticker': { slot: 'plate', name: 'Exchange ticker' },
+    'plate-arena': { slot: 'plate', name: 'Arena pennant' },
     'fx-stardust': { slot: 'effect', name: 'Stardust' },
     'fx-snow': { slot: 'effect', name: 'Snowfall' },
     'fx-embers': { slot: 'effect', name: 'Embers' },
@@ -68,7 +69,40 @@
     'skin-eunho-velvet': { champ: 'eunho', name: 'Curtain velvet', main: '#6a2f8a' },
     'skin-eunho-lunar': { champ: 'eunho', name: 'Lunar New Year', main: '#c01c2a', season: 'Lunar New Year' },
     'skin-hero404-ember': { champ: 'hero404', name: 'Ember outline', main: '#ff6b5a' },
-    'skin-hero404-spring': { champ: 'hero404', name: 'Spring bloom', main: '#8ccbbd', season: 'Spring' }
+    'skin-hero404-spring': { champ: 'hero404', name: 'Spring bloom', main: '#8ccbbd', season: 'Spring' },
+    // The original 16 (Ladi, 2026-10-25: straight after the eight).
+    'skin-uptima-sky': { champ: 'uptima', name: 'Clear-sky blue', main: '#5a8fd8' },
+    'skin-uptima-winterfest': { champ: 'uptima', name: 'Winterfest', main: '#b3202d', season: 'Winter holidays' },
+    'skin-seymour-gold': { champ: 'seymour', name: 'Golden hour', main: '#c99a3e' },
+    'skin-seymour-spring': { champ: 'seymour', name: 'Spring bloom', main: '#f4b9cc', season: 'Spring' },
+    'skin-mio-crayon': { champ: 'mio', name: 'Crayon box', main: '#d8423a' },
+    'skin-mio-harvest': { champ: 'mio', name: 'Harvest', main: '#c4621c', season: 'Halloween and harvest' },
+    'skin-ayo-forge': { champ: 'ayo', name: 'Forge orange', main: '#d86a2a' },
+    'skin-ayo-lunar': { champ: 'ayo', name: 'Lunar New Year', main: '#c01c2a', season: 'Lunar New Year' },
+    'skin-bru-cafe': { champ: 'bru', name: 'Café blue', main: '#2f6b45' },
+    'skin-bru-winterfest': { champ: 'bru', name: 'Winterfest', main: '#b3202d', season: 'Winter holidays' },
+    'skin-kaito-crimson': { champ: 'kaito', name: 'Crimson', main: '#a8322e' },
+    'skin-kaito-spring': { champ: 'kaito', name: 'Spring bloom', main: '#8ccbbd', season: 'Spring' },
+    'skin-ploy-plum': { champ: 'ploy', name: 'Plum', main: '#6a2f8a' },
+    'skin-ploy-harvest': { champ: 'ploy', name: 'Harvest', main: '#c4621c', season: 'Halloween and harvest' },
+    'skin-kwame-navy': { champ: 'kwame', name: 'Navy', main: '#26336b' },
+    'skin-kwame-winterfest': { champ: 'kwame', name: 'Winterfest', main: '#b3202d', season: 'Winter holidays' },
+    'skin-explodia-ember': { champ: 'explodia', name: 'Ember', main: '#a8322e' },
+    'skin-explodia-harvest': { champ: 'explodia', name: 'Harvest', main: '#c4621c', season: 'Halloween and harvest' },
+    'skin-latency-midnight': { champ: 'latency', name: 'Midnight', main: '#26336b' },
+    'skin-latency-lunar': { champ: 'latency', name: 'Lunar New Year', main: '#c01c2a', season: 'Lunar New Year' },
+    'skin-imani-navy': { champ: 'imani', name: 'Navy', main: '#26336b' },
+    'skin-imani-spring': { champ: 'imani', name: 'Spring bloom', main: '#f4b9cc', season: 'Spring' },
+    'skin-rico-royal': { champ: 'rico', name: 'Royal blue', main: '#2a4fa8' },
+    'skin-rico-lunar': { champ: 'rico', name: 'Lunar New Year', main: '#e9b53a', season: 'Lunar New Year' },
+    'skin-nari-jade': { champ: 'nari', name: 'Jade', main: '#2f8a6b' },
+    'skin-nari-spring': { champ: 'nari', name: 'Spring bloom', main: '#f4b9cc', season: 'Spring' },
+    'skin-hypewagon-showbiz': { champ: 'hypewagon', name: 'Showbiz', main: '#6a2f8a' },
+    'skin-hypewagon-harvest': { champ: 'hypewagon', name: 'Harvest', main: '#c4621c', season: 'Halloween and harvest' },
+    'skin-neel-ledger': { champ: 'neel', name: 'Ledger green', main: '#2f6b45' },
+    'skin-neel-winterfest': { champ: 'neel', name: 'Winterfest', main: '#b3202d', season: 'Winter holidays' },
+    'skin-kyu-night': { champ: 'kyu', name: 'Night shift', main: '#26336b' },
+    'skin-kyu-lunar': { champ: 'kyu', name: 'Lunar New Year', main: '#c01c2a', season: 'Lunar New Year' }
   });
   Object.keys(SKINS).forEach(id => { ITEMS[id] = Object.freeze(Object.assign({ slot: 'skin' }, SKINS[id])); });
   const has = id => !!(SD.marks && SD.marks.has && SD.marks.has(id));
@@ -289,6 +323,7 @@ ${spots}
 .plate-board { --wp-bg: linear-gradient(180deg, #f6e7c1, #ead39c); --wp-ink: #4a2e18; --wp-line: #a0703c; }
 .plate-cafe { --wp-bg: #2f4a3a; --wp-ink: #f4f1ea; --wp-line: #c99a3e; font-family: 'Patrick Hand', 'Comic Sans MS', var(--f-head, system-ui) !important; }
 .plate-tide { --wp-bg: repeating-linear-gradient(180deg, #d7eefa 0 5px, #bfe3f5 5px 6px); --wp-ink: #1c3e78; --wp-line: #2a62c9; }
+.plate-arena { --wp-bg: linear-gradient(180deg, #c8402e 0 3px, #e9cf9c 3px, #d8b47a); --wp-ink: #4a2412; --wp-line: #8a4a26; font-weight: 800 !important; letter-spacing: .03em; }
 .plate-ticker { --wp-bg: #0e1a12; --wp-ink: #5aff8a; --wp-line: #2a8a4a; font-family: ui-monospace, monospace !important; letter-spacing: .04em; text-shadow: 0 0 4px rgba(90,255,138,.6); }
 
 .wd { display: grid; gap: 10px; }

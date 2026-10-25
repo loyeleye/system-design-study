@@ -64,6 +64,15 @@
 .rs-act { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .rs-act small { color: var(--mi-muted); font: 600 12px var(--f-body, system-ui); }
 .rs-own { font: 700 13px var(--f-body, system-ui); color: #1f6b46; margin: 0; }
+.rs-act.rs-row { flex-wrap: nowrap; } .rs-act.rs-row .mi-btn { white-space: nowrap; }
+.rs-sw { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px; border: 0; background: none; font: 700 14px var(--f-body, system-ui); color: var(--mi-ink); cursor: pointer; }
+.rs-sw i { position: relative; width: 48px; height: 28px; border: 2.5px solid var(--mi-ink); border-radius: 99px; background: #e4e1da; transition: background .15s; flex: none; }
+.rs-sw i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%; background: #fff; border: 2px solid var(--mi-ink); box-sizing: border-box; transition: transform .15s; }
+.rs-sw[aria-checked="true"] i { background: #2fa36b; } .rs-sw[aria-checked="true"] i::after { transform: translateX(20px); }
+.rs-sw:focus-visible { outline: 3px solid var(--mi-sun, #ffe14d); outline-offset: 2px; border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) { .rs-sw i, .rs-sw i::after { transition: none; } }
+.rs-it .rs-own { display: block; margin-top: 2px; }
+.rs-hint { display: block; margin-top: 4px; color: var(--mi-muted); font: 600 12px var(--f-body, system-ui); }
 .rs-act .confirm { background: var(--mi-sun, #ffe14d); }
 .rs-more { grid-column: 1 / -1; }
 .rs-more summary { cursor: pointer; font: 700 12px var(--f-body, system-ui); color: var(--mi-muted); }
@@ -171,15 +180,16 @@
       : M.SLOTS[it.slot] + (wearable && W.ITEMS[it.id].note ? ' · ' + W.ITEMS[it.id].note : '');
     let act;
     const wornHere = W && it.champ ? W.worn(it.champ).includes(it.id) : on;
-    if (own) act = `<p class="rs-own">✓ Yours</p>${wearable ? `<button class="mi-btn sm${wornHere ? '' : ' go'}" type="button" data-wear="${it.id}" aria-pressed="${wornHere}">${wornHere ? 'Take off' : 'Wear'}</button>` : ''}`;
-    else if (cc && !CH.unlocked(cc.id)) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${it.cost} ✦</button><small>${CH.state(cc.id) === 'hire' ? `Hire ${esc(cc.short)} first` : `Reach ${esc(cc.short)} first`}</small>`;
-    else if (!M.on()) act = '<small>Buy it in the game, where your Raid Marks are.</small>';
-    else if (need > 0) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${it.cost} ✦</button><small>You need ${need} more ✦</small>`;
-    else act = armed === it.id ? `<button class="mi-btn sm confirm" type="button" data-buy="${it.id}">Confirm: ${it.cost} ✦</button><small>Tap again to buy</small>`
-      : `<button class="mi-btn sm go" type="button" data-buy="${it.id}">Buy · ${it.cost} ✦</button>`;
+    let hint = '';
+    if (own) act = `${wearable ? `<button class="rs-sw" type="button" role="switch" data-wear="${it.id}" aria-checked="${wornHere}" aria-label="Wear ${esc(it.name)}"><i aria-hidden="true"></i>${wornHere ? 'On' : 'Off'}</button>` : ''}`;
+    else if (cc && !CH.unlocked(cc.id)) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${it.cost} ✦</button>`, hint = CH.state(cc.id) === 'hire' ? `Hire ${esc(cc.short)} first` : `Reach ${esc(cc.short)} first`;
+    else if (!M.on()) act = '', hint = 'Buy it in the game, where your Raid Marks are.';
+    else if (need > 0) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${it.cost} ✦</button>`, hint = `You need ${need} more ✦`;
+    else if (armed === it.id) act = `<button class="mi-btn sm confirm" type="button" data-buy="${it.id}">Confirm: ${it.cost} ✦</button>`, hint = 'Tap Confirm to buy';
+    else act = `<button class="mi-btn sm go" type="button" data-buy="${it.id}">Buy · ${it.cost} ✦</button>`;
     const tryB = `<button class="mi-btn sm" type="button" data-try="${it.id}" aria-pressed="${trying === it.id}">Try on</button>`;
-    return `<li class="rs-it${own ? ' own' : ''}" data-it="${it.id}"><span class="sw">${sw}</span><div><b>${esc(it.name)}</b><span class="sty">${esc(sub)}${own ? '' : ` · ${it.cost} ✦`}</span>
-      <div class="rs-act">${act}${tryB}</div></div></li>`;
+    return `<li class="rs-it${own ? ' own' : ''}" data-it="${it.id}"><span class="sw">${sw}</span><div><b>${esc(it.name)}</b><span class="sty">${esc(sub)}${own ? '' : ` · ${it.cost} ✦`}</span>${own ? '<span class="rs-own">✓ Yours</span>' : ''}
+      <div class="rs-act rs-row">${act}${tryB}</div>${hint ? `<small class="rs-hint">${hint}</small>` : ''}</div></li>`;
   }
   function cosmetics() {
     const items = M.items();

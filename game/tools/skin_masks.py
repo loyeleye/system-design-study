@@ -26,9 +26,31 @@ RULES = {
     'sunny': ('arc/c-sunny', 55, [(285, 350)], (0.12, 1), (0.08, 0.55), 0.2),
     'eunho': ('arc/c-eunho', 62, [(0, 360)], (0, 0.22), (0.0, 0.34), 0.3),
     'hero404': ('raid/hero404-smoke-m', 80, [(235, 295)], (0.15, 1), (0.3, 0.95), 0.0),
+    # The original 16 (Ladi, 2026-10-25: straight after the eight). Their fights draw battle sheets (MORE, below).
+    'uptima': ('village/c-uptima', 54, [(0, 360)], (0, 0.4), (0.0, 0.3), 0.4),
+    'seymour': ('village/c-seymour', 51, [(140, 195)], (0.2, 1), (0.1, 0.8), 0.25),
+    'mio': ('village/c-mio', 53, [(0, 360)], (0, 0.25), (0.0, 0.3), 0.38),
+    'ayo': ('village/c-ayo', 50, [(100, 180)], (0.05, 1), (0.0, 0.45), 0.3),
+    'bru': ('village/c-bru', 52, [(205, 255)], (0.15, 1), (0.08, 0.6), 0.35),
+    'kaito': ('village/c-kaito', 55, [(235, 295)], (0.18, 1), (0.08, 0.7), 0.25),
+    'ploy': ('isles/c-ploy', 100, [(205, 255)], (0.2, 1), (0.1, 0.6), 0.45),
+    'kwame': ('isles/c-kwame', 88, [(170, 230)], (0.1, 0.45), (0.45, 1), 0.22),
+    'explodia': ('arc/c-explodia', 49, [(165, 245)], (0.15, 1), (0.08, 0.7), 0.3),
+    'latency': ('arc/c-latency', 56, [(0, 360)], (0, 0.15), (0.6, 1), 0.3),
+    'imani': ('arc/c-imani', 60, [(0, 360)], (0, 0.25), (0.0, 0.3), 0.5),
+    'rico': ('arc/c-rico', 59, [(340, 360), (0, 14)], (0.4, 1), (0.15, 0.6), 0.15),
+    'nari': ('arc/c-nari', 72, [(295, 350)], (0.4, 1), (0.15, 0.8), 0.15),
+    'hypewagon': ('arc/c-hypewagon', 53, [(0, 360)], (0, 0.25), (0.0, 0.3), 0.25),
+    'neel': ('arc/c-neel', 56, [(190, 235)], (0.3, 1), (0.15, 0.75), 0.25),
+    'kyu': ('arc/c-kyu', 53, [(0, 360)], (0, 0.25), (0.0, 0.3), 0.3),
 }
 # More sheets a champion is drawn from, with the same rule: Hero #404's woman, and his two fight sheets.
 MORE = {'hero404': [('raid/hero404-smoke-w', 80), ('battle/champ-hero404-m', 64), ('battle/champ-hero404-w', 64)]}
+# Their battle sheets' frame heights (js/champion-art.js).
+MORE.update({c: [('battle/champ-' + c, h)] for c, h in {"uptima": 51, "seymour": 49, "mio": 53, "ayo": 49, "bru": 51, "kaito": 49, "ploy": 58, "kwame": 52, "explodia": 44, "latency": 52, "imani": 60, "rico": 58, "nari": 62, "hypewagon": 55, "neel": 53, "kyu": 49}.items()})
+
+# Columns in each map sheet (js/champions.js SHEET_COLS), to cut the first frame for the preview.
+COLS = {'uptima': 9, 'seymour': 9, 'mio': 11, 'ayo': 9, 'bru': 11, 'kaito': 11, 'ploy': 19, 'kwame': 19, 'explodia': 9, 'latency': 9, 'imani': 11, 'rico': 11, 'nari': 11, 'hypewagon': 9, 'neel': 10, 'kyu': 9, 'doug': 11, 'dieynaba': 11, 'leilani': 19, 'suzu': 9, 'gong': 9, 'sunny': 11, 'hero404': 12, 'eunho': 9}
 # The colours, as js/wear.js SKINS has them: champion -> [(id, main colour)].
 SKINS = json.load(open(os.path.join(GAME, 'tools', 'skins.json')))
 
@@ -84,7 +106,7 @@ def main():
             Image.fromarray((np.dstack([mm, mm, mm, mm]) * 255).astype(np.uint8)).save(os.path.join(GAME, 'assets/img/wear/mask', os.path.basename(sh) + '.webp'), lossless=True)
         im, m = mask_of(cid)
         fh = RULES[cid][1]
-        first = lambda a: a[:fh, :im.shape[1] // ({'doug': 11, 'dieynaba': 11, 'leilani': 19, 'suzu': 9, 'gong': 9, 'sunny': 11, 'eunho': 9, 'hero404': 12}[cid])]
+        first = lambda a: a[:fh, :im.shape[1] // COLS[cid]]
         tiles = [first(im)] + [first(paint(im, m, c)) for _, c in SKINS.get(cid, [])]
         rows.append(np.concatenate([np.pad(t, ((0, 0), (2, 2), (0, 0))) for t in tiles], 1))
         print(f'{cid}: {int(m.sum())} pixels recoloured')
