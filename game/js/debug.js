@@ -184,9 +184,9 @@
       </fieldset>
 
       <fieldset><legend>Raid Marks</legend>
-        <p class="dbg-help">Sets this save's balance, so a playtest can hire the multiplayer champions without the grind.</p>
+        <p class="dbg-help">Sets this save's balance, so a playtest can hire the multiplayer champions and buy cosmetics without the grind.</p>
         <div class="dbg-fields"><label class="dbg-f">Raid Marks (✦)<input id="dbg-marks" type="number" inputmode="numeric" min="0" max="999999" value="${SD.marks ? SD.marks.balance() : 0}"></label></div>
-        <div class="row"><button type="button" class="ghost" id="dbg-mk">Set Raid Marks</button></div>
+        <div class="row"><button type="button" class="ghost" id="dbg-mk">Set Raid Marks</button><button type="button" class="ghost" id="dbg-cos">Own every cosmetic</button></div>
       </fieldset>
 
       <fieldset><legend>Time and weather</legend>
@@ -277,6 +277,7 @@
       U.closePanel(); U.system('DEBUG', `${SD.clock.label()}, ${SD.weather.now()}.`);
     };
     $('mk').onclick = () => { if (!SD.marks) return; const n = SD.marks.set(v('marks')); now(); U.system('DEBUG', `Raid Marks: ${n.toLocaleString()} ✦.`); };
+    $('cos').onclick = () => { if (!SD.marks || !SD.marks.grantAll) return; const n = SD.marks.grantAll(); U.system('DEBUG', n ? `${n} cosmetics are yours. Wear them in the party room's Wardrobe.` : 'You already own every cosmetic.'); };
     // Stays open, so you can add more than once.
     $('sh').onclick = () => {
       sv.shards += 1000; S.persist(); now(); if (SD.main.hud) SD.main.hud();

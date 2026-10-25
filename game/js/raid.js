@@ -2120,6 +2120,14 @@
       if (seen && seen.k === G.k && G.taken > seen.taken) Object.keys(played).forEach(k => { anim[k] = { a: 'hurt', t0: now }; });
       seen = { turn: G.turn, taken: G.taken, played, k: G.k };
     }
+    // A seat's cosmetics, from its player's presence (yours from your save); multiplayer only, like everything here.
+    const W = SD.wear;
+    const wearOf = k => {
+      if (!W || isBot(k)) return [];
+      if (k === me.peer) return W.worn();
+      const p = players().find(x => x.peer === k);
+      return p ? W.clean(p.presence.wear) : [];
+    };
     // lk: a look (Hero #404's man or woman), whose battle sheet is champ-<id>-<look>.
     function artOf(c, lk) {
       const BA = SD.championArt && SD.championArt[c], CH = SD.champions && SD.champions.get(c), l = SD.champions && SD.champions.look(c, lk);
@@ -2135,7 +2143,9 @@
         // About 100px tall (70 on a phone), smaller in a party of four.
         const s = Math.max(1, Math.min(2.6, (small ? 70 : 100) / a.h * (ids.length > 3 ? 0.85 : 1)));
         const st = anim[k] && performance.now() - anim[k].t0 < 500 ? ' ' + anim[k].a : '';
-        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${G.me.some(x => x.p === k) ? ' spot' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}" style="width:${a.w}px;height:${a.h}px;background-image:url(${a.sheet});transform:scale(${s.toFixed(2)})"></i></div><span class="rd-name">${esc(p.n)}</span></div>`;
+        // What they wear (js/wear.js): their effect over the fighter and their nameplate under it. Bots wear nothing.
+        const wr = wearOf(k), fx = W ? wr.map(id => W.fx(id, true)).join('') : '', pl = W ? W.plate(wr) : '';
+        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${G.me.some(x => x.p === k) ? ' spot' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}" style="width:${a.w}px;height:${a.h}px;background-image:url(${a.sheet});transform:scale(${s.toFixed(2)})"></i></div>${fx}<span class="rd-name${pl ? ' ' + pl : ''}">${esc(p.n)}</span></div>`;
       }).join('');
       const bd = SD.battleArt ? SD.battleArt.backdrops : null, b = bd && bd.includes(String(e.ch || 1)) ? String(e.ch || 1) : '1';
       const col = x => (SD.art.enemyColor ? SD.art.enemyColor(x.sprite) : '#f66');
