@@ -98,6 +98,22 @@
 .pt-vis { display: inline-flex; border: 2.5px solid var(--mi-ink); border-radius: 10px; overflow: hidden; }
 .pt-vis button { font: 700 13px var(--f-body, system-ui); padding: 3px 10px; border: 0; background: #fff; color: var(--mi-ink); cursor: pointer; }
 .pt-vis button.on { background: var(--mi-ink); color: #fff; }
+/* Touch: every control in the party room at least 44px each way. */
+@media (max-width: 720px), (pointer: coarse) {
+  .pt-back { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px 0 0; }
+  .pt .mi-btn, .pt-vis button { min-height: 44px; min-width: 44px; }
+  .pt-vis button { padding: 3px 14px; }
+  .pt-kick { min-height: 44px; min-width: 44px; padding: 0 8px; }
+  .pt-rename input, .pt-set select { min-height: 44px; }
+}
+/* Phones: a one-row Start bar, so it hides less of the roster while you scroll; the room ends with room to spare
+   below it, so the last row scrolls fully clear. */
+@media (max-width: 560px) {
+  .pt-bar { flex-wrap: nowrap; padding: 8px 10px; gap: 10px; }
+  .pt-bar p { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+  .pt-bar .mi-btn { flex: none; white-space: nowrap; }
+  .mi-card.pt { padding-bottom: 18px; }
+}
 @media (max-width: 560px) { .pt-sig { padding: 8px 10px; gap: 4px; } .pt-sig p { font-size: 13.5px; } .pt-members { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pt-mem .pt-stage { height: 100px; } .pt-head h2 { font-size: 24px; } }
 `;
     document.head.appendChild(st);
