@@ -81,6 +81,8 @@ const server = http.createServer((req, res) => {
   check(await a.evaluate(() => { SD.marks.set(SD.marks.balance() + 650); return SD.marks.buy('look-explodia-sleep-star') && SD.marks.cost('look-explodia-sleep-mint') === 150 && !SD.marks.has('look-explodia-sleep-mint') && SD.marks.buy('look-explodia-sleep-mint'); }), 'buying the starry one first costs 500 ✦, then the mint one 150 ✦');
   check(await a.evaluate(() => SD.wear.equip('look-explodia-sleep-star') && SD.wear.equip('look-explodia-sleep-mint') && SD.wear.worn('explodia').filter(id => id.startsWith('look-explodia')).join() === 'look-explodia-sleep-mint'), 'one variant is worn at a time');
   check(await a.evaluate(() => { SD.wear.unequip('skin:explodia'); return Object.keys(SD.wear.SKINS).filter(id => SD.wear.SKINS[id].look && id !== 'look-hero404-307').every(id => SD.lookArt[id]); }), 'every drawn look has its sheet');
+  // The original 16 fight side on (js/champion-art.js), so their looks have side-on battle sheets too.
+  check(await a.evaluate(() => Object.keys(SD.wear.SKINS).filter(id => SD.wear.SKINS[id].look && id !== 'look-hero404-307' && SD.championArt[SD.wear.SKINS[id].champ]).every(id => { const b = SD.lookArt[id].bat; return b && b.rows.idle && b.rows.cast && b.rows.hurt; })), 'every look for one of the original 16 has a side-on battle sheet');
   await a.evaluate(() => document.getElementById('shopbox').remove());
 
   // A Whiteboard Showdown party on page A, joined by page B (the standalone Guild Hall page: no save).
