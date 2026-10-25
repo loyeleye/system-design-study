@@ -1,0 +1,242 @@
+{
+  "doug": [
+    [
+      "skin-doug-blue",
+      "#2f5fa8"
+    ],
+    [
+      "skin-doug-harvest",
+      "#c4621c"
+    ]
+  ],
+  "dieynaba": [
+    [
+      "skin-dieynaba-indigo",
+      "#2e3a8c"
+    ],
+    [
+      "skin-dieynaba-lunar",
+      "#c01c2a"
+    ]
+  ],
+  "leilani": [
+    [
+      "skin-leilani-coral",
+      "#e0705a"
+    ],
+    [
+      "skin-leilani-winterfest",
+      "#b3202d"
+    ]
+  ],
+  "suzu": [
+    [
+      "skin-suzu-brigade",
+      "#a8322e"
+    ],
+    [
+      "skin-suzu-spring",
+      "#f4b9cc"
+    ]
+  ],
+  "gong": [
+    [
+      "skin-gong-studio",
+      "#2a4fa8"
+    ],
+    [
+      "skin-gong-harvest",
+      "#c4621c"
+    ]
+  ],
+  "sunny": [
+    [
+      "skin-sunny-forest",
+      "#2f6b45"
+    ],
+    [
+      "skin-sunny-winterfest",
+      "#b3202d"
+    ]
+  ],
+  "eunho": [
+    [
+      "skin-eunho-velvet",
+      "#6a2f8a"
+    ],
+    [
+      "skin-eunho-lunar",
+      "#c01c2a"
+    ]
+  ],
+  "hero404": [
+    [
+      "skin-hero404-ember",
+      "#ff6b5a"
+    ],
+    [
+      "skin-hero404-spring",
+      "#8ccbbd"
+    ]
+  ],
+  "uptima": [
+    [
+      "skin-uptima-sky",
+      "#5a8fd8"
+    ],
+    [
+      "skin-uptima-winterfest",
+      "#b3202d"
+    ]
+  ],
+  "seymour": [
+    [
+      "skin-seymour-gold",
+      "#c99a3e"
+    ],
+    [
+      "skin-seymour-spring",
+      "#f4b9cc"
+    ]
+  ],
+  "mio": [
+    [
+      "skin-mio-crayon",
+      "#d8423a"
+    ],
+    [
+      "skin-mio-harvest",
+      "#c4621c"
+    ]
+  ],
+  "ayo": [
+    [
+      "skin-ayo-forge",
+      "#d86a2a"
+    ],
+    [
+      "skin-ayo-lunar",
+      "#c01c2a"
+    ]
+  ],
+  "bru": [
+    [
+      "skin-bru-cafe",
+      "#2f6b45"
+    ],
+    [
+      "skin-bru-winterfest",
+      "#b3202d"
+    ]
+  ],
+  "kaito": [
+    [
+      "skin-kaito-crimson",
+      "#a8322e"
+    ],
+    [
+      "skin-kaito-spring",
+      "#8ccbbd"
+    ]
+  ],
+  "ploy": [
+    [
+      "skin-ploy-plum",
+      "#6a2f8a"
+    ],
+    [
+      "skin-ploy-harvest",
+      "#c4621c"
+    ]
+  ],
+  "kwame": [
+    [
+      "skin-kwame-navy",
+      "#26336b"
+    ],
+    [
+      "skin-kwame-winterfest",
+      "#b3202d"
+    ]
+  ],
+  "explodia": [
+    [
+      "skin-explodia-ember",
+      "#a8322e"
+    ],
+    [
+      "skin-explodia-harvest",
+      "#c4621c"
+    ]
+  ],
+  "latency": [
+    [
+      "skin-latency-midnight",
+      "#26336b"
+    ],
+    [
+      "skin-latency-lunar",
+      "#c01c2a"
+    ]
+  ],
+  "imani": [
+    [
+      "skin-imani-navy",
+      "#26336b"
+    ],
+    [
+      "skin-imani-spring",
+      "#f4b9cc"
+    ]
+  ],
+  "rico": [
+    [
+      "skin-rico-royal",
+      "#2a4fa8"
+    ],
+    [
+      "skin-rico-lunar",
+      "#e9b53a"
+    ]
+  ],
+  "nari": [
+    [
+      "skin-nari-jade",
+      "#2f8a6b"
+    ],
+    [
+      "skin-nari-spring",
+      "#f4b9cc"
+    ]
+  ],
+  "hypewagon": [
+    [
+      "skin-hypewagon-showbiz",
+      "#6a2f8a"
+    ],
+    [
+      "skin-hypewagon-harvest",
+      "#c4621c"
+    ]
+  ],
+  "neel": [
+    [
+      "skin-neel-ledger",
+      "#2f6b45"
+    ],
+    [
+      "skin-neel-winterfest",
+      "#b3202d"
+    ]
+  ],
+  "kyu": [
+    [
+      "skin-kyu-night",
+      "#26336b"
+    ],
+    [
+      "skin-kyu-lunar",
+      "#c01c2a"
+    ]
+  ]
+}

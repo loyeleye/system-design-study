@@ -87,13 +87,17 @@
   // Columns in each map sheet (its width over the frame width), so the background keeps the frames' scale.
   const SHEET_COLS = { uptima: 9, seymour: 9, mio: 11, ayo: 9, bru: 11, kaito: 11, ploy: 19, kwame: 19, explodia: 9, latency: 9, imani: 11, rico: 11, nari: 11, hypewagon: 9, neel: 10, kyu: 9, doug: 11, dieynaba: 11, leilani: 19, suzu: 9, gong: 9, sunny: 11, hero404: 12, eunho: 9 };
   // A champion with looks (Hero #404's man and woman) draws the one named, else the first. `look` is a presence field.
-  C.look = (id, v) => { const c = BY[id]; return c && c.looks ? (c.looks.includes(v) ? v : c.looks[0]) : null; };
+  // Hero #404's 307 Temporary Redirect look (js/wear.js) adds the sequel's four leads (js/redirect-art.js), each drawn
+  // at their own size; the raid's host picks one at the start of each expedition (js/raid.js start).
+  const lead = (id, v) => id === 'hero404' && !!SD.redirectArt && SD.redirectArt.leads.includes(v);
+  C.look = (id, v) => { const c = BY[id]; return c && c.looks ? (c.looks.includes(v) || lead(id, v) ? v : c.looks[0]) : null; };
+  C.redirect = () => (SD.redirectArt ? SD.redirectArt.leads[Math.floor(Math.random() * SD.redirectArt.leads.length)] : null);
   C.rollLook = id => { const c = BY[id]; return c && c.looks ? c.looks[Math.floor(Math.random() * c.looks.length)] : null; };
   C.sheetOf = (id, v) => { const c = BY[id]; if (!c) return ''; const l = C.look(id, v); return l ? c.sheet.replace(/-[a-z]\.webp$/, '-' + l + '.webp') : c.sheet; };
   C.sprite = function (id, scale, animate, look) {
     const c = BY[id], d = document.createElement('div');
     if (!c) return d;
-    const k = c.n + 1, w = c.w * scale, h = c.h * scale;
+    const l = C.look(id, look), dm = lead(id, l) ? SD.redirectArt.map : c, k = c.n + 1, w = dm.w * scale, h = dm.h * scale;
     d.className = 'champ-spr' + (animate ? ' anim' : '');
     d.style.cssText = `width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;background-image:url(${C.sheetOf(id, look)});background-size:${(w * SHEET_COLS[id]).toFixed(1)}px auto;--end:-${(w * k).toFixed(1)}px;--n:${k};--dur:${(k * (c.looks ? 0.11 : 0.18)).toFixed(2)}s`;
     return d;

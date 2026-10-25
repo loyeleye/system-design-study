@@ -6,14 +6,18 @@
 //     onFull is called once if the party already had max players when this one arrived; leader() names the peer
 //     whose Remove counts. bots() lists the mode's computer-controlled seats ([{ peer, nick, champ }], the Raid's):
 //     they take seats and champions, are always Ready, and give way to any human in a clash.
-//     P.fields()            -> presence fields to merge into the mode's own presence (nick, champ, ready)
-//     P.members()           -> present players of this kind: [{ peer, nick, champ, ready, isMe }]
+//     P.fields()            -> presence fields to merge into the mode's own presence (nick, champ, ready, wear)
+//     P.members()           -> present players of this kind: [{ peer, nick, champ, ready, isMe, wear }]
 //     P.champ()             -> this player's champion id
 //     P.render(root, ctx)   -> draws the room; ctx: { mode, code, leader, max, min, settings, bind, chip, start,
 //                              startLabel, startWhy, boss, deck, vis, leave, note, addBot, botChamp }  addBot: the
 //                              leader's Add a bot, in the open seat; botChamp(peer, champ): the leader picks a bot's
 //                              champion (its card's Change champion turns the roster into that bot's picker)
 //     P.leave()             -> stops listening
+//
+// While joined, the room's emotes show over the seats and the raid's fighters, and the bar has an Emote button
+// (js/emote.js). Each seat shows what its player wears (js/wear.js: frame, nameplate, effect), from their presence, and
+// the Wardrobe fold under the roster changes yours. Cosmetics are multiplayer only (Ladi, 2026-10-25).
 //
 // Names: you arrive as the first free "Player N" (N counts from your seat), or as the name you saved last time
 // if nobody here has it. Saving a new name in the room remembers it (js/net.js, setNick).
@@ -101,6 +105,11 @@
 .pt-bar { position: sticky; bottom: max(10px, env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--mi-cream); border: 2.5px solid var(--mi-ink); border-radius: 14px; padding: 10px 12px; box-shadow: 0 4px 0 rgba(43,35,64,.25); }
 .pt-bar p { margin: 0; font-size: 14px; color: var(--mi-muted); }
 .pt-bar .mi-btn.done { background: var(--mi-mint); color: #fff; }
+.pt-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pt-wd { background: #fff; border: 2.5px solid var(--mi-ink); border-radius: 12px; padding: 8px 12px; }
+.pt-wd summary { cursor: pointer; font: 700 14px var(--f-body, system-ui); }
+.pt-wd summary small { font-weight: 600; color: var(--mi-muted); margin-left: 4px; }
+.pt-wd[open] summary { margin-bottom: 8px; }
 .pt-note { font-size: 13px; background: var(--mi-paper); border-radius: 10px; padding: 6px 10px; margin: 0; }
 .pt-vis { display: inline-flex; border: 2.5px solid var(--mi-ink); border-radius: 10px; overflow: hidden; }
 .pt-vis button { font: 700 13px var(--f-body, system-ui); padding: 3px 10px; border: 0; background: #fff; color: var(--mi-ink); cursor: pointer; }
@@ -173,14 +182,17 @@
     let editing = null, refocus = null;
     // The champion for hire whose card is open below the roster, if any.
     let hiring = null;
+    // Whether the Wardrobe fold is open, kept through redraws.
+    let wardrobe = false;
     // When this player arrived: in a clash of names or champions, whoever came later gives way.
     const since = Date.now();
     const unsub = [];
     const members = () => room.peers().filter(p => p.presence && p.presence.kind === kind)
-      .map(p => ({ peer: p.peer, isMe: p.isMe, nick: p.isMe ? me.nick : net.clean(p.presence.nick, 24) || 'A hero', champ: CH && CH.get(p.isMe ? champ : p.presence.champ) ? (p.isMe ? champ : p.presence.champ) : null, look: p.isMe ? look : CH.look(p.presence.champ, p.presence.look), ready: p.isMe ? ready : !!p.presence.ready, since: p.isMe ? since : +p.presence.since || 0 }));
+      .map(p => ({ peer: p.peer, isMe: p.isMe, nick: p.isMe ? me.nick : net.clean(p.presence.nick, 24) || 'A hero', champ: CH && CH.get(p.isMe ? champ : p.presence.champ) ? (p.isMe ? champ : p.presence.champ) : null, look: p.isMe ? look : CH.look(p.presence.champ, p.presence.look), ready: p.isMe ? ready : !!p.presence.ready, since: p.isMe ? since : +p.presence.since || 0,
+        wear: SD.wear ? (p.isMe ? SD.wear.worn(champ) : SD.wear.clean(p.presence.wear)) : [] }));
     const before = m => m.since < since || (m.since === since && m.peer < me.peer);
     // A bot arrived after everyone (since: Infinity), so a human never gives way to one.
-    const bots = () => (opts.bots ? opts.bots() : []).map(b => ({ peer: b.peer, isMe: false, bot: true, nick: net.clean(b.nick, 24) || 'Bot', champ: CH.get(b.champ) ? b.champ : null, look: CH.look(b.champ, b.look), ready: true, since: Infinity }));
+    const bots = () => (opts.bots ? opts.bots() : []).map(b => ({ peer: b.peer, isMe: false, bot: true, nick: net.clean(b.nick, 24) || 'Bot', champ: CH.get(b.champ) ? b.champ : null, look: CH.look(b.champ, b.look), ready: true, since: Infinity, wear: [] }));
     const others = () => members().filter(m => !m.isMe).concat(bots());
     const takenBy = id => others().find(m => m.champ === id);
     const free = id => CH.unlocked(id) && !takenBy(id);
@@ -223,10 +235,11 @@
     unsub.push(() => clearTimeout(fullT));
     // The first pick happens before the mode has its party object, so it doesn't call back.
     const cb = opts.onChange; opts.onChange = null; settle(); opts.onChange = cb;
+    if (SD.emote) unsub.push(SD.emote.attach(room, me));
 
     const P = {
       members, champ: () => champ, look: () => look, ready: () => ready,
-      fields: () => ({ nick: me.nick, champ, look, ready, since }),
+      fields: () => ({ nick: me.nick, champ, look, ready, since, wear: SD.wear ? SD.wear.worn(champ) : [] }),
       setReady(v) { ready = !!v; if (opts.onChange) opts.onChange(); },
       leave() { unsub.forEach(f => f()); }
     };
@@ -241,11 +254,11 @@
       const max = ctx.max || 2;
       const sorted = list.slice().sort((a, b) => (b.peer === leaderPeer) - (a.peer === leaderPeer));
       const seats = sorted.map(m => {
-        const c = CH.get(m.champ);
+        const c = CH.get(m.champ), plate = SD.wear ? SD.wear.plate(m.wear) : '';
         const chips = (ctx.chip ? ctx.chip(m) : '') + (m.peer === leaderPeer ? '' : `<span class="pt-chip ${m.ready ? 'ok' : 'wait'}">${m.ready ? 'Ready' : 'Not ready'}</span>`);
-        return `<div class="pt-mem${m.ready || m.peer === leaderPeer ? ' ready' : ''}${ed === m ? ' editing' : ''}" data-peer="${esc(m.peer)}"><div class="pt-stage" data-spr="${esc(m.champ || '')}" data-look="${esc(m.look || '')}"></div>
+        return `<div class="pt-mem${m.ready || m.peer === leaderPeer ? ' ready' : ''}${ed === m ? ' editing' : ''}" data-peer="${esc(m.peer)}"><div class="pt-stage" data-spr="${esc(m.champ || '')}" data-look="${esc(m.look || '')}" data-wear="${esc((m.wear || []).join(' '))}"></div>
           ${m.isMe ? '<span class="pt-badge you">YOU</span>' : m.bot ? '<span class="pt-badge bot" title="A computer-controlled teammate, run by the leader\'s page">BOT</span>' : ''}${m.peer === leaderPeer ? '<span class="pt-badge lead">LEADER</span>' : ''}
-          ${m.isMe ? `<div class="pt-rename"><input id="pt-nick" maxlength="24" value="${esc(m.nick)}" aria-label="Your name" autocomplete="off"><button class="mi-btn sm" type="button" id="pt-save">Save</button></div>` : `<b>${esc(m.nick)}</b>`}
+          ${m.isMe ? `<div class="pt-rename"><input id="pt-nick"${plate ? ` class="${plate}"` : ''} maxlength="24" value="${esc(m.nick)}" aria-label="Your name" autocomplete="off"><button class="mi-btn sm" type="button" id="pt-save">Save</button></div>` : `<b${plate ? ` class="${plate}"` : ''}>${esc(m.nick)}</b>`}
           <span class="as">${c ? 'as ' + esc(c.name) : 'No champion yet'}</span>${m.bot && iLead && ctx.botChamp ? `<button class="mi-btn sm pt-chg" type="button" data-edit="${esc(m.peer)}" aria-pressed="${ed === m}">${ed === m ? 'Done' : 'Change champion'}</button>` : ''}<div class="pt-chips">${chips}</div>
           ${iLead && !m.isMe ? `<button class="pt-kick" type="button" data-kick="${esc(m.peer)}">Remove</button>` : ''}</div>`;
       });
@@ -267,6 +280,7 @@
       if (hiring && CH.state(hiring) !== 'hire') hiring = null;
       const hireCard = hiring && SD.raidShop ? `<ul class="pt-hire" id="pt-hire" aria-label="Hire ${esc(CH.get(hiring).name)}">${SD.raidShop.card(hiring)}</ul>` : '';
       const sig = ctx.deck && pick && CH.cards[pick] ? sigCards(pick, ed) : '';
+      const wd = SD.wear && SD.marks && SD.marks.on() ? `<details class="pt-wd" id="pt-wd"${wardrobe ? ' open' : ''}><summary>Wardrobe <small>what your party sees you wear</small></summary>${SD.wear.wardrobe(champ)}</details>` : '';
       const why = ctx.startWhy ? ctx.startWhy() : null;
       const notReady = list.filter(m => m.peer !== leaderPeer && !m.ready).length;
       const bossClash = list.some(m => CH.bossConflict(m.champ, ctx.boss));
@@ -289,13 +303,15 @@
         <div class="pt-members">${seats.join('')}</div>
         <div class="pt-lbl" id="pt-lbl">${ed ? `<span class="pt-for" aria-live="polite">Choosing for ${esc(ed.nick)} <button class="mi-btn sm pt-chg" type="button" id="pt-done">Done</button></span><small>Tap a champion for ${esc(ed.nick)}, or Done to keep this one.</small>` : `<span aria-live="polite">Your champion</span><small>${ctx.deck ? 'Each brings three signature cards to the raid. ' : ''}Two players can't pick the same one; a bot moves aside for you. Reach more of them in the game to unlock them.</small>`}<div class="pt-roster">${regions}</div></div>
         ${hireCard}
+        ${wd}
         ${sig}
-        <div class="pt-bar"><p>${status}</p>${btn}</div></div></div>`;
+        <div class="pt-bar"><p>${status}</p><div class="pt-acts">${SD.emote ? SD.emote.button() : ''}${btn}</div></div></div></div>`;
       root.querySelectorAll('[data-spr]').forEach(el => {
         const v = el.dataset.spr; if (!v) return;
         const lock = v.startsWith('lock:'), id = lock ? v.slice(5) : v, c = CH.get(id); if (!c) return;
         const big = el.classList.contains('pt-stage');
         el.appendChild(CH.sprite(id, big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h), big || (!lock && id === champ), el.dataset.look || (id === champ ? look : null)));
+        if (big && SD.wear && el.dataset.wear) SD.wear.dressStage(el, el.dataset.wear.split(' '), id);
       });
       if (focusNick) { const i = root.querySelector('#pt-nick'); if (i) { i.focus(); i.value = draft; } }
       else if (keep) { const k = root.querySelector(keep); if (k) k.focus(); }
@@ -332,6 +348,12 @@
       // Hired from the lobby: they're picked straight away (for the bot being picked for, if any).
       const hc = root.querySelector('#pt-hire');
       if (hc) SD.raidShop.wire(hc, redraw, id => { hiring = null; if (ed) { editing = null; ctx.botChamp(ed.peer, id); } else { pickC(id); CH.setMine(id); } if (opts.onChange) opts.onChange(); else redraw(); });
+      const wdEl = root.querySelector('#pt-wd');
+      if (wdEl) {
+        wdEl.ontoggle = () => { wardrobe = wdEl.open; };
+        SD.wear.wireWardrobe(wdEl, () => { if (opts.onChange) opts.onChange(); else redraw(); });
+      }
+      if (SD.emote) SD.emote.wire(root);
       if (ctx.bind) ctx.bind(root);
     };
     return P;

@@ -1524,6 +1524,9 @@
       Object.keys(G.players).forEach(k => { if (!h.has(k) && k !== me.peer) delete G.players[k]; });
       if (!X() || !all().length) return;
       Object.values(G.players).forEach(p => { p.bits = BITS; p.o = []; p.sold = []; p.tal = 0; });
+      // Hero #404 in the 307 Temporary Redirect look: a sequel lead, drawn here for the whole expedition. Until now the
+      // party room showed his silhouette.
+      Object.keys(G.players).forEach(k => { const p = G.players[k]; if (p.c === 'hero404' && wearOf(k).includes('look-hero404-307')) p.lk = SD.champions.redirect() || p.lk; });
       // run: this expedition's own id, so a second one under the same party code pays Raid Marks again.
       Object.assign(G, { sla: SLA, tapes: 0, tapeN: 0, rooms: 0, end: null, note: '', run: Date.now().toString(36) });
       enterFloor(0); push();
@@ -2130,22 +2133,44 @@
       if (seen && seen.k === G.k && G.taken > seen.taken) Object.keys(played).forEach(k => { anim[k] = { a: 'hurt', t0: now }; });
       seen = { turn: G.turn, taken: G.taken, played, k: G.k };
     }
+    // A seat's cosmetics, from its player's presence (yours from your save); multiplayer only, like everything here.
+    const W = SD.wear;
+    const wearOf = k => {
+      if (!W || isBot(k)) return [];
+      if (k === me.peer) return W.worn(G.players[k] && G.players[k].c);
+      const p = players().find(x => x.peer === k);
+      return p ? W.clean(p.presence.wear) : [];
+    };
     // lk: a look (Hero #404's man or woman), whose battle sheet is champ-<id>-<look>.
     function artOf(c, lk) {
       const BA = SD.championArt && SD.championArt[c], CH = SD.champions && SD.champions.get(c), l = SD.champions && SD.champions.look(c, lk);
-      if (BA) return { sheet: `assets/img/battle/champ-${c}${l ? '-' + l : ''}.webp`, w: BA.w, h: BA.h, rows: BA.rows };
+      // One of Hero #404's 307 Temporary Redirect leads (js/redirect-art.js) is drawn at its own size.
+      const RA = SD.redirectArt && l && SD.redirectArt.leads.includes(l) ? SD.redirectArt : BA;
+      if (BA) return { sheet: `assets/img/battle/champ-${c}${l ? '-' + l : ''}.webp`, w: RA.w, h: RA.h, rows: RA.rows };
       if (CH) return { sheet: SD.champions.sheetOf(c, lk), w: CH.w, h: CH.h, rows: { idle: [2, CH.n + 1] }, map: true };
       return null;
+    }
+    // A fighter's sheet: their champion look's (js/look-art.js) if they wear one, else their champion's.
+    function fighterArt(k) {
+      const p = G.players[k]; if (!p) return null;
+      const sk = W ? W.skinOf(wearOf(k), p.c || 'uptima') : null, la = sk && W.lookArt(sk);
+      // One of the original 16's looks fights side on, from its own battle sheet, like they do.
+      if (la && la.bat) return { sheet: `assets/img/battle/look/${sk}.webp`, w: la.bat.w, h: la.bat.h, rows: la.bat.rows };
+      return la ? { sheet: la.sheet, w: la.w, h: la.h, rows: { idle: [0, la.n] }, map: true } : artOf(p.c || 'uptima', p.lk);
     }
     function stageHtml(e) {
       const ids = Object.keys(G.players), small = matchMedia('(max-width: 520px)').matches;
       const fighters = ids.map(k => {
-        const p = G.players[k], a = artOf(p.c || 'uptima', p.lk);
+        const p = G.players[k], a = fighterArt(k);
         if (!a) return '';
         // About 100px tall (70 on a phone), smaller in a party of four.
         const s = Math.max(1, Math.min(2.6, (small ? 70 : 100) / a.h * (ids.length > 3 ? 0.85 : 1)));
         const st = anim[k] && performance.now() - anim[k].t0 < 500 ? ' ' + anim[k].a : '';
-        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${G.me.some(x => x.p === k) ? ' spot' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}" style="width:${a.w}px;height:${a.h}px;background-image:url(${a.sheet});transform:scale(${s.toFixed(2)})"></i></div><span class="rd-name">${esc(p.n)}</span></div>`;
+        // What they wear (js/wear.js): their effect over the fighter and their nameplate under it. Bots wear nothing.
+        const wr = wearOf(k), fx = W ? wr.map(id => W.fx(id, true)).join('') : '', pl = W ? W.plate(wr) : '';
+        // Their colour for this champion, on whichever sheet the fight draws (it arrives a moment later the first time).
+        const sk = W ? W.skinOf(wr, p.c || 'uptima') : null, sku = sk && W.SKINS[sk].main ? W.skinUrl(a.sheet, sk) : null;
+        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${G.me.some(x => x.p === k) ? ' spot' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}"${sk && W.SKINS[sk].main ? ` data-wear-src="${esc(a.sheet + '|' + sk)}"` : ''} style="width:${a.w}px;height:${a.h}px;background-image:url(${sku || a.sheet});transform:scale(${s.toFixed(2)})"></i></div>${fx}<span class="rd-name${pl ? ' ' + pl : ''}">${esc(p.n)}</span></div>`;
       }).join('');
       const bd = SD.battleArt ? SD.battleArt.backdrops : null, b = bd && bd.includes(String(e.ch || 1)) ? String(e.ch || 1) : '1';
       const col = x => (SD.art.enemyColor ? SD.art.enemyColor(x.sprite) : '#f66');
@@ -2160,7 +2185,7 @@
     (function tick() {
       if (left) return;
       root.querySelectorAll('.rd-fighter').forEach(el => {
-        const k = el.dataset.peer, p = G.players[k], i = el.querySelector('i'), a = p && artOf(p.c || 'uptima', p.lk);
+        const k = el.dataset.peer, p = G.players[k], i = el.querySelector('i'), a = p && fighterArt(k);
         if (!a || !i) return;
         let st = anim[k] || { a: 'idle', t0: 0 };
         let row = a.rows[st.a];
