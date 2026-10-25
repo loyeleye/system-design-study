@@ -2140,10 +2140,16 @@
       if (CH) return { sheet: SD.champions.sheetOf(c, lk), w: CH.w, h: CH.h, rows: { idle: [2, CH.n + 1] }, map: true };
       return null;
     }
+    // A fighter's sheet: their champion look's (js/look-art.js) if they wear one, else their champion's.
+    function fighterArt(k) {
+      const p = G.players[k]; if (!p) return null;
+      const sk = W ? W.skinOf(wearOf(k), p.c || 'uptima') : null, la = sk && W.lookArt(sk);
+      return la ? { sheet: la.sheet, w: la.w, h: la.h, rows: { idle: [0, la.n] }, map: true } : artOf(p.c || 'uptima', p.lk);
+    }
     function stageHtml(e) {
       const ids = Object.keys(G.players), small = matchMedia('(max-width: 520px)').matches;
       const fighters = ids.map(k => {
-        const p = G.players[k], a = artOf(p.c || 'uptima', p.lk);
+        const p = G.players[k], a = fighterArt(k);
         if (!a) return '';
         // About 100px tall (70 on a phone), smaller in a party of four.
         const s = Math.max(1, Math.min(2.6, (small ? 70 : 100) / a.h * (ids.length > 3 ? 0.85 : 1)));
@@ -2167,7 +2173,7 @@
     (function tick() {
       if (left) return;
       root.querySelectorAll('.rd-fighter').forEach(el => {
-        const k = el.dataset.peer, p = G.players[k], i = el.querySelector('i'), a = p && artOf(p.c || 'uptima', p.lk);
+        const k = el.dataset.peer, p = G.players[k], i = el.querySelector('i'), a = p && fighterArt(k);
         if (!a || !i) return;
         let st = anim[k] || { a: 'idle', t0: 0 };
         let row = a.rows[st.a];

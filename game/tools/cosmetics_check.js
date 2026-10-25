@@ -67,6 +67,10 @@ const server = http.createServer((req, res) => {
   // expedition starts (js/raid.js start), never in the party room.
   check(await a.evaluate(() => SD.marks.cost('look-hero404-307') === 500), 'a champion look costs 500 ✦');
   check(await a.evaluate(() => { const l = SD.champions.redirect(); return SD.redirectArt.leads.includes(l) && SD.champions.look('hero404', l) === l && SD.champions.look('uptima', l) === null && /hero404-smoke-/.test(SD.champions.sprite('hero404', 1, false, l).style.backgroundImage); }), 'the four sequel leads are Hero #404 looks, and only his');
+  // A drawn look (js/look-art.js) replaces the champion's sheet on their seat, at the same scale.
+  check(await a.evaluate(() => { SD.marks.hire('gong'); SD.marks.set(SD.marks.balance() + 500); if (!SD.marks.buy('look-gong-tv') || !SD.wear.equip('look-gong-tv')) return false;
+    const el = document.createElement('div'); el.appendChild(SD.champions.sprite('gong', 2, true)); SD.wear.dressStage(el, SD.wear.worn('gong'), 'gong');
+    const s = el.querySelector('.champ-spr').style; SD.wear.unequip('skin:gong'); return /wear\/look\/look-gong-tv/.test(s.backgroundImage) && parseFloat(s.width) === SD.lookArt['look-gong-tv'].w * 2; }), 'Gong in Must See TV is drawn from his look\'s own sheet');
   await a.evaluate(() => document.getElementById('shopbox').remove());
 
   // A Whiteboard Showdown party on page A, joined by page B (the standalone Guild Hall page: no save).

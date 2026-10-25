@@ -105,7 +105,15 @@
     'skin-kyu-lunar': { champ: 'kyu', name: 'Lunar New Year', main: '#c01c2a', season: 'Lunar New Year' },
     // Champion looks: a redraw, worn in a champion's colour place (one or the other). Hero #404's is one of the sequel's
     // four leads, a new one each expedition (js/raid.js start); the party room keeps his silhouette.
-    'look-hero404-307': { champ: 'hero404', name: '307 Temporary Redirect', look: true, note: 'A sequel lead each expedition' }
+    'look-hero404-307': { champ: 'hero404', name: '307 Temporary Redirect', look: true, note: 'A sequel lead each expedition' },
+    // The others are drawn in js/look-art.js (tools/look_art.py).
+    'look-gong-tv': { champ: 'gong', name: 'Must See TV', look: true, note: 'Variety-show host' },
+    'look-doug-hoodie': { champ: 'doug', name: "Kevin's Hoodie", look: true },
+    'look-suzu-offcall': { champ: 'suzu', name: 'Off Call', look: true },
+    'look-sunny-meet': { champ: 'sunny', name: 'Meet Day', look: true },
+    'look-eunho-curtain': { champ: 'eunho', name: 'Curtain Call', look: true },
+    'look-leilani-storm': { champ: 'leilani', name: 'Storm Season', look: true },
+    'look-dieynaba-teranga': { champ: 'dieynaba', name: 'Teranga Evening', look: true }
   });
   Object.keys(SKINS).forEach(id => { ITEMS[id] = Object.freeze(Object.assign({ slot: 'skin' }, SKINS[id])); });
   const has = id => !!(SD.marks && SD.marks.has && SD.marks.has(id));
@@ -221,6 +229,15 @@
     }).catch(() => { /* no mask for this sheet: the champion stays as drawn */ }).finally(() => { delete busy[key]; });
     return null;
   };
+  // A look's own sheet (js/look-art.js): one row of n frames of w x h.
+  W.lookArt = id => { const a = SD.lookArt && SKINS[id] && SD.lookArt[id]; return a ? Object.assign({ sheet: `assets/img/wear/look/${id}.webp` }, a) : null; };
+  // Redraw a champion sprite (js/champions.js C.sprite) of champ in look la, at the same scale.
+  function lookSprite(spr, champ, la) {
+    const c = SD.champions && SD.champions.get(champ), s = c ? parseFloat(spr.style.width) / c.w : 1, w = la.w * s;
+    Object.assign(spr.style, { width: w.toFixed(1) + 'px', height: (la.h * s).toFixed(1) + 'px', backgroundImage: `url(${la.sheet})`, backgroundSize: (w * la.n).toFixed(1) + 'px auto' });
+    spr.style.setProperty('--end', '-' + (w * la.n).toFixed(1) + 'px');
+    spr.style.setProperty('--n', la.n);
+  }
   // A sprite element drawing src: in colour id now if it's ready, else as soon as it is.
   W.mark = function (el, src, id) {
     if (!el || !src || !SKINS[id] || !SKINS[id].main) return;
@@ -246,8 +263,9 @@
     css();
     if (frame) el.classList.add('wf', frame);
     if (effect) el.insertAdjacentHTML('beforeend', W.fx(effect, true));
-    const spr = skin && el.querySelector('.champ-spr');
-    if (spr) W.mark(spr, W.srcOf(spr), skin);
+    const spr = skin && el.querySelector('.champ-spr'), la = skin && W.lookArt(skin);
+    if (spr && la) lookSprite(spr, champ, la);
+    else if (spr) W.mark(spr, W.srcOf(spr), skin);
   };
   W.plate = list => { const p = of(W.clean(list), 'plate'); if (p) css(); return p ? 'wpl ' + p : ''; };
   W.swatch = function (id) {
@@ -256,6 +274,8 @@
     css();
     if (it.slot === 'effect') return `<span class="wd-sw" style="background:#2b2340">${W.fx(id)}</span>`;
     if (it.slot === 'plate') return `<span class="wd-sw wd-pl"><span class="wpl ${id}">Name</span></span>`;
+    const la = W.lookArt(id), s = la ? Math.min(1, 38 / la.h) : 1;
+    if (la) return `<span class="wd-sw wd-look-art" aria-hidden="true"><i style="width:${(la.w * s).toFixed(1)}px;height:${(la.h * s).toFixed(1)}px;background-image:url(${la.sheet});background-size:${(la.w * s * la.n).toFixed(1)}px auto"></i></span>`;
     if (it.look) return '<span class="wd-sw wd-look" aria-hidden="true">307</span>';
     if (it.slot === 'skin') return `<span class="wd-sw" style="background:linear-gradient(135deg, ${it.main} 0 62%, #f4efe6 62%)"></span>`;
     return `<span class="wd-sw wf ${id}"></span>`;
@@ -337,6 +357,7 @@ ${spots}
 .wd-it[aria-pressed="true"] { background: var(--mi-sun, #ffe14d); box-shadow: 0 2px 0 var(--mi-ink, #2b2340); }
 .wd-sw { position: relative; display: grid; place-items: center; width: 44px; height: 30px; border-radius: 6px; border: 2px solid var(--mi-ink, #2b2340); overflow: hidden; background: #eef8ff; font-size: 11px; }
 .wd-sw.wd-pl { width: 60px; background: #fff; }
+.wd-look-art { display: grid; place-items: center; background: #eef3f8; } .wd-look-art i { image-rendering: pixelated; background-repeat: no-repeat; }
 .wd-look { display: grid; place-items: center; background: #15121c; color: #c4b0f0; font: 800 15px ui-monospace, monospace; letter-spacing: .06em; }
 .wd-sw.wd-pl .wpl { font: 700 11px var(--f-body, system-ui); padding: 0 5px; }
 .wd-empty, .wd-note, .wd-none { font-size: 12px; color: var(--mi-muted, #6b6480); margin: 0; }
