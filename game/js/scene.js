@@ -137,16 +137,19 @@
       for (const [dx, dy] of DIRS) { const a = actorAt(P.x + dx, P.y + dy); if (a && a.talk !== false) return a.id; }
       return null;
     }
+    // The player stands still while a conversation, a panel or a cutscene is open: no keys, no taps and no steps, so
+    // nobody walks off mid-sentence, through a door the conversation can't answer, or about under a cutscene.
+    const $dlg = document.getElementById('dialog'), $panel = document.getElementById('panel');
+    const locked = () => !$dlg.hidden || !$panel.hidden || SC.playing;
     function onKey(e) {
-      if (!sc.active || !sc.P || sc.hold || e.defaultPrevented) return;
-      if (!document.getElementById('dialog').hidden || !document.getElementById('panel').hidden) return;
+      if (!sc.active || !sc.P || sc.hold || e.defaultPrevented || locked()) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { if (!e.repeat && !keys[k]) fresh = true; keys[k] = true; sc.P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = talkTarget(); if (t && sc.onTalk) { e.preventDefault(); sc.onTalk(t); } }
     }
     function onKeyUp(e) { keys[e.key.toLowerCase()] = false; }
     function onTap(e) {
-      if (!sc.active || !sc.P || sc.hold) return;
+      if (!sc.active || !sc.P || sc.hold || locked()) return;
       const r = canvas.getBoundingClientRect(), { cx, cy } = cam();
       let tx = Math.floor((e.clientX - r.left + cx) / ts), ty = Math.floor((e.clientY - r.top + cy) / ts);
       if (ISO) {
@@ -230,7 +233,7 @@
         } else if (a.arrive) { const r = a.arrive; a.arrive = null; r(); }
       });
       const P = sc.P;
-      if (!P || !sc.active || sc.hold) return;
+      if (!P || !sc.active || sc.hold || locked()) return;
       stepT -= dt;
       if (P.moving || stepT > 0) return;
       let nx = P.x, ny = P.y, face = null;
