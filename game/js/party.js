@@ -64,9 +64,16 @@
 .pt-kick { font: 600 12px var(--f-body, system-ui); background: none; border: 0; color: var(--mi-muted); text-decoration: underline; cursor: pointer; padding: 0; }
 .pt-lbl { font: 700 13px var(--f-body, system-ui); display: grid; gap: 6px; }
 .pt-lbl small { font-weight: 600; color: var(--mi-muted); }
-.pt-roster { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-start; }
+.pt-roster { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+/* The multiplayer champions (js/marks.js): a ✦ corner, and a dashed tile with its price until they're hired */
+.pt-champ.mp::before { content: '✦'; position: absolute; top: 3px; left: 6px; font: 700 11px var(--f-body, system-ui); color: #7b5cd6; }
+.pt-champ.hire { background: #f6f1ff; border-style: dashed; }
+.pt-champ.hire .pic { opacity: .55; }
+.pt-champ.hire::after { content: attr(data-price); position: absolute; top: 4px; right: 4px; font: 700 9px var(--f-body, system-ui); background: #7b5cd6; color: #fff; border-radius: 6px; padding: 1px 5px; }
+.pt-champ.hire[aria-expanded="true"] { outline: 3px solid #7b5cd6; outline-offset: 2px; }
+.pt-hire { list-style: none; margin: 0; padding: 0; }
 .pt-region { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
-.pt-region > span { flex-basis: 100%; font: 700 11px var(--f-body, system-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--mi-muted); }
+.pt-region > span { contain: inline-size; flex-basis: 100%; font: 700 11px var(--f-body, system-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--mi-muted); }
 .pt-champ { width: 80px; border: 2.5px solid var(--mi-ink); border-radius: 12px; background: #fff; padding: 6px 4px 4px; display: grid; justify-items: center; gap: 2px; cursor: pointer; position: relative; font: inherit; color: var(--mi-ink); }
 .pt-champ .pic { height: 64px; display: grid; place-items: end center; }
 .pt-champ b { font: 600 12px var(--f-head, system-ui); line-height: 1.15; }
@@ -116,7 +123,7 @@
 
   // A signature card's text is its rules, then a joke. The rules are the leading sentences that start like a game
   // effect; the rest is flavour. "Infra." is dropped, as the card's kind tag says it. {mit} and the like are filled in.
-  const RULE = /^(Mitigate|Absorb|Draw \d|The team loses|[+-]\d|Exhaust\.|Remove all Stale|Reveal|Always hits|This turn|For \d+ turns|Double all|Your absorb|(Flood|Scan) intents|Bad deploys)/;
+  const RULE = /^(Mitigate|Absorb|Draw \d|The team loses|[+-]\d|Exhaust\.|Remove all Stale|Reveal|Always hits|This turn|For \d+ turns|Double all|Your absorb|(Flood|Scan) intents|Bad deploys|Unseen|Queue \d|Pour|Take \d|Main Event|Shadow \d|In sync|Logged|If (a|that) |The teammate you name|You get|Kevin|The gong rings|The main event|Temper|Draw 2, then|Each turn)/;
   PT.sigText = function (d) {
     const n = Object.assign({}, d.abs, d.mit != null ? { mit: d.mit } : null);
     const all = d.text.replace(/\{(\w+)\}/g, (_, k) => n[k] != null ? n[k] : '').replace(/^Infra\.\s*/, '');
@@ -143,16 +150,21 @@
     opts = opts || {};
     const me = hub.me;
     let champ = null, ready = false, named = false, warm = false;
+    // Hero #404's look (js/champions.js C.look): a coin flip each time he's picked, kept until he's picked again.
+    let look = null;
+    const pickC = id => { if (id !== champ || !look) look = CH.rollLook(id); champ = id; };
     // The leader's page only: the bot whose champion the roster is picking right now (its peer key), else null.
     let editing = null, refocus = null;
+    // The champion for hire whose card is open below the roster, if any.
+    let hiring = null;
     // When this player arrived: in a clash of names or champions, whoever came later gives way.
     const since = Date.now();
     const unsub = [];
     const members = () => room.peers().filter(p => p.presence && p.presence.kind === kind)
-      .map(p => ({ peer: p.peer, isMe: p.isMe, nick: p.isMe ? me.nick : net.clean(p.presence.nick, 24) || 'A hero', champ: CH && CH.get(p.isMe ? champ : p.presence.champ) ? (p.isMe ? champ : p.presence.champ) : null, ready: p.isMe ? ready : !!p.presence.ready, since: p.isMe ? since : +p.presence.since || 0 }));
+      .map(p => ({ peer: p.peer, isMe: p.isMe, nick: p.isMe ? me.nick : net.clean(p.presence.nick, 24) || 'A hero', champ: CH && CH.get(p.isMe ? champ : p.presence.champ) ? (p.isMe ? champ : p.presence.champ) : null, look: p.isMe ? look : CH.look(p.presence.champ, p.presence.look), ready: p.isMe ? ready : !!p.presence.ready, since: p.isMe ? since : +p.presence.since || 0 }));
     const before = m => m.since < since || (m.since === since && m.peer < me.peer);
     // A bot arrived after everyone (since: Infinity), so a human never gives way to one.
-    const bots = () => (opts.bots ? opts.bots() : []).map(b => ({ peer: b.peer, isMe: false, bot: true, nick: net.clean(b.nick, 24) || 'Bot', champ: CH.get(b.champ) ? b.champ : null, ready: true, since: Infinity }));
+    const bots = () => (opts.bots ? opts.bots() : []).map(b => ({ peer: b.peer, isMe: false, bot: true, nick: net.clean(b.nick, 24) || 'Bot', champ: CH.get(b.champ) ? b.champ : null, look: CH.look(b.champ, b.look), ready: true, since: Infinity }));
     const others = () => members().filter(m => !m.isMe).concat(bots());
     const takenBy = id => others().find(m => m.champ === id);
     const free = id => CH.unlocked(id) && !takenBy(id);
@@ -179,7 +191,7 @@
       const clashN = others().find(m => m.nick.toLowerCase() === me.nick.toLowerCase());
       if (clashN && before(clashN)) { hub.setNick(pickName(), true); changed = true; }
       const clashC = champ && takenBy(champ);
-      if (!champ || (clashC && before(clashC)) || !CH.unlocked(champ)) { const c = pickChamp(); if (c !== champ) { champ = c; changed = true; } }
+      if (!champ || (clashC && before(clashC)) || !CH.unlocked(champ)) { const c = pickChamp(); if (c !== champ) { pickC(c); changed = true; } }
       if (changed && opts.onChange) opts.onChange();
     }
     unsub.push(room.onPeers(() => settle()));
@@ -197,8 +209,8 @@
     const cb = opts.onChange; opts.onChange = null; settle(); opts.onChange = cb;
 
     const P = {
-      members, champ: () => champ, ready: () => ready,
-      fields: () => ({ nick: me.nick, champ, ready, since }),
+      members, champ: () => champ, look: () => look, ready: () => ready,
+      fields: () => ({ nick: me.nick, champ, look, ready, since }),
       setReady(v) { ready = !!v; if (opts.onChange) opts.onChange(); },
       leave() { unsub.forEach(f => f()); }
     };
@@ -215,7 +227,7 @@
       const seats = sorted.map(m => {
         const c = CH.get(m.champ);
         const chips = (ctx.chip ? ctx.chip(m) : '') + (m.peer === leaderPeer ? '' : `<span class="pt-chip ${m.ready ? 'ok' : 'wait'}">${m.ready ? 'Ready' : 'Not ready'}</span>`);
-        return `<div class="pt-mem${m.ready || m.peer === leaderPeer ? ' ready' : ''}${ed === m ? ' editing' : ''}" data-peer="${esc(m.peer)}"><div class="pt-stage" data-spr="${esc(m.champ || '')}"></div>
+        return `<div class="pt-mem${m.ready || m.peer === leaderPeer ? ' ready' : ''}${ed === m ? ' editing' : ''}" data-peer="${esc(m.peer)}"><div class="pt-stage" data-spr="${esc(m.champ || '')}" data-look="${esc(m.look || '')}"></div>
           ${m.isMe ? '<span class="pt-badge you">YOU</span>' : m.bot ? '<span class="pt-badge bot" title="A computer-controlled teammate, run by the leader\'s page">BOT</span>' : ''}${m.peer === leaderPeer ? '<span class="pt-badge lead">LEADER</span>' : ''}
           ${m.isMe ? `<div class="pt-rename"><input id="pt-nick" maxlength="24" value="${esc(m.nick)}" aria-label="Your name" autocomplete="off"><button class="mi-btn sm" type="button" id="pt-save">Save</button></div>` : `<b>${esc(m.nick)}</b>`}
           <span class="as">${c ? 'as ' + esc(c.name) : 'No champion yet'}</span>${m.bot && iLead && ctx.botChamp ? `<button class="mi-btn sm pt-chg" type="button" data-edit="${esc(m.peer)}" aria-pressed="${ed === m}">${ed === m ? 'Done' : 'Change champion'}</button>` : ''}<div class="pt-chips">${chips}</div>
@@ -229,11 +241,15 @@
       const regions = CH.regions.map(r => {
         const cs = CH.list.filter(c => c.region === r);
         return `<div class="pt-region"><span>${esc(r)}</span>${cs.map(c => {
-          const lock = !CH.unlocked(c.id), boss = CH.bossConflict(c.id, ctx.boss), by = taken[c.id], hb = !by && heldBot[c.id];
-          const off = lock || by || boss;
-          return `<button type="button" class="pt-champ${c.id === pick ? ' sel' : ''}${lock ? ' lock' : ''}${by || boss ? ' taken' : ''}${hb ? ' held' : ''}" data-ch="${c.id}" ${by ? `data-by="${esc(by)}"` : boss ? 'data-by="BOSS"' : hb ? `data-by="${esc(hb)}" title="${esc(hb)} will switch to a free champion"` : ''} ${off ? 'aria-disabled="true"' : ''} aria-pressed="${c.id === pick}"><span class="pic" data-spr="${lock ? 'lock:' : ''}${c.id}"></span><b>${lock ? '???' : esc(c.short)}</b>${lock ? `<small>${esc(c.how)}</small>` : boss ? '<small>She\'s the boss</small>' : ''}</button>`;
+          const stt = CH.state(c.id), lock = stt === 'locked', hire = stt === 'hire', boss = CH.bossConflict(c.id, ctx.boss), by = taken[c.id], hb = !by && heldBot[c.id];
+          const off = lock || hire || by || boss, price = SD.marks ? SD.marks.price(c.id) : null;
+          // A champion for hire opens their card below the roster (js/raid-shop.js), where they're hired.
+          if (hire) return `<button type="button" class="pt-champ mp hire" data-ch="${c.id}" data-hireable="1" data-price="✦ ${price}" aria-disabled="true" aria-expanded="${hiring === c.id}" aria-controls="pt-hire"><span class="pic" data-spr="${c.id}"></span><b>${esc(c.short)}</b><small>Hire for ${price} ✦</small></button>`;
+          return `<button type="button" class="pt-champ${c.hire ? ' mp' : ''}${c.id === pick ? ' sel' : ''}${lock ? ' lock' : ''}${by || boss ? ' taken' : ''}${hb ? ' held' : ''}" data-ch="${c.id}" ${by ? `data-by="${esc(by)}"` : boss ? 'data-by="BOSS"' : hb ? `data-by="${esc(hb)}" title="${esc(hb)} will switch to a free champion"` : ''} ${off ? 'aria-disabled="true"' : ''} aria-pressed="${c.id === pick}"><span class="pic" data-spr="${lock ? 'lock:' : ''}${c.id}"></span><b>${lock ? '???' : esc(c.short)}</b>${lock ? `<small>${esc(c.how)}</small>` : boss ? '<small>She\'s the boss</small>' : ''}</button>`;
         }).join('')}</div>`;
       }).join('');
+      if (hiring && CH.state(hiring) !== 'hire') hiring = null;
+      const hireCard = hiring && SD.raidShop ? `<ul class="pt-hire" id="pt-hire" aria-label="Hire ${esc(CH.get(hiring).name)}">${SD.raidShop.card(hiring)}</ul>` : '';
       const sig = ctx.deck && pick && CH.cards[pick] ? sigCards(pick, ed) : '';
       const why = ctx.startWhy ? ctx.startWhy() : null;
       const notReady = list.filter(m => m.peer !== leaderPeer && !m.ready).length;
@@ -256,13 +272,14 @@
         ${ctx.note ? `<p class="pt-note">${ctx.note}</p>` : ''}
         <div class="pt-members">${seats.join('')}</div>
         <div class="pt-lbl" id="pt-lbl">${ed ? `<span class="pt-for" aria-live="polite">Choosing for ${esc(ed.nick)} <button class="mi-btn sm pt-chg" type="button" id="pt-done">Done</button></span><small>Tap a champion for ${esc(ed.nick)}, or Done to keep this one.</small>` : `<span aria-live="polite">Your champion</span><small>${ctx.deck ? 'Each brings three signature cards to the raid. ' : ''}Two players can't pick the same one; a bot moves aside for you. Reach more of them in the game to unlock them.</small>`}<div class="pt-roster">${regions}</div></div>
+        ${hireCard}
         ${sig}
         <div class="pt-bar"><p>${status}</p>${btn}</div></div></div>`;
       root.querySelectorAll('[data-spr]').forEach(el => {
         const v = el.dataset.spr; if (!v) return;
         const lock = v.startsWith('lock:'), id = lock ? v.slice(5) : v, c = CH.get(id); if (!c) return;
         const big = el.classList.contains('pt-stage');
-        el.appendChild(CH.sprite(id, big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h), big || (!lock && id === champ)));
+        el.appendChild(CH.sprite(id, big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h), big || (!lock && id === champ), el.dataset.look || (id === champ ? look : null)));
       });
       if (focusNick) { const i = root.querySelector('#pt-nick'); if (i) { i.focus(); i.value = draft; } }
       else if (keep) { const k = root.querySelector(keep); if (k) k.focus(); }
@@ -275,10 +292,11 @@
       const redraw = () => P.render(root, ctx);
       root.querySelectorAll('[data-ch]').forEach(b => b.onclick = () => {
         const id = b.dataset.ch;
+        if (b.dataset.hireable) { hiring = hiring === id ? null : id; redraw(); const h = root.querySelector('#pt-hire'); if (h) h.scrollIntoView({ block: 'nearest' }); return; }
         if (b.getAttribute('aria-disabled') === 'true') return;
         if (ed) { const k = ed.peer; editing = null; refocus = k; if (id !== ed.champ) ctx.botChamp(k, id); redraw(); return; }
         if (id === champ) return;
-        champ = id; CH.setMine(id); if (opts.onChange) opts.onChange();
+        pickC(id); CH.setMine(id); if (opts.onChange) opts.onChange();
       });
       const stopEdit = () => { refocus = editing; editing = null; redraw(); };
       root.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
@@ -295,6 +313,9 @@
       const ab = root.querySelector('#pt-bot'); if (ab) ab.onclick = () => ctx.addBot();
       const st = root.querySelector('#pt-start'); if (st) st.onclick = () => { if (!block) ctx.start(); };
       const rd = root.querySelector('#pt-ready'); if (rd) rd.onclick = () => P.setReady(!ready);
+      // Hired from the lobby: they're picked straight away (for the bot being picked for, if any).
+      const hc = root.querySelector('#pt-hire');
+      if (hc) SD.raidShop.wire(hc, redraw, id => { hiring = null; if (ed) { editing = null; ctx.botChamp(ed.peer, id); } else { pickC(id); CH.setMine(id); } if (opts.onChange) opts.onChange(); else redraw(); });
       if (ctx.bind) ctx.bind(root);
     };
     return P;

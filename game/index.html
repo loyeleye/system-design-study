@@ -197,6 +197,32 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 /* Kyu: purple pager LCD segments; the tip a blinking dot. */
 .champ-kyu { --qf: repeating-linear-gradient(90deg, #c4a5ff 0 8px, transparent 8px 11px); --qb: #1d1030; --qh: #ddd6fe; }
 .champ-kyu .qt-burn::after { width: 10px; height: 10px; margin-top: -5px; right: -12px; background: #f0abfc; box-shadow: 0 0 6px 2px #c084fc; animation: qt-blink 1s steps(1) infinite; }
+/* Doug: a laptop progress bar, Kevin's; the tip a blinking cursor. */
+.champ-doug { --qf: repeating-linear-gradient(90deg, #4ade80 0 10px, #16a34a 10px 12px); --qb: #10241a; --qh: #bbf7d0; }
+.champ-doug .qt-burn::after { border-radius: 0; width: 6px; height: 18px; margin-top: -9px; right: -9px; background: #e5e7eb; box-shadow: none; animation: qt-blink 1s steps(1) infinite; }
+/* Dieynaba: attaya poured from high, amber with foam; the tip a small glass. */
+.champ-dieynaba { --qf: linear-gradient(180deg, #fff7e0 0 22%, #d97706 22% 70%, #92400e 70%); --qb: #2b1a0c; --qh: #fde68a; }
+.champ-dieynaba .qt-burn::after { border-radius: 2px 2px 5px 5px; width: 12px; height: 18px; margin-top: -9px; right: -8px; background: linear-gradient(180deg, #fff7e0 0 25%, #b45309 25%); box-shadow: 0 0 0 2px var(--ink); clip-path: polygon(0 0, 100% 0, 85% 100%, 15% 100%); }
+/* Harbourmaster Leilani: chalked crossings on the harbour board; the tip a key. */
+.champ-leilani { --qf: repeating-linear-gradient(90deg, rgba(255,255,255,.85) 0 6px, transparent 6px 10px) 0 50% / 100% 3px no-repeat, #1e4e6b; --qb: #0c2433; --qh: #bae6fd; }
+.champ-leilani .qt-burn::after { border-radius: 50% 0 0 50%; width: 20px; height: 10px; margin-top: -5px; right: -14px; background: radial-gradient(circle at 25% 50%, transparent 2.5px, #fbbf24 3px) 0 0 / 10px 10px no-repeat, linear-gradient(#fbbf24, #fbbf24) 8px 3px / 12px 4px no-repeat; box-shadow: none; }
+/* Suzu: the S.O.S. armband, red and white; the tip a pager light. */
+.champ-suzu { --qf: repeating-linear-gradient(90deg, #dc2626 0 14px, #fff 14px 17px); --qb: #2b0d0d; --qh: #fecaca; }
+.champ-suzu .qt-burn::after { width: 10px; height: 10px; margin-top: -5px; right: -12px; background: #ef4444; box-shadow: 0 0 8px 3px #f87171; animation: qt-blink .6s steps(1) infinite; }
+/* Gong: brass, beaten; the tip the gong itself. */
+.champ-gong { --qf: linear-gradient(90deg, #a16207, #fbbf24 40%, #ca8a04 60%, #fde68a); --qb: #2b1d08; --qh: #fde68a; }
+.champ-gong .qt-burn { background-size: 200% 100%; animation: qt-shimmer 3s linear infinite; }
+.champ-gong .qt-burn::after { width: 22px; height: 22px; margin-top: -11px; right: -11px; background: radial-gradient(circle, #fde68a 0 30%, #ca8a04 32% 60%, #a16207 62%); box-shadow: 0 0 0 2px var(--ink); }
+/* Sunny: chalk reps on the barn wall, in fives; the tip a chalk stick. */
+.champ-sunny { --qf: repeating-linear-gradient(90deg, #fff 0 2px, transparent 2px 6px, #fff 6px 8px, transparent 8px 12px, #fff 12px 14px, transparent 14px 18px, #fff 18px 20px, transparent 20px 30px), #8b3a2b; --qb: #2b120c; --qh: #fed7aa; }
+.champ-sunny .qt-burn::after { border-radius: 3px; width: 8px; height: 22px; margin-top: -11px; right: -4px; background: #fefce8; box-shadow: 0 0 0 2px var(--ink); transform: rotate(-18deg); }
+/* Hero #404: smoke, black to grey, lilac-edged; the tip a lilac sparkle. */
+.champ-hero404 { --qf: linear-gradient(90deg, #0c0a10, #545060, #0c0a10, #545060); --qb: #1e1a2a; --qh: #ddd6fe; }
+.champ-hero404 .qt-burn { background-size: 200% 100%; animation: qt-shimmer 2s linear infinite; box-shadow: inset 0 0 0 2px #c4b0f0; }
+.champ-hero404 .qt-burn::after { border-radius: 0; width: 16px; height: 16px; margin-top: -8px; right: -10px; background: #08060c; box-shadow: none; clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); outline: 2px solid #c4b0f0; }
+/* Eun-ho: the stage, with a shadow a half-beat behind; the tip a black curtain. */
+.champ-eunho { --qf: linear-gradient(180deg, #e5e7eb 0 45%, #111827 45%); --qb: #0b0f1a; --qh: #e5e7eb; }
+.champ-eunho .qt-burn::after { border-radius: 2px; width: 14px; height: 22px; margin-top: -11px; right: -10px; background: repeating-linear-gradient(90deg, #111827 0 3px, #374151 3px 5px); box-shadow: 0 0 0 2px var(--ink); }
 @media (max-width: 520px) { .qt-sec { font-size: 22px; } .qt-fuse { height: 18px; } .qt-b { font-size: 10px; } }
 @media (prefers-reduced-motion: reduce) { .q-timer .qt-burn, .q-timer .qt-burn::after, .q-timer.low .qt-fuse { animation: none !important; } }
 .q-q { font-size: 17px; font-weight: 700; text-wrap: balance; }
@@ -1070,7 +1096,9 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/cloud.js"></script>
 <script src="js/net.js"></script>
 <script src="js/champions.js"></script>
+<script src="js/marks.js"></script>
 <script src="js/party.js"></script>
+<script src="js/raid-shop.js"></script>
 <script src="js/pair-mock.js"></script>
 <script src="js/showdown.js"></script>
 <script src="js/raid.js"></script>
@@ -1094,6 +1122,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/dungeon-art.js"></script>
 <script src="js/battle-art.js"></script>
 <script src="js/champion-art.js"></script>
+<script src="js/hero404-art.js"></script>
 <script src="js/hub.js"></script>
 <script src="js/run.js"></script>
 <script src="js/eli5.js"></script>

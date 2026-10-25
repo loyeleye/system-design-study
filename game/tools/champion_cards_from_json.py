@@ -25,7 +25,9 @@ import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORDER = ['uptima', 'seymour', 'mio', 'ayo', 'bru', 'kaito', 'ploy', 'kwame', 'explodia', 'latency', 'imani', 'rico',
-         'nari', 'hypewagon', 'neel', 'kyu']
+         'nari', 'hypewagon', 'neel', 'kyu',
+         # The Raid Marks champions (js/champions.js `hire`, Ladi, 2026-10-25).
+         'doug', 'dieynaba', 'leilani', 'suzu', 'gong', 'sunny', 'hero404', 'eunho']
 TIERS = ('common', 'uncommon', 'rare')
 MIX = {'common': 10, 'uncommon': 6, 'rare': 4}
 
@@ -38,9 +40,14 @@ KNOWN = {
     'brittle', 'weakMe', 'hardened', 'regen', 'thorns', 'buffer', 'intangible', 'artifact', 'addCard', 'heal', 'canary',
     'cob', 'later', 'reflect', 'restoreAbs', 'temper', 'temperWho', 'clearCard', 'cleanse', 'giveCap', 'givePrewarm',
     'giveDraw', 'give', 'delay', 'crit', 'critShare', 'wrongCost', 'ask', 'speed', 'sure', 'sureSpeed', 'wrong', 'perPoint',
+    # The Raid Marks champions' (js/raid.js, "The Raid Marks champions' effects").
+    'queue', 'queueMate', 'kevin', 'kevin2', 'kevinUp', 'eachQueue', 'pour', 'pourTo3', 'eachPour', 'pourEvery', 'sync',
+    'eachSync', 'tagUp', 'tagInfra', 'take', 'perPager', 'perPagerCap', 'eachPerPager', 'mainEvent', 'ring', 'onRing', 'meUp',
+    'meDraw', 'logTwice', 'pr', 'perReps', 'perPr', 'repsAbs', 'repsMit', 'temperEach', 'spot', 'giveMomentum',
+    'giveNextDraw', 'unseen', 'hideMe', 'eachUnseen', 'shadow', 'eachShadow', 'when', 'both',
 }
 # Keys only a rare's question uses: no common or uncommon may carry them (Addendum 3).
-ASKING = {'ask', 'speed', 'sure', 'sureSpeed', 'wrong', 'perPoint', 'crit', 'critShare', 'wrongCost'}
+ASKING = {'ask', 'speed', 'sure', 'sureSpeed', 'wrong', 'perPoint', 'crit', 'critShare', 'wrongCost', 'both'}
 
 # The card's art: an existing game-icons name, chosen by words in its name (counted three times) and its rules text.
 # The first entry with the best score wins; a champion's 20 cards avoid repeating one where another fits.
@@ -179,8 +186,10 @@ def check_fx(fx, where, rare):
         if k in ('speed',):
             for b in ('fast', 'steady', 'slow'):
                 check_fx({x: y for x, y in v[b].items() if x != 'sure' or isinstance(y, dict)}, f'{where}.speed.{b}', rare)
-        elif k in ('sure', 'wrong', 'perPoint', 'later') and isinstance(v, dict):
+        elif k in ('sure', 'wrong', 'perPoint', 'later', 'sync', 'pr', 'onRing', 'unseen', 'eachUnseen', 'both') and isinstance(v, dict):
             check_fx(v, f'{where}.{k}', rare)
+        elif k == 'when':
+            check_fx({x: y for x, y in v.items() if x != 'on'}, f'{where}.when', rare)
         elif k in ('clearCard', 'cleanse'):
             check_fx(v.get('else', {}), f'{where}.{k}.else', rare)
 
@@ -268,7 +277,7 @@ def main():
     print(f'{out}: {len(cards)} cards for {len(pools)} champions, {len(questions)} new questions, {len(arts)} different arts')
 
 
-HEAD = """// Champion reward cards (Ladi, 2026-10-20): 20 cards for each of the 16 champions (js/champions.js), 10 common,
+HEAD = """// Champion reward cards (Ladi, 2026-10-20): 20 cards for each of the 24 champions (js/champions.js), 10 common,
 // 6 uncommon and 4 rare, that only that champion finds in an Expedition Raid's card rewards (js/raid.js cardChoices
 // weights them: common 2, uncommon 0.75, rare 0.1, against a regular card's 1; a floor boss always offers one rare).
 // Only rares ask a question when played (fx.ask), drawn from a pool: 70% the card's own concepts, 20% the champion's

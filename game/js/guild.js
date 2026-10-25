@@ -228,6 +228,7 @@ select.gh-field { font-size: 15px; }
       if (at || isClosed()) return;
       if (view.scr === 'board') return board();
       if (view.scr === 'form') return formScreen();
+      if (view.scr === 'shop') return shopScreen();
       return hall();
     }
     // The hub's mode, in one line, above the hall.
@@ -256,7 +257,7 @@ select.gh-field { font-size: 15px; }
         raid: `<img class="boss-pic" alt="" src="assets/img/monsters/goblin.webp">`
       };
       paint(`<div class="mi-card">
-        <div style="display:grid;gap:4px"><span class="gh-eye">The Guild Hall</span><h1>Choose your quest</h1>
+        <div style="display:grid;gap:4px"><div class="gh-top"><span class="gh-eye">The Guild Hall</span>${SD.raidShop ? SD.raidShop.wallet() : ''}</div><h1>Choose your quest</h1>
           <p class="gh-lead">Three ways to practise with other heroes. Talk on your own call and use the party's page as the shared whiteboard. Nothing is saved: when everyone leaves, the party is gone.</p></div>
         ${where()}
         <div class="gh-acc">${ORDER.map(k => {
@@ -279,6 +280,7 @@ select.gh-field { font-size: 15px; }
         c.addEventListener('keydown', e => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openCard(c); } });
       });
       root.querySelectorAll('[data-board]').forEach(b => b.onclick = () => goBoard(b.dataset.board));
+      const wal = root.querySelector('#rs-wallet'); if (wal) wal.onclick = () => { view.scr = 'shop'; view.from = 'hall'; draw(); };
       const inp = root.querySelector('#gh-code');
       const go = () => { const err = joinCode(inp.value, null); if (err) { view.note = err; hall(); } };
       root.querySelector('#gh-go').onclick = go;
@@ -300,7 +302,7 @@ select.gh-field { font-size: 15px; }
     function board() {
       const k = view.mode;
       paint(`<div class="mi-card">
-        <div class="gh-top"><button class="gh-back" type="button" id="gh-hall">← Guild Hall</button>
+        <div class="gh-top"><button class="gh-back" type="button" id="gh-hall">← Guild Hall</button>${k === 'raid' && SD.raidShop ? SD.raidShop.wallet() : ''}
           <div class="gh-seg" role="tablist" aria-label="Mode">${playable.map(m => `<button type="button" role="tab" aria-selected="${m === k}" class="${m === k ? 'on' : ''}" data-tab="${m}">${esc(GAMES[m].tab)}<small data-count-s="${m}">${countOf(m)} open</small></button>`).join('')}</div></div>
         <div class="gh-bhead"><div><h1>Quest Board</h1><span class="gh-hint">${esc(GAMES[k].name)} · open parties · oldest first · the first 10</span></div>
           <button class="mi-btn gold" type="button" data-form>+ Form a party</button></div>
@@ -309,6 +311,7 @@ select.gh-field { font-size: 15px; }
         ${view.note ? `<p class="gh-note warn" role="status">${esc(view.note)}</p>` : ''}
         <div id="gh-rows">${rows(k)}</div></div>`);
       root.querySelector('#gh-hall').onclick = () => { view.scr = 'hall'; view.note = ''; view.card = k; draw(); };
+      const wal = root.querySelector('#rs-wallet'); if (wal) wal.onclick = () => { view.scr = 'shop'; view.from = 'board'; draw(); };
       root.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => goBoard(b.dataset.tab));
       const inp = root.querySelector('#gh-bcode');
       const go = () => { const err = joinCode(inp.value, k); if (err) { view.note = err; board(); } };
@@ -342,6 +345,10 @@ select.gh-field { font-size: 15px; }
     const tick = setInterval(refresh, 30000);
     onEnd(() => clearInterval(tick));
 
+    // The Raid shop (js/raid-shop.js): Kagemaru's counter, where Raid Marks hire the multiplayer champions.
+    function shopScreen() {
+      SD.raidShop.screen(root, { back: view.from === 'board' ? 'Quest Board' : 'Guild Hall', onBack: () => { view.scr = view.from === 'board' ? 'board' : 'hall'; view.card = 'raid'; draw(); } });
+    }
     function formScreen() {
       const k = view.mode, M = SD.mock, W = SD.wb;
       let settings = '';

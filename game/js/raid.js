@@ -31,7 +31,7 @@
 // never touches the save's run. One page is the authority (the host) and sends the whole expedition on `state` after
 // every change and every few seconds. Card piles go as short codes (enc() below), so four players stay well under a
 // room's 4 KiB. Players send only their moves on `pick`. If the host leaves, the present player with the lowest peer
-// label takes over from the last state. Pays no rewards.
+// label takes over from the last state. Pays no shards or XP; each page pays Raid Marks to its own save (js/marks.js).
 // Before it starts the table waits in the party room (js/party.js): everyone picks a champion (js/champions.js),
 // whose three signature cards go into their deck, the leader (the host) picks the expedition, and starts once everyone
 // is ready. In a fight each player stands on the left as their champion, facing the foe.
@@ -83,15 +83,24 @@
   // A player's statuses and the team's, all reset for each fight (each enemy's own are in G.foes, newFoe() below).
   // carry/fresh: Pre-Warmed Capacity that stays warm; debt: Capacity Tightly Coupled takes next turn; tax: a Missed
   // Heartbeat's +1 on the first card; creep: what Scope Creep has grown by.
-  const myStatus = () => ({ momentum: 0, prewarm: 0, carry: 0, fresh: 0, debt: 0, nextDraw: 0, brittle: 0, weakMe: 0, tax: 0, creep: 0 });
+  // The Raid Marks champions' (js/champions.js `hire`): glass, Dieynaba's next glass (0 bitter, 1 sweet like life, 2
+  // sweet like love); k2, turns Kevin has a second slot; kv, the % Kevin plays at this turn (0: his usual); pb, this
+  // player's biggest single Mitigate or Absorb this fight (Sunny's New PR); spotP / spotD, Pre-Warmed or a draw for
+  // this player's next tempered card that sets a New PR; hide, Pager Alert and Tech Debt hand-outs can't find them.
+  const myStatus = () => ({ momentum: 0, prewarm: 0, carry: 0, fresh: 0, debt: 0, nextDraw: 0, brittle: 0, weakMe: 0, tax: 0, creep: 0, glass: 0, k2: 0, kv: 0, pb: 0, spotP: 0, spotD: 0, hide: 0 });
   // hardK: the kind Hardened patches; lastHit: the last kind that landed (Circuit Breaker, Hardened); turnSla: the SLA
   // at the start of the turn (Self-Healing); ease: Backpressure on the next hit; retry: load the Retry Budget replays.
   // The champion cards' (js/champion-cards.js): cnN, cnT, cnU: Canary's N, its turns left and whether this turn's first
   // hit has met it; cob: Stale off at close of business; bk: the absorb in play when the foes last acted (Restore
   // Backup's limit); qk: the last question's number. lt: what lands next turn ([target, Mitigate, Absorb], `later`);
   // rf: Reflect [pct, turns left, cap per hit]; qs: rares' open questions (play() below).
-  const TEAM = ['hardened', 'regen', 'regenT', 'turnSla', 'retry', 'intangible', 'artifact', 'thorns', 'buffer', 'cnN', 'cnT', 'cnU', 'cob', 'bk', 'qk'];
-  const fightStatus = () => { const o = { hardK: null, lastHit: null, foes: [], fi: 0, lead: true, lt: [], rf: null, qs: [] }; TEAM.forEach(k => { o[k] = 0; }); return o; };
+  // The Raid Marks champions': reps, every card played this fight, and prs, the New PRs set (Sunny's PR Board); tagUp,
+  // this turn's extra Tag Team bonus; rang, the gong rang this turn; mp, the main event's card landed this turn;
+  // unseenT, an unseen card worked this turn; hurt, the SLA the team lost when the foes last acted. me: the main event
+  // (Gong), [{ p, by, x (%), c (cap), t (turns left) }]; pl: this turn's plays, [peer, card, target]; sy: what lands
+  // if the team is in sync (Leilani), [peer, card, target]; rq: what lands when the gong next rings, [peer, card, target].
+  const TEAM = ['hardened', 'regen', 'regenT', 'turnSla', 'retry', 'intangible', 'artifact', 'thorns', 'buffer', 'cnN', 'cnT', 'cnU', 'cob', 'bk', 'qk', 'reps', 'prs', 'tagUp', 'rang', 'mp', 'unseenT', 'hurt'];
+  const fightStatus = () => { const o = { hardK: null, lastHit: null, foes: [], fi: 0, lead: true, lt: [], rf: null, qs: [], me: [], pl: [], sy: [], rq: [] }; TEAM.forEach(k => { o[k] = 0; }); return o; };
   const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
   const rnd = a => a[Math.floor(Math.random() * a.length)];
   const obj = o => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
@@ -240,7 +249,10 @@
   const bankQ = id => (SD.questions || []).concat(SD.explain || []).find(q => q.id === id) || null;
   // Who a card names when it's played: the teammate who answers (ally) or answers with you (pair), who a gift goes to,
   // or the player a cleanse picks (you, too). Solo, nobody: it's yours.
-  const namesMate = d => !!d && ((d.ask && ['ally', 'pair'].includes(d.ask.who)) || !!(d.giveCap || d.givePrewarm || d.giveDraw) || obj(d.cleanse).who === 'one');
+  // A typed rare can name one too, for what its answer gives (Gong's One Fighter, One Belt).
+  const MATE_FX = ['giveCap', 'givePrewarm', 'giveDraw', 'giveNextDraw', 'giveMomentum', 'mainEvent', 'queueMate'];
+  const giftOf = f => MATE_FX.some(k => obj(f)[k]);
+  const namesMate = d => !!d && ((d.ask && ['ally', 'pair'].includes(d.ask.who)) || giftOf(d) || ['fast', 'steady', 'slow'].some(b => giftOf(obj(d.speed)[b])) || obj(d.cleanse).who === 'one');
 
   // ---------- Saves (the leader's page, after every room) ----------
   const KEY = 'sd-guild-expeditions';
@@ -317,6 +329,9 @@
 .rd-fighter .rd-name { font: 700 11px var(--f-body); background: rgba(43,35,64,.85); color: #fff; border-radius: 6px; padding: 0 6px; white-space: nowrap; max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
 .rd-fighter.me .rd-name { background: var(--blue, #3b8bff); }
 .rd-fighter.ready .rd-name::after { content: ' ✓'; }
+.rd-fighter.spot .rd-spr { filter: drop-shadow(0 0 6px #ffd54a) drop-shadow(0 0 2px #ffd54a); }
+.rd-fighter.spot::before { content: 'MAIN EVENT'; position: absolute; top: -14px; font: 800 9px var(--f-body); letter-spacing: .06em; color: #2b2340; background: #ffd54a; border-radius: 6px; padding: 0 5px; white-space: nowrap; z-index: 1; }
+.chip.rd-x { background: #fff6d6; border-color: #b58a00; }
 .rd-fighter.cast .rd-spr { animation: rd-lunge .5s ease-out; }
 .rd-fighter.hurt .rd-spr { animation: rd-hurt .5s ease-out; }
 @keyframes rd-lunge { 40% { transform: translateX(10px); filter: drop-shadow(0 0 6px #fff6a8); } }
@@ -512,6 +527,27 @@
     return `<span class="chip rd-st${['brittle', 'weakMe'].includes(k) ? ' stale' : ''}" title="${esc(STATUS[k][1])}">${esc(STATUS[k][0])}${txt ? ' ' + esc(txt) : ''}</span>`;
   }
   const stChips = (o, keys) => keys.filter(k => o[k] > 0).map(k => stChip(o, k)).join('');
+  // The Raid Marks champions' chips: Kevin's slot, the next glass, can't be found, Spotted (a player's); the PR Board,
+  // the main event, the Tag Team bonus and the gong (the team's).
+  const xChip = (t, tip) => `<span class="chip rd-st rd-x" title="${esc(tip)}">${esc(t)}</span>`;
+  const GLASS_NAME = ['bitter', 'sweet like life', 'sweet like love'];
+  function meExtra(G, p) {
+    const st = p.st, o = [];
+    if (p.kq.length || p.c === 'doug') o.push(xChip(`Kevin: ${p.kq.length ? p.kq.map(id => card(id).name).join(', ') : 'slot empty'}`, `Kevin plays ${st.k2 ? 'two cards' : 'one card'} from his slot when the foes act, at ${st.kv || 75}% of its numbers (at most Mitigate or Absorb 15), with no cost, question or drawback.`));
+    if (st.k2) o.push(xChip(`Kevin 2.0 (${st.k2} turn${st.k2 === 1 ? '' : 's'})`, 'A second laptop: Kevin plays two cards a turn.'));
+    if (p.c === 'dieynaba' || st.glass) o.push(xChip(`Next glass: ${GLASS_NAME[st.glass % 3]}`, 'Pour: bitter, Absorb 4; sweet like life, the team Self-Healing 3; sweet like love, every teammate draws 1. Then round again.'));
+    if (st.hide) o.push(xChip('Can\'t be found', 'This turn Pager Alert and Tech Debt hand-outs skip this player.'));
+    if (st.spotP || st.spotD) o.push(xChip('Spotted', `A tempered card of theirs that sets a New PR gives them ${st.spotP ? 'Pre-Warmed 1' : 'a draw'}.`));
+    return o.join('');
+  }
+  function teamExtra(G) {
+    const o = [], ps = Object.keys(G.players);
+    if (ps.some(k => G.players[k].c === 'sunny')) o.push(xChip(`PR Board: ${G.reps} rep${G.reps === 1 ? '' : 's'}${G.prs ? `, ${G.prs} PR${G.prs === 1 ? '' : 's'}` : ''} · ${ps.filter(k => G.players[k].st.pb).map(k => `${G.players[k].n} ${G.players[k].st.pb}`).join(', ') || 'no bests yet'}`, 'Reps: every card any player has played this fight. A New PR: a card that beats its player\'s biggest Mitigate or Absorb of the fight.'));
+    G.me.forEach(e => { if (G.players[e.p]) o.push(xChip(`Main event: ${G.players[e.p].n} ×${e.x / 100}`, `Their next card, this turn or next, has its Mitigate and Absorb ×${e.x / 100} (at most +${e.c}). If it lands effective, the gong rings.`)); });
+    if (tagBonus(G) > TAG_TEAM) o.push(xChip(`Tag Team +${tagBonus(G)}`, 'When two players land an effective card this turn, this much more mitigation.'));
+    if (G.rang) o.push(xChip('The gong rang', 'The gong rang this turn.'));
+    return o.join('');
+  }
   // The incident's load on one hit, after its escalation, De-escalate, Degraded nodes and Backpressure, times its
   // share in a pack (pw, from SD.groupFights.scale).
   // While a hit is landing, G.cn is what's left of the team's Canary: it takes that much off the hit's load (all its parts
@@ -704,21 +740,25 @@
   const sum = o => Object.values(obj(o)).reduce((a, b) => a + (+b || 0), 0);
   const tpOk = id => { const d = card(id); return !!d && !isTp(id) && !d.curse && !d.unplayable && !!d.rarity && !!(d.mit || d.abs || d.pow || d.each || d.eachMit || d.xmit || d.cost >= 2); };
   const tpWorth = id => { const d = card(id); return (d.mit ? 3 : 0) + (d.abs ? 3 * Object.keys(d.abs).length : 0) + (d.pow ? 3 : 0) + 2 * (Object.keys(obj(d.each)).length + (d.eachMit ? 1 : 0)) * 3 + (d.xmit ? 4 : 0) + (d.mit || 0) / 10 + d.cost / 10; };
-  function temper(G, peer, n, who) {
-    const mates = Object.keys(G.players).filter(k => k !== peer), from = who === 'ally' && mates.length ? mates : Object.keys(G.players), c = [];
+  // only: just these players' hands (Sunny's Spot the Whole Team, one card in each); hit collects whose were tempered.
+  function temper(G, peer, n, who, only, hit) {
+    const mates = Object.keys(G.players).filter(k => k !== peer), from = only || (who === 'ally' && mates.length ? mates : Object.keys(G.players)), c = [];
     from.forEach(k => G.players[k].hand.forEach((id, i) => { if (tpOk(id)) c.push([tpWorth(id) + Math.random() / 100, k, i]); }));
-    return c.sort((a, b) => b[0] - a[0]).slice(0, n).map(([, k, i]) => { const p = G.players[k]; p.hand[i] += '^'; return `${p.n}'s ${card(p.hand[i]).name}`; });
+    return c.sort((a, b) => b[0] - a[0]).slice(0, n).map(([, k, i]) => { const p = G.players[k]; p.hand[i] += '^'; if (hit) hit.push(k); return `${p.n}'s ${card(p.hand[i]).name}`; });
   }
   // Acknowledge N (Kyu, Explodia) and Settle N (Neel): clearCard { card: 'pager' | 'techdebt', n, max, deck, else }.
   // Each takes one Pager Alert (or Tech Debt) out of any player's hand, biggest first, free and with nothing lost; max
   // caps its size; deck: if no hand holds one, your own draw or discard pile. Each one not found does `else` instead.
+  // card 'any': either kind (Suzu's); mine: only your own hand; n up to 10 ("every one").
   const CLEAR = { pager: ['st-pager', 'st-pager2', 'st-pager3'], techdebt: ['st-techdebt', 'st-techdebt2', 'st-techdebt3'] };
+  const PAINS = CLEAR.pager.concat(CLEAR.techdebt), lvlPain = id => PAINS.indexOf(base(id)) % 3;
   function clearCards(G, peer, cc) {
-    const kinds = (CLEAR[cc.card] || CLEAR.pager).slice(0, Math.max(1, Math.min(3, cc.max | 0 || 3))), got = [], n = Math.max(1, Math.min(4, cc.n | 0 || 1));
+    const mx = Math.max(1, Math.min(3, cc.max | 0 || 3)), list = cc.card === 'any' ? PAINS : CLEAR[cc.card] || CLEAR.pager;
+    const kinds = list.filter(id => lvlPain(id) < mx), got = [], n = Math.max(1, Math.min(10, cc.n | 0 || 1));
     for (let j = 0; j < n; j++) {
       let at = null;
-      const look = (pile, k) => pile.forEach((id, i) => { const v = kinds.indexOf(base(id)); if (v >= 0 && (!at || v > at[2])) at = [pile, i, v, k]; });
-      Object.keys(G.players).forEach(k => look(G.players[k].hand, k));
+      const look = (pile, k) => pile.forEach((id, i) => { const v = kinds.includes(base(id)) ? lvlPain(id) : -1; if (v >= 0 && (!at || v > at[2])) at = [pile, i, v, k]; });
+      (cc.mine ? [peer] : Object.keys(G.players)).forEach(k => look(G.players[k].hand, k));
       if (!at && cc.deck) { look(G.players[peer].draw, peer); look(G.players[peer].disc, peer); }
       if (!at) break;
       const id = at[0].splice(at[1], 1)[0];
@@ -737,6 +777,182 @@
   }
   // Every number in an effect, n times over (a typed card's perPoint, per rubric point).
   const scale = (fx, n) => { const o = {}; Object.keys(obj(fx)).forEach(k => { const v = fx[k]; o[k] = typeof v === 'number' ? v * n : v && typeof v === 'object' && !Array.isArray(v) ? scale(v, n) : v; }); return o; };
+
+  // ---------- The Raid Marks champions' effects (js/champions.js `hire`, their pools in js/champion-cards.js) ----------
+  //   queue N / queueMate N  Doug: N cards (the game picks the biggest Mitigate or Absorb) from your hand, or the named
+  //                     teammate's, into Kevin's slot (p.kq). When the foes act Kevin plays them, one a turn (two with
+  //                     kevin2 N, for N turns), at 75% of their numbers (kevinUp on an infra of yours: that %; kevin N:
+  //                     N% this turn), with no cost, question or drawback, at most Mitigate or Absorb 15 each.
+  //                     eachQueue (infra): each turn, a card from your draw pile goes in the slot.
+  //   pour N / pourTo3  Dieynaba: the next glass, 1, 2, 3, then round again (st.glass). Bitter: Absorb 4; sweet like
+  //                     life: the team Self-Healing 3; sweet like love: every teammate draws 1 (alone, you do).
+  //                     pourTo3: pours until a third glass is poured. eachPour (infra): each turn (every pourEvery).
+  //   sync {..}         Leilani: lands when the foes act if every player has played a card this turn (eachSync: an
+  //                     infra's Absorb then). tagUp N / tagInfra N: the Tag Team bonus is N higher (this turn / while up).
+  //   take N            Suzu: the biggest Pager Alert or Tech Debt from a teammate's hand into yours (before the card's
+  //                     numbers). perPager N (perPagerCap): +N Mitigate for each one in your hand; eachPerPager (infra):
+  //                     +N Absorb each turn for each. clearCard { card: 'any', mine } above.
+  //   mainEvent { x, cap, n }  Gong: the named teammate's next card, this turn or next, has its Mitigate and Absorb ×x
+  //                     (at most +cap); if it lands effective the gong rings. n 2: another teammate too. Alone, you at
+  //                     half (×1.25, cap/2). ring: the gong rings now (whoever rang it: Pre-Warmed 1, and onRing lands).
+  //                     meUp (infra): +N more on the main event's card; meDraw (infra): they draw N when it lands.
+  //   logTwice, pr {..}, perReps [per, cap], perPr [n, cap], repsAbs / repsMit [per, cap] (infra)  Sunny: reps (every
+  //                     card played this fight) and New PRs (a card beating its player's biggest Mitigate or Absorb of
+  //                     the fight; a first card never is). temperEach N: N cards in each teammate's hand; spot 'pre' |
+  //                     'draw': a tempered card that sets a New PR also gives its player Pre-Warmed 1 or a draw.
+  //   unseen {..}, hideMe, eachUnseen {..} (infra)  Hero #404: still in hand when the foes act, the card does `unseen`
+  //                     and goes to the discard pile; hideMe: this turn hand-outs skip you.
+  //   shadow N, eachShadow N (infra)  Eun-ho: replay the last card a teammate played this turn (else your own) at N%.
+  //   when { on, ..fields }  adds its fields to the card's when `on` holds: queued, hurt (the team lost SLA last turn),
+  //                     rang, main (the main event's card landed this turn), mate (a teammate played this turn),
+  //                     mateEff (a teammate landed an effective card this turn), reps10.
+  //   both {..}         a pair rare: lands when every answer was right.
+  const painsIn = p => p.hand.filter(id => PAINS.includes(base(id))).length;
+  // An echo of a card at pct%: its Mitigate, Absorb, hit and status numbers rounded down, its Mitigate and Absorb at
+  // most cap each, without its cost, question or drawbacks. An X card counts as X = 1.
+  const ECHO = ['mit', 'pow', 'vuln', 'leak', 'degrade', 'deesc', 'heal', 'regen', 'thorns', 'buffer', 'artifact', 'hardened', 'momentum', 'prewarm', 'nextDraw'];
+  function echoFx(d, pct, cap) {
+    const f = n => Math.floor((+n || 0) * pct / 100), o = {}, abs = {};
+    ECHO.forEach(k => { if (f(d[k]) > 0) o[k] = f(d[k]); });
+    const m = (o.mit || 0) + (d.xcost ? f(d.xmit) : 0) + f(d.eachMit);
+    if (m) o.mit = Math.min(cap, m);
+    if (o.pow) { o.pow = Math.min(cap, o.pow); o.tags = (d.tags || []).slice(); if (d.wild) o.wild = true; }
+    let a = 0;
+    Object.keys(Object.assign({}, obj(d.abs), obj(d.each))).forEach(k => { const n = Math.min(f(obj(d.abs)[k]) + f(obj(d.each)[k]), cap - a); if (n > 0) { abs[k] = n; a += n; } });
+    if (a) o.abs = abs;
+    if (d.all && (o.mit || o.pow)) o.all = true;
+    return o;
+  }
+  // Kevin's pick: the card with the biggest Mitigate and Absorb (not infra, not a curse).
+  const kWorth = id => { const d = card(id); return d && !d.unplayable && !d.curse && d.kind !== 'infra' ? (d.mit || 0) + (d.pow || 0) + (d.xmit || 0) + sum(d.abs) : 0; };
+  function queue(from, to, n) {
+    const got = [];
+    for (let j = 0; j < n && to.kq.length < 6; j++) {
+      const i = from.hand.map((id, i) => [kWorth(id) + Math.random() / 100, i]).filter(x => x[0] >= 1).sort((a, b) => b[0] - a[0]).map(x => x[1])[0];
+      if (i == null) break;
+      const id = from.hand.splice(i, 1)[0];
+      to.kq.push(id); got.push(card(id).name);
+    }
+    return got;
+  }
+  // fxApply, with what it absorbed in the log too (Kevin, a shadow and an unseen card say what they did).
+  function fxSay(G, k, fx, t) { const a = shSum(G), log = fxApply(G, k, fx, t, {}), n = Math.round(shSum(G) - a); return log + (n > 0 ? `Absorb ${n}. ` : ''); }
+  function kevinActs(G) {
+    let log = '';
+    Object.keys(G.players).forEach(k => {
+      const p = G.players[k], st = p.st;
+      if (!p.kq.length || front(G) < 0) return;
+      const pct = st.kv || Math.max(75, ...G.infra.filter(x => x.by === k).map(x => card(x.id).kevinUp || 0));
+      p.kq.splice(0, st.k2 ? 2 : 1).forEach(id => { log += `Kevin plays ${p.n}'s ${card(id).name} at ${pct}%. ` + fxSay(G, k, echoFx(card(id), pct, 15), front(G)); p.disc.push(id); });
+    });
+    return log;
+  }
+  const GLASS = ['First glass, bitter: absorb 4', 'Second glass, sweet like life: Self-Healing 3', 'Third glass, sweet like love'];
+  function pour(G, peer) {
+    const p = G.players[peer], g = p.st.glass % 3, mates = Object.keys(G.players).filter(k => k !== peer);
+    p.st.glass = (g + 1) % 3;
+    if (g === 0 && !G.intangible) G.sh.any += 4;
+    if (g === 1) { G.regen += 3; G.regenT = 2; }
+    if (g === 2) (mates.length ? mates : [peer]).forEach(k => drawN(G.players[k], 1));
+    return `${p.n} pours. ${GLASS[g]}${g === 2 ? (mates.length ? ': every teammate draws 1' : ': draw 1') : ''}. `;
+  }
+  function takePains(G, peer, n) {
+    const p = G.players[peer], got = [];
+    for (let j = 0; j < n && p.hand.length < 10; j++) {
+      let at = null;
+      Object.keys(G.players).filter(k => k !== peer).forEach(k => G.players[k].hand.forEach((id, i) => { if (PAINS.includes(base(id)) && (!at || lvlPain(id) > at[2])) at = [k, i, lvlPain(id)]; }));
+      if (!at) break;
+      const q = G.players[at[0]], id = q.hand.splice(at[1], 1)[0];
+      p.hand.push(id); got.push(`${q.n}'s ${card(id).name}`);
+    }
+    return got;
+  }
+  function mainEvent(G, peer, m, mate) {
+    const ps = Object.keys(G.players).filter(k => k !== peer), solo = !ps.length;
+    let x = Math.max(1, Math.min(3, +m.x || 1.5)), c = Math.max(1, Math.min(40, m.cap | 0 || 12));
+    if (solo) { x = 1 + (x - 1) / 2; c = Math.floor(c / 2); }
+    const one = solo ? peer : G.players[mate] && mate !== peer ? mate : rnd(ps);
+    const who = [one].concat((m.n | 0) > 1 && ps.length > 1 ? [rnd(ps.filter(k => k !== one))] : []);
+    G.me = who.map(k => ({ p: k, by: peer, x: Math.round(x * 100), c, t: 2 }));
+    return `Main event: ${who.map(k => G.players[k].n).join(' and ')}! The next card hits ×${Math.round(x * 100) / 100}. `;
+  }
+  function ring(G, by) {
+    const p = G.players[by], rq = G.rq;
+    G.rang = 1; G.rq = [];
+    if (p) p.st.prewarm += 1;
+    let log = `GONNNG! ${p ? p.n + ' is Pre-Warmed 1. ' : ''}`;
+    rq.forEach(([k, c, t]) => { const d = card(dec(c, 1)[0]); if (d && G.players[k]) log += fxApply(G, k, d.onRing, t, {}); });
+    return log;
+  }
+  // The main event's card: its Mitigate (m, before Exposed) and Absorb (a) get ×x, at most +cap, plus any meUp.
+  function mainBoost(G, peer, e, m, a, ti, fxlog) {
+    const k = e.x / 100 - 1, up = sum(G.infra.map(x => card(x.id).meUp || 0));
+    let bm = m * k, ba = a * k;
+    if (bm + ba > e.c) { const r = e.c / (bm + ba); bm *= r; ba *= r; }
+    bm = Math.floor(bm); ba = Math.floor(ba);
+    if (up) { if (m || !a) bm += up; else ba += up; }
+    let log = 'MAIN EVENT! ';
+    if (bm > 0 && ti >= 0) withFoe(G, ti, () => { log += `Mitigated ${mitigate(G, bm)} more. `; });
+    if (ba > 0 && !G.intangible) { G.sh.any += ba; log += `Absorb ${ba} more. `; }
+    G.me = G.me.filter(x => x !== e); G.mp = 1;
+    const dr = sum(G.infra.map(x => card(x.id).meDraw || 0));
+    if (dr) drawN(G.players[peer], dr);
+    if (/EFFECTIVE!/.test(fxlog)) log += ring(G, e.by);
+    return log;
+  }
+  // Leilani's in sync, Hero #404's unseen cards, Kevin and the Shadow Engine: as the foes act, before they move.
+  function syncNow(G) {
+    const on = Object.values(G.players).every(p => p.played.length), sy = G.sy, ib = G.infra.filter(x => card(x.id).eachSync && G.players[x.by]);
+    G.sy = [];
+    if (!sy.length && !ib.length) return '';
+    if (!on) return 'Not in sync: someone hadn\'t played a card this turn. ';
+    let log = 'In sync! ';
+    sy.forEach(([k, c, t]) => { const d = card(dec(c, 1)[0]); if (d && G.players[k]) log += fxApply(G, k, d.sync, t, {}); });
+    ib.forEach(x => { log += fxApply(G, x.by, { abs: card(x.id).eachSync }, front(G), {}); });
+    return log;
+  }
+  function unseenNow(G) {
+    let log = '';
+    Object.keys(G.players).forEach(k => {
+      const p = G.players[k];
+      p.hand.filter(id => card(id).unseen).forEach(id => {
+        p.hand.splice(p.hand.indexOf(id), 1); p.disc.push(id); G.unseenT = 1;
+        log += `Unseen, ${p.n}'s ${card(id).name} worked. ` + fxSay(G, k, card(id).unseen, front(G));
+      });
+    });
+    if (G.unseenT) G.infra.forEach(x => { const d = card(x.id); if (d.eachUnseen && G.players[x.by]) log += fxApply(G, x.by, d.eachUnseen, front(G), {}); });
+    return log;
+  }
+  function shadow(G, peer, pct) {
+    const pl = G.pl.slice().reverse(), src = pl.find(x => x[0] !== peer) || pl.find(x => x[0] === peer), id = src && dec(src[1], 1)[0];
+    if (!id) return 'Nothing to shadow yet. ';
+    const who = G.players[src[0]];
+    return `Shadowing ${who && src[0] !== peer ? who.n + '\'s' : 'their own'} ${card(id).name} at ${pct}%. ` + fxSay(G, peer, echoFx(card(id), pct, 15), src[2]);
+  }
+  const shadowInfra = G => G.infra.map(x => (card(x.id).eachShadow && G.players[x.by] ? shadow(G, x.by, card(x.id).eachShadow) : '')).join('');
+  // A card's numbers as played: `when` adds its fields if it holds, and the per-pager, per-rep and per-PR counts add
+  // to its Mitigate.
+  const merge = (a, b) => {
+    const o = Object.assign({}, a);
+    Object.keys(obj(b)).forEach(k => {
+      const v = b[k];
+      if (k === 'on') return;
+      if (typeof v === 'number' && typeof o[k] === 'number') o[k] += v;
+      else if (k === 'abs') { o.abs = Object.assign({}, o.abs); Object.keys(v).forEach(x => { o.abs[x] = (o.abs[x] || 0) + v[x]; }); } else o[k] = v;
+    });
+    return o;
+  };
+  const WHEN = { queued: (G, p) => p.kq.length > 0, hurt: G => G.hurt > 0, rang: G => !!G.rang, main: G => !!G.mp, mate: (G, p, k) => G.pl.some(x => x[0] !== k), mateEff: (G, p, k) => G.eff.some(x => x !== k), reps10: G => G.reps >= 10 };
+  function asPlayed(G, peer, d) {
+    const p = G.players[peer], w = obj(d.when);
+    let o = WHEN[w.on] && WHEN[w.on](G, p, peer) ? merge(d, w) : d;
+    const add = n => { if (n > 0) o = merge(o, { mit: n }); };
+    if (d.perPager) add(Math.min(d.perPagerCap || 99, painsIn(p) * d.perPager));
+    if (Array.isArray(d.perReps)) add(Math.min(d.perReps[1], Math.floor(G.reps / d.perReps[0])));
+    if (Array.isArray(d.perPr)) add(Math.min(d.perPr[1], G.prs * d.perPr[0]));
+    return o;
+  }
+  const tagBonus = G => TAG_TEAM + (G.tagUp || 0) + sum(G.infra.map(x => card(x.id).tagInfra || 0));
 
   // What card id costs this player now: Context Switching and a Missed Heartbeat put 1 on their first card this turn,
   // and Scope Creep grows each turn it sits in a hand.
@@ -798,7 +1014,7 @@
           if (wk) {
             log += `${who}EFFECTIVE! ${e.weak[wk]} `; mt(M(pw)); G.known.push('w:' + wk);
             // A Tag Team: the second player to land an effective card this turn.
-            if (!G.eff.includes(peer)) { G.eff.push(peer); if (G.eff.length === 2) log += `TAG TEAM! Mitigated ${mitigate(G, TAG_TEAM)} more. `; }
+            if (!G.eff.includes(peer)) { G.eff.push(peer); if (G.eff.length === 2) log += `TAG TEAM! Mitigated ${mitigate(G, tagBonus(G))} more. `; }
           } else if (rs) { log += `${who}RESISTED. ${e.resist[rs]} `; G.known.push('r:' + rs); }
           else { mt(Math.floor(M(pw) / 2)); log += `${who}Partial: it helps a little. `; }
         }
@@ -828,7 +1044,12 @@
     if (d.cob) G.cob += d.cob;
     if (d.reflect) { const r = obj(d.reflect); G.rf = [Math.max(1, Math.min(200, r.pct | 0 || 50)), Math.max(1, Math.min(5, r.turns | 0 || 1)), Math.max(1, Math.min(99, r.cap | 0 || 12))]; }
     if (d.later) { const l = obj(d.later), m = +l.mit ? M(+l.mit) : 0, a = sum(l.abs); if ((m || a) && G.lt.length < 12) G.lt.push([ti, m, a]); }
-    if (d.temper) { const got = temper(G, peer, d.temper, d.temperWho); log += got.length ? `Tempered ${got.join(', ')}. ` : 'Nothing in hand to temper. '; }
+    if (d.temper || d.temperEach) {
+      const hit = [], mates = Object.keys(G.players).filter(k => k !== peer);
+      const got = d.temperEach ? [].concat(...(mates.length ? mates : [peer]).map(k => temper(G, peer, d.temperEach, null, [k], hit))) : temper(G, peer, d.temper, d.temperWho, null, hit);
+      if (d.spot) hit.forEach(k => { G.players[k].st[d.spot === 'pre' ? 'spotP' : 'spotD'] = 1; });
+      log += got.length ? `Tempered ${got.join(', ')}. ` : 'Nothing in hand to temper. ';
+    }
     if (d.clearCard) {
       const r = clearCards(G, peer, d.clearCard);
       if (r.got.length) log += `${d.clearCard.card === 'techdebt' ? 'Settled' : 'Acknowledged'} ${r.got.join(', ')}. `;
@@ -836,14 +1057,32 @@
     }
     if (d.cleanse) { const r = cleanse(G, peer, d.cleanse, o.mate); log += r.length ? `Cleansed ${r.join(', ')}. ` : fxApply(G, peer, d.cleanse.else, t, {}); }
     // Gifts (Hypewagon): to the player who answered (a pair card's `give: 'answerer'`), else the teammate named, else you.
-    if (d.giveCap || d.givePrewarm || d.giveDraw) {
+    if (d.giveCap || d.givePrewarm || d.giveDraw || d.giveNextDraw || d.giveMomentum) {
       const to = G.players[o.to] ? o.to : G.players[o.mate] ? o.mate : peer, q = G.players[to];
       if (d.giveCap) q.cap += d.giveCap;
       if (d.givePrewarm) q.st.prewarm += d.givePrewarm;
+      if (d.giveNextDraw) q.st.nextDraw += d.giveNextDraw;
+      if (d.giveMomentum && !q.st.weakMe) q.st.momentum += d.giveMomentum;
       if (d.giveDraw) drawN(q, d.giveDraw);
-      if (to !== peer) log += `${q.n} gets ${[d.giveCap && `+${d.giveCap} Capacity`, d.givePrewarm && `Pre-Warmed ${d.givePrewarm}`, d.giveDraw && `${d.giveDraw} draw`].filter(Boolean).join(', ')}. `;
+      if (to !== peer) log += `${q.n} gets ${[d.giveCap && `+${d.giveCap} Capacity`, d.givePrewarm && `Pre-Warmed ${d.givePrewarm}`, d.giveNextDraw && `Runbook Ready ${d.giveNextDraw}`, d.giveMomentum && `Deep Context ${d.giveMomentum}`, d.giveDraw && `${d.giveDraw} draw`].filter(Boolean).join(', ')}. `;
     }
+    // The Raid Marks champions' (above).
+    if (d.pour) for (let j = Math.min(6, d.pour | 0); j > 0; j--) log += pour(G, peer);
+    if (d.pourTo3) for (let j = 0; j < 3; j++) { log += pour(G, peer); if (!st.glass) break; }
+    if (d.take) { const got = takePains(G, peer, Math.min(10, d.take | 0)); log += got.length ? `Took ${got.join(', ')}. ` : 'No pagers to take. '; }
+    if (d.kevin) st.kv = Math.max(st.kv, Math.min(100, d.kevin | 0));
+    if (d.kevin2) st.k2 += d.kevin2 | 0;
+    if (d.mainEvent) log += mainEvent(G, peer, obj(d.mainEvent), o.mate);
+    if (d.ring) log += ring(G, peer);
+    if (d.tagUp) G.tagUp += d.tagUp | 0;
+    if (d.hideMe) st.hide = 1;
+    if (d.shadow) log += shadow(G, peer, Math.max(1, Math.min(100, d.shadow | 0)));
     if (d.draw) drawN(p, d.draw);
+    // Kevin's queue comes after the draw, so a card can draw and then queue one of them (Mostly Cat Pictures).
+    if (d.queue || d.queueMate) {
+      const from = d.queueMate && G.players[o.mate] ? G.players[o.mate] : p, got = queue(from, p, Math.min(4, (d.queue || d.queueMate) | 0));
+      log += got.length ? `Queued for Kevin: ${got.join(', ')}. ` : 'Nothing for Kevin to queue. ';
+    }
     return log;
   }
   // A player plays card i from their hand at enemy t. Returns false when it can't be played. w: the player the card
@@ -864,14 +1103,34 @@
     p.hand.splice(i, 1);
     p.played.push(id);
     const ro = !!G.intangible, multi = G.foes.length > 1, mate = typeof w === 'string' && G.players[w] ? w : null;
-    let log = `${p.n}: ${d.name}${isUp(id) ? '+' : ''}${multi && !d.all ? ` at ${foeName(G, ti)}` : ''}. `;
+    let log = `${p.n}: ${d.name}${isUp(id) ? '+' : ''}${multi && !d.all ? ` at ${foeName(G, ti)}` : ''}${/[.!?]$/.test(d.name) && !isUp(id) && !(multi && !d.all) ? '' : '.'} `;
     const sh0 = shSum(G), raw = {};
-    log += fxApply(G, peer, d, ti, { L, tp: isTp(id), server: base(id) === 'addserver' && hasInfra(G, 'stateless'), mate, raw });
+    // Take comes before the card's numbers (they can count what it took); `when` and the counts set them.
+    if (d.take) { const got = takePains(G, peer, Math.min(10, d.take | 0)); log += got.length ? `Took ${got.join(', ')}. ` : 'No pagers to take. '; }
+    const me = !d.mainEvent && G.me.find(e => e.p === peer), fxlog = fxApply(G, peer, asPlayed(G, peer, d.take ? Object.assign({}, d, { take: 0 }) : d), ti, { L, tp: isTp(id), server: base(id) === 'addserver' && hasInfra(G, 'stateless'), mate, raw });
+    log += fxlog;
     if (d.kind === 'infra') {
       if (G.infra.length >= SLOTS) { const old = G.infra.shift(); const o = G.players[old.by]; if (o) o.disc.push(old.id); }
       G.infra.push({ id, by: peer });
       if (d.each && !ro) for (const k in d.each) G.sh[k] += d.each[k] + 2 * L;
     } else if (!d.exhaust) p.disc.push(id);
+    const mt = sum(raw), ab = Math.max(0, shSum(G) - sh0);
+    if (me && (mt || ab)) log += mainBoost(G, peer, me, mt, ab, ti, fxlog);
+    // Sunny's PR Board: the reps, and a New PR when this beats the player's biggest Mitigate or Absorb this fight.
+    G.reps += d.logTwice ? 2 : 1;
+    const landed = Math.max(sum(raw), Math.max(0, shSum(G) - sh0)), st = p.st;
+    if (landed > 0) {
+      if (st.pb > 0 && landed > st.pb) {
+        G.prs++;
+        log += `NEW PR for ${p.n}: ${landed}! `;
+        if (d.pr) log += fxApply(G, peer, d.pr, ti, { mate });
+        if (isTp(id) && (st.spotP || st.spotD)) { if (st.spotP) st.prewarm++; if (st.spotD) drawN(p, 1); log += `Spotted: ${st.spotP ? 'Pre-Warmed 1' : 'draw 1'}. `; st.spotP = 0; st.spotD = 0; }
+      }
+      st.pb = Math.min(999, Math.max(st.pb, landed));
+    }
+    if (d.sync && G.sy.length < 12) G.sy.push([peer, enc([base(id)]), ti]);
+    if (d.onRing && G.rq.length < 6) G.rq.push([peer, enc([base(id)]), ti]);
+    G.pl.push([peer, enc([id]), ti]); if (G.pl.length > 12) G.pl.shift();
     if (d.ask) {
       const A = obj(d.ask), two = mate && mate !== peer;
       const a = A.who === 'ally' ? [two ? mate : peer] : A.who === 'pair' && two ? [peer, mate] : [peer];
@@ -927,6 +1186,7 @@
         if (d.wrong) for (let n = x.sure && bet ? 2 : 1; n > 0; n--) log += fxApply(G, e.p, d.wrong, t, { mate: e.w });
       }
     });
+    if (d.both && ans.every(x => x.ok)) log += 'Both right! ' + fxApply(G, e.p, d.both, t, { mate: e.w });
     if (share) crit = Math.max(crit, 1 + share);
     if (crit > 1) {
       let more = 0;
@@ -966,6 +1226,8 @@
     // What each player adds to the shields this turn: their cards' Absorb and their infra's each-turn Absorb.
     Object.values(G.players).forEach(p => { p.ab = 0; });
     G.intangible = 0; G.cnU = 0;
+    G.tagUp = 0; G.rang = 0; G.mp = 0; G.unseenT = 0; G.pl = []; G.sy = [];
+    G.me = G.me.filter(e => --e.t > 0);
     const multi = G.foes.length > 1;
     living(G).forEach(i => withFoe(G, i, () => {
       if (G.vuln) G.vuln--;
@@ -986,6 +1248,9 @@
       // An infra's own mitigation, and its Degraded (eachDegrade), land on the frontmost enemy.
       if (d.eachMit && front(G) >= 0) withFoe(G, front(G), () => mitigate(G, d.eachMit + up));
       if (d.eachDegrade && front(G) >= 0) withFoe(G, front(G), () => { G.degrade += d.eachDegrade; });
+      // Sunny's: Absorb and Mitigate by the team's reps.
+      if (Array.isArray(d.repsAbs)) G.sh.any += Math.min(d.repsAbs[1], Math.floor(G.reps / d.repsAbs[0]));
+      if (Array.isArray(d.repsMit) && front(G) >= 0) withFoe(G, front(G), () => mitigate(G, Math.min(d.repsMit[1], Math.floor(G.reps / d.repsMit[0]))));
     });
     // What was played for later (`later`) lands now, after the shields reset, the infra refilled and Exposed ticked down.
     if (G.lt.length) {
@@ -1012,6 +1277,7 @@
       st.fresh = st.prewarm; st.prewarm = 0; st.carry = 0; st.debt = 0; st.tax = 0;
       if (st.weakMe) st.momentum = 0;
       p.ready = false; p.played = [];
+      st.kv = 0; st.hide = 0; if (st.k2) st.k2--;
       drawN(p, 5);
       if (st.nextDraw) {
         const n = st.nextDraw, look = [];
@@ -1025,6 +1291,14 @@
         p.peek = look; p.take = Math.min(n, look.length);
       }
     });
+    // Infra that works from the new hands: Dieynaba's pours, Doug's Cron Job, Suzu's Pager Alerts and Tech Debt.
+    G.infra.forEach(x => {
+      const d = card(x.id), p = G.players[x.by];
+      if (!p) return;
+      if (d.eachPour && (!d.pourEvery || G.turn % d.pourEvery === 0)) G.log = (G.log ? G.log + ' ' : '') + pour(G, x.by).trim();
+      if (d.eachQueue && p.kq.length < 6) { const i = p.draw.findIndex(id => kWorth(id) >= 1); if (i >= 0) p.kq.push(p.draw.splice(i, 1)[0]); }
+      if (d.eachPerPager && !G.intangible) G.sh.any += d.eachPerPager * painsIn(p);
+    });
     // Last turn's give turns: the cards land in hand (a full hand: the discard pile).
     (G.gv || []).forEach(([k, id]) => { const p = G.players[k]; if (p && card(id)) (p.hand.length < 10 ? p.hand : p.disc).push(id); });
     delete G.gv;
@@ -1032,7 +1306,8 @@
   }
   // A give turn: the card goes into hands when the next turn's are dealt (G.gv, newTurn), so it's there to answer.
   function give(G, it) {
-    const ps = Object.keys(G.players), nm = card(it.card).name;
+    const ps = Object.keys(G.players).filter(k => !G.players[k].st.hide), nm = card(it.card).name;
+    if (!ps.length) return `${it.name ? it.name + '! ' : ''}A ${nm}, but it couldn't find anyone. `;
     let to;
     if (it.to === 'all') to = ps;
     else if (it.to === 'least') { const low = Math.min(...ps.map(k => G.players[k].ab || 0)); to = [rnd(ps.filter(k => (G.players[k].ab || 0) === low))]; }
@@ -1073,7 +1348,7 @@
     // absorbed least this turn.
     const pc = painCard(G);
     if (dmg > 0 && pc && card(pc)) {
-      const ps = Object.values(G.players), low = Math.min(...ps.map(p => p.ab)), p = rnd(ps.filter(q => q.ab === low));
+      const ps = Object.values(G.players).filter(q => !q.st.hide), low = Math.min(...ps.map(p => p.ab)), p = rnd(ps.filter(q => q.ab === low));
       if (p) { p.disc.push(pc); note += `${p.n} absorbed least this turn and got a ${card(pc).name}. `; }
     }
     if (db && !skipped) {
@@ -1094,6 +1369,8 @@
     G.bk = Math.round(shSum(G));
     // Anyone still looking at their Runbook takes the first cards.
     Object.values(G.players).forEach(p => { while (p.peek.length && take(p, 0)) { /* until done */ } });
+    // In sync, unseen cards, Kevin and the Shadow Engine work as the foes act, before they move.
+    note += syncNow(G) + unseenNow(G) + kevinActs(G) + shadowInfra(G);
     living(G).forEach(i => withFoe(G, i, () => { const r = foeActs(G); dmg += r.dmg; note += multi ? `${foeName(G, i)}: ${r.note}${r.dmg ? `-${r.dmg}. ` : r.note ? '' : 'no damage. '}` : r.note; }));
     // What's still in hand: Tech Debt charges interest, Pager Alerts go off, Scope Creep grows (the card's `held`).
     // A card's `then` is for the turns after its first: two copies in one hand both cost the first amount.
@@ -1106,7 +1383,7 @@
       if (h.grow) p.st.creep += h.grow;
       if (h.page && card(h.page)) { Object.values(G.players).forEach(q => q.draw.push(h.page)); note += `${p.n}'s ${nm} paged everyone: a ${card(h.page).name} each. `; }
     }); });
-    G.sla -= dmg; G.taken += dmg;
+    G.sla -= dmg; G.taken += dmg; G.hurt = Math.max(0, dmg);
     // Close of business: Stale off after the foes have acted, so it catches what they just added.
     if (G.cob) { if (!G.intangible && G.stale) { const n = Math.min(G.stale, G.cob); G.stale -= n; note += `Close of business: -${n} Stale. `; } G.cob = 0; }
     // Canary and Reflect count down.
@@ -1237,7 +1514,8 @@
       Object.keys(G.players).forEach(k => { if (!h.has(k) && k !== me.peer) delete G.players[k]; });
       if (!X() || !all().length) return;
       Object.values(G.players).forEach(p => { p.bits = BITS; p.o = []; p.sold = []; p.tal = 0; });
-      Object.assign(G, { sla: SLA, tapes: 0, tapeN: 0, rooms: 0, end: null, note: '' });
+      // run: this expedition's own id, so a second one under the same party code pays Raid Marks again.
+      Object.assign(G, { sla: SLA, tapes: 0, tapeN: 0, rooms: 0, end: null, note: '', run: Date.now().toString(36) });
       enterFloor(0); push();
     }
     // The snapshot Seymour's tape restores: every deck and purse, the SLA and the map, as the floor began.
@@ -1277,7 +1555,7 @@
       }
       const names = ids.map((id, i) => (k > 1 ? foeName(G, i) : SD.enemies[id].name));
       G.log = `${names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' appear' : names[0] + ' appears'}. Plan it out loud, then play.`;
-      Object.values(G.players).forEach(p => { Object.assign(p, { draw: p.deck.slice(), disc: [], hand: [], played: [], ready: false, st: myStatus(), peek: [], take: 0, ab: 0, hd: {} }); });
+      Object.values(G.players).forEach(p => { Object.assign(p, { draw: p.deck.slice(), disc: [], hand: [], played: [], ready: false, st: myStatus(), peek: [], take: 0, ab: 0, hd: {}, kq: [] }); });
       withFoe(G, 0, () => {});
       newTurn(G);
     }
@@ -1309,7 +1587,7 @@
         const tier = G.tier, gain = {};
         Object.keys(G.players).forEach(k => {
           const p = G.players[k];
-          p.draw = []; p.disc = []; p.hand = []; p.played = []; p.ready = false; p.o = [];
+          p.draw = []; p.disc = []; p.hand = []; p.played = []; p.ready = false; p.o = []; p.kq = [];
           // Bits as in a run: 10 to 18 an incident, 30 to 39 an elite, none from a boss.
           gain[k] = tier === 'boss' ? 0 : tier === 'elite' ? 30 + Math.floor(Math.random() * 10) : 10 + Math.floor(Math.random() * 9);
           p.bits += gain[k];
@@ -1386,7 +1664,7 @@
       const kept = { foes: G.foes, main: G.main, spec: G.spec };
       Object.assign(G, fightStatus(), { ph: 'fight', room: null, tier, turn: 0, stale: 0, taken: 0, sh: zero(), flags: {}, infra: [], eff: [] }, kept);
       G.log = 'Back on your feet. Plan it out loud, then play.';
-      Object.values(G.players).forEach(p => { Object.assign(p, { draw: p.deck.slice(), disc: [], hand: [], played: [], ready: false, st: myStatus(), peek: [], take: 0, ab: 0, hd: {} }); });
+      Object.values(G.players).forEach(p => { Object.assign(p, { draw: p.deck.slice(), disc: [], hand: [], played: [], ready: false, st: myStatus(), peek: [], take: 0, ab: 0, hd: {}, kq: [] }); });
       withFoe(G, 0, () => {});
       newTurn(G);
     }
@@ -1564,7 +1842,7 @@
       if (!CH || G.ph !== 'lobby' || G.rs || !isBot(k) || typeof c !== 'string' || !CH.get(c) || !CH.unlocked(c) || CH.bossConflict(c, kyuBoss())) return false;
       const used = Object.keys(G.players).filter(j => j !== k).map(j => G.players[j].c).concat(party ? party.members().map(m => m.champ) : []);
       if (used.includes(c)) return false;
-      G.players[k].c = c; G.players[k].deck = botDeck(c);
+      G.players[k].c = c; G.players[k].lk = CH.rollLook(c); G.players[k].deck = botDeck(c);
       return true;
     }
     // A bot gives way: a champion a human holds (or one locked on this page, or Kyu against her own boss) is swapped for
@@ -1578,7 +1856,7 @@
         const b = G.players[k], ok = id => CH.get(id) && CH.unlocked(id) && !used.has(id) && !CH.bossConflict(id, kyuBoss());
         if (!ok(b.c)) {
           const c = CH.list.find(x => ok(x.id) && !botKeys().some(j => j !== k && G.players[j].c === x.id));
-          b.c = c ? c.id : null; b.deck = botDeck(b.c); changed = true;
+          b.c = c ? c.id : null; b.lk = c ? SD.champions.rollLook(c.id) : null; b.deck = botDeck(b.c); changed = true;
         }
         used.add(b.c);
       });
@@ -1603,6 +1881,8 @@
     // else Mitigate), at the lowest-Severity enemy for a single-target hit and the frontmost for anything else; an
     // all-enemies card counts once per enemy. Curses that cost the team in hand are paid off first, an X card goes
     // last. Nothing left to play: Ready.
+    // The Raid Marks champions' cards that do their work without a number of their own.
+    const BOT_PLUS = ['queue', 'queueMate', 'pour', 'pourTo3', 'take', 'mainEvent', 'shadow', 'kevin', 'kevin2', 'ring', 'temper', 'temperEach', 'giveMomentum', 'sync', 'tagUp', 'onRing', 'hideMe'];
     function botFight(k, p) {
       if (p.ready) return null;
       const up = living(G);
@@ -1615,9 +1895,10 @@
         if (d.held) return 99;
         if (d.xcost) return 0;
         const ab = sum(d.abs) + sum(d.each) + 3 * L * Object.keys(obj(d.abs)).length, mt = (d.mit ? d.mit + 3 * L : 0) + (d.pow || 0) + (d.eachMit || 0);
-        return (defend ? 2 : 1) * ab + (defend ? 1 : 2) * mt * (d.all && up.length > 1 ? up.length : 1) - (d.selfDmg || 0) + 1;
+        return (defend ? 2 : 1) * ab + (defend ? 1 : 2) * mt * (d.all && up.length > 1 ? up.length : 1) - (d.selfDmg || 0) + 1 + (BOT_PLUS.some(x => d[x]) ? 10 : 0);
       };
-      const ok = p.hand.map((id, i) => i).filter(i => { const d = card(p.hand[i]); return !d.unplayable && costFor(p, p.hand[i]) <= p.cap && !(d.xcost && !p.cap); });
+      // A bot holds Hero #404's unseen cards, so they work from its hand.
+      const ok = p.hand.map((id, i) => i).filter(i => { const d = card(p.hand[i]); return !d.unplayable && !d.unseen && costFor(p, p.hand[i]) <= p.cap && !(d.xcost && !p.cap); });
       if (!ok.length) return { d: { k: 'ready' } };
       const i = ok.sort((a, b) => val(p.hand[b]) - val(p.hand[a]))[0], d = card(p.hand[i]);
       const low = up.slice().sort((a, b) => G.foes[a].sev - G.foes[b].sev)[0];
@@ -1720,14 +2001,15 @@
     const newSeat = (n, c, deck) => ({ n, c, deck, bits: BITS, draw: [], disc: [], hand: [], cap: 3, ready: false, played: [], o: [], sold: [], st: myStatus(), peek: [], take: 0, ab: 0, hd: {} });
     // In the party room a new hello (another champion, a new name) replaces the deck. Once the expedition exists, a
     // hello only finds a returning player's seat, by name; nobody new joins.
-    function addPlayer(peer, nick, deck, champ) {
+    // look: Hero #404's man or woman (js/champions.js C.look), as the player's party room shows it.
+    function addPlayer(peer, nick, deck, champ, look) {
       const ids = (Array.isArray(deck) ? deck : []).filter(id => typeof id === 'string' && card(id) && !isUp(id) && !isTp(id)).slice(0, 40);
       const c = SD.champions && SD.champions.get(champ) ? champ : null, n = net.clean(nick, 24);
       const cur = G.players[peer];
       if (G.ph === 'lobby' && !G.rs) {
-        if (cur) { Object.assign(cur, { n: n || cur.n, c, deck: ids.length >= 5 ? ids : (SD.starterDeck || []).slice() }); return; }
+        if (cur) { Object.assign(cur, { n: n || cur.n, c, lk: SD.champions.look(c, look), deck: ids.length >= 5 ? ids : (SD.starterDeck || []).slice() }); return; }
         if (all().length >= MAX_PLAYERS) return;
-        G.players[peer] = newSeat(n || 'A hero', c, ids.length >= 5 ? ids : (SD.starterDeck || []).slice());
+        G.players[peer] = Object.assign(newSeat(n || 'A hero', c, ids.length >= 5 ? ids : (SD.starterDeck || []).slice()), { lk: SD.champions.look(c, look) });
         return;
       }
       if (cur || !n) return;
@@ -1747,7 +2029,7 @@
       const pl = {};
       Object.keys(S.players).forEach(k => {
         const p = S.players[k], owes = !wire || !!(S.room && S.room.wait[k]);
-        pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: owes ? p.o : [], s: owes ? p.sold : [], st: stList(p.st), pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {}, bt: p.bot ? 1 : 0, tl: p.tal | 0 };
+        pl[k] = { n: p.n, c: p.c, d: enc(p.deck), b: p.bits, dr: enc(p.draw, true), di: enc(p.disc, true), h: enc(p.hand), pl: enc(p.played), cap: p.cap, r: p.ready ? 1 : 0, o: owes ? p.o : [], s: owes ? p.sold : [], st: stList(p.st), pk: enc(p.peek || []), tk: p.take || 0, ab: p.ab || 0, hd: p.hd || {}, bt: p.bot ? 1 : 0, tl: p.tal | 0, kq: enc(p.kq || []), lk: p.lk || '' };
         if (wire && S.ph === 'fight') delete pl[k].d;
         if (wire) slim(pl[k]);
       });
@@ -1772,11 +2054,11 @@
         const was = x.d == null && d.ph === 'fight' && G.players[k];
         pl[k] = { n: net.clean(x.n, 24) || 'A hero', c: SD.champions && SD.champions.get(x.c) ? x.c : null, deck: was ? was.deck.slice() : dec(x.d, 80), bits: Math.max(0, Math.min(9999, x.b | 0)), draw: dec(x.dr, 80), disc: dec(x.di, 80), hand: dec(x.h, 10), played: dec(x.pl, 20), cap: Math.max(0, x.cap | 0), ready: !!x.r,
           o: (Array.isArray(x.o) ? x.o : []).filter(id => typeof id === 'string' && SD.cards[id]).slice(0, 4), sold: (Array.isArray(x.s) ? x.s : []).filter(Number.isInteger).slice(0, 4), st: myStatus(),
-          peek: dec(x.pk, 8), take: Math.max(0, Math.min(8, x.tk | 0)), ab: Math.max(0, Math.min(999, x.ab | 0)), hd: {}, tal: Math.max(-99, Math.min(999, x.tl | 0)) };
+          peek: dec(x.pk, 8), take: Math.max(0, Math.min(8, x.tk | 0)), ab: Math.max(0, Math.min(999, x.ab | 0)), hd: {}, tal: Math.max(-99, Math.min(999, x.tl | 0)), kq: dec(x.kq, 6), lk: SD.champions ? SD.champions.look(x.c, x.lk) : null };
         // Only a bot's own kind of key can be a bot, so no page is ever played for its person.
         if (x.bt && BOT_KEY.test(k)) pl[k].bot = true;
         const sx = Array.isArray(x.st) ? x.st : SK.map(s => obj(x.st)[s]);
-        SK.forEach((s, i) => { pl[k].st[s] = Math.max(0, Math.min(99, sx[i] | 0)); });
+        SK.forEach((s, i) => { pl[k].st[s] = Math.max(0, Math.min(s === 'pb' ? 999 : 99, sx[i] | 0)); });
         Object.keys(obj(x.hd)).forEach(id => { if (SD.cards[id]) pl[k].hd[id] = Math.max(0, Math.min(99, x.hd[id] | 0)); });
       });
       const r = d.room && typeof d.room === 'object' ? d.room : null;
@@ -1798,6 +2080,11 @@
         const r = {}; e.a.forEach(k => { const x = obj(e.r)[k]; if (Array.isArray(x) && x.length === 5) r[k] = x.map(v => int(v, 9)); });
         return { k: e.k, p: e.p, c: String(e.c).slice(0, 4), a: e.a.slice(), q: typeof e.q === 'string' ? e.q.slice(0, 60) : null, r, m: (Array.isArray(e.m) ? e.m : []).filter(Array.isArray).slice(0, 3).map(x => [int(x[0], 2), int(x[1], 9999)]), t: int(e.t, 2), w: typeof e.w === 'string' && pl[e.w] ? e.w : null, d: Number(e.d) || 0 };
       });
+      // The Raid Marks champions': the main event, this turn's plays, what lands in sync and when the gong rings.
+      const cOk = c => typeof c === 'string' && c.length <= 6 && !!card(dec(c, 1)[0]);
+      const trip = a => (Array.isArray(a) ? a : []).filter(x => Array.isArray(x) && pl[x[0]] && cOk(x[1])).slice(-12).map(x => [x[0], x[1], int(x[2], 2)]);
+      S.pl = trip(d.pl); S.sy = trip(d.sy); S.rq = trip(d.rq).slice(-6);
+      S.me = (Array.isArray(d.me) ? d.me : []).filter(e => e && pl[e.p] && pl[e.by]).slice(0, 2).map(e => ({ p: e.p, by: e.by, x: Math.max(100, int(e.x, 300)), c: int(e.c, 40), t: Math.max(1, int(e.t, 2)) }));
       const kindOk = k => (typeof k === 'string' && (k === 'mixed' || (SD.intentText && SD.intentText[k])) ? k : null);
       S.hardK = kindOk(d.hardK); S.lastHit = kindOk(d.lastHit);
       // The enemies: up to three real ones, every field checked.
@@ -1833,21 +2120,22 @@
       if (seen && seen.k === G.k && G.taken > seen.taken) Object.keys(played).forEach(k => { anim[k] = { a: 'hurt', t0: now }; });
       seen = { turn: G.turn, taken: G.taken, played, k: G.k };
     }
-    function artOf(c) {
-      const BA = SD.championArt && SD.championArt[c], CH = SD.champions && SD.champions.get(c);
-      if (BA) return { sheet: `assets/img/battle/champ-${c}.webp`, w: BA.w, h: BA.h, rows: BA.rows };
-      if (CH) return { sheet: CH.sheet, w: CH.w, h: CH.h, rows: { idle: [2, CH.n + 1] }, map: true };
+    // lk: a look (Hero #404's man or woman), whose battle sheet is champ-<id>-<look>.
+    function artOf(c, lk) {
+      const BA = SD.championArt && SD.championArt[c], CH = SD.champions && SD.champions.get(c), l = SD.champions && SD.champions.look(c, lk);
+      if (BA) return { sheet: `assets/img/battle/champ-${c}${l ? '-' + l : ''}.webp`, w: BA.w, h: BA.h, rows: BA.rows };
+      if (CH) return { sheet: SD.champions.sheetOf(c, lk), w: CH.w, h: CH.h, rows: { idle: [2, CH.n + 1] }, map: true };
       return null;
     }
     function stageHtml(e) {
       const ids = Object.keys(G.players), small = matchMedia('(max-width: 520px)').matches;
       const fighters = ids.map(k => {
-        const p = G.players[k], a = artOf(p.c || 'uptima');
+        const p = G.players[k], a = artOf(p.c || 'uptima', p.lk);
         if (!a) return '';
         // About 100px tall (70 on a phone), smaller in a party of four.
         const s = Math.max(1, Math.min(2.6, (small ? 70 : 100) / a.h * (ids.length > 3 ? 0.85 : 1)));
         const st = anim[k] && performance.now() - anim[k].t0 < 500 ? ' ' + anim[k].a : '';
-        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}" style="width:${a.w}px;height:${a.h}px;background-image:url(${a.sheet});transform:scale(${s.toFixed(2)})"></i></div><span class="rd-name">${esc(p.n)}</span></div>`;
+        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${G.me.some(x => x.p === k) ? ' spot' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}" style="width:${a.w}px;height:${a.h}px;background-image:url(${a.sheet});transform:scale(${s.toFixed(2)})"></i></div><span class="rd-name">${esc(p.n)}</span></div>`;
       }).join('');
       const bd = SD.battleArt ? SD.battleArt.backdrops : null, b = bd && bd.includes(String(e.ch || 1)) ? String(e.ch || 1) : '1';
       const col = x => (SD.art.enemyColor ? SD.art.enemyColor(x.sprite) : '#f66');
@@ -1862,7 +2150,7 @@
     (function tick() {
       if (left) return;
       root.querySelectorAll('.rd-fighter').forEach(el => {
-        const k = el.dataset.peer, p = G.players[k], i = el.querySelector('i'), a = p && artOf(p.c || 'uptima');
+        const k = el.dataset.peer, p = G.players[k], i = el.querySelector('i'), a = p && artOf(p.c || 'uptima', p.lk);
         if (!a || !i) return;
         let st = anim[k] || { a: 'idle', t0: 0 };
         let row = a.rows[st.a];
@@ -2001,6 +2289,32 @@
     // A question this page owes the room: the Whiteboard's, an event's, or a won fight's debrief, one at a time
     // (askKey: the room and how many are left).
     const asked = {};
+    // Raid Marks (js/marks.js): this page pays its own save. It counts its own right answers by floor, and pays a floor
+    // once the expedition moves past it (or clears it), then the clear itself. Bots and watchers earn nothing.
+    const rights = {}, earned = { run: null, n: 0, two: false, first: 0 };
+    const rightOn = fl => { rights[fl] = (rights[fl] || 0) + 1; };
+    function earn() {
+      const M = SD.marks, mine = G.players[me.peer];
+      if (!M || !M.on() || !mine || isBot(me.peer) || !X() || G.ph === 'lobby') return;
+      if (earned.run !== G.run) { Object.assign(earned, { run: G.run, n: 0, two: false, first: 0 }); Object.keys(rights).forEach(f => { delete rights[f]; }); }
+      const h = here(), humans = Object.keys(G.players).filter(k => !isBot(k) && h.has(k)).length;
+      const upTo = G.ph === 'done' && G.end ? (G.end.fl | 0) + 1 : G.fl;
+      for (let f = 0; f < upTo; f++) {
+        const n = M.payFloor(code + ':' + net.clean(G.run, 12), f, rights[f], humans);
+        if (n) { earned.n += n; earned.two = earned.two || humans >= 2; }
+      }
+      if (G.ph === 'done') {
+        const c = M.payClear(code + ':' + net.clean(G.run, 12), G.xp, floorsOf(X()).length, humans);
+        if (c.n) { earned.n += c.n; earned.first += c.first; earned.two = earned.two || humans >= 2; }
+      }
+    }
+    // The end card's line: what this expedition paid, and who it now hires.
+    function earnedHtml() {
+      const M = SD.marks, CH = SD.champions;
+      if (!M || !M.on() || !earned.n) return '';
+      const can = CH ? CH.list.filter(c => CH.state(c.id) === 'hire' && M.price(c.id) <= M.balance()).map(c => c.short) : [];
+      return `<p class="rd-marks"><b>+${earned.n} ✦ Raid Marks</b>${earned.two ? ' (doubled: you played with another person)' : ''}${earned.first ? `, with ${earned.first} for your first clear` : ''}. You have ${M.balance()} ✦.${can.length ? ` You can hire ${esc(can.length > 1 ? can.slice(0, -1).join(', ') + ' or ' + can[can.length - 1] : can[0])} at the Raid shop.` : ''}</p>`;
+    }
     const askKey = r => r.k + ':' + (r.todo[me.peer] || []).length;
     const myTally = () => (SD.state && SD.state.tally ? SD.state.tally() : undefined);
     let talSent = null;
@@ -2027,6 +2341,7 @@
         // A debrief says what the answer heals (the host caps it by what the team is missing and what's healed this fight).
         const heal = r.t === 'reward' ? (ok, t) => (!ok ? 'no heal' : `team heals ${r.lo && r.lo[me.peer] ? LOW_HEAL : healOf(t)} SLA`) : null;
         const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, credNote: CRED_NOTE, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new Cred, up to ${HEAL} SLA.`) : r.t === 'tape' ? `Right, and ${(SD.enemies[G.main] || {}).name || 'the incident'} keeps the damage you did.` : '' });
+        if (res.ok) rightOn(G.fl);
         send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout, conf: res.conf, tal: myTally() });
       });
     }
@@ -2048,6 +2363,7 @@
           ASKED.add(q.id);
           const typed = q.type === 'explain';
           const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: mine.c || undefined, title: 'EXPEDITION · ' + String(d.name).toUpperCase(), context: `${(SD.concepts[q.c] || {}).name || 'Question'}${owner && e.p !== me.peer ? ` · for ${owner.n}'s card` : ''}`, tally: true, credNote: CRED_NOTE });
+          if (res.ok) rightOn(G.fl);
           send({ k: 'qa', id: e.k, ok: !!res.ok, band: bandOf(res.ms || 0, typed), sure: res.conf === 2, pts: typed ? res.score | 0 : 0, late: !!res.timeout, conf: res.conf, tal: myTally() });
         });
       });
@@ -2129,7 +2445,7 @@
     }
     function render() {
       if (left) return;
-      scenes(); owed(); owedQ(); offer(); tune();
+      scenes(); owed(); owedQ(); offer(); tune(); earn();
       if (mismatch) return paint(`<div class="mi-card">${head('A different version')}<p>This party is running a different version of the game. Reload both pages, then join again.</p></div>`);
       if (!G.host) return paint(`<div class="mi-card">${head('Finding the host…')}</div>`);
       const mine = G.players[me.peer], x = X();
@@ -2138,6 +2454,7 @@
         const fs = floorsOf(x), e = G.end || {}, foe = SD.enemies[e.foe];
         paint(`<div class="mi-card rd-end">${head(G.ph === 'done' ? 'Expedition complete!' : 'The expedition is over')}
           <p>${G.ph === 'done' ? `You cleared all ${fs.length} floors of ${esc(x.name)}, ${G.rooms} fights in, with ${G.sla} SLA left.` : `The team went down on floor ${(e.fl | 0) + 1} of ${fs.length} (${esc(fs[e.fl | 0] ? fs[e.fl | 0].name : '')}), after ${e.rooms | 0} fight${(e.rooms | 0) === 1 ? '' : 's'}.${foe ? ` ${esc(foe.short || foe.name)} held on with ${e.sev | 0} severity left.` : ''}`}</p>
+          ${earnedHtml()}
           <p class="muted small">Talk through the room that hurt most: which card, or which path, would have covered it?</p>
           ${hosting ? '<div class="row" style="justify-content:center"><button class="primary" type="button" id="rd-again">Back to the party room</button></div>' : ''}</div>`);
         const ag = root.querySelector('#rd-again'); if (ag) ag.onclick = () => { const xp = G.xp, bs = botKeys().map(k => [k, G.players[k].n, G.players[k].c]); G = fresh(); G.xp = xp; bs.forEach(([k, n, c]) => { G.players[k] = Object.assign(newSeat(n, c, botDeck(c)), { bot: true }); }); hello(); push(); };
@@ -2168,7 +2485,7 @@
         mode: 'Expedition Raid', code, leader: G.host, max: MAX_PLAYERS, listed: o.vis && o.vis.get(), vis: o.vis, leave,
         what: 'the expedition', startLabel: G.rs ? 'Resume the expedition' : 'Start the expedition', boss: kyu, deck: !G.rs,
         settings: pickX,
-        note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café: then you answer a question and fight on. No shards; this one is for practice.${seats}`,
+        note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café: then you answer a question and fight on. No shards or XP: a raid pays Raid Marks (✦), which hire the multiplayer champions at the Raid shop.${seats}`,
         addBot: hosting && !G.rs && all().length < MAX_PLAYERS ? () => send({ k: 'bot' }) : null,
         botChamp: hosting && !G.rs ? (k, c) => send({ k: 'botc', b: k, c }) : null,
         startWhy: () => (!x ? (hosting ? 'No expedition is open in your save yet.' : 'No expedition is open in the leader\'s save yet.') : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
@@ -2210,11 +2527,11 @@
       if (G.stale) chips.push(`<span class="chip stale">Stale ${G.stale}</span>`);
       if (G.flags.choice) chips.push(`<span class="chip choice">${G.flags.choice === 'cp' ? 'Consistency' : 'Availability'}</span>`);
       Object.keys(FLAG_NAME).forEach(f => { if (G.flags[f]) chips.push(`<span class="chip">${FLAG_NAME[f]}</span>`); });
-      chips.push(stChips(G, TEAM_ST));
+      chips.push(stChips(G, TEAM_ST), teamExtra(G));
       if (G.rf) chips.push(`<span class="chip rd-st" title="Each hit the team's absorb blocks sends ${G.rf[0]}% of what it blocked back at that enemy, up to ${G.rf[2]} a hit.">Reflect ${G.rf[0]}% (${G.rf[1]} turn${G.rf[1] === 1 ? '' : 's'})</span>`);
       if (G.lt.length) { const m = G.lt.reduce((a, x) => a + x[1], 0), a = G.lt.reduce((n, x) => n + x[2], 0); chips.push(`<span class="chip rd-st" title="Played for later: it lands at the start of next turn.">Next turn: ${[m && `Mitigate ${m}`, a && `Absorb ${a}`].filter(Boolean).join(', ')}</span>`); }
       if (G.bk > 0 && mine && mine.hand.some(id => card(id).restoreAbs)) chips.push(`<span class="chip rd-st" title="Restore Backup brings back up to this much: the absorb in play when the foes last acted.">Backup ${G.bk}</span>`);
-      const mates = Object.keys(G.players).filter(k => k !== me.peer).map(k => { const p = G.players[k]; return `<div class="rd-mate${p.ready ? ' ready' : ''}"><b>${esc(p.n)}</b><span>${p.cap} Capacity left · ${p.hand.length} cards</span>${stChips(p.st, ME_ST)}<span class="rd-played">${p.played.length ? 'Played ' + p.played.map(id => esc(card(id).name)).join(', ') : 'Nothing played yet'}</span>${p.ready ? '<span>Ready</span>' : ''}</div>`; }).join('');
+      const mates = Object.keys(G.players).filter(k => k !== me.peer).map(k => { const p = G.players[k]; return `<div class="rd-mate${p.ready ? ' ready' : ''}"><b>${esc(p.n)}</b><span>${p.cap} Capacity left · ${p.hand.length} cards</span>${stChips(p.st, ME_ST)}${meExtra(G, p)}<span class="rd-played">${p.played.length ? 'Played ' + p.played.map(id => esc(card(id).name)).join(', ') : 'Nothing played yet'}</span>${p.ready ? '<span>Ready</span>' : ''}</div>`; }).join('');
       const slots = Array.from({ length: SLOTS }, (_, i) => G.infra[i] ? `<span class="slot on" title="${esc(card(G.infra[i].id).text)}">${esc(card(G.infra[i].id).name)}${isUp(G.infra[i].id) ? '+' : ''}<small>${esc((G.players[G.infra[i].by] || {}).n || '')}</small></span>` : '<span class="slot">Infra slot</span>').join('');
       const tier = { boss: 'BOSS', elite: 'ELITE', fight: 'INCIDENT' }[G.tier] || 'RAID';
       // What's known about the targeted enemy's weaknesses.
@@ -2258,7 +2575,7 @@
         <div class="me-zone"><div class="chips">${chips.join('') || '<span class="muted small">No defences up.</span>'}</div><div class="infra">${slots}</div></div>
         ${mates ? `<div class="rd-team">${mates}</div>` : ''}
         ${mine ? `<div class="hand-zone"><div class="hand-top"><div class="energy" aria-label="Capacity ${mine.cap}"><b>${mine.cap}</b><span>CAP</span></div>
-            <span class="muted small">Turn ${G.turn} · Draw ${mine.draw.length} · Discard ${mine.disc.length}</span>${stChips(mine.st, ME_ST)}
+            <span class="muted small">Turn ${G.turn} · Draw ${mine.draw.length} · Discard ${mine.disc.length}</span>${stChips(mine.st, ME_ST)}${meExtra(G, mine)}
             <button class="${mine.ready ? 'ghost' : 'primary'}" type="button" id="rd-ready">${mine.ready ? 'Not ready yet' : 'Ready'}</button></div>
           ${mine.ready ? '<p class="rd-wait">Waiting for the others. The foe acts when everyone is ready.</p>' : ''}${incoming}${peek}${asking}${chooser}
           <div class="hand">${mine.hand.map((id, i) => chtml(id, { i, cost: card(id).unplayable ? '–' : card(id).xcost ? undefined : costFor(mine, id), dim: mine.ready || card(id).unplayable || costFor(mine, id) > mine.cap })).join('')}</div></div>` : '<p class="muted small">You\'re watching this expedition.</p>'}
@@ -2397,9 +2714,9 @@
     // now and then by a player without a seat, so a returning one finds theirs.
     let helloSent = '', helloAt = 0;
     function hello() {
-      const champ = party ? party.champ() : null, d = { deck: RD.myDeck(champ), nick: me.nick, champ };
-      helloSent = me.nick + '|' + champ; helloAt = Date.now();
-      if (hosting) { addPlayer(me.peer, me.nick, d.deck, champ); fixBots(); push(); } else room.emit('hello', d);
+      const champ = party ? party.champ() : null, look = party && party.look ? party.look() : null, d = { deck: RD.myDeck(champ), nick: me.nick, champ, look };
+      helloSent = me.nick + '|' + champ + '|' + look; helloAt = Date.now();
+      if (hosting) { addPlayer(me.peer, me.nick, d.deck, champ, look); fixBots(); push(); } else room.emit('hello', d);
     }
     unsub.push(room.on('state', msg => {
       if (msg.isMe) return;
@@ -2421,7 +2738,7 @@
     unsub.push(room.on('hello', msg => {
       if (!hosting || msg.isMe) return;
       const d = msg.data || {};
-      addPlayer(msg.peer, (players().find(x => x.peer === msg.peer) || { presence: {} }).presence.nick || d.nick, d.deck, d.champ);
+      addPlayer(msg.peer, (players().find(x => x.peer === msg.peer) || { presence: {} }).presence.nick || d.nick, d.deck, d.champ, d.look);
       fixBots(); push(); check();
     }));
     unsub.push(room.onPeers(list => {
@@ -2442,8 +2759,8 @@
     // everything load() and unpack() use is declared.
     if (o.create && o.settings && o.settings.resume && savedHere()) load(savedHere());
     party = SD.party.join(hub, room, 'raid', {
-      leader: () => G.host, max: MAX_PLAYERS, bots: () => botKeys().map(k => ({ peer: k, nick: G.players[k].n, champ: G.players[k].c })), onKick: () => leave('kicked'), onFull: () => { if (G.ph === 'lobby' && !G.rs) leave('full'); },
-      onChange: () => { pres(); if (G.ph === 'lobby' && helloSent !== me.nick + '|' + party.champ()) hello(); render(); }
+      leader: () => G.host, max: MAX_PLAYERS, bots: () => botKeys().map(k => ({ peer: k, nick: G.players[k].n, champ: G.players[k].c, look: G.players[k].lk })), onKick: () => leave('kicked'), onFull: () => { if (G.ph === 'lobby' && !G.rs) leave('full'); },
+      onChange: () => { pres(); if (G.ph === 'lobby' && helloSent !== me.nick + '|' + party.champ() + '|' + (party.look ? party.look() : null)) hello(); render(); }
     });
     // Debug start only (js/debug.js, testing): this page's view of the expedition and the host's moves, for test scripts.
     if (SD.debug) SD.debug.raid = { G: () => G, act: (peer, d) => { act(peer, d); }, me: () => me.peer, hosting: () => hosting, push: () => push(), pace: f => { pace = Math.max(0.05, +f || 1); }, fight: (ids, tier) => { G.k++; fight({ ids, sev: ids.map(() => 0), dmg: ids.map(() => 0) }, tier || 'fight'); push(); } };

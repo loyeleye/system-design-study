@@ -6,7 +6,7 @@
 // Usage, from game/:
 //   node tools/balance/raid.js out.jsonl
 // Environment: XP=a,b (expeditions; default all), SIZES=2,3,4 (default 3), N=runs per cell (default 20), P=workers (4),
-// ACC=0.5,0.7,0.9 (bot accuracy arms), TAL=warm (bots start with a player's carried-in Cred, see below), DMG=1.1 (SD.raid.dmgX; omit to keep the game's), GAME=path to game/ (to measure
+// ACC=0.5,0.7,0.9 (bot accuracy arms), CHAMPS=a,b (the champions the parties rotate through; default every open one), TAL=warm (bots start with a player's carried-in Cred, see below), DMG=1.1 (SD.raid.dmgX; omit to keep the game's), GAME=path to game/ (to measure
 // another checkout, such as main before a change), LABEL=a name for this batch in the output.
 // A checkout from before SD.raid.botAcc existed has its bots' 70% patched to read it.
 const { chromium } = require('playwright');
@@ -46,6 +46,8 @@ function serve() {
 function setup() {
   SD.state.save.flags.ch10 = true;
   SD.state.persist = () => {};
+  // Every Raid Marks champion hired, so CHAMPS can name them.
+  if (SD.marks) { const mp = SD.state.save.mp = SD.state.save.mp || {}; mp.marks = { n: 0, owned: SD.champions.list.filter(c => c.hire).map(c => 'champ-' + c.id), paid: {}, firsts: [] }; }
   SD.ui.dialog = (lines, done) => { if (done) done(); return Promise.resolve(); };
   // The host page still asks its own seat's questions (a rare card's, the debrief, a whiteboard or an event) through
   // the quiz, bot or not, so they're answered here the way js/raid.js's bots answer theirs: right at SD.raid.botAcc,
@@ -162,6 +164,7 @@ async function runOne(cfg) {
     pages.push(p);
   }
   const xps = process.env.XP ? process.env.XP.split(',') : info.xps;
+  if (process.env.CHAMPS) info.champs = process.env.CHAMPS.split(',').filter(c => info.champs.includes(c));
   console.log(`${GAME}: botAcc ${info.hasAcc ? 'in the game' : 'patched in'}, dmgX ${info.dmgX}${DMG != null ? ' -> ' + DMG : ''}; ${xps.length} expeditions x sizes ${SIZES} x acc ${ACCS} x ${N}`);
   // Champions rotate by seed so every arm meets the same parties.
   const jobs = [];

@@ -3,7 +3,10 @@
 // replace one Hotfix and two Bigger Boxes in that player's starting deck. Signature cards only exist in raids:
 // they are `quest` cards (never rewards) marked `champ`, so no shop, dealer or unlock list ever offers them.
 //   SD.champions.list                 -> [{ id, name, short, region, how, style }] in roster order
-//   SD.champions.unlocked(id)         -> whether this player has reached them (the standalone page: Pingsby only)
+//   SD.champions.unlocked(id)         -> whether this player can pick them: reached them (the standalone page: Pingsby
+//                                        only) and, for a multiplayer champion, hired them
+//   SD.champions.state(id)            -> 'locked' (not reached yet), 'hire' (reached, for hire with Raid Marks) or 'open'
+//   SD.champions.mp(id)               -> whether they're a multiplayer champion, hired with Raid Marks (js/marks.js)
 //   SD.champions.deck(id, base)       -> base deck (default the starter deck) with that champion's signature cards
 //   SD.champions.sprite(id, scale, animate) -> a div showing their south-facing idle, from their map sheet
 //   SD.champions.mine() / setMine(id) -> this browser's last pick
@@ -26,7 +29,9 @@
     { name: "Heroes' camp", how: 'Reach chapter 9', ok: () => arcOpen(9) },
     { name: 'The Exchange', how: 'Reach chapter 10', ok: () => arcOpen(10) }
   ];
-  // [id, name, region index, style, map sheet folder, frame w, h, south idle frames, own unlock]
+  // [id, name, region index, style, map sheet folder, frame w, h, south idle frames, own unlock]. `hire: true` marks the
+  // eight multiplayer champions (Ladi, 2026-10-25): once their region is open they're hired with Raid Marks
+  // (js/marks.js), one for each region and a second for Pingsby and the North Road.
   const ROSTER = [
     ['uptima', 'Uptima', 0, 'Huge power, huge bill', 'village', 48, 54, 4],
     ['seymour', 'Sir Seymour', 0, 'Shields that last', 'village', 24, 51, 4],
@@ -34,40 +39,63 @@
     ['ayo', 'Ayo', 0, 'Steady scaling', 'village', 22, 50, 4],
     ['bru', 'Bru', 0, 'Squeezes out one more play', 'village', 34, 52, 4],
     ['kaito', 'Kaito', 0, 'Slow to build, then huge', 'village', 36, 55, 4],
+    ['doug', 'Doug', 0, 'Automates the boring part', 'village', 26, 51, 4, { hire: true, how: 'Clear chapter 2', ok: () => !!flags().ch2 }],
+    // Dieynaba arrives outside the Cache Café after chapter 5 (her map id is 'valentin', js/ploy-quest.js).
+    ['dieynaba', 'Dieynaba', 0, 'Pours for the whole party', 'village', 38, 57, 4, { hire: true, sheet: 'village/c-valentin', how: 'Clear chapter 5', ok: () => !!flags().ch5 }],
     ['ploy', 'Ploy', 1, 'Changes the rules', 'isles', 70, 100, 4],
     ['kwame', 'Captain Kwame', 1, 'Patience pays', 'isles', 68, 88, 4],
+    ['leilani', 'Harbourmaster Leilani', 1, 'Keeps everyone in sync', 'isles', 52, 93, 4, { hire: true }],
     ['explodia', 'Explodia', 2, 'One giant blast', 'arc', 26, 49, 4],
     ['latency', 'Lord Latency', 2, 'Slows everything down', 'arc', 28, 56, 4],
+    ['suzu', 'Suzu', 2, 'Takes the pager', 'arc', 32, 56, 4, { hire: true }],
+    ['gong', 'Gong', 2, 'Calls the main event', 'arc', 32, 51, 4, { hire: true }],
     ['imani', 'Imani', 3, 'Clean and controlled', 'arc', 30, 60, 4],
     ['rico', 'Rico', 3, 'Hits hard, makes a mess', 'arc', 36, 59, 4],
+    ['sunny', 'Sunny', 3, 'Logs every rep', 'arc', 32, 55, 4, { hire: true }],
     ['nari', 'Nari', 4, 'Goes first, safely', 'arc', 64, 72, 4],
     ['hypewagon', 'Hypewagon', 4, 'Draws and narrates', 'arc', 28, 53, 4],
+    // In raids Hero #404 is a silhouette made of smoke, a man or a woman by a coin flip each time he's picked
+    // (C.look); in the story he stays a NOT FOUND sign.
+    ['hero404', 'Hero #404', 4, 'Never seen, never misses', 'raid', 40, 80, 11, { hire: true, sheet: 'raid/hero404-smoke-m', looks: ['m', 'w'] }],
     ['neel', 'Neel', 5, 'Formal and precise', 'arc', 28, 56, 4],
+    ['eunho', 'Eun-ho', 5, 'Shadows a teammate', 'arc', 34, 62, 4, { hire: true }],
     // Kyu is the chapter 10 finale's last boss, so she joins only once chapter 10 is cleared.
     ['kyu', 'Kyu', 5, 'Quietly the strongest', 'arc', 30, 53, 4, { how: 'Clear chapter 10', ok: () => !!flags().ch10 }]
   ];
   const BY = {};
   C.list = ROSTER.map(([id, name, r, style, dir, w, h, n, own]) => {
-    const c = { id, name, short: name.replace(/^(Captain|Sir|Lord) /, ''), region: REGIONS[r].name, how: (own || REGIONS[r]).how, style, sheet: `assets/img/${dir}/c-${id}.webp`, w, h, n, ok: (own || REGIONS[r]).ok };
+    const o = own || {}, gate = o.ok ? o : REGIONS[r];
+    const c = { id, name, short: name.replace(/^(Captain|Sir|Lord|Harbourmaster) /, ''), region: REGIONS[r].name, how: gate.how, style, sheet: `assets/img/${o.sheet || dir + '/c-' + id}.webp`, w, h, n, ok: gate.ok, hire: !!o.hire, looks: o.looks || null };
     BY[id] = c;
     return c;
   });
   C.regions = REGIONS.map(r => r.name);
   C.get = id => BY[id] || null;
-  C.unlocked = id => { const c = BY[id]; if (!c) return false; try { return !!c.ok(); } catch (e) { return false; } };
+  const reached = c => { try { return !!c.ok(); } catch (e) { return false; } };
+  C.mp = id => !!(BY[id] && BY[id].hire);
+  C.state = id => {
+    const c = BY[id];
+    if (!c || !reached(c)) return 'locked';
+    return !c.hire || (SD.marks && SD.marks.owns(id)) ? 'open' : 'hire';
+  };
+  C.unlocked = id => C.state(id) === 'open';
   // The Raid boss that is Kyu herself: nobody can fight it as Kyu.
   C.bossConflict = (id, boss) => id === 'kyu' && boss === 'kyuburnout';
   C.mine = () => { const v = store.get(KEY); return BY[v] ? v : null; };
   C.setMine = id => { if (BY[id]) store.set(KEY, id); };
 
   // Columns in each map sheet (its width over the frame width), so the background keeps the frames' scale.
-  const SHEET_COLS = { uptima: 9, seymour: 9, mio: 11, ayo: 9, bru: 11, kaito: 11, ploy: 19, kwame: 19, explodia: 9, latency: 9, imani: 11, rico: 11, nari: 11, hypewagon: 9, neel: 10, kyu: 9 };
-  C.sprite = function (id, scale, animate) {
+  const SHEET_COLS = { uptima: 9, seymour: 9, mio: 11, ayo: 9, bru: 11, kaito: 11, ploy: 19, kwame: 19, explodia: 9, latency: 9, imani: 11, rico: 11, nari: 11, hypewagon: 9, neel: 10, kyu: 9, doug: 11, dieynaba: 11, leilani: 19, suzu: 9, gong: 9, sunny: 11, hero404: 12, eunho: 9 };
+  // A champion with looks (Hero #404's man and woman) draws the one named, else the first. `look` is a presence field.
+  C.look = (id, v) => { const c = BY[id]; return c && c.looks ? (c.looks.includes(v) ? v : c.looks[0]) : null; };
+  C.rollLook = id => { const c = BY[id]; return c && c.looks ? c.looks[Math.floor(Math.random() * c.looks.length)] : null; };
+  C.sheetOf = (id, v) => { const c = BY[id]; if (!c) return ''; const l = C.look(id, v); return l ? c.sheet.replace(/-[a-z]\.webp$/, '-' + l + '.webp') : c.sheet; };
+  C.sprite = function (id, scale, animate, look) {
     const c = BY[id], d = document.createElement('div');
     if (!c) return d;
     const k = c.n + 1, w = c.w * scale, h = c.h * scale;
     d.className = 'champ-spr' + (animate ? ' anim' : '');
-    d.style.cssText = `width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;background-image:url(${c.sheet});background-size:${(w * SHEET_COLS[id]).toFixed(1)}px auto;--end:-${(w * k).toFixed(1)}px;--n:${k};--dur:${(k * 0.18).toFixed(2)}s`;
+    d.style.cssText = `width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;background-image:url(${C.sheetOf(id, look)});background-size:${(w * SHEET_COLS[id]).toFixed(1)}px auto;--end:-${(w * k).toFixed(1)}px;--n:${k};--dur:${(k * (c.looks ? 0.11 : 0.18)).toFixed(2)}s`;
     return d;
   };
 
@@ -138,7 +166,41 @@
     kyu: [
       ['signed', { name: 'Signed, K.', cost: 0, kind: 'action', draw: 2, stale: -1, art: 'paper-plane', text: 'Draw 2. -1 Stale. A small, neat note in every life she touched.' }],
       ['oncall', { name: 'Ten Thousand Years On Call', cost: 2, kind: 'infra', pow: 6, keepSh: true, each: { any: 5 }, tags: ['oncall'], art: 'alarm-clock', text: 'Infra. Your absorb is kept between turns. Absorb 5 each turn. Nobody should be on call for eighty-seven million hours.' }],
-      ['noticed', { name: 'Nobody Noticed', cost: 1, kind: 'action', mit: 9, clearStale: true, art: 'crystal-ball', text: 'Mitigate {mit}. Remove all Stale. That is how she knows the job was done.' }]]
+      ['noticed', { name: 'Nobody Noticed', cost: 1, kind: 'action', mit: 9, clearStale: true, art: 'crystal-ball', text: 'Mitigate {mit}. Remove all Stale. That is how she knows the job was done.' }]],
+    // The Raid Marks champions (Ladi, 2026-10-25): bought in the Raid shop (js/raid-shop.js); their effects are in
+    // js/raid.js ("The Raid Marks champions' effects").
+    doug: [
+      ['fetch', { name: 'Kevin, Fetch', cost: 1, kind: 'action', queue: 1, abs: { any: 3 }, art: 'robot-golem', text: 'Queue 1: your card with the biggest numbers goes in Kevin\'s slot, and when the foes act he plays it for free at 75% (at most Mitigate or Absorb 15). Absorb {any} load. Kevin plays one card a turn.' }],
+      ['retryafter', { name: 'Retry-After', cost: 0, kind: 'action', kevin: 100, art: 'hourglass', text: 'This turn Kevin plays at full strength. He politely waited. Now he doesn\'t.' }],
+      ['cats', { name: 'Mostly Cat Pictures', cost: 1, kind: 'action', draw: 2, queue: 1, stale: 1, art: 'cat', text: 'Draw 2, then Queue 1. +1 Stale. And a scraper. Mostly cat pictures.' }]],
+    dieynaba: [
+      ['bitter', { name: 'First Glass, Bitter', cost: 1, kind: 'action', abs: { any: 6 }, pour: 1, art: 'teapot', text: 'Absorb {any} load. Pour: the next glass of attaya (bitter, Absorb 4; sweet like life, the team Self-Healing 3; sweet like love, every teammate draws 1).' }],
+      ['teranga', { name: 'Teranga', cost: 0, kind: 'action', pour: 1, giveDraw: 1, exhaust: true, art: 'coffee-cup', text: 'Pour. The teammate you name draws 1. Exhaust. Sit. A glass appears.' }],
+      ['foam', { name: 'From High, So It Foams', cost: 2, kind: 'action', mit: 10, pour: 2, art: 'river', text: 'Mitigate {mit}. Pour twice. Never hurried. Never thirsty.' }]],
+    leilani: [
+      ['chalk', { name: 'Chalk the Crossing', cost: 1, kind: 'action', abs: { any: 7 }, sync: { nextDraw: 1 }, art: 'scroll-unfurled', text: 'Absorb {any} load. In sync (when the foes act, every player has played a card this turn): Runbook Ready 1.' }],
+      ['cup', { name: 'Second Cup of Tea', cost: 0, kind: 'action', givePrewarm: 1, exhaust: true, art: 'teapot', text: 'The teammate you name gets Pre-Warmed 1. Exhaust. "For Kwame. He\'ll be forty minutes."' }],
+      ['aboard', { name: 'Everyone Aboard', cost: 2, kind: 'action', mit: 11, tagUp: 6, art: 'wave-crest', text: 'Mitigate {mit}. This turn the Tag Team bonus is 6 higher. One ferry. Everyone on it.' }]],
+    suzu: [
+      ['pager', { name: 'Who Actually Answers the Pager?', cost: 1, kind: 'action', take: 1, mit: 5, perPager: 3, art: 'siren', text: 'Take 1: a teammate\'s biggest Pager Alert or Tech Debt into your hand. Mitigate {mit}, +3 for each one in your hand.' }],
+      ['armband', { name: 'Armband', cost: 1, kind: 'infra', each: { any: 3 }, eachPerPager: 2, art: 'checked-shield', text: 'Infra. Absorb 3 each turn, +2 for each Pager Alert or Tech Debt in your hand. S.O.S. Brigade, Chief.' }],
+      ['rotation', { name: 'Real Rotation', cost: 0, kind: 'action', givePrewarm: 1, brittle: 1, art: 'calendar', text: 'The teammate you name gets Pre-Warmed 1. You get Tightly Coupled 1. She takes the night.' }]],
+    gong: [
+      ['job', { name: 'I Hit the Gong. That Is the Job.', cost: 1, kind: 'action', mit: 4, mainEvent: { x: 1.5, cap: 12 }, art: 'ringing-bell', text: 'Mitigate {mit}. Main Event: the teammate you name\'s next card, this turn or next, hits x1.5 (at most +12). If it lands effective, the gong rings: you get Pre-Warmed 1. Alone: you, x1.25.' }],
+      ['back', { name: 'The Gong on His Back', cost: 1, kind: 'infra', each: { any: 3 }, meUp: 3, art: 'podium', text: 'Infra. Absorb 3 each turn. The main event\'s card gets +3 more.' }],
+      ['reflex', { name: 'Sorry. Reflex.', cost: 0, kind: 'action', ring: true, stale: 1, art: 'megaphone', text: 'The gong rings: Pre-Warmed 1. +1 Stale. "GONNNG. Sorry. Reflex."' }]],
+    sunny: [
+      ['logit', { name: 'LOG IT', cost: 0, kind: 'action', mit: 3, logTwice: true, art: 'notebook', text: 'Mitigate {mit}. Logged twice on the PR Board (reps: every card played this fight).' }],
+      ['bar', { name: 'The Bar Remembers', cost: 1, kind: 'action', mit: 4, perReps: [3, 8], art: 'histogram', text: 'Mitigate {mit}, +1 for every 3 reps the team has logged this fight (up to +8).' }],
+      ['spot', { name: 'Spot Me', cost: 1, kind: 'action', abs: { any: 5 }, temper: 1, temperWho: 'ally', spot: 'draw', art: 'fist', text: 'Absorb {any} load. Temper 1 card in a teammate\'s hand. If that card sets a New PR (beats their best Mitigate or Absorb this fight), they draw 1.' }]],
+    hero404: [
+      ['notfound', { name: 'NOT FOUND', cost: 1, kind: 'action', abs: { any: 6 }, unseen: { abs: { any: 9 } }, art: 'stop-sign', text: 'Absorb {any} load. Unseen: if it\'s still in your hand when the foes act, Absorb 9 instead, then it goes to your discard pile.' }],
+      ['lunch', { name: 'Lunch Left Out', cost: 0, kind: 'action', draw: 1, unseen: { mit: 5 }, art: 'croissant', text: 'Draw 1. Unseen: Mitigate 5 when the foes act. It disappears. Every time.' }],
+      ['shift', { name: 'Never Missed a Shift', cost: 2, kind: 'action', mit: 8, later: { mit: 6 }, hideMe: true, art: 'spectre', text: 'Mitigate {mit} now and 6 next turn. This turn Pager Alert and Tech Debt hand-outs can\'t find you.' }]],
+    eunho: [
+      ['traffic', { name: 'Shadow Traffic', cost: 1, kind: 'action', shadow: 50, art: 'linked-rings', text: 'Shadow 50%: replay the last card a teammate played this turn at half its numbers, free, without its drawbacks (at most Mitigate or Absorb 15).' }],
+      ['beat', { name: 'Every Difference, Down to the Beat', cost: 0, kind: 'action', reveal: true, nextDraw: 1, art: 'magnifying-glass', text: 'Reveal the incident\'s weaknesses. Runbook Ready 1.' }],
+      ['bows', { name: 'The Curtain Never Bows', cost: 1, kind: 'action', abs: { any: 7 }, when: { on: 'mateEff', mit: 5 }, art: 'closed-doors', text: 'Absorb {any} load. If a teammate has landed an effective card this turn, Mitigate 5 too.' }]]
   };
   C.cards = {};
   if (SD.cards) Object.keys(SIG).forEach(ch => {
