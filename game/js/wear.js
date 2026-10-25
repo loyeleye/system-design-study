@@ -113,10 +113,37 @@
     'look-sunny-meet': { champ: 'sunny', name: 'Meet Day', look: true },
     'look-eunho-curtain': { champ: 'eunho', name: 'Curtain Call', look: true },
     'look-leilani-storm': { champ: 'leilani', name: 'Storm Season', look: true },
-    'look-dieynaba-teranga': { champ: 'dieynaba', name: 'Teranga Evening', look: true }
+    'look-dieynaba-teranga': { champ: 'dieynaba', name: 'Teranga Evening', look: true },
+    // The original 16's (Ladi, 2026-10-25). Uptima's is the sequel's Freya.
+    'look-uptima-freetier': { champ: 'uptima', name: 'Free Tier', look: true, note: 'As the sequel\'s Freya' },
+    'look-seymour-backup': { champ: 'seymour', name: 'Backup No. 400', look: true },
+    'look-mio-crayon': { champ: 'mio', name: 'Crayon Architect', look: true },
+    'look-ayo-scaling': { champ: 'ayo', name: 'Horizontal Scaling', look: true },
+    'look-bru-night': { champ: 'bru', name: 'Where Bru Goes at Night', look: true },
+    'look-kaito-helm': { champ: 'kaito', name: 'Helm Chart', look: true },
+    'look-ploy-rule15': { champ: 'ploy', name: 'Rule 15', look: true },
+    'look-kwame-horn': { champ: 'kwame', name: 'Ferry Horn', look: true },
+    // A look sold in variants (set: the look; variant: which one). The first you buy is a look's price, any of them;
+    // each after it is SD.marks.TIERS.variant (js/marks.js cost).
+    'look-explodia-sleep-mint': { champ: 'explodia', name: 'Lying Down Now', look: true, set: 'look-explodia-sleep', variant: 'Mint' },
+    'look-explodia-sleep-rose': { champ: 'explodia', name: 'Lying Down Now', look: true, set: 'look-explodia-sleep', variant: 'Rose' },
+    'look-explodia-sleep-star': { champ: 'explodia', name: 'Lying Down Now', look: true, set: 'look-explodia-sleep', variant: 'Starry' },
+    'look-explodia-sleep-lilac': { champ: 'explodia', name: 'Lying Down Now', look: true, set: 'look-explodia-sleep', variant: 'Lilac' },
+    'look-latency-ratelimit': { champ: 'latency', name: 'Rate Limiter', look: true },
+    'look-imani-gerald': { champ: 'imani', name: 'Going, Going, Gerald', look: true },
+    'look-rico-title-red': { champ: 'rico', name: 'Ten to Nothing', look: true, set: 'look-rico-title', variant: 'Red corner' },
+    'look-rico-title-blue': { champ: 'rico', name: 'Ten to Nothing', look: true, set: 'look-rico-title', variant: 'Blue corner' },
+    'look-rico-title-black': { champ: 'rico', name: 'Ten to Nothing', look: true, set: 'look-rico-title', variant: 'Black and gold' },
+    'look-rico-title-white': { champ: 'rico', name: 'Ten to Nothing', look: true, set: 'look-rico-title', variant: 'White and gold' },
+    'look-nari-canary': { champ: 'nari', name: 'Canary', look: true },
+    'look-hypewagon-booth': { champ: 'hypewagon', name: 'Live from the Booth', look: true },
+    'look-neel-cob': { champ: 'neel', name: 'By Close of Business', look: true },
+    'look-kyu-signed': { champ: 'kyu', name: 'Signed, K.', look: true }
   });
   Object.keys(SKINS).forEach(id => { ITEMS[id] = Object.freeze(Object.assign({ slot: 'skin' }, SKINS[id])); });
   const has = id => !!(SD.marks && SD.marks.has && SD.marks.has(id));
+  // An item's name, with its variant for a look sold in variants: 'Lying Down Now · Mint'.
+  W.label = id => ITEMS[id] ? ITEMS[id].name + (ITEMS[id].variant ? ' · ' + ITEMS[id].variant : '') : '';
   function save() {
     const s = S() && S().save;
     if (!s) return null;
@@ -300,7 +327,7 @@
     const anyFor = cn && Object.keys(SKINS).some(id => SKINS[id].champ === champ);
     const skin = anyFor ? `<div class="wd-slot"><h4>${esc(cn.short || cn.name)}'s colour${Object.keys(SKINS).some(id => SKINS[id].champ === champ && SKINS[id].look) ? ' or look' : ''}</h4><div class="wd-items">
         <button type="button" class="wd-it" data-off="skin:${champ}" aria-pressed="${!W.skinOf(now, champ)}"><span class="wd-sw wd-off">—</span><span>As drawn</span></button>
-        ${mine.map(id => `<button type="button" class="wd-it" data-wear="${id}" aria-pressed="${now.includes(id)}">${W.swatch(id)}<span>${esc(SKINS[id].name)}</span></button>`).join('')}
+        ${mine.map(id => `<button type="button" class="wd-it" data-wear="${id}" aria-pressed="${now.includes(id)}">${W.swatch(id)}<span>${esc(W.label(id))}</span></button>`).join('')}
         ${mine.length ? '' : `<small class="wd-empty">None for ${esc(cn.short || cn.name)} yet. Kagemaru sells them at the Raid shop.</small>`}</div></div>` : '';
     return `<div class="wd">${SLOTS.map(slot).join('')}${skin}<p class="wd-note">Everyone in your party sees what you wear. Frames, nameplates and effects go on any champion; a colour only on its own.</p></div>`;
   };

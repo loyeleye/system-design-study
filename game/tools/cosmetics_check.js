@@ -71,6 +71,16 @@ const server = http.createServer((req, res) => {
   check(await a.evaluate(() => { SD.marks.hire('gong'); SD.marks.set(SD.marks.balance() + 500); if (!SD.marks.buy('look-gong-tv') || !SD.wear.equip('look-gong-tv')) return false;
     const el = document.createElement('div'); el.appendChild(SD.champions.sprite('gong', 2, true)); SD.wear.dressStage(el, SD.wear.worn('gong'), 'gong');
     const s = el.querySelector('.champ-spr').style; SD.wear.unequip('skin:gong'); return /wear\/look\/look-gong-tv/.test(s.backgroundImage) && parseFloat(s.width) === SD.lookArt['look-gong-tv'].w * 2; }), 'Gong in Must See TV is drawn from his look\'s own sheet');
+  // A look sold in variants (Explodia's, Rico's): one card with a swatch a variant; the first you buy is 500 ✦ whichever
+  // it is, each after it 150 ✦, and one variant is worn at a time.
+  await a.evaluate(() => window.__shop.redraw());
+  check(await a.locator('#shopbox [data-it^="look-explodia-sleep-"]').count() === 1 && await a.locator('#shopbox [data-var^="look-explodia-sleep-"]').count() === 4, 'Lying Down Now is one card with four variant swatches');
+  check(await a.evaluate(() => ['mint', 'rose', 'star', 'lilac'].every(v => SD.marks.cost('look-explodia-sleep-' + v) === 500)), 'before you own one, every variant is a look\'s price');
+  await a.click('#shopbox [data-var="look-explodia-sleep-star"]');
+  check(await a.evaluate(() => document.querySelector('#rs-stage').dataset.wear === 'look-explodia-sleep-star' && !!document.querySelector('#shopbox [data-buy="look-explodia-sleep-star"]')), 'tapping a variant tries it on and offers it to buy');
+  check(await a.evaluate(() => { SD.marks.set(SD.marks.balance() + 650); return SD.marks.buy('look-explodia-sleep-star') && SD.marks.cost('look-explodia-sleep-mint') === 150 && !SD.marks.has('look-explodia-sleep-mint') && SD.marks.buy('look-explodia-sleep-mint'); }), 'buying the starry one first costs 500 ✦, then the mint one 150 ✦');
+  check(await a.evaluate(() => SD.wear.equip('look-explodia-sleep-star') && SD.wear.equip('look-explodia-sleep-mint') && SD.wear.worn('explodia').filter(id => id.startsWith('look-explodia')).join() === 'look-explodia-sleep-mint'), 'one variant is worn at a time');
+  check(await a.evaluate(() => { SD.wear.unequip('skin:explodia'); return Object.keys(SD.wear.SKINS).filter(id => SD.wear.SKINS[id].look && id !== 'look-hero404-307').every(id => SD.lookArt[id]); }), 'every drawn look has its sheet');
   await a.evaluate(() => document.getElementById('shopbox').remove());
 
   // A Whiteboard Showdown party on page A, joined by page B (the standalone Guild Hall page: no save).

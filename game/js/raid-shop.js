@@ -99,6 +99,13 @@
 .rs-it b { font: 600 16px var(--f-head, system-ui); }
 .rs-it .sty { display: block; font-size: 12px; color: var(--mi-muted); }
 .rs-pack { display: grid; gap: 8px; }
+.rs-vn { font: 700 12px var(--f-body, system-ui); color: var(--mi-muted); }
+.rs-vars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.rs-var { display: grid; justify-items: center; align-content: start; gap: 2px; min-width: 0; padding: 4px 2px; line-height: 1.15; border: 2px solid #d6d1c6; border-radius: 10px; background: #fff; cursor: pointer; font: 700 11px var(--f-body, system-ui); color: var(--mi-muted); }
+.rs-var .wd-sw { width: 100%; height: 40px; border: 0; }
+.rs-var.mine { color: #1f6b46; }
+.rs-var[aria-pressed="true"] { border-color: var(--mi-ink); box-shadow: 0 0 0 2px var(--mi-sun, #ffe14d); color: var(--mi-ink); }
+.rs-var:focus-visible { outline: 3px solid var(--mi-sun, #ffe14d); outline-offset: 2px; }
 .rs-pack h3 { margin: 0; font: 700 11px var(--f-body, system-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--mi-muted); }
 @media (max-width: 520px) { .rs-try { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; } }
 .rs-cards h4 { margin: 6px 0 0; font: 700 11px var(--f-body, system-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--mi-muted); grid-column: 1 / -1; }
@@ -164,32 +171,44 @@
     const wear = it && W && W.ITEMS[it.id] ? [it.id] : W ? W.worn(who) : [];
     const pl = W ? W.plate(wear) : '', c = CH.get(who);
     const emo = it && it.emote ? emoSvg(it.emote) : it && it.has ? emoSvg(M.item(it.has[0]).emote) : '';
-    const what = it ? `Trying on <b>${esc(it.name)}</b>${M.has(it.id) ? ' (yours)' : `, ${it.cost} ✦`}.` : 'What you wear now. Tap Try on to see an item here.';
+    const what = it ? `Trying on <b>${esc(W && W.ITEMS[it.id] ? W.label(it.id) : it.name)}</b>${M.has(it.id) ? ' (yours)' : `, ${M.cost(it.id)} ✦`}.` : 'What you wear now. Tap Try on to see an item here.';
     return `<div class="rs-try"><div><div class="pt-stage" id="rs-stage" data-who="${who}" data-wear="${esc(wear.join(' '))}">${emo ? `<span class="rs-pv-emo" aria-hidden="true">${emo}</span>` : ''}</div>
       <span class="rs-pv-name"><span class="${pl}">Your name</span></span></div>
       <div><p>${what}</p><p class="gh-hint" style="margin-top:6px">On ${esc(c ? c.name : 'your champion')}${it && it.champ ? `, whose ${SD.wear && SD.wear.ITEMS[it.id] && SD.wear.ITEMS[it.id].look ? 'look' : 'colour'} it is` : ', the champion you picked last'}. Everyone in your party sees what you wear. Never in the story.</p>
       ${trying ? '<p style="margin-top:6px"><button class="mi-btn sm" type="button" id="rs-untry">Stop trying on</button></p>' : ''}</div></div>`;
   }
+  // A look sold in variants shows one card, for the variant you're looking at: the one you're trying on, else the one
+  // you wear, else your first, else the first.
+  function pick(set) {
+    const vs = M.variants(set), W = SD.wear;
+    return vs.find(v => v.id === trying) || vs.find(v => W && W.worn(v.champ).includes(v.id)) || vs.find(v => M.has(v.id)) || vs[0];
+  }
   function itemCard(it) {
-    const W = SD.wear, own = M.has(it.id), need = it.cost - M.balance();
+    const vs = it.set ? M.variants(it.set) : null;
+    if (vs) it = pick(it.set);
+    const W = SD.wear, own = M.has(it.id), cost = M.cost(it.id), need = cost - M.balance(), mineN = vs ? vs.filter(v => M.has(v.id)).length : 0;
     const wearable = W && W.ITEMS[it.id], on = wearable && W.worn().includes(it.id), cc = it.champ ? CH.get(it.champ) : null;
     const sw = it.slot === 'emote' ? `<span class="rs-many" aria-hidden="true">${it.has.map(o => emoSvg(M.item(o).emote)).join('')}</span>`
       : it.emote ? emoSvg(it.emote) : W ? W.swatch(it.id) : '';
     const sub = it.slot === 'emote' ? `${it.label} · ${it.has.length} ${it.label === 'Action pack' ? 'moves' : 'emotes'} · ${it.has.reduce((a, o) => a + M.cost(o), 0) - it.cost} ✦ less than singly`
-      : it.slot === 'skin' ? `${W.ITEMS[it.id].look ? 'Look' : 'Colour'} for ${cc ? cc.short : ''}${W.ITEMS[it.id].season ? ' · seasonal, sold all year' : ''}${W.ITEMS[it.id].note ? ' · ' + W.ITEMS[it.id].note : ''}`
+      : it.slot === 'skin' ? `${W.ITEMS[it.id].look ? 'Look' : 'Colour'} for ${cc ? cc.short : ''}${vs ? ` · ${mineN} of ${vs.length} variants yours` : ''}${W.ITEMS[it.id].season ? ' · seasonal, sold all year' : ''}${W.ITEMS[it.id].note ? ' · ' + W.ITEMS[it.id].note : ''}`
       : M.SLOTS[it.slot] + (wearable && W.ITEMS[it.id].note ? ' · ' + W.ITEMS[it.id].note : '');
     let act;
     const wornHere = W && it.champ ? W.worn(it.champ).includes(it.id) : on;
     let hint = '';
     if (own) act = `${wearable ? `<button class="rs-sw" type="button" role="switch" data-wear="${it.id}" aria-checked="${wornHere}" aria-label="Wear ${esc(it.name)}"><i aria-hidden="true"></i>${wornHere ? 'On' : 'Off'}</button>` : ''}`;
-    else if (cc && !CH.unlocked(cc.id)) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${it.cost} ✦</button>`, hint = CH.state(cc.id) === 'hire' ? `Hire ${esc(cc.short)} first` : `Reach ${esc(cc.short)} first`;
+    else if (cc && !CH.unlocked(cc.id)) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${cost} ✦</button>`, hint = CH.state(cc.id) === 'hire' ? `Hire ${esc(cc.short)} first` : `Reach ${esc(cc.short)} first`;
     else if (!M.on()) act = '', hint = 'Buy it in the game, where your Raid Marks are.';
-    else if (need > 0) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${it.cost} ✦</button>`, hint = `You need ${need} more ✦`;
-    else if (armed === it.id) act = `<button class="mi-btn sm confirm" type="button" data-buy="${it.id}">Confirm: ${it.cost} ✦</button>`, hint = 'Tap Confirm to buy';
-    else act = `<button class="mi-btn sm go" type="button" data-buy="${it.id}">Buy · ${it.cost} ✦</button>`;
+    else if (need > 0) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${cost} ✦</button>`, hint = `You need ${need} more ✦`;
+    else if (armed === it.id) act = `<button class="mi-btn sm confirm" type="button" data-buy="${it.id}">Confirm: ${cost} ✦</button>`, hint = 'Tap Confirm to buy';
+    else act = `<button class="mi-btn sm go" type="button" data-buy="${it.id}">Buy · ${cost} ✦</button>`;
+    // Variants: the first you buy is any of them at a look's price, the rest TIERS.variant each (Ladi, 2026-10-25).
+    if (vs && !own && !hint) hint = mineN ? `Every variant after your first is ${M.TIERS.variant} ✦` : `Pick any variant. After this one, the others are ${M.TIERS.variant} ✦ each`;
     const tryB = `<button class="mi-btn sm" type="button" data-try="${it.id}" aria-pressed="${trying === it.id}">Try on</button>`;
-    return `<li class="rs-it${own ? ' own' : ''}" data-it="${it.id}"><span class="sw">${sw}</span><div><b>${esc(it.name)}</b><span class="sty">${esc(sub)}${own ? '' : ` · ${it.cost} ✦`}</span>${own ? '<span class="rs-own">✓ Yours</span>' : ''}
-      <div class="rs-act rs-row">${act}${own ? '' : tryB}</div>${hint ? `<small class="rs-hint">${hint}</small>` : ''}</div></li>`;
+    // One swatch a variant: tap to see it on the preview, whether it's yours or not.
+    const vars = vs ? `<div class="rs-vars" role="group" aria-label="${esc(it.name)} variants">${vs.map(v => `<button type="button" class="rs-var${M.has(v.id) ? ' mine' : ''}" data-var="${v.id}" aria-pressed="${v.id === it.id}" aria-label="${esc(v.variant)}${M.has(v.id) ? ', yours' : `, ${M.cost(v.id)} ✦`}">${W.swatch(v.id)}<span>${M.has(v.id) ? '✓ ' : ''}${esc(v.variant)}</span></button>`).join('')}</div>` : '';
+    return `<li class="rs-it${own ? ' own' : ''}" data-it="${it.id}"><span class="sw">${sw}</span><div><b>${esc(it.name)}</b>${vs ? ` <span class="rs-vn">${esc(it.variant)}</span>` : ''}<span class="sty">${esc(sub)}${own ? '' : ` · ${cost} ✦`}</span>${own ? '<span class="rs-own">✓ Yours</span>' : ''}
+      ${vars}<div class="rs-act rs-row">${act}${own ? '' : tryB}</div>${hint ? `<small class="rs-hint">${hint}</small>` : ''}</div></li>`;
   }
   function cosmetics() {
     const items = M.items();
@@ -198,9 +217,9 @@
         const packs = items.filter(it => it.slot === 'emote');
         return packs.length ? `<section class="rs-region"><h3>${h}</h3><p class="gh-hint" style="margin:0">${why}. ${SD.emote ? SD.emote.mine().length : 9} are free for everyone.</p>${packs.map(pk => `<section class="rs-pack" aria-label="${esc(pk.name)}"><h3>${esc(pk.name)}</h3><ul class="rs-grid">${itemCard(pk)}${items.filter(it => it.pack === pk.id).map(itemCard).join('')}</ul></section>`).join('')}</section>` : '';
       }
-      const cs = items.filter(it => it.slot === k);
+      let cs = items.filter(it => it.slot === k);
       // Colours by champion, in roster order.
-      if (k === 'skin') cs.sort((x, y) => CH.list.findIndex(c => c.id === x.champ) - CH.list.findIndex(c => c.id === y.champ));
+      if (k === 'skin') cs = cs.filter(it => !it.set || M.variants(it.set)[0] === it), cs.sort((x, y) => CH.list.findIndex(c => c.id === x.champ) - CH.list.findIndex(c => c.id === y.champ));
       return cs.length ? `<section class="rs-region"><h3>${h}</h3><p class="gh-hint" style="margin:0">${why}.</p><ul class="rs-grid">${cs.map(itemCard).join('')}</ul></section>` : '';
     }).join('');
   }
@@ -210,6 +229,7 @@
     const lk = SD.wear && st && st.dataset.wear.split(' ').includes('look-hero404-307') ? CH.redirect() : null;
     if (st) { const id = st.dataset.who, c = CH.get(id); if (c) st.appendChild(CH.sprite(id, Math.min(2, 104 / (lk ? SD.redirectArt.map.h : c.h)), true, lk)); if (SD.wear) SD.wear.dressStage(st, st.dataset.wear.split(' '), id); }
     el.querySelectorAll('[data-try]').forEach(b => { b.onclick = () => { trying = trying === b.dataset.try ? null : b.dataset.try; redraw(); const p = el.querySelector('.rs-try'); if (p && trying) p.scrollIntoView({ block: 'nearest' }); }; });
+    el.querySelectorAll('[data-var]').forEach(b => { b.onclick = () => { trying = b.dataset.var; armed = null; redraw(); const p = el.querySelector('.rs-try'); if (p) p.scrollIntoView({ block: 'nearest' }); const f = el.querySelector(`[data-var="${b.dataset.var}"]`); if (f) f.focus({ preventScroll: true }); }; });
     const un = el.querySelector('#rs-untry'); if (un) un.onclick = () => { trying = null; redraw(); };
     el.querySelectorAll('[data-wear]').forEach(b => { b.onclick = () => { const it = M.item(b.dataset.wear), W = SD.wear; // The preview shows what you just put on, on its own champion for a colour.
       if (W.worn(it.champ).includes(it.id)) { W.unequip(it.champ ? 'skin:' + it.champ : it.slot); trying = null; } else { W.equip(it.id); trying = it.id; } redraw(); }; });

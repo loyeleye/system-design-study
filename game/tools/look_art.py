@@ -14,7 +14,15 @@ from PIL import Image
 SRC = sys.argv[1] if len(sys.argv) > 1 else '/mnt/project-files/raid-cosmetics-previews/looks/looks-raw'
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOOKS = {'look-gong-tv': 'gong', 'look-doug-hoodie': 'doug', 'look-suzu-offcall': 'suzu', 'look-sunny-meet': 'sunny',
-         'look-eunho-curtain': 'eunho', 'look-leilani-storm': 'leilani', 'look-dieynaba-teranga': 'dieynaba'}
+         'look-eunho-curtain': 'eunho', 'look-leilani-storm': 'leilani', 'look-dieynaba-teranga': 'dieynaba',
+         # The original 16's (Ladi's picks, 2026-10-25). Bru, Latency, Neel, Hypewagon and Nari are inpaint-v3 repaints of
+         # their own frame (Nari's face repainted under a see-through veil); Freya is one draw with another's head.
+         'look-uptima-freetier': 'uptima', 'look-seymour-backup': 'seymour', 'look-mio-crayon': 'mio', 'look-ayo-scaling': 'ayo',
+         'look-bru-night': 'bru', 'look-kaito-helm': 'kaito', 'look-ploy-rule15': 'ploy', 'look-kwame-horn': 'kwame',
+         'look-explodia-sleep-mint': 'explodia-1', 'look-explodia-sleep-rose': 'explodia-2', 'look-explodia-sleep-star': 'explodia-3',
+         'look-explodia-sleep-lilac': 'explodia-4', 'look-latency-ratelimit': 'latency', 'look-imani-gerald': 'imani',
+         'look-rico-title-red': 'rico-1', 'look-rico-title-blue': 'rico-2', 'look-rico-title-black': 'rico-3', 'look-rico-title-white': 'rico-4',
+         'look-nari-canary': 'nari', 'look-hypewagon-booth': 'hypewagon', 'look-neel-cob': 'neel', 'look-kyu-signed': 'kyu'}
 SEQ = [0, 1, 2, 3, 2]   # five frames, like the seven champions' map idles (n 4)
 art = {}
 for lid, c in LOOKS.items():
