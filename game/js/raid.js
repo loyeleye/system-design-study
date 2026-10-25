@@ -2144,6 +2144,8 @@
     function fighterArt(k) {
       const p = G.players[k]; if (!p) return null;
       const sk = W ? W.skinOf(wearOf(k), p.c || 'uptima') : null, la = sk && W.lookArt(sk);
+      // One of the original 16's looks fights side on, from its own battle sheet, like they do.
+      if (la && la.bat) return { sheet: `assets/img/battle/look/${sk}.webp`, w: la.bat.w, h: la.bat.h, rows: la.bat.rows };
       return la ? { sheet: la.sheet, w: la.w, h: la.h, rows: { idle: [0, la.n] }, map: true } : artOf(p.c || 'uptima', p.lk);
     }
     function stageHtml(e) {

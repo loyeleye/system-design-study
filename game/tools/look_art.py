@@ -24,6 +24,23 @@ LOOKS = {'look-gong-tv': 'gong', 'look-doug-hoodie': 'doug', 'look-suzu-offcall'
          'look-rico-title-red': 'rico-1', 'look-rico-title-blue': 'rico-2', 'look-rico-title-black': 'rico-3', 'look-rico-title-white': 'rico-4',
          'look-nari-canary': 'nari', 'look-hypewagon-booth': 'hypewagon', 'look-neel-cob': 'neel', 'look-kyu-signed': 'kyu'}
 SEQ = [0, 1, 2, 3, 2]   # five frames, like the seven champions' map idles (n 4)
+# A look for one of the original 16, who fight side on (js/champion-art.js), also has a battle sheet like theirs:
+# SRC/<folder>/bat/ holds east.png, the look side on in the champion's battle style and size (generate-image-v2 with
+# their own battle frame as style), and idle/, cast/, hurt/ animated from it, four frames each. The idle loops twice;
+# cast and hurt hold their middle frames, as in tools/redirect_art.py.
+ROWS = {'idle': [0, 1, 2, 3, 0, 1, 2, 3], 'cast': [0, 1, 1, 2, 2, 3], 'hurt': [0, 0, 1, 1, 2, 3]}
+def battle(lid, d):
+    fs = {r: [Image.open(os.path.join(d, r, 'f%02d.png' % i)).convert('RGBA') for i in range(4)] for r in ROWS}
+    bs = [f.getchannel('A').point(lambda v: 255 if v > 40 else 0).getbbox() for r in fs for f in fs[r]]
+    box = (min(b[0] for b in bs) - 1, min(b[1] for b in bs) - 1, max(b[2] for b in bs) + 1, max(b[3] for b in bs))
+    w, h = box[2] - box[0], box[3] - box[1]
+    sheet = Image.new('RGBA', (w * max(len(v) for v in ROWS.values()), h * len(ROWS)))
+    for y, (r, seq) in enumerate(ROWS.items()):
+        for i, k in enumerate(seq): sheet.alpha_composite(fs[r][k].crop(box), (i * w, y * h))
+    sheet.save(os.path.join(HERE, 'assets/img/battle/look', lid + '.webp'), lossless=True, quality=100, method=6)
+    print(lid, 'battle', sheet.size)
+    return {'w': w, 'h': h, 'rows': {r: [y, len(seq)] for y, (r, seq) in enumerate(ROWS.items())}}
+os.makedirs(os.path.join(HERE, 'assets/img/battle/look'), exist_ok=True)
 art = {}
 for lid, c in LOOKS.items():
     fs = [Image.open(os.path.join(SRC, c, 'f%02d.png' % i)).convert('RGBA') for i in range(4)]
@@ -35,7 +52,9 @@ for lid, c in LOOKS.items():
     sheet.save(os.path.join(HERE, 'assets/img/wear/look', lid + '.webp'), lossless=True, quality=100, method=6)
     art[lid] = {'w': w, 'h': h, 'n': len(SEQ)}
     print(lid, sheet.size)
+    if os.path.exists(os.path.join(SRC, c, 'bat', 'hurt', 'f03.png')): art[lid]['bat'] = battle(lid, os.path.join(SRC, c, 'bat'))
 open(os.path.join(HERE, 'js/look-art.js'), 'w').write(
     "// Champion looks' sheets, written by tools/look_art.py: assets/img/wear/look/<id>.webp, one row of n frames of w x h,\n"
-    "// feet on the bottom edge. js/wear.js draws them in the party room and the shop, js/raid.js in the fight.\n"
+    "// feet on the bottom edge. js/wear.js draws them in the party room and the shop, js/raid.js in the fight. bat: the\n"
+    "// side-on battle sheet of a look for one of the original 16 (assets/img/battle/look/<id>.webp), laid out like theirs.\n"
     "SD.lookArt = %s;\n" % json.dumps(art))
