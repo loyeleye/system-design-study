@@ -1323,7 +1323,7 @@
       // The hit lands as the lunge reaches you.
       setTimeout(() => {
         if (C.over) return;
-        if (dmg) { U.float($('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); if ($('.hero')) U.burst($('.hero'), false); }
+        if (dmg) { const hs = $('#run .ht-sla'); U.float(hs && hs.offsetParent ? hs : $('.me-zone'), '-' + dmg, 'dmg'); U.shake('#run'); AU.sfx('hurt'); heroAnim('hurt'); flash('.hero', 'hurtflash'); if ($('.hero')) U.burst($('.hero'), false); }
         else AU.sfx(attack ? 'shield' : 'ok');
         if (run.sla <= 0 && rel('tradinghalt') && !run.halted) {
           run.halted = true; run.sla = Math.round(S.maxSla() / 2);
@@ -1460,8 +1460,13 @@
     if (C.steplimit) chips.push('<span class="chip">Step limit</span>');
     (C.fuses || []).forEach(f => chips.push(`<span class="chip fuse" title="${U.esc(SD.cards[f.id].text)}">${U.esc(SD.cards[f.id].name)}: ${f.mit} to all in ${f.left}</span>`));
     const pct = Math.max(0, run.sla / S.maxSla() * 100);
+    // On phones the fight is two panes, the foe and your status scrolling above a pinned hand whose bar also carries
+    // your SLA (.ht-sla; index.html, "Phone battle"). Every action re-renders, so keep both panes where the player
+    // left them within the same fight.
+    const was = $('#run .combat.solo'), kept = was && was.fight === C ? [...was.querySelectorAll('.cb-top, .hand')].map(el => el.scrollTop) : null;
     $('#run').innerHTML = `
-      <div class="combat${C.boss ? ' bossfight' : ''}">
+      <div class="combat solo${C.boss ? ' bossfight' : ''}">
+        <div class="cb-top">
         <div class="foe-zone">
           ${stageHtml(e, foeCol)}
           ${grouped() ? groupInfoHtml() : `<div class="foe-info">
@@ -1479,13 +1484,17 @@
           <div class="chips">${chips.join('') || '<span class="muted small">No defences up.</span>'}</div>
           <div class="infra">${[0, 1, 2, 3].map(i => C.infra[i] ? `<span class="slot on" title="${U.esc(SD.cards[C.infra[i].id].text)}">${U.esc(SD.cards[C.infra[i].id].name)}</span>` : '<span class="slot">Infra slot</span>').join('')}</div>
         </div>
+        </div>
         <div class="hand-zone">
           <div class="hand-top"><div class="energy" aria-label="Capacity ${C.energy}"><b>${C.energy}</b><span>CAP</span></div>
-            <span class="muted small">Draw ${C.draw.length} · Discard ${C.disc.length}</span>
+            <div class="ht-mid"><div class="hud-sla ht-sla"><span>SLA</span><div class="bar sla"><i style="width:${pct}%"></i></div><b>${Math.max(0, run.sla)}/${S.maxSla()}</b></div>
+              <span class="muted small">Draw ${C.draw.length} · Discard ${C.disc.length}</span></div>
             ${hook('combatButtons', C) || ''}<button class="primary" id="end-turn">End turn</button></div>
           <div class="hand">${C.hand.map((c, i) => U.cardHtml(c, { i, cost: costOf(c), dim: costOf(c) > C.energy })).join('')}</div>
         </div>
       </div>`;
+    const solo = $('#run .combat.solo'); solo.fight = C;
+    if (kept) solo.querySelectorAll('.cb-top, .hand').forEach((el, i) => { el.scrollTop = kept[i]; });
     $('#run').querySelectorAll('.hand .card').forEach(el => {
       el.onclick = () => playCard(+el.dataset.i);
       el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); playCard(+el.dataset.i); } };
