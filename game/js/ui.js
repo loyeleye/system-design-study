@@ -104,19 +104,43 @@
     if (SD.audio) SD.audio.sfx(kind === 'gold' ? 'coin' : kind === 'red' ? 'wrong' : 'blip');
   };
   function pump() {
-    const n = sq.shift(); if (!n) { showing = false; return; }
+    const n = sq.shift(); if (!n) { showing = false; place(); return; }
     showing = true;
     const el = document.createElement('div');
     el.className = 'sysnote ' + (n.kind || '');
     el.setAttribute('role', 'status');
+    el.title = 'Tap to dismiss';
     el.innerHTML = `<div class="sys-h"><span class="sys-i">!</span>${U.esc(n.title)}</div>${n.body ? `<div class="sys-b">${n.body}</div>` : ''}`;
-    // Sit just below whatever header is showing, so a wrapped phone HUD never hides the toast.
-    const bar = ['#hud', '.run-hud'].map(q => $(q)).find(h => h && h.offsetParent);
-    $('#notes').style.top = (bar ? Math.max(12, bar.getBoundingClientRect().bottom + 8) : 12) + 'px';
     $('#notes').appendChild(el);
+    place();
     const ms = n.ms || 3000;
-    setTimeout(() => el.classList.add('out'), ms - 400);
-    setTimeout(() => { el.remove(); pump(); }, ms);
+    let gone = false;
+    const t1 = setTimeout(() => el.classList.add('out'), ms - 400);
+    const t2 = setTimeout(() => done(), ms);
+    function done() { if (gone) return; gone = true; clearTimeout(t1); clearTimeout(t2); el.remove(); pump(); }
+    // A tap dismisses it and brings on the next one, so a queue of toasts never sits on what you're reading.
+    el.addEventListener('click', e => { e.stopPropagation(); done(); });
+  }
+  // A rotated phone or the on-screen keyboard changes the room the panel has.
+  addEventListener('resize', () => { if (showing) place(); });
+  if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (showing) place(); });
+  // Where the toast sits. With no panel open: just below whatever header is showing, so a wrapped phone HUD never
+  // hides it. With a panel open: at the bottom of the screen, and the panel gives up that strip (#panel's bottom
+  // padding) while the toast shows, so it never covers the panel's title, question or buttons (Ladi, 2026-10-25).
+  function place() {
+    const notes = $('#notes'), p = $('#panel'), el = notes.querySelector('.sysnote');
+    p.style.paddingBottom = '';
+    const low = !!el && !p.hidden;
+    notes.classList.toggle('low', low);
+    if (!low) {
+      const bar = ['#hud', '.run-hud'].map(q => $(q)).find(h => h && h.offsetParent);
+      notes.style.top = (bar ? Math.max(12, bar.getBoundingClientRect().bottom + 8) : 12) + 'px';
+      return;
+    }
+    notes.style.top = '';
+    // Layout boxes, not getBoundingClientRect: the panel and the toast may still be mid pop-in animation (scaled).
+    const win = p.querySelector('.win'), gap = 8;
+    if (win && p.getBoundingClientRect().top + win.offsetTop + win.offsetHeight + gap > notes.getBoundingClientRect().top) p.style.paddingBottom = `calc(${12 + notes.offsetHeight + gap}px + env(safe-area-inset-bottom, 0px))`;
   }
 
   // ---- Modal panels ----
@@ -131,9 +155,10 @@
     else if (U.quitGame) $('#panel-quit').onclick = () => U.quitGame();
     // opts.back: a ‹ button before the title that goes back to where this panel was opened from (the menu).
     if (opts.back) $('#panel-back').onclick = opts.back;
+    if (showing) place();
     return p.querySelector('.win-b');
   };
-  U.closePanel = function () { $('#panel').hidden = true; $('#panel').innerHTML = ''; };
+  U.closePanel = function () { $('#panel').hidden = true; $('#panel').innerHTML = ''; $('#panel').style.bottom = ''; if (showing) place(); };
 
   // ---- Cards ----
   U.cardDef = function (c) { return SD.cards[c.id || c]; };

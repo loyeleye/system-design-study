@@ -318,7 +318,7 @@
     .rl-btns{display:flex;justify-content:center;margin-top:8px}.rl-step{font-size:20px;padding:12px 34px}
     .ch-stage{display:flex;gap:10px;align-items:flex-start;border:2px solid var(--ink);border-radius:12px;padding:8px;background:var(--cream,#fffaf0)}
     .ch-clues{margin:0;padding-left:20px;font-style:italic}.ch-clues li{margin:2px 0 6px}
-    .ch-guess{display:flex;gap:6px;margin:8px 0}.ch-guess input{flex:1;min-width:0;font:inherit;padding:8px;border:2px solid var(--ink);border-radius:8px}
+    .ch-guess{display:flex;gap:6px;margin:8px 0}.ch-guess input{flex:1;min-width:0;font:inherit;font-size:max(16px,1em);padding:8px;border:2px solid var(--ink);border-radius:8px}
     .ch-more{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}.ch-more .opt{flex:1;min-width:140px}
     .sr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:10px auto}
     .sr-tile{aspect-ratio:1;font-size:34px;border:2px solid var(--ink);border-radius:12px;background:#d8c8a8;cursor:pointer}.sr-tile.dug{background:#efe6d4;opacity:.8}.sr-tile.found{background:#ffe14d}

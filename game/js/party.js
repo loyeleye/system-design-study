@@ -43,7 +43,7 @@
 .pt-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .pt-head h2 { margin: 0; font: 700 28px/1.1 var(--f-head, system-ui); }
 .pt-set { display: grid; gap: 6px; background: #fff; border: 2.5px solid var(--mi-ink); border-radius: 12px; padding: 8px 12px; min-width: 0; max-width: 100%; }
-.pt-set select { font: inherit; padding: 4px 8px; border: 2.5px solid var(--mi-ink); border-radius: 10px; background: #fff; max-width: 100%; }
+.pt-set select { font: inherit; font-size: max(16px, 1em); padding: 4px 8px; border: 2.5px solid var(--mi-ink); border-radius: 10px; background: #fff; max-width: 100%; }
 .pt-members { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .pt-mem { position: relative; background: #fff; border: 3px solid var(--mi-ink); border-radius: 16px; padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 5px; text-align: center; min-width: 0; }
 .pt-mem.ready { border-color: #1f8a57; }
@@ -60,7 +60,7 @@
 .pt-chip { font: 700 12px var(--f-body, system-ui); border: 2px solid var(--mi-ink); border-radius: 999px; padding: 0 8px; background: var(--mi-paper); }
 .pt-chip.ok { background: #dff4ea; border-color: #1f8a57; color: #1f6b46; } .pt-chip.wait { background: #fff; color: var(--mi-muted); }
 .pt-rename { display: flex; gap: 6px; width: 100%; flex-wrap: wrap; }
-.pt-rename input { flex: 1 1 90px; min-width: 0; font: 600 15px var(--f-head, system-ui); padding: 4px 8px; border: 2.5px solid var(--mi-ink); border-radius: 10px; }
+.pt-rename input { flex: 1 1 90px; min-width: 0; font: 600 16px var(--f-head, system-ui); padding: 4px 8px; border: 2.5px solid var(--mi-ink); border-radius: 10px; }
 .pt-mem.editing { outline: 3px solid var(--mi-sun); outline-offset: 2px; }
 .pt-chg[aria-pressed="true"] { background: var(--mi-sun); }
 .pt-lbl .pt-for { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -114,6 +114,22 @@
 .pt-vis { display: inline-flex; border: 2.5px solid var(--mi-ink); border-radius: 10px; overflow: hidden; }
 .pt-vis button { font: 700 13px var(--f-body, system-ui); padding: 3px 10px; border: 0; background: #fff; color: var(--mi-ink); cursor: pointer; }
 .pt-vis button.on { background: var(--mi-ink); color: #fff; }
+/* Touch: every control in the party room at least 44px each way. */
+@media (max-width: 720px), (pointer: coarse) {
+  .pt-back { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px 0 0; }
+  .pt .mi-btn, .pt-vis button { min-height: 44px; min-width: 44px; }
+  .pt-vis button { padding: 3px 14px; }
+  .pt-kick { min-height: 44px; min-width: 44px; padding: 0 8px; }
+  .pt-rename input, .pt-set select { min-height: 44px; }
+}
+/* Phones: a one-row Start bar, so it hides less of the roster while you scroll; the room ends with room to spare
+   below it, so the last row scrolls fully clear. */
+@media (max-width: 560px) {
+  .pt-bar { flex-wrap: nowrap; padding: 8px 10px; gap: 10px; }
+  .pt-bar p { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+  .pt-bar .mi-btn { flex: none; white-space: nowrap; }
+  .mi-card.pt { padding-bottom: 18px; }
+}
 @media (max-width: 560px) { .pt-sig { padding: 8px 10px; gap: 4px; } .pt-sig p { font-size: 13.5px; } .pt-members { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pt-mem .pt-stage { height: 100px; } .pt-head h2 { font-size: 24px; } }
 `;
     document.head.appendChild(st);

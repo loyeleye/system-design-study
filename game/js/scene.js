@@ -160,18 +160,31 @@
         [tx, ty] = hit ? [Math.round(hit.a.x), Math.round(hit.a.y)] : [Math.floor((u + v) / 2), Math.floor((v - u) / 2)];
       }
       const P = sc.P, a = actorAt(tx, ty);
+      // A ring where you're headed, or a red one where you can't go (js/hub.js H.tapMark, as in the village).
+      const markAt = (x, y, bad) => { mark = { x, y, t: performance.now() / 1000, bad, end: 0 }; };
       if (a && a.talk !== false) {
         if (DIRS.some(([dx, dy]) => P.x + dx === tx && P.y + dy === ty)) { if (sc.onTalk) sc.onTalk(a.id); return; }
         const p = bfs(P.x, P.y, (x, y) => DIRS.some(([dx, dy]) => x + dx === tx && y + dy === ty));
         if (p) { P.path = p; P.want = a.id; }
+        markAt(tx, ty, !p);
         return;
       }
       // Tapping a building walks to its door.
       let goal = [tx, ty];
       if (!sc.walkable(tx, ty) && def.doorFor) { const d = def.doorFor(tx, ty); if (d) goal = d; }
-      if (!sc.walkable(goal[0], goal[1])) return;
-      const p = bfs(P.x, P.y, (x, y) => x === goal[0] && y === goal[1], goal);
+      if (goal[0] === P.x && goal[1] === P.y) return;
+      const p = sc.walkable(goal[0], goal[1]) && bfs(P.x, P.y, (x, y) => x === goal[0] && y === goal[1], goal);
       if (p) { P.path = p; P.want = null; }
+      markAt(p ? goal[0] : tx, p ? goal[1] : ty, !p);
+    }
+    let mark = null;
+    sc.mark = () => mark;  // for tools/phone_hud_check.js
+    // On the ground while you walk there; a can't-go-there one over the trees and walls it was tapped on (top).
+    function tapMark(t, top) {
+      if (!mark || !!mark.bad !== !!top || !sc.P || !SD.hub || !SD.hub.tapMark) return;
+      const P = sc.P;
+      if (!SD.hub.tapMark(ctx, mark, ts, t, P.path.length > 0 || !!P.want || Math.abs(P.px - P.x) + Math.abs(P.py - P.y) > 0.01,
+        ISO ? feet : null)) mark = null;
     }
 
     function resize() {
@@ -424,6 +437,7 @@
         else ctx.drawImage(sheetIm, n * TL.size, 0, TL.size, TL.size, sx, sy + (dy || 0) * z, S, S);
       });
       if (def.under) def.under(ctx, ts, t);
+      tapMark(t);
       const items = [];
       (def.objects || []).forEach(o => {
         if (o.hidden) return;
@@ -475,6 +489,7 @@
         const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
         if (def.ground !== false) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) corner(x, y);
         if (def.under) def.under(ctx, ts, t);
+        tapMark(t);
         // Trees ring the map; objects and people are drawn row by row so you walk behind them. Anything marked front
         // is drawn over every row, people first: someone climbing the outside of a building, and the railing they
         // climb behind (js/club-loft.js).
@@ -507,6 +522,7 @@
         if (!a.name || a.hidden) return;
         if (ISO) { const [fx, fy] = feet(a.px, a.py); labelAt(fx, fy + ts * 0.8, a.name, a.marker, true); } else label(a.px, a.py + 1.45, a.name, a.marker, true);
       });
+      tapMark(t, true);
       sc.fx.forEach(f => f(ctx, t, ts));
       ctx.restore();
       if (def.clouds && SD.sky) SD.sky.clouds(ctx, t, vw, vh, cx, cy, wk);

@@ -138,7 +138,7 @@
     .dbg-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
     .dbg-f.wide { grid-column: 1 / -1; }
     .dbg-f { display: grid; gap: 3px; font-size: 13px; font-weight: 700; min-width: 0; }
-    .dbg-f select, .dbg-f input { font: 600 14px var(--f-body); color: var(--ink); padding: 6px 8px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; min-width: 0; width: 100%; }
+    .dbg-f select, .dbg-f input { font: 600 16px var(--f-body); color: var(--ink); padding: 6px 8px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; min-width: 0; width: 100%; }
     .dbg-f select:disabled, .dbg-f input:disabled { background: #f1ede4; color: var(--muted); border-color: var(--muted); }
     .dbg-f small { font-weight: 600; color: var(--muted); }
     .dbg-check { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 14px; font-weight: 600; }

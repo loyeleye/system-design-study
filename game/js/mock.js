@@ -160,7 +160,7 @@
 .mi-why.good { border-left-color: var(--mi-mint); }
 .mi-type { background: repeating-linear-gradient(-45deg, #f6f3fd, #f6f3fd 8px, #efeaf9 8px, #efeaf9 16px); border: 3px dashed var(--mi-violet); border-radius: 12px; padding: 10px 12px; }
 .mi-type p { margin: 0 0 6px; }
-.mi textarea.mi-text { display: block; width: 100%; box-sizing: border-box; font: 15px/1.45 var(--f-body, system-ui); color: var(--mi-ink); background: #fff; border: 3px solid var(--mi-ink); border-radius: 10px; padding: 8px 10px; resize: vertical; min-height: 80px; }
+.mi textarea.mi-text { display: block; width: 100%; box-sizing: border-box; font: 16px/1.45 var(--f-body, system-ui); color: var(--mi-ink); background: #fff; border: 3px solid var(--mi-ink); border-radius: 10px; padding: 8px 10px; resize: vertical; min-height: 80px; }
 .mi textarea.mi-text:focus { outline: 3px solid var(--mi-sun); outline-offset: 1px; }
 .mi-said { margin: 0 0 10px; padding: 6px 10px; border-left: 5px solid var(--mi-violet); background: #f6f3fd; border-radius: 8px; font-style: italic; white-space: pre-wrap; overflow-wrap: anywhere; }
 .mi-typed { margin-top: 12px; }
@@ -659,7 +659,7 @@
       }
       speak(L(kind === 'slow' ? 'estSlow' : 'estGo'));
       const val = await step(`<div class="mi-card"><span class="mi-tag">Estimation</span><p class="mi-q">${esc(E.q)}</p>
-        <div class="mi-row"><input class="mi-num" inputmode="decimal" autocomplete="off" placeholder="e.g. 4000, 4k, 1e9"> <b>${esc(E.unit)}</b></div>
+        <div class="mi-row"><input class="mi-num" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="e.g. 4000, 4k, 1e9"> <b>${esc(E.unit)}</b></div>
         <p class="mi-small mi-muted">Round freely. A day is about 10^5 seconds (86,400); a month is about 2.6 × 10^6.</p>
         <div class="mi-row mi-end"><button class="mi-btn go mi-commit" type="button" disabled>Say it</button></div></div>`, res => {
         const inp = stage.querySelector('.mi-num'), b = stage.querySelector('.mi-commit');

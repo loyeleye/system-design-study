@@ -5,6 +5,28 @@
   const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   Q.shuffle = shuffle;
 
+  // With the on-screen keyboard up, a typed answer's commit row (Guess / Think so / Sure, or That's my answer) would
+  // sit under the keys. The panel shrinks to the part of the screen the keyboard leaves (iOS keeps the page full height
+  // and lays the keyboard over it), and its body scrolls so the row shows below the answer box.
+  const COMMIT = '.conf-b';
+  function keepCommit() {
+    const p = document.querySelector('#panel'), ta = document.activeElement;
+    if (!p || p.hidden || !ta || !ta.matches || !ta.matches('#panel textarea.q-text')) return;
+    const vv = window.visualViewport, cover = vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0;
+    p.style.bottom = cover > 40 ? cover + 'px' : '';
+    const body = ta.closest('.win-b'), row = ta.parentNode.querySelector(COMMIT) || body.querySelector(COMMIT);
+    if (!body || !row) return;
+    const view = body.getBoundingClientRect(), r = row.getBoundingClientRect(), t = ta.getBoundingClientRect();
+    // Down far enough to show the row, but never so far the answer box's top leaves the view.
+    const by = Math.min(r.bottom + 8 - view.bottom, t.top - 8 - view.top);
+    if (by > 0) body.scrollTop += by;
+  }
+  if (window.visualViewport) visualViewport.addEventListener('resize', () => setTimeout(keepCommit, 50));
+  addEventListener('resize', () => setTimeout(keepCommit, 50));
+  document.addEventListener('focusin', e => { if (e.target.matches && e.target.matches('#panel textarea.q-text')) setTimeout(keepCommit, 350); });
+  // When the keyboard goes away, the panel takes the whole screen again.
+  document.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('#panel textarea.q-text')) setTimeout(() => { if (!document.activeElement || !document.activeElement.matches('#panel textarea.q-text')) { const p = document.querySelector('#panel'); if (p) p.style.bottom = ''; } }, 50); });
+
   // Say it first: multiple choice options stay hidden until you have an answer of your own, as in the mock interview.
   // Modes: 'boss' (the default: boss steps, deep dives and duels), 'all' or 'off'. Callers can force it with opts.think.
   Q.SAY_MODES = ['boss', 'all', 'off'];
@@ -261,9 +283,10 @@
           ta.oninput = () => { typed = ta.value; b.querySelectorAll('[data-c]').forEach(x => x.disabled = words(typed) < 3); };
           setTimeout(() => ta.focus(), 50);
           const idk = document.createElement('button');
-          idk.className = 'ghost'; idk.textContent = "I don't know yet";
+          // A quiet way out, centred under the three choices so it never reads as a fourth level of sureness.
+          idk.className = 'q-idk'; idk.type = 'button'; idk.textContent = "I don't know yet";
           idk.onclick = () => { typed = ''; submit(0); };
-          b.querySelector('.conf').appendChild(idk);
+          b.querySelector('.conf-b').after(idk);
         }
         const inp = b.querySelector('#q-num');
         if (inp) {

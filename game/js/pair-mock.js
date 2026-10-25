@@ -43,7 +43,7 @@
 .pm-score { display: grid; gap: 6px; }
 .pm-score > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13.5px; font-weight: 700; }
 .pm-score .mi-pick button { padding: 3px 9px; }
-.pm-say { display: flex; gap: 6px; } .pm-say input, .pm-notes { flex: 1; min-width: 0; font: inherit; padding: 6px 10px; border: 3px solid var(--mi-ink); border-radius: 10px; }
+.pm-say { display: flex; gap: 6px; } .pm-say input, .pm-notes { flex: 1; min-width: 0; font: inherit; font-size: max(16px, 1em); padding: 6px 10px; border: 3px solid var(--mi-ink); border-radius: 10px; }
 .pm-notes { width: 100%; min-height: 70px; resize: vertical; }
 .pm-cmp { width: 100%; border-collapse: collapse; font-size: 14px; } .pm-cmp th, .pm-cmp td { text-align: left; padding: 4px 6px; border-bottom: 2px solid #ece7f5; }
 .pm-cmp td:not(:first-child), .pm-cmp th:not(:first-child) { text-align: center; font-variant-numeric: tabular-nums; }
