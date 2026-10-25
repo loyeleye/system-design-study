@@ -189,7 +189,7 @@
     else act = `<button class="mi-btn sm go" type="button" data-buy="${it.id}">Buy · ${it.cost} ✦</button>`;
     const tryB = `<button class="mi-btn sm" type="button" data-try="${it.id}" aria-pressed="${trying === it.id}">Try on</button>`;
     return `<li class="rs-it${own ? ' own' : ''}" data-it="${it.id}"><span class="sw">${sw}</span><div><b>${esc(it.name)}</b><span class="sty">${esc(sub)}${own ? '' : ` · ${it.cost} ✦`}</span>${own ? '<span class="rs-own">✓ Yours</span>' : ''}
-      <div class="rs-act rs-row">${act}${tryB}</div>${hint ? `<small class="rs-hint">${hint}</small>` : ''}</div></li>`;
+      <div class="rs-act rs-row">${act}${own ? '' : tryB}</div>${hint ? `<small class="rs-hint">${hint}</small>` : ''}</div></li>`;
   }
   function cosmetics() {
     const items = M.items();
@@ -209,7 +209,8 @@
     if (st) { const id = st.dataset.who, c = CH.get(id); if (c) st.appendChild(CH.sprite(id, Math.min(2, 104 / c.h), true)); if (SD.wear) SD.wear.dressStage(st, st.dataset.wear.split(' '), id); }
     el.querySelectorAll('[data-try]').forEach(b => { b.onclick = () => { trying = trying === b.dataset.try ? null : b.dataset.try; redraw(); const p = el.querySelector('.rs-try'); if (p && trying) p.scrollIntoView({ block: 'nearest' }); }; });
     const un = el.querySelector('#rs-untry'); if (un) un.onclick = () => { trying = null; redraw(); };
-    el.querySelectorAll('[data-wear]').forEach(b => { b.onclick = () => { const it = M.item(b.dataset.wear), W = SD.wear; if (W.worn(it.champ).includes(it.id)) W.unequip(it.champ ? 'skin:' + it.champ : it.slot); else W.equip(it.id); redraw(); }; });
+    el.querySelectorAll('[data-wear]').forEach(b => { b.onclick = () => { const it = M.item(b.dataset.wear), W = SD.wear; // The preview shows what you just put on, on its own champion for a colour.
+      if (W.worn(it.champ).includes(it.id)) { W.unequip(it.champ ? 'skin:' + it.champ : it.slot); trying = null; } else { W.equip(it.id); trying = it.id; } redraw(); }; });
     el.querySelectorAll('[data-buy]').forEach(b => { b.onclick = () => {
       const id = b.dataset.buy;
       clearTimeout(armT);
