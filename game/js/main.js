@@ -670,7 +670,9 @@
   M.review = async function (opts) {
     opts = opts || {};
     const sv = S.save, done = sv.flags.dailyDate === today();
-    const r = await Q.session(5, { title: opts.title || '[DAILY QUEST] REVIEW', pool: opts.pool || null });
+    const r = await Q.session(5, { title: opts.title || '[DAILY QUEST] REVIEW', pool: opts.pool || null, leave: true });
+    // Left early with the ✕: the answers given still count toward review, but there's no reward.
+    if (r.left) { S.persist(); U.system('REVIEW PAUSED', r.length ? `${r.filter(x => x.ok).length}/${r.length} answered right. Finish all 5 for the reward.` : 'Come back any time today.'); return; }
     const right = r.filter(x => x.ok).length, n = r.length;
     if (!done) { sv.flags.dailyDate = today(); sv.shards += 100; SD.run.gainXp(40); U.system('DAILY QUEST COMPLETE!', `${right}/${n} correct. +40 XP, +100 shards.`, 'gold'); }
     else { SD.run.gainXp(right * 6); U.system('PRACTICE COMPLETE', `${right}/${n} correct. +${right * 6} XP.`); }
