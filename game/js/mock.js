@@ -511,19 +511,19 @@
         let found = null;
         const flag = () => stage.querySelectorAll('.mi-rp').forEach((el, i) => {
           if (!found) return;
-          const sees = found[i].hit === 'key' || found[i].hit === 'close';
+          const sees = SD.checker ? SD.checker.sees(found[i]) : found[i].hit === 'key' || found[i].hit === 'close';
           el.classList.toggle('differ', ticks[i] !== sees);
           el.querySelector('.mi-game').innerHTML = `<br><span class="mi-small mi-muted">Game: ${evText(found[i])}</span>${ticks[i] && !sees ? '<br><span class="mi-small mi-gap">You ticked this; the game didn\'t find it. Check your answer says it.</span>' : !ticks[i] && sees ? '<br><span class="mi-small mi-gap">The game found this; you didn\'t tick it.</span>' : ''}`;
         });
         stage.querySelectorAll('[data-r]').forEach(el => el.onchange = () => { ticks[+el.dataset.r] = el.checked; el.closest('.mi-rp').classList.toggle('on', el.checked); flag(); });
         const chk = stage.querySelector('.mi-check');
+        // The answer checker (js/checker.js) starts reading while the player ticks.
+        const reading = !said ? null : SD.checker ? SD.checker.check(r.typed, pts, q) : Promise.resolve(SD.quiz && SD.quiz.rubric ? SD.quiz.rubric(r.typed, pts) : pts.map(() => ({ hit: null })));
         if (chk) chk.onclick = async () => {
           chk.disabled = true; chk.textContent = 'Reading your answer...';
-          const E = SD.embed;
-          if (E && !E.ready && !E.failed) await Promise.race([E.load(), new Promise(ok => setTimeout(ok, 4000))]);
-          found = SD.quiz && SD.quiz.rubric ? SD.quiz.rubric(r.typed, pts) : pts.map(() => ({ hit: null }));
+          found = await reading;
           chk.remove(); flag();
-          stage.querySelector('.mi-tick-help').textContent = `${E && E.ready ? 'The game reads key terms and meaning, so it can miss a good paraphrase.' : 'Only exact terms were checked this time.'} Your ticks are the score: change any you disagree with.`;
+          stage.querySelector('.mi-tick-help').textContent = `${found.note ? found.note + ' ' : ''}Your ticks are the score: change any you disagree with.`;
           const nx = stage.querySelector('.mi-next'); nx.hidden = false; nx.focus();
         };
         stage.querySelector('.mi-next').onclick = () => {
@@ -536,7 +536,7 @@
         };
       });
     }
-    const evText = f => f.hit === 'key' ? `found "${esc(f.ev)}"` : f.hit === 'close' ? `sounds like "${esc(f.ev)}"`
+    const evText = f => f.hit === 'yes' ? (f.ev ? `makes this point: "${esc(f.ev)}"` : 'makes this point') : f.hit === 'key' ? `found "${esc(f.ev)}"` : f.hit === 'close' ? `sounds like "${esc(f.ev)}"`
       : f.hit === 'not' ? `"${esc(f.ev)}" is there, but your answer seems to rule it out`
         : f.hit === 'trap' ? `"${esc(f.ev)}" is the trap this point warns about`
           : f.hit === 'maybe' ? (f.bare ? `"${esc(f.ev)}" is named, but not explained` : `maybe: "${esc(f.ev)}"`) : 'not found';
