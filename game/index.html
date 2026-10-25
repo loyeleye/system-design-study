@@ -267,6 +267,34 @@ button.mnu-row:hover { background: #f3f8ff; }
 .mnu-danger { margin-top: 20px; padding-top: 14px; border-top: 2px dashed var(--line); }
 .mnu-danger .danger { width: 100%; min-height: 48px; }
 .mnu-keys { margin: 12px 0 0 !important; text-align: center; }
+/* Menu > Answer checker (js/checker.js): three radio cards, the unavailable ones greyed with the reason, the Offline
+   Model's download bar, and Delete downloaded models at the foot. */
+.ck-help { margin: 0 0 10px; }
+.ck-opts { display: grid; gap: 8px; }
+.ck-opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; width: 100%; padding: 12px; text-align: left; font: 15px var(--f-body); color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 rgba(43,35,64,.85); cursor: pointer; }
+.ck-opt:hover:not(:disabled) { background: #f3f8ff; }
+.ck-opt:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.ck-opt.on { background: #fff8de; border-color: var(--ink); box-shadow: 0 3px 0 var(--ink), inset 0 0 0 2px var(--sun); }
+.ck-opt:disabled { cursor: not-allowed; background: #f4f1ea; border-color: #b9b0c9; box-shadow: none; color: var(--muted); }
+.ck-dot { width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--ink); border-radius: 50%; background: #fff; box-sizing: border-box; }
+.ck-opt.on .ck-dot { background: radial-gradient(circle, var(--ink) 0 4px, var(--sun) 5px); }
+.ck-opt:disabled .ck-dot { border-color: #b9b0c9; background: #ece8df; }
+.ck-tx { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ck-name { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
+.ck-name b { font: 600 16px var(--f-head); }
+.ck-mb { font: 600 12px var(--f-body); color: var(--muted); }
+.ck-tag { font: 600 11px var(--f-head); font-style: normal; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: #eef4ff; color: #2c5fb3; }
+.ck-opt:disabled .ck-tag { background: #ece8df; color: var(--muted); }
+.ck-tx small { font-size: 13px; line-height: 1.4; color: var(--muted); }
+.ck-tx small.ck-st { font-weight: 700; color: #2f7d4f; }
+.ck-tx small.ck-st:empty { display: none; }
+.ck-tx small.ck-na { color: #9a5b12; }
+.ck-bar { display: block; height: 8px; margin-top: 4px; border: 2px solid var(--ink); border-radius: 999px; background: #fff; overflow: hidden; }
+.ck-bar[hidden] { display: none; }
+.ck-bar i { display: block; height: 100%; width: 0; background: var(--blue); transition: width .25s; }
+.ck-foot { display: grid; gap: 6px; margin-top: 16px; padding-top: 14px; border-top: 2px dashed var(--line); }
+.ck-foot .ghost { width: 100%; min-height: 48px; }
+.ck-foot small { font-size: 12.5px; line-height: 1.35; text-align: center; }
 .mnu-keys kbd { display: inline-block; min-width: 20px; padding: 0 5px; font: 600 11px var(--f-head); border: 2px solid var(--ink); border-bottom-width: 3px; border-radius: 6px; background: #fff; color: var(--ink); }
 @media (max-width: 480px) { .mnu-say .seg { width: 100%; } .mnu-say .seg button { flex: 1; } .mnu-tile { grid-template-columns: 1fr; } .mnu-ic { grid-row: auto; margin-bottom: 2px; } }
 @media (hover: none) { .mnu-keys { display: none; } }
@@ -1049,6 +1077,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
 <script src="js/intro.js"></script>
 <script src="js/quiz.js"></script>
 <script src="js/embed.js"></script>
+<script src="js/checker.js"></script>
 <script src="js/explain-data.js"></script>
 <script src="js/board-data.js"></script>
 <script src="js/board.js"></script>

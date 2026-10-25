@@ -147,6 +147,7 @@
           <span class="seg" role="radiogroup" id="m-say" aria-labelledby="m-say-l" aria-describedby="m-say-d">${SD.quiz.SAY_MODES.map(m =>
             `<button type="button" role="radio" data-v="${m}" aria-checked="${m === say}" tabindex="${m === say ? 0 : -1}">${SAY_LABELS[m]}</button>`).join('')}</span></div>
         ${sw('m-typed', 'Typed answers', !(sv && sv.typed === false), 'Sometimes explain a concept instead of picking an answer.')}
+        ${SD.checker ? nav('m-checker', 'Answer checker', SD.checker.label()) : ''}
         ${sv && SD.relicToggles && SD.relicToggles.count().all ? nav('m-relics', 'Relics', `${SD.relicToggles.count().on} of ${SD.relicToggles.count().all} on`) : ''}
       </div></section>
       <section aria-labelledby="mh-save"><h3 class="mnu-h" id="mh-save">Save</h3><div class="mnu-list">
@@ -185,6 +186,8 @@
     };
     // Typed answers (js/explain-data.js, checked on-device by js/embed.js): sometimes explain a concept instead of picking.
     on('m-typed', () => { if (!S.save) return; S.save.typed = S.save.typed === false; S.persist(); menuSync(); });
+    // Which checker reads typed answers: LLM, Offline Model or Basic (js/checker.js).
+    on('m-checker', () => SD.checker.open(back('m-checker')));
     // Relic switches (js/relic-toggles.js).
     on('m-relics', () => SD.relicToggles.open(back('m-relics')));
     on('m-name', () => askName(() => { M.hud(); menu('m-name'); }));

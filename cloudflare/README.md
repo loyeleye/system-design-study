@@ -67,10 +67,11 @@ On the **Workers Free** plan there is no bill. Past a daily limit, requests to t
 - Static assets: free and unlimited.
 - Worker requests (only `/api/*` runs the Worker): 100,000 a day.
 - Durable Objects (rooms, lobbies, saves): 100,000 requests a day, where WebSocket messages count 20 to 1, and 5 GB of storage.
+- Workers AI (the LLM answer checker, `POST /api/grade`): 10,000 Neurons a day. One grade on `@cf/meta/llama-3.2-3b-instruct` is about 5 Neurons, so roughly 2,000 grades a day. Past that, on Free the checker's requests fail and the game falls back to the Basic checker for the rest of the day; on Workers Paid they're billed at $0.011 per 1,000 Neurons. To try a bigger model, set `"vars": { "GRADE_MODEL": "<model id>" }` in `wrangler.jsonc`.
 
 If the game outgrows that, **Workers Paid** is $5 a month and includes 10 million Worker requests and 1 million Durable Object requests, then usage pricing. You can stay on Free and nothing is ever charged.
 
-Sources: https://developers.cloudflare.com/workers/platform/pricing/ , https://developers.cloudflare.com/durable-objects/platform/pricing/ , https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/
+Sources: https://developers.cloudflare.com/workers/platform/pricing/ , https://developers.cloudflare.com/workers-ai/platform/pricing/ , https://developers.cloudflare.com/durable-objects/platform/pricing/ , https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/
 
 ## Limits built into the Worker
 
@@ -78,3 +79,4 @@ Sources: https://developers.cloudflare.com/workers/platform/pricing/ , https://d
 - A table room holds up to 64 sockets; a lobby directory up to 5,000.
 - Rooms and sockets only accept connections from the game's own address.
 - A save is at most 1 MB, and an older save never overwrites a newer one.
+- `/api/grade` takes same-origin POSTs only, an answer of at most 2,000 characters and 6 rubric points, and 20 grades a minute from one address. A point only counts as made when the model quotes the answer for it, so an answer can't talk the model into marking itself right.

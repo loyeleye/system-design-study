@@ -104,7 +104,7 @@ const server = http.createServer((req, res) => {
   await page.click('#panel [data-r="0"]');
   await page.click('#q-check');
   await page.waitForSelector('#q-confirm');
-  check(/Game: found/.test(await page.$eval('#panel', el => el.textContent)), 'boss deep dive: the game finds the right option\'s key terms');
+  check(/Game: found/i.test(await page.$eval('#panel', el => el.textContent)), 'boss deep dive: the game finds the right option\'s key terms');
   await page.click('#q-confirm');
   check(/counts even though the pick missed/.test(await verdict()), 'boss deep dive: the verdict says the typed answer counts');
   await page.click('#q-next');

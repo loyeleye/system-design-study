@@ -88,6 +88,12 @@
     return out;
   };
   Q.need = n => Math.ceil(n * 0.6);
+  // The game's note on one point, as Q.rubric or a model checker (js/checker.js, hit 'yes') found it.
+  const evText = f => f.hit === 'yes' ? (f.ev ? `Makes this point: "${U.esc(f.ev)}"` : 'Makes this point')
+    : f.hit === 'key' ? `Found "${U.esc(f.ev)}"` : f.hit === 'close' ? `Sounds like: "${U.esc(f.ev)}"`
+    : f.hit === 'not' ? `"${U.esc(f.ev)}" is there, but your answer seems to rule it out`
+    : f.hit === 'trap' ? `"${U.esc(f.ev)}" is the trap this point warns about`
+    : f.hit === 'maybe' ? (f.bare ? `"${U.esc(f.ev)}" is named, but not explained` : `Maybe: "${U.esc(f.ev)}"`) : 'Not found';
 
   // A rubric for a multiple-choice question that has none written (the mock's own live in js/mock-typed.js): the
   // right option split into its move and its reason ("Serve the hot code from the cache | so the database only sees
@@ -197,6 +203,7 @@
             <div class="conf-b"><button class="ghost" id="q-said-skip">Not sure. Show the options</button><button class="primary" id="q-said" disabled>That's my answer</button></div></div>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           const ta = b.querySelector('#q-said-text'), sb = b.querySelector('#q-said');
+          if (SD.checker) SD.checker.warm();
           ta.oninput = () => { sb.disabled = ta.value.trim().split(/\s+/).filter(Boolean).length < 3; };
           sb.onclick = () => { said.text = ta.value.trim(); thinking = false; render(); };
           b.querySelector('#q-said-skip').onclick = () => { said.text = ''; thinking = false; render(); };
@@ -249,6 +256,8 @@
         const rs = b.querySelector('#q-reset'); if (rs) rs.onclick = () => { order = []; render(); };
         const ta = b.querySelector('#q-text');
         if (ta) {
+          // The Offline Model loads into its worker while the player types (js/checker.js).
+          if (SD.checker) SD.checker.warm();
           ta.oninput = () => { typed = ta.value; b.querySelectorAll('[data-c]').forEach(x => x.disabled = words(typed) < 3); };
           setTimeout(() => ta.focus(), 50);
           const idk = document.createElement('button');
@@ -286,25 +295,27 @@
       // The answer typed before the options (opts.typeFirst): tick the points it made, nothing pre-ticked, then see
       // the game's reading (Q.rubric) as a second opinion, as checkTyped does. The ticks are said.res.
       async function tickSaid(done) {
-        const E = SD.embed, pts = said.pts, ticks = pts.map(() => false), need = Q.need(pts.length);
+        const K = SD.checker, pts = said.pts, ticks = pts.map(() => false), need = Q.need(pts.length);
+        // The checker starts reading while the player ticks, so its opinion is usually ready when they ask for it.
+        const reading = K ? K.check(said.text, pts, q) : Promise.resolve(Q.rubric(said.text, pts));
+        const seen = f => K ? K.sees(f) : f.hit === 'key' || f.hit === 'close';
         let found = null;
         const draw = () => {
           let h = `<div class="q-ctx">Before the verdict: your own answer</div><p class="q-q">${U.esc(q.q)}</p><blockquote class="typed">${U.esc(said.text)}</blockquote>
             <div class="q-ctx">A strong answer covers</div><div class="rubric">${pts.map((p, i) => {
-              const sees = found && (found[i].hit === 'key' || found[i].hit === 'close');
+              const sees = found && seen(found[i]);
               const gap = !found ? '' : ticks[i] && !sees ? 'You ticked this; the game didn\'t find it. Check your answer says it.' : !ticks[i] && sees ? 'The game found this; you didn\'t tick it.' : '';
-              const note = found ? `<br><span class="muted small">Game: ${found[i].hit === 'key' ? `found "${U.esc(found[i].ev)}"` : found[i].hit === 'not' ? `"${U.esc(found[i].ev)}" is there, but your answer seems to rule it out` : found[i].hit === 'trap' ? `"${U.esc(found[i].ev)}" is the trap` : found[i].hit === 'maybe' ? 'named, but not explained' : 'not found'}</span><span class="rp-gap small">${gap ? '<br>' + gap : ''}</span>` : '';
+              const note = found ? `<br><span class="muted small">Game: ${evText(found[i])}</span><span class="rp-gap small">${gap ? '<br>' + gap : ''}</span>` : '';
               return `<label class="rp${ticks[i] ? ' on' : ''}${gap ? ' differ' : ''}"><input type="checkbox" data-r="${i}" ${ticks[i] ? 'checked' : ''}> <span><b>${U.esc(p.t)}</b>${note}</span></label>`;
             }).join('')}</div>`;
-          h += found ? `<p class="muted small">Your ticks are the score: change any you disagree with. ${need} of ${pts.length} lands the deep dive even if your pick was wrong.</p><button class="primary" id="q-confirm">Confirm</button>`
+          h += found ? `<p class="muted small">${found.note ? U.esc(found.note) + ' ' : ''}Your ticks are the score: change any you disagree with. ${need} of ${pts.length} lands the deep dive even if your pick was wrong.</p><button class="primary" id="q-confirm">Confirm</button>`
             : `<p class="muted small">Tick each point your answer really made. Then the game shows what it found.</p><button class="primary" id="q-check">Check my ticks</button>`;
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
           b.querySelectorAll('[data-r]').forEach(el => el.onchange = () => { ticks[+el.dataset.r] = el.checked; if (found) draw(); else el.closest('.rp').classList.toggle('on', el.checked); });
           const chk = b.querySelector('#q-check');
           if (chk) chk.onclick = async () => {
-            chk.disabled = true;
-            if (E && !E.ready && !E.failed) await Promise.race([E.load(), new Promise(r => setTimeout(r, 4000))]);
-            found = Q.rubric(said.text, pts); draw();
+            chk.disabled = true; chk.textContent = 'Reading your answer…';
+            found = await reading; draw();
           };
           const cf = b.querySelector('#q-confirm');
           if (cf) cf.onclick = () => { said.res = { score: ticks.filter(Boolean).length, n: pts.length, need }; done(); };
@@ -315,22 +326,16 @@
       // anchor self-scoring. Then the game's reading (Q.rubric) comes in as a second opinion, disagreements flagged,
       // and the player can change their ticks before confirming. The player's ticks are the score.
       async function checkTyped(conf, ms) {
-        const E = SD.embed;
-        if (typed && E && !E.ready && !E.failed) {
-          U.panel('<p class="muted">Reading your answer...</p>', { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
-          await Promise.race([E.load(), new Promise(r => setTimeout(r, 6000))]);
-        }
-        const found = typed ? Q.rubric(typed, q.points) : q.points.map(() => ({ hit: null }));
-        const sees = found.map(f => f.hit === 'key' || f.hit === 'close');
+        const K = SD.checker;
+        // The checker (js/checker.js) starts reading while the player ticks; "Check my ticks" waits for it if need be.
+        const reading = !typed ? null : K ? K.check(typed, q.points, q) : Promise.resolve(Q.rubric(typed, q.points));
+        let found = q.points.map(() => ({ hit: null }));
+        const seen = f => K ? K.sees(f) : f.hit === 'key' || f.hit === 'close';
         const ticks = q.points.map(() => false);
         const need = Q.need(q.points.length);
         let compare = !typed;
-        const evText = f => f.hit === 'key' ? `Found "${U.esc(f.ev)}"` : f.hit === 'close' ? `Sounds like: "${U.esc(f.ev)}"`
-          : f.hit === 'not' ? `"${U.esc(f.ev)}" is there, but your answer seems to rule it out`
-          : f.hit === 'trap' ? `"${U.esc(f.ev)}" is the trap this point warns about`
-          : f.hit === 'maybe' ? (f.bare ? `"${U.esc(f.ev)}" is named, but not explained` : `Maybe: "${U.esc(f.ev)}"`) : 'Not found';
-        const gap = i => !typed ? '' : ticks[i] && !sees[i] ? 'You ticked this; the game didn\'t find it. Check your answer says it.'
-          : !ticks[i] && sees[i] ? 'The game found this; you didn\'t tick it.' : '';
+        const gap = i => !typed ? '' : ticks[i] && !seen(found[i]) ? 'You ticked this; the game didn\'t find it. Check your answer says it.'
+          : !ticks[i] && seen(found[i]) ? 'The game found this; you didn\'t tick it.' : '';
         const draw = () => {
           let h = `<div class="q-ctx">${U.esc(concept ? concept.name : 'Your answer')}</div><p class="q-q">${U.esc(q.q)}</p>`;
           h += typed ? `<blockquote class="typed">${U.esc(typed)}</blockquote>` : '<p class="muted">No answer this time. Here is what a strong one covers.</p>';
@@ -341,7 +346,7 @@
           }).join('')}</div>`;
           if (typed && !compare) h += `<p class="muted small">Tick each point your answer really made; you need ${need} of ${q.points.length}. Then the game shows what it found.</p><button class="primary" id="q-check">Check my ticks</button>`;
           else {
-            if (typed) h += `<p class="muted small">${E && E.ready ? 'The game reads key terms and meaning, so it can miss a good paraphrase.' : 'Only exact terms were checked this time.'} Your ticks are the score: change any you disagree with, you need ${need} of ${q.points.length}.</p>`;
+            if (typed) h += `<p class="muted small">${found.note ? U.esc(found.note) + ' ' : ''}Your ticks are the score: change any you disagree with, you need ${need} of ${q.points.length}.</p>`;
             h += `<p><b>Model answer:</b> ${U.esc(q.model)}</p><button class="primary" id="q-confirm">${typed ? 'Confirm' : 'Continue'}</button>`;
           }
           const b = U.panel(h, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
@@ -351,7 +356,7 @@
             if (g) { g.innerHTML = gap(i) ? '<br>' + gap(i) : ''; rp.classList.toggle('differ', !!gap(i)); }
           });
           const chk = b.querySelector('#q-check');
-          if (chk) chk.onclick = () => { compare = true; draw(); };
+          if (chk) chk.onclick = async () => { chk.disabled = true; chk.textContent = 'Reading your answer…'; found = await reading; compare = true; draw(); };
           const cf = b.querySelector('#q-confirm');
           if (cf) cf.onclick = () => {
             const score = ticks.filter(Boolean).length, ok = !!typed && score >= need;
