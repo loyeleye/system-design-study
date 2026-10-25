@@ -247,6 +247,30 @@
     if ((HT + NY) * ts < vh) cy = ((HT - NY) * ts - vh) / 2;
     return { cx, cy };
   }
+  // Tap feedback (Ladi, 2026-10-25): a ring on the tile you're walking to, fading once you're there, and a red
+  // shaking one where you can't go (water, a wall with no door near). H.tapMark draws either; js/scene.js uses it too.
+  let mark = null;
+  const markAt = (x, y, bad) => { mark = { x, y, t: performance.now() / 1000, bad, end: 0 }; };
+  // at(x, y): where the tile's ground is in world pixels (an isometric map's own; default flat tiles).
+  H.tapMark = function (ctx, m, ts, t, walking, at) {
+    if (!m) return false;
+    if (!m.bad && !walking && !m.end) m.end = t;
+    const a = m.bad ? 1 - (t - m.t) / 0.6 : m.end ? 1 - (t - m.end) / 0.3 : 1;
+    if (a <= 0) return false;
+    const k = Math.min(1, (t - m.t) / 0.15), shake = m.bad ? Math.sin((t - m.t) * 45) * 3 * a : 0;
+    const [gx, gy] = at ? at(m.x, m.y) : [(m.x + 0.5) * ts, (m.y + 0.62) * ts];
+    const X = gx + shake, Y = gy, rx = ts * (0.3 + 0.12 * k), ry = rx * 0.5;
+    ctx.save(); ctx.globalAlpha = Math.max(0, a) * (m.bad ? 1 : 0.85 + 0.15 * Math.sin(t * 6));
+    ctx.lineWidth = Math.max(4, ts / 7);
+    ctx.strokeStyle = '#2b2340'; ctx.beginPath(); ctx.ellipse(X, Y, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = m.bad ? '#ff5a5a' : '#fffaf0'; ctx.lineWidth = Math.max(2, ts / 14); ctx.beginPath(); ctx.ellipse(X, Y, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+    if (m.bad) {
+      const d = ry * 0.6; ctx.beginPath(); ctx.moveTo(X - d, Y - d); ctx.lineTo(X + d, Y + d); ctx.moveTo(X + d, Y - d); ctx.lineTo(X - d, Y + d); ctx.stroke();
+    }
+    ctx.restore();
+    return true;
+  };
+  H.mark = () => mark;  // for tools/phone_hud_check.js
   function tap(e) {
     if (!active || drop) return;
     const r = cv.getBoundingClientRect();
@@ -259,6 +283,7 @@
       if (DIRS.some(([dx, dy]) => isIt(P.x + dx, P.y + dy))) { onDoor(target); return; }
       const p = bfs(P.x, P.y, (x, y) => DIRS.some(([dx, dy]) => isIt(x + dx, y + dy)));
       if (p) { P.path = p; P.want = target; }
+      markAt(tx, ty, !p);
       return;
     }
     // Tap a building wall: walk to its door.
@@ -267,9 +292,10 @@
       const door = nearestDoor(tx, ty);
       if (door) goal = door;
     }
-    if (!walkable(goal[0], goal[1])) return;
-    const p = bfs(P.x, P.y, (x, y) => x === goal[0] && y === goal[1]);
+    if (goal[0] === P.x && goal[1] === P.y) return;
+    const p = walkable(goal[0], goal[1]) && bfs(P.x, P.y, (x, y) => x === goal[0] && y === goal[1]);
     if (p) { P.path = p; P.want = null; }
+    markAt(p ? goal[0] : tx, p ? goal[1] : ty, !p);
   }
   function nearestDoor(tx, ty) {
     let best = null, bd = 1e9;
@@ -476,6 +502,7 @@
     const y0 = Math.max(-NY, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) drawCorner(x, y, t);
     drawGroundDeco();
+    if (mark && !mark.bad && !H.tapMark(ctx, mark, ts, t, P.path.length > 0 || !!P.want || P.moving)) mark = null;
     // Chapter files can draw on the ground here (js/ch10.js: Gary's cold coffee while he is missing).
     if (H.groundExtra) H.groundExtra(ctx, ts, t);
     const sv = SD.state.save;
@@ -520,6 +547,8 @@
       ctx.beginPath(); ctx.ellipse(fx - 3, fy, 3 * flap + 0.5, 3, 0, 0, Math.PI * 2); ctx.ellipse(fx + 3, fy, 3 * flap + 0.5, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     });
     slimes.forEach(s => drawSlime(s, t));
+    // A can't-go-there mark goes over the trees and walls it was tapped on; a walking one stays on the ground.
+    if (mark && mark.bad && !H.tapMark(ctx, mark, ts, t)) mark = null;
     ctx.restore();
     // Sky layer: drifting clouds and the Cloud itself (screen space, slight parallax)
     const dk = dark();

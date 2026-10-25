@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- Add to Home Screen: full screen, the HUD's cream behind the status bar (the HUDs pad for the notch with
+     env(safe-area-inset-top)). Above @page-start, so the claude.ai artifact (tools/artifact_page.py) leaves them out. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/app/icon-180.png">
+<meta name="theme-color" content="#fffaf0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Into Prod">
 <!-- @page-start -->
 <title>Isekai'd Into Prod</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -91,7 +100,7 @@ button:disabled { cursor: default; opacity: .5; }
 .snd { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); z-index: 3; }
 
 /* Hub */
-#hud { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
+#hud { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
 #hud .ghost { padding: 6px 12px; font-size: 14px; }
 .rank { width: 44px; height: 44px; display: grid; place-items: center; align-content: center; border: 3px solid var(--ink); background: var(--sun); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
 .rank b { font-family: var(--f-head); font-size: 20px; line-height: 1; }
@@ -103,7 +112,47 @@ button:disabled { cursor: default; opacity: .5; }
 #hub-canvas { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; }
 #room-canvas { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; background: #1a1530; }
 body:has(#dialog:not([hidden])) .hub-hint { display: none; }
-.hub-hint { position: absolute; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; color: var(--ink); background: rgba(255,250,240,.92); border: 2px solid var(--ink); padding: 4px 12px; border-radius: 20px; pointer-events: none; white-space: nowrap; }
+.hub-hint { position: absolute; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; color: var(--ink); background: rgba(255,250,240,.92); border: 2px solid var(--ink); padding: 4px 12px; border-radius: 20px; pointer-events: none; width: max-content; max-width: calc(100% - 32px); text-align: center; }
+/* Touch screens get only the tap wording (the walking hints, the dialogue's "Tap to continue"). */
+.on-touch { display: none; }
+@media (hover: none) and (pointer: coarse) { .on-key { display: none; } .on-touch { display: inline; } }
+/* Phones (Ladi, 2026-10-25): a walkable screen's HUD (the village, the North Road, the Isles) is one short row of who
+   and where you are, and its buttons (.hud-tools; Sound and Menu are js/main.js's M.hudTools) move to a bar along the
+   bottom as 44px icon buttons. Their words are hidden but still read out (data-ic is the icon); badges stay. Landscape
+   phones keep one top row, icons inline. Wider screens: .hud-tools is display: contents, so nothing moves. */
+.hud-tools { display: contents; }
+.nr-hud .hud-tools > :first-child { margin-left: auto; }
+.nr-hud .ghost { padding: 6px 12px; font-size: 14px; }
+.nr-ic { display: none; }
+@media (max-width: 600px), (max-height: 500px) {
+  #hud, #nr-hud, #isles-hud { gap: 8px; padding-top: calc(5px + env(safe-area-inset-top, 0px)); padding-bottom: 5px; }
+  #hud, #nr-hud { flex-wrap: nowrap; }
+  #hud .rank { width: 36px; height: 36px; flex: none; box-shadow: 0 2px 0 var(--ink); }
+  #hud .rank b { font-size: 18px; }
+  #hud .hud-mid { flex: 1 1 0; }
+  #hud .hud-chip, .nr-hud .hud-chip { flex: none; }
+  .nr-hud .nr-where { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .nr-lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .nr-ic { display: inline; }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 44px; min-height: 44px; padding: 0 8px; font-size: 15px; border: 3px solid var(--ink); border-radius: 12px; box-shadow: var(--pop); }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > button[data-ic] { font-size: 0; }
+  .hud-tools > button[data-ic]::before { content: attr(data-ic); font-size: 20px; line-height: 1; }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > .hud-ic { font-size: 20px; }
+  .hud-tools .small { display: none; }
+  #hud-due::after { content: attr(data-n); min-width: 18px; padding: 0 5px; border-radius: 9px; background: #fff; border: 2px solid var(--ink); font-size: 11px; font-weight: 800; line-height: 14px; }
+  .hud-tools .badge, #hud-due::after { position: absolute; top: -7px; right: -5px; margin: 0; }
+}
+@media (max-width: 600px) {
+  .screen:has(> * > .hud-tools) { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  .hud-tools { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; justify-content: center; gap: 6px; padding: 4px max(8px, env(safe-area-inset-right, 0px)) calc(5px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); background: var(--cream); border-top: 3px solid var(--ink); }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > button { flex: 1 1 auto; max-width: 120px; box-shadow: 0 2px 0 var(--ink); }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > :is([data-ic], .hud-ic) { flex: 1 1 0; }
+  .nr-hud .hud-tools > :first-child { margin-left: 0; }
+  .screen:has(> * > .hud-tools) .hub-hint { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+  body:has(#dialog:not([hidden])) .hud-tools { visibility: hidden; }
+  /* The debug button (js/debug.js, testing only) moves up off the bar and the hint. */
+  body:has(.screen:not([hidden]) > * > .hud-tools) #dbg-btn { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+}
 
 /* Bars */
 .bar { position: relative; height: 10px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
@@ -786,7 +835,7 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 
 /* Run screen */
 #screen-run { overflow-y: auto; background: linear-gradient(180deg, #d9d0ff, #f3efff 40%, #fff8ec); }
-#run { width: 100%; max-width: 980px; margin: 0 auto; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+#run { width: 100%; max-width: 980px; margin: 0 auto; padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
 .run-hud { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0 12px; border-bottom: 3px dashed rgba(43,35,64,.25); }
 .run-hud .hud-sla { flex: 1 1 200px; }
 .map-wrap { padding-top: 12px; }
@@ -1072,7 +1121,7 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 /* Chapters 7-10: the North Road screen, cutscenes, and the arc's run HUD (js/scene.js, js/arc.js, js/northroad.js) */
 #screen-north { background: #5fbf5f; }
 #north-canvas { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; }
-.nr-hud { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
+.nr-hud { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
 button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; color: var(--ink); }
 .hud-chip.warn, .arc-meter { background: #ffd6d6; }
 .arc-tape { background: #e8e0ff; }
@@ -1115,7 +1164,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
   <section id="screen-hub" class="screen" hidden>
     <div id="hud"></div>
     <canvas id="hub-canvas" aria-label="Pingsby Village. Walk to a building's door to enter."></canvas>
-    <div class="hub-hint">Tap to walk · WASD or arrows · walk into doors and people</div>
+    <div class="hub-hint"><span class="on-key">Tap to walk · WASD or arrows · walk into doors and people</span><span class="on-touch">Tap to walk · walk into doors and people</span></div>
   </section>
 
   <section id="screen-run" class="screen" hidden><div id="run"></div></section>
@@ -1128,7 +1177,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
     <div class="dlg-box">
       <div class="dlg-nm"><span id="dlg-name"></span><span id="dlg-title"></span></div>
       <div id="dlg-text" aria-live="polite"></div>
-      <div class="dlg-foot"><span>Tap or Enter to continue</span><button id="dlg-skip">Skip</button></div>
+      <div class="dlg-foot"><span><span class="on-key">Tap or Enter to continue</span><span class="on-touch">Tap to continue</span></span><button id="dlg-skip">Skip</button></div>
     </div>
   </div>
 </div>

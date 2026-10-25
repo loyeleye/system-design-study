@@ -3,3 +3,6 @@
 # api/hello. The claude.ai artifact and a local copy make no request and log no 404.
 /*
   Server-Timing: sd-cloud
+# The home-screen manifest (index.html's <head>): its own type, so every browser reads it as one.
+/manifest.webmanifest
+  Content-Type: application/manifest+json

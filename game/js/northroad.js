@@ -311,20 +311,31 @@
     el.id = 'screen-north'; el.className = 'screen'; el.hidden = true;
     el.innerHTML = `<div id="nr-hud" class="nr-hud"></div>
       <canvas id="north-canvas" aria-label="The North Road. Walk along the road and off its side paths to reach new places, or south to go back to Pingsby."></canvas>
-      <div class="hub-hint">Tap to walk · WASD or arrows · walk into doors and people</div>`;
+      <div class="hub-hint"><span class="on-key">Tap to walk · WASD or arrows · walk into doors and people</span><span class="on-touch">Tap to walk · walk into doors and people</span></div>`;
     document.querySelector('.app').appendChild(el);
     return el;
   }
   const TITLE = { road: 'THE NORTH ROAD', waystation: 'THE WAYSTATION', arena: 'THE ARENA', camp: "HEROES' CAMP", exchange: 'THE EXCHANGE' };
   function hud() {
     const open = A.chapters().filter(A.open), cleared = open.filter(ch => flags()['ch' + ch]);
-    $('#nr-hud').innerHTML = `<div class="hud-chip"><b>${TITLE[cur]}</b></div>
-      <div class="hud-chip">Cleared ${cleared.length}/${A.chapters().length}</div>
+    // Phones: the chips stay on top, words shortened to icons (.nr-lbl is still read out); the buttons go to the
+    // bottom bar (.hud-tools, index.html) with Practice, the Cheat sheet, Sound and Menu, as in the village (js/main.js).
+    const M = SD.main, el = $('#nr-hud');
+    el.innerHTML = `<div class="hud-chip nr-where"><b>${TITLE[cur]}</b></div>
+      <div class="hud-chip"><span class="nr-lbl">Cleared</span><span class="nr-ic" aria-hidden="true">✓</span> ${cleared.length}/${A.chapters().length}</div>
       ${SD.clock ? `<div class="hud-chip">${SD.clock.label()}</div>` : ''}
-      <button class="hud-chip" data-nr="quests">Quests</button>
-      ${(flags().runbook || []).length || (flags().kyuFiles || []).length ? '<button class="hud-chip" data-arc="runbook">📓 Runbook</button>' : ''}
-      ${flags().downtime ? `<div class="hud-chip warn">Downtime ${flags().downtime}%</div>` : ''}`;
-    const q = $('#nr-hud [data-nr="quests"]'); if (q) q.onclick = () => QS().log();
+      ${flags().downtime ? `<div class="hud-chip warn"><span class="nr-lbl">Downtime</span><span class="nr-ic" aria-hidden="true">⚠️</span> ${flags().downtime}%</div>` : ''}
+      <div class="hud-tools">
+      <button class="hud-chip" data-nr="quests" data-ic="📜">Quests</button>
+      ${(flags().runbook || []).length || (flags().kyuFiles || []).length ? '<button class="hud-chip" data-arc="runbook" data-ic="📓">📓 Runbook</button>' : ''}
+      ${SD.practice ? `<button class="hud-chip" data-nr="practice" data-ic="🎯">Practice</button>` : ''}
+      <button class="hud-chip" data-nr="codex" data-ic="📋">Cheat sheet</button>
+      ${M.hudTools ? M.hudTools('nr') : ''}</div>`;
+    const on = (k, f) => { const b = el.querySelector(`[data-nr="${k}"]`); if (b) b.onclick = f; };
+    on('quests', () => QS().log());
+    on('practice', () => SD.practice.open());
+    on('codex', () => U.codex());
+    if (M.wireHud) M.wireHud(el);
   }
   // Who is around, and who has a quest for you, depends on how far the story has got.
   function cast(snap) {

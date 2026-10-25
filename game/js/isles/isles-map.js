@@ -373,12 +373,12 @@
     window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
     cv.addEventListener('pointerdown', tap);
     K.css('map', `
-      #isles-hud { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background:var(--cream); border-bottom:3px solid var(--ink); z-index:2; }
+      #isles-hud { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background:var(--cream); border-bottom:3px solid var(--ink); z-index:2; }
       #isles-hud .ghost { padding:6px 12px; font-size:14px; }
       #isles-hud .il-where { flex:1 1 140px; min-width:0; font-family:var(--f-head); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-      /* Phones: the two buttons on one row, the island name and counters on the next. */
-      @media (max-width: 520px) { #isles-hud { row-gap:6px; } #isles-hud::after { content:''; flex-basis:100%; height:0; order:2; }
-        #isles-hud #il-log { order:1; margin-left:auto; } #isles-hud .il-where { order:3; flex:1 1 0; } #isles-hud .hud-chip { order:4; } }
+      /* ← Pingsby leads, wide or in a phone's bottom bar (.hud-tools in index.html), where the name and counters keep the top. */
+      #isles-hud #il-home { order:-1; }
+      @media (max-width: 600px) { #isles-hud { row-gap:6px; } #isles-hud .il-where { flex:1 1 100%; } }
       #isles-canvas { flex:1; width:100%; min-height:0; display:block; touch-action:none; }
       body:has(#dialog:not([hidden])) .isles-hint { display:none; }
       .il-ferry { position:relative; height:120px; border:3px solid var(--ink); border-radius:12px; overflow:hidden; background:linear-gradient(#bfe8ff 0 45%, #3aa0e0 45%); }
@@ -454,14 +454,17 @@
     const el = document.getElementById('isles-hud'); if (!el) return;
     const st = I.st(), isl = isleAt(P.x, P.y) || 'landing';
     const lows = Object.keys(I.ISLANDS).filter(I.tideLow).length;
-    el.innerHTML = `<button class="ghost" id="il-home" aria-label="Back to Pingsby">← Pingsby</button>
-      <div class="il-where">${esc(I.ISLANDS[isl] ? I.ISLANDS[isl].name : 'The Eventual Isles')}</div>
+    el.innerHTML = `<div class="il-where">${esc(I.ISLANDS[isl] ? I.ISLANDS[isl].name : 'The Eventual Isles')}</div>
       <span class="hud-chip">Shells <b>${st.shells}</b></span><span class="hud-chip">Shards <b>${S.save.shards}</b></span>
       ${SD.clock ? `<span class="hud-chip">${SD.clock.label()}</span>` : ''}
       ${lows ? `<span class="hud-chip due">${lows} low tide${lows > 1 ? 's' : ''}</span>` : ''}
-      <button class="ghost" id="il-log">Isles log</button>`;
+      <div class="hud-tools"><button class="ghost" id="il-home" aria-label="Back to Pingsby">← Pingsby</button>
+      <button class="ghost" id="il-log">Isles log</button>
+      ${SD.main.hudTools ? SD.main.hudTools('il') : ''}</div>`;
     el.querySelector('#il-home').onclick = () => { if (!busyTalk) I.close(); };
     el.querySelector('#il-log').onclick = () => I.log();
+    // Sound and Menu, as in the village (js/main.js).
+    if (SD.main.wireHud) SD.main.wireHud(el);
   }
   I.refresh = function () { hud(); };
 
@@ -487,6 +490,10 @@
     for (const [dx, dy] of DIRS) { const t = thingAt(P.x + dx, P.y + dy); if (t) return t; }
     return null;
   }
+  // A ring where you're headed, or a red one where you can't go (js/hub.js H.tapMark, as in the village).
+  let mark = null;
+  const markAt = (x, y, bad) => { mark = { x, y, t: performance.now() / 1000, bad, end: 0 }; };
+  I.mark = () => mark;
   function tap(e) {
     if (!active || busyTalk) return;
     const r = cv.getBoundingClientRect(), { cx, cy } = cam();
@@ -500,17 +507,21 @@
       if (near(P.x, P.y)) { interact(th); return; }
       const p = bfs(P.x, P.y, near);
       if (p) { P.path = p; P.want = th; }
+      markAt(tx, ty, !p);
       return;
     }
     let goal = [tx, ty];
     if (get(tx, ty) === '#') { const l = landAt(tx, ty); goal = [l.x + Math.floor(l.w / 2), l.y + l.h]; }
+    if (goal[0] === P.x && goal[1] === P.y) return;
     if (!walkable(goal[0], goal[1])) {
+      markAt(tx, ty, true);
       // Tapping a locked island or open sea: say why you can't go there.
       const isl = isleAt(tx, ty);
       if (isl && !I.islandOpen(isl)) U.system(I.ISLANDS[isl].name.toUpperCase(), `Opens after chapter ${I.WAVES[I.ISLANDS[isl].wave]}.`);
       return;
     }
     const p = bfs(P.x, P.y, (x, y) => x === goal[0] && y === goal[1]);
+    markAt(p ? goal[0] : tx, p ? goal[1] : ty, !p);
     if (p) { P.path = p; P.want = null; }
     else if (isleAt(tx, ty) !== isleAt(P.x, P.y)) U.system('THE FERRY', 'No bridge goes there yet. Walk to a dock and take the ferry.');
   }
@@ -1251,6 +1262,7 @@
     const y0 = Math.max(0, Math.floor(cy / ts) - 1), y1 = Math.min(HT, Math.ceil((cy + vh) / ts) + 1);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) drawCorner(x, y, t);
     drawBridges(t); drawDocks(t);
+    if (mark && !mark.bad && SD.hub && SD.hub.tapMark && !SD.hub.tapMark(ctx, mark, ts, t, P.path.length > 0 || !!P.want || P.moving)) mark = null;
     const marks = I.marks(), ppl = people();
     if (!I.st().ployMet && !marks.ploy) marks.ploy = '!';
     if (!I.st().intro) ['leilani', 'kwame'].forEach(w => { if (!marks[w]) marks[w] = '!'; });
@@ -1281,6 +1293,8 @@
     ppl.forEach(p => label(p.px, p.py + 1.45, p.note ? 'NOTE' : p.label || (I.who(p.id).split(' ').slice(-1)[0] || '').toUpperCase(), marks[p.id], true, t));
     label(EXIT[0] + 0.6, EXIT[1] - 0.2, '← PINGSBY', null, true, t);
     Object.keys(ISLE).forEach(id => { if (id !== 'landing' && !I.islandOpen(id)) fog(id, t); });
+    // A can't-go-there mark over whatever it was tapped on (a walking one stays on the ground, above).
+    if (mark && mark.bad && SD.hub && SD.hub.tapMark && !SD.hub.tapMark(ctx, mark, ts, t)) mark = null;
     ctx.restore();
     if (SD.sky) SD.sky.clouds(ctx, t, vw, vh, cx, cy, wk);
     if (SD.weather) SD.weather.draw(ctx, t, vw, vh);

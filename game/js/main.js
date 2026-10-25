@@ -13,7 +13,7 @@
   // with one button for all. The icon says what is on: 🔊 both, 🔉 one, 🔇 neither.
   const sndIcon = () => AU.muted() ? '🔇' : AU.prefs.music && AU.prefs.sfx ? '🔊' : '🔉';
   const sndLabel = () => 'Sound: ' + (AU.muted() ? 'all muted' : AU.prefs.music && AU.prefs.sfx ? 'on' : AU.prefs.music ? 'sound effects muted' : 'music muted') + ' (V mutes)';
-  const sndSync = () => ['#t-snd', '#hud-snd'].forEach(id => { const b = $(id); if (b) { b.textContent = sndIcon(); b.setAttribute('aria-label', sndLabel()); b.title = sndLabel(); } });
+  const sndSync = () => document.querySelectorAll('#t-snd, [data-hud="snd"]').forEach(b => { b.textContent = sndIcon(); b.setAttribute('aria-label', sndLabel()); b.title = sndLabel(); });
   let sndPop = null;
   function sndClose(refocus) {
     if (!sndPop) return;
@@ -41,9 +41,9 @@
       const again = el.querySelector(`[data-k="${k}"]`); if (again) again.focus();
     });
     document.body.appendChild(el);
-    // Below the button, right edges lined up, kept on screen.
-    const r = btn.getBoundingClientRect(), w = el.offsetWidth;
-    el.style.top = (r.bottom + 8) + 'px';
+    // Below the button, right edges lined up, kept on screen; above it when the button is in a phone's bottom bar.
+    const r = btn.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    el.style.top = (r.bottom + 8 + h > window.innerHeight && r.top - 8 - h >= 0 ? r.top - 8 - h : r.bottom + 8) + 'px';
     el.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + 'px';
     const outside = e => { if (!el.contains(e.target) && !btn.contains(e.target)) sndClose(false); };
     const key = e => {
@@ -63,6 +63,17 @@
   }
   const sndButton = btn => { btn.setAttribute('aria-haspopup', 'dialog'); btn.setAttribute('aria-expanded', 'false'); btn.onclick = () => soundMenu(btn); };
 
+  // Sound and Menu on every walkable screen's HUD (the village, the North Road, the Eventual Isles): M.hudTools(id
+  // prefix) is their markup, M.wireHud(root) hooks up any inside root. On phones they sit in the HUD's .hud-tools
+  // bottom bar with the screen's other buttons; wider, .hud-tools is display: contents and they stay in the top row.
+  M.hudTools = pre => `<button class="ghost hud-ic" id="${pre}-snd" data-hud="snd" aria-label="${sndLabel()}" title="${sndLabel()}">${sndIcon()}</button>
+      <button class="ghost hud-ic" id="${pre}-menu" data-hud="menu" aria-label="Menu (M)" title="Menu (M)">☰</button>`;
+  M.wireHud = function (root) {
+    sndClose(false);
+    root.querySelectorAll('[data-hud="snd"]').forEach(sndButton);
+    root.querySelectorAll('[data-hud="menu"]').forEach(b => { b.onclick = () => menu(); });
+  };
+
   M.hud = function () {
     const sv = S.save;
     const need = S.xpFor(sv.level);
@@ -74,21 +85,22 @@
       <div class="hud-mid"><div class="hud-name">${U.esc(sv.name)} <span class="muted">Lv ${sv.level} · Loop ${sv.loop}${SD.clock ? ' · ' + SD.clock.label() : ''}</span></div>
         <div class="bar xp"><i style="width:${sv.xp / need * 100}%"></i></div></div>
       <span class="hud-chip">Shards <b>${sv.shards}</b></span>
-      ${due ? `<button class="hud-chip due" id="hud-due" title="Start a review now">${due} review${due > 1 ? 's' : ''} due</button>` : ''}
+      <div class="hud-tools">
+      ${due ? `<button class="hud-chip due" id="hud-due" title="Start a review now" data-ic="⏰" data-n="${due}">${due} review${due > 1 ? 's' : ''} due</button>` : ''}
       ${SD.practice ? SD.practice.button('hud-practice') : ''}
-      <button class="ghost" id="hud-quests">Quests${newQ ? ` <b class="badge">${newQ}</b>` : ''}</button>
+      <button class="ghost" id="hud-quests" data-ic="📜">Quests${newQ ? ` <b class="badge">${newQ}</b>` : ''}</button>
       ${SD.journal ? SD.journal.button() : ''}
-      <button class="ghost" id="hud-codex">Cheat sheet</button>
-      <button class="ghost" id="hud-snd" aria-label="${sndLabel()}" title="${sndLabel()}">${sndIcon()}</button>
-      <button class="ghost" id="hud-menu" aria-label="Menu (M)" title="Menu (M)">☰</button>`;
+      <button class="ghost" id="hud-codex" data-ic="📋">Cheat sheet</button>
+      ${M.hudTools('hud')}</div>`;
+    // Icons for the phone bar, where the words are hidden (still read out).
+    [['#hud-practice', '🎯'], ['#hud-journal', '📓']].forEach(([q, ic]) => { const b = $(q); if (b) b.dataset.ic = ic; });
     $('#hud-codex').onclick = () => U.codex();
     $('#hud-quests').onclick = () => SD.quests.log();
     // The due chip starts the Quest Board's review right here; the Practice hub is js/practice.js.
     const hd = $('#hud-due'); if (hd) hd.onclick = () => M.review().then(M.hud);
     const hp = $('#hud-practice'); if (hp) hp.onclick = () => SD.practice.open();
     SD.hub.npcMarks = marks;
-    sndClose(false); sndButton($('#hud-snd'));
-    $('#hud-menu').onclick = () => menu();
+    M.wireHud($('#hud'));
     if (SD.journal) SD.journal.wire($('#hud'));
     SD.hub.markers = {
       A: sv.flags.primedLoop !== sv.loop || SD.lessons.hasNew('A'), H: sv.mioVisitLoop !== sv.loop || SD.lessons.hasNew('H'),
@@ -104,8 +116,9 @@
     if (t && t.closest && (t.isContentEditable || t.closest('input, textarea, select'))) return;
     const head = $('#panel').hidden ? null : $('#panel .win-h span');
     if (head && head.textContent === 'MENU') { e.preventDefault(); U.closePanel(); return; }
-    const btn = $('#hud-menu');
-    if (head || !btn || !btn.offsetParent || !$('#dialog').hidden) return;
+    // Any walkable screen's Menu button that is showing (M.hudTools).
+    const btn = [...document.querySelectorAll('[data-hud="menu"]')].find(b => b.offsetParent);
+    if (head || !btn || !$('#dialog').hidden) return;
     e.preventDefault(); menu();
   });
 
@@ -168,8 +181,8 @@
     on('m-board', () => SD.folk.board());
     // Multiplayer (js/guild.js). Also on the title screen.
     on('m-guild', () => SD.guild.play());
-    on('m-music', () => { AU.set('music', !AU.prefs.music); menuSync(); M.hud(); });
-    on('m-sfx', () => { AU.set('sfx', !AU.prefs.sfx); if (AU.prefs.sfx) AU.sfx('ok'); menuSync(); M.hud(); });
+    on('m-music', () => { AU.set('music', !AU.prefs.music); menuSync(); sndSync(); M.hud(); });
+    on('m-sfx', () => { AU.set('sfx', !AU.prefs.sfx); if (AU.prefs.sfx) AU.sfx('ok'); menuSync(); sndSync(); M.hud(); });
     // Say it first (js/quiz.js): hide multiple choice options until you've answered in your own words.
     const seg = b.querySelector('#m-say');
     const pick = (v, focus) => {
