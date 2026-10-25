@@ -44,7 +44,7 @@
     'plate-cafe': { slot: 'plate', name: 'Cache Café menu' },
     'plate-tide': { slot: 'plate', name: 'Isles tide chart' },
     'plate-ticker': { slot: 'plate', name: 'Exchange ticker' },
-    'plate-arena': { slot: 'plate', name: 'Arena pennant' },
+    'plate-arena': { slot: 'plate', name: 'Arena gold medal' },
     'fx-stardust': { slot: 'effect', name: 'Stardust' },
     'fx-snow': { slot: 'effect', name: 'Snowfall' },
     'fx-embers': { slot: 'effect', name: 'Embers' },
@@ -323,7 +323,7 @@ ${spots}
 .plate-board { --wp-bg: linear-gradient(180deg, #f6e7c1, #ead39c); --wp-ink: #4a2e18; --wp-line: #a0703c; }
 .plate-cafe { --wp-bg: #2f4a3a; --wp-ink: #f4f1ea; --wp-line: #c99a3e; font-family: 'Patrick Hand', 'Comic Sans MS', var(--f-head, system-ui) !important; }
 .plate-tide { --wp-bg: repeating-linear-gradient(180deg, #d7eefa 0 5px, #bfe3f5 5px 6px); --wp-ink: #1c3e78; --wp-line: #2a62c9; }
-.plate-arena { --wp-bg: linear-gradient(180deg, #c8402e 0 3px, #e9cf9c 3px, #d8b47a); --wp-ink: #4a2412; --wp-line: #8a4a26; font-weight: 800 !important; letter-spacing: .03em; }
+.plate-arena { --wp-bg: linear-gradient(90deg, #b0302a 0 4px, #f4f1ea 4px 7px, #2a52b0 7px 11px, transparent 11px), linear-gradient(160deg, #fff3b0 0%, #f2c23a 30%, #c8901a 62%, #f7d867 85%, #a8740f 100%); --wp-ink: #4a3006; --wp-line: #8a5e0c; font-weight: 800 !important; letter-spacing: .03em; text-shadow: 0 1px 0 rgba(255,246,200,.75); padding-left: 15px !important; }
 .plate-ticker { --wp-bg: #0e1a12; --wp-ink: #5aff8a; --wp-line: #2a8a4a; font-family: ui-monospace, monospace !important; letter-spacing: .04em; text-shadow: 0 0 4px rgba(90,255,138,.6); }
 
 .wd { display: grid; gap: 10px; }
