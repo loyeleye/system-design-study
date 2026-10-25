@@ -283,9 +283,10 @@
           ta.oninput = () => { typed = ta.value; b.querySelectorAll('[data-c]').forEach(x => x.disabled = words(typed) < 3); };
           setTimeout(() => ta.focus(), 50);
           const idk = document.createElement('button');
-          idk.className = 'ghost'; idk.textContent = "I don't know yet";
+          // A quiet way out, centred under the three choices so it never reads as a fourth level of sureness.
+          idk.className = 'q-idk'; idk.type = 'button'; idk.textContent = "I don't know yet";
           idk.onclick = () => { typed = ''; submit(0); };
-          b.querySelector('.conf').appendChild(idk);
+          b.querySelector('.conf-b').after(idk);
         }
         const inp = b.querySelector('#q-num');
         if (inp) {
