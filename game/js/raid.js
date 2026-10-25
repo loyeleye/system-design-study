@@ -31,7 +31,7 @@
 // never touches the save's run. One page is the authority (the host) and sends the whole expedition on `state` after
 // every change and every few seconds. Card piles go as short codes (enc() below), so four players stay well under a
 // room's 4 KiB. Players send only their moves on `pick`. If the host leaves, the present player with the lowest peer
-// label takes over from the last state. Pays no rewards.
+// label takes over from the last state. Pays no shards or XP; each page pays Raid Marks to its own save (js/marks.js).
 // Before it starts the table waits in the party room (js/party.js): everyone picks a champion (js/champions.js),
 // whose three signature cards go into their deck, the leader (the host) picks the expedition, and starts once everyone
 // is ready. In a fight each player stands on the left as their champion, facing the foe.
@@ -1237,7 +1237,8 @@
       Object.keys(G.players).forEach(k => { if (!h.has(k) && k !== me.peer) delete G.players[k]; });
       if (!X() || !all().length) return;
       Object.values(G.players).forEach(p => { p.bits = BITS; p.o = []; p.sold = []; p.tal = 0; });
-      Object.assign(G, { sla: SLA, tapes: 0, tapeN: 0, rooms: 0, end: null, note: '' });
+      // run: this expedition's own id, so a second one under the same party code pays Raid Marks again.
+      Object.assign(G, { sla: SLA, tapes: 0, tapeN: 0, rooms: 0, end: null, note: '', run: Date.now().toString(36) });
       enterFloor(0); push();
     }
     // The snapshot Seymour's tape restores: every deck and purse, the SLA and the map, as the floor began.
@@ -2001,6 +2002,32 @@
     // A question this page owes the room: the Whiteboard's, an event's, or a won fight's debrief, one at a time
     // (askKey: the room and how many are left).
     const asked = {};
+    // Raid Marks (js/marks.js): this page pays its own save. It counts its own right answers by floor, and pays a floor
+    // once the expedition moves past it (or clears it), then the clear itself. Bots and watchers earn nothing.
+    const rights = {}, earned = { run: null, n: 0, two: false, first: 0 };
+    const rightOn = fl => { rights[fl] = (rights[fl] || 0) + 1; };
+    function earn() {
+      const M = SD.marks, mine = G.players[me.peer];
+      if (!M || !M.on() || !mine || isBot(me.peer) || !X() || G.ph === 'lobby') return;
+      if (earned.run !== G.run) { Object.assign(earned, { run: G.run, n: 0, two: false, first: 0 }); Object.keys(rights).forEach(f => { delete rights[f]; }); }
+      const h = here(), humans = Object.keys(G.players).filter(k => !isBot(k) && h.has(k)).length;
+      const upTo = G.ph === 'done' && G.end ? (G.end.fl | 0) + 1 : G.fl;
+      for (let f = 0; f < upTo; f++) {
+        const n = M.payFloor(code + ':' + net.clean(G.run, 12), f, rights[f], humans);
+        if (n) { earned.n += n; earned.two = earned.two || humans >= 2; }
+      }
+      if (G.ph === 'done') {
+        const c = M.payClear(code + ':' + net.clean(G.run, 12), G.xp, floorsOf(X()).length, humans);
+        if (c.n) { earned.n += c.n; earned.first += c.first; earned.two = earned.two || humans >= 2; }
+      }
+    }
+    // The end card's line: what this expedition paid, and who it now hires.
+    function earnedHtml() {
+      const M = SD.marks, CH = SD.champions;
+      if (!M || !M.on() || !earned.n) return '';
+      const can = CH ? CH.list.filter(c => CH.state(c.id) === 'hire' && M.price(c.id) <= M.balance()).map(c => c.short) : [];
+      return `<p class="rd-marks"><b>+${earned.n} ✦ Raid Marks</b>${earned.two ? ' (doubled: you played with another person)' : ''}${earned.first ? `, with ${earned.first} for your first clear` : ''}. You have ${M.balance()} ✦.${can.length ? ` You can hire ${esc(can.length > 1 ? can.slice(0, -1).join(', ') + ' or ' + can[can.length - 1] : can[0])} at the Raid shop.` : ''}</p>`;
+    }
     const askKey = r => r.k + ':' + (r.todo[me.peer] || []).length;
     const myTally = () => (SD.state && SD.state.tally ? SD.state.tally() : undefined);
     let talSent = null;
@@ -2027,6 +2054,7 @@
         // A debrief says what the answer heals (the host caps it by what the team is missing and what's healed this fight).
         const heal = r.t === 'reward' ? (ok, t) => (!ok ? 'no heal' : `team heals ${r.lo && r.lo[me.peer] ? LOW_HEAL : healOf(t)} SLA`) : null;
         const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: (G.players[me.peer] || {}).c || undefined, title: 'EXPEDITION · ' + title, context: (SD.concepts[q.c] || {}).name, tally: true, heal, credNote: CRED_NOTE, stakeNote: heal ? (r.lo && r.lo[me.peer] ? `Right, and the team heals ${LOW_HEAL} SLA.` : `Right, and the team heals your new Cred, up to ${HEAL} SLA.`) : r.t === 'tape' ? `Right, and ${(SD.enemies[G.main] || {}).name || 'the incident'} keeps the damage you did.` : '' });
+        if (res.ok) rightOn(G.fl);
         send({ k: 'ans', ok: !!res.ok, band: bandOf(res.ms || 0, typed), late: !!res.timeout, conf: res.conf, tal: myTally() });
       });
     }
@@ -2048,6 +2076,7 @@
           ASKED.add(q.id);
           const typed = q.type === 'explain';
           const res = await askHere(q, { timer: TIMER * (typed ? 2 : 1), bands: typed ? [40, 90] : [20, 45], champ: mine.c || undefined, title: 'EXPEDITION · ' + String(d.name).toUpperCase(), context: `${(SD.concepts[q.c] || {}).name || 'Question'}${owner && e.p !== me.peer ? ` · for ${owner.n}'s card` : ''}`, tally: true, credNote: CRED_NOTE });
+          if (res.ok) rightOn(G.fl);
           send({ k: 'qa', id: e.k, ok: !!res.ok, band: bandOf(res.ms || 0, typed), sure: res.conf === 2, pts: typed ? res.score | 0 : 0, late: !!res.timeout, conf: res.conf, tal: myTally() });
         });
       });
@@ -2129,7 +2158,7 @@
     }
     function render() {
       if (left) return;
-      scenes(); owed(); owedQ(); offer(); tune();
+      scenes(); owed(); owedQ(); offer(); tune(); earn();
       if (mismatch) return paint(`<div class="mi-card">${head('A different version')}<p>This party is running a different version of the game. Reload both pages, then join again.</p></div>`);
       if (!G.host) return paint(`<div class="mi-card">${head('Finding the host…')}</div>`);
       const mine = G.players[me.peer], x = X();
@@ -2138,6 +2167,7 @@
         const fs = floorsOf(x), e = G.end || {}, foe = SD.enemies[e.foe];
         paint(`<div class="mi-card rd-end">${head(G.ph === 'done' ? 'Expedition complete!' : 'The expedition is over')}
           <p>${G.ph === 'done' ? `You cleared all ${fs.length} floors of ${esc(x.name)}, ${G.rooms} fights in, with ${G.sla} SLA left.` : `The team went down on floor ${(e.fl | 0) + 1} of ${fs.length} (${esc(fs[e.fl | 0] ? fs[e.fl | 0].name : '')}), after ${e.rooms | 0} fight${(e.rooms | 0) === 1 ? '' : 's'}.${foe ? ` ${esc(foe.short || foe.name)} held on with ${e.sev | 0} severity left.` : ''}`}</p>
+          ${earnedHtml()}
           <p class="muted small">Talk through the room that hurt most: which card, or which path, would have covered it?</p>
           ${hosting ? '<div class="row" style="justify-content:center"><button class="primary" type="button" id="rd-again">Back to the party room</button></div>' : ''}</div>`);
         const ag = root.querySelector('#rd-again'); if (ag) ag.onclick = () => { const xp = G.xp, bs = botKeys().map(k => [k, G.players[k].n, G.players[k].c]); G = fresh(); G.xp = xp; bs.forEach(([k, n, c]) => { G.players[k] = Object.assign(newSeat(n, c, botDeck(c)), { bot: true }); }); hello(); push(); };
@@ -2168,7 +2198,7 @@
         mode: 'Expedition Raid', code, leader: G.host, max: MAX_PLAYERS, listed: o.vis && o.vis.get(), vis: o.vis, leave,
         what: 'the expedition', startLabel: G.rs ? 'Resume the expedition' : 'Start the expedition', boss: kyu, deck: !G.rs,
         settings: pickX,
-        note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café: then you answer a question and fight on. No shards; this one is for practice.${seats}`,
+        note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café: then you answer a question and fight on. No shards or XP: a raid pays Raid Marks (✦), which hire the multiplayer champions at the Raid shop.${seats}`,
         addBot: hosting && !G.rs && all().length < MAX_PLAYERS ? () => send({ k: 'bot' }) : null,
         botChamp: hosting && !G.rs ? (k, c) => send({ k: 'botc', b: k, c }) : null,
         startWhy: () => (!x ? (hosting ? 'No expedition is open in your save yet.' : 'No expedition is open in the leader\'s save yet.') : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),

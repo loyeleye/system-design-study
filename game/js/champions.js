@@ -3,7 +3,10 @@
 // replace one Hotfix and two Bigger Boxes in that player's starting deck. Signature cards only exist in raids:
 // they are `quest` cards (never rewards) marked `champ`, so no shop, dealer or unlock list ever offers them.
 //   SD.champions.list                 -> [{ id, name, short, region, how, style }] in roster order
-//   SD.champions.unlocked(id)         -> whether this player has reached them (the standalone page: Pingsby only)
+//   SD.champions.unlocked(id)         -> whether this player can pick them: reached them (the standalone page: Pingsby
+//                                        only) and, for a multiplayer champion, hired them
+//   SD.champions.state(id)            -> 'locked' (not reached yet), 'hire' (reached, for hire with Raid Marks) or 'open'
+//   SD.champions.mp(id)               -> whether they're a multiplayer champion, hired with Raid Marks (js/marks.js)
 //   SD.champions.deck(id, base)       -> base deck (default the starter deck) with that champion's signature cards
 //   SD.champions.sprite(id, scale, animate) -> a div showing their south-facing idle, from their map sheet
 //   SD.champions.mine() / setMine(id) -> this browser's last pick
@@ -26,7 +29,9 @@
     { name: "Heroes' camp", how: 'Reach chapter 9', ok: () => arcOpen(9) },
     { name: 'The Exchange', how: 'Reach chapter 10', ok: () => arcOpen(10) }
   ];
-  // [id, name, region index, style, map sheet folder, frame w, h, south idle frames, own unlock]
+  // [id, name, region index, style, map sheet folder, frame w, h, south idle frames, own unlock]. `hire: true` marks the
+  // eight multiplayer champions (Ladi, 2026-10-25): once their region is open they're hired with Raid Marks
+  // (js/marks.js), one for each region and a second for Pingsby and the North Road.
   const ROSTER = [
     ['uptima', 'Uptima', 0, 'Huge power, huge bill', 'village', 48, 54, 4],
     ['seymour', 'Sir Seymour', 0, 'Shields that last', 'village', 24, 51, 4],
@@ -34,40 +39,63 @@
     ['ayo', 'Ayo', 0, 'Steady scaling', 'village', 22, 50, 4],
     ['bru', 'Bru', 0, 'Squeezes out one more play', 'village', 34, 52, 4],
     ['kaito', 'Kaito', 0, 'Slow to build, then huge', 'village', 36, 55, 4],
+    ['doug', 'Doug', 0, 'Automates the boring part', 'village', 26, 51, 4, { hire: true, how: 'Clear chapter 2', ok: () => !!flags().ch2 }],
+    // Dieynaba arrives outside the Cache Café after chapter 5 (her map id is 'valentin', js/ploy-quest.js).
+    ['dieynaba', 'Dieynaba', 0, 'Pours for the whole party', 'village', 38, 57, 4, { hire: true, sheet: 'village/c-valentin', how: 'Clear chapter 5', ok: () => !!flags().ch5 }],
     ['ploy', 'Ploy', 1, 'Changes the rules', 'isles', 70, 100, 4],
     ['kwame', 'Captain Kwame', 1, 'Patience pays', 'isles', 68, 88, 4],
+    ['leilani', 'Harbourmaster Leilani', 1, 'Keeps everyone in sync', 'isles', 52, 93, 4, { hire: true }],
     ['explodia', 'Explodia', 2, 'One giant blast', 'arc', 26, 49, 4],
     ['latency', 'Lord Latency', 2, 'Slows everything down', 'arc', 28, 56, 4],
+    ['suzu', 'Suzu', 2, 'Takes the pager', 'arc', 32, 56, 4, { hire: true }],
+    ['gong', 'Gong', 2, 'Calls the main event', 'arc', 32, 51, 4, { hire: true }],
     ['imani', 'Imani', 3, 'Clean and controlled', 'arc', 30, 60, 4],
     ['rico', 'Rico', 3, 'Hits hard, makes a mess', 'arc', 36, 59, 4],
+    ['sunny', 'Sunny', 3, 'Logs every rep', 'arc', 32, 55, 4, { hire: true }],
     ['nari', 'Nari', 4, 'Goes first, safely', 'arc', 64, 72, 4],
     ['hypewagon', 'Hypewagon', 4, 'Draws and narrates', 'arc', 28, 53, 4],
+    // In raids Hero #404 is a silhouette made of smoke, a man or a woman by a coin flip each time he's picked
+    // (C.look); in the story he stays a NOT FOUND sign.
+    ['hero404', 'Hero #404', 4, 'Never seen, never misses', 'raid', 40, 80, 11, { hire: true, sheet: 'raid/hero404-smoke-m', looks: ['m', 'w'] }],
     ['neel', 'Neel', 5, 'Formal and precise', 'arc', 28, 56, 4],
+    ['eunho', 'Eun-ho', 5, 'Shadows a teammate', 'arc', 34, 62, 4, { hire: true }],
     // Kyu is the chapter 10 finale's last boss, so she joins only once chapter 10 is cleared.
     ['kyu', 'Kyu', 5, 'Quietly the strongest', 'arc', 30, 53, 4, { how: 'Clear chapter 10', ok: () => !!flags().ch10 }]
   ];
   const BY = {};
   C.list = ROSTER.map(([id, name, r, style, dir, w, h, n, own]) => {
-    const c = { id, name, short: name.replace(/^(Captain|Sir|Lord) /, ''), region: REGIONS[r].name, how: (own || REGIONS[r]).how, style, sheet: `assets/img/${dir}/c-${id}.webp`, w, h, n, ok: (own || REGIONS[r]).ok };
+    const o = own || {}, gate = o.ok ? o : REGIONS[r];
+    const c = { id, name, short: name.replace(/^(Captain|Sir|Lord|Harbourmaster) /, ''), region: REGIONS[r].name, how: gate.how, style, sheet: `assets/img/${o.sheet || dir + '/c-' + id}.webp`, w, h, n, ok: gate.ok, hire: !!o.hire, looks: o.looks || null };
     BY[id] = c;
     return c;
   });
   C.regions = REGIONS.map(r => r.name);
   C.get = id => BY[id] || null;
-  C.unlocked = id => { const c = BY[id]; if (!c) return false; try { return !!c.ok(); } catch (e) { return false; } };
+  const reached = c => { try { return !!c.ok(); } catch (e) { return false; } };
+  C.mp = id => !!(BY[id] && BY[id].hire);
+  C.state = id => {
+    const c = BY[id];
+    if (!c || !reached(c)) return 'locked';
+    return !c.hire || (SD.marks && SD.marks.owns(id)) ? 'open' : 'hire';
+  };
+  C.unlocked = id => C.state(id) === 'open';
   // The Raid boss that is Kyu herself: nobody can fight it as Kyu.
   C.bossConflict = (id, boss) => id === 'kyu' && boss === 'kyuburnout';
   C.mine = () => { const v = store.get(KEY); return BY[v] ? v : null; };
   C.setMine = id => { if (BY[id]) store.set(KEY, id); };
 
   // Columns in each map sheet (its width over the frame width), so the background keeps the frames' scale.
-  const SHEET_COLS = { uptima: 9, seymour: 9, mio: 11, ayo: 9, bru: 11, kaito: 11, ploy: 19, kwame: 19, explodia: 9, latency: 9, imani: 11, rico: 11, nari: 11, hypewagon: 9, neel: 10, kyu: 9 };
-  C.sprite = function (id, scale, animate) {
+  const SHEET_COLS = { uptima: 9, seymour: 9, mio: 11, ayo: 9, bru: 11, kaito: 11, ploy: 19, kwame: 19, explodia: 9, latency: 9, imani: 11, rico: 11, nari: 11, hypewagon: 9, neel: 10, kyu: 9, doug: 11, dieynaba: 11, leilani: 19, suzu: 9, gong: 9, sunny: 11, hero404: 12, eunho: 9 };
+  // A champion with looks (Hero #404's man and woman) draws the one named, else the first. `look` is a presence field.
+  C.look = (id, v) => { const c = BY[id]; return c && c.looks ? (c.looks.includes(v) ? v : c.looks[0]) : null; };
+  C.rollLook = id => { const c = BY[id]; return c && c.looks ? c.looks[Math.floor(Math.random() * c.looks.length)] : null; };
+  C.sheetOf = (id, v) => { const c = BY[id]; if (!c) return ''; const l = C.look(id, v); return l ? c.sheet.replace(/-[a-z]\.webp$/, '-' + l + '.webp') : c.sheet; };
+  C.sprite = function (id, scale, animate, look) {
     const c = BY[id], d = document.createElement('div');
     if (!c) return d;
     const k = c.n + 1, w = c.w * scale, h = c.h * scale;
     d.className = 'champ-spr' + (animate ? ' anim' : '');
-    d.style.cssText = `width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;background-image:url(${c.sheet});background-size:${(w * SHEET_COLS[id]).toFixed(1)}px auto;--end:-${(w * k).toFixed(1)}px;--n:${k};--dur:${(k * 0.18).toFixed(2)}s`;
+    d.style.cssText = `width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;background-image:url(${C.sheetOf(id, look)});background-size:${(w * SHEET_COLS[id]).toFixed(1)}px auto;--end:-${(w * k).toFixed(1)}px;--n:${k};--dur:${(k * (c.looks ? 0.11 : 0.18)).toFixed(2)}s`;
     return d;
   };
 
