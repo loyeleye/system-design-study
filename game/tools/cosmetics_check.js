@@ -124,7 +124,35 @@ const server = http.createServer((req, res) => {
   await b.waitForSelector('.emo-bub[data-emo="coffee"]', { timeout: 4000 }).then(() => check(true, 'the other player sees your emote over your seat'), () => check(false, 'the other player sees your emote over your seat'));
   check(await b.evaluate(() => !SD.emote.send('coffee')), 'a player without the pack can\'t send its emote');
   check(await b.evaluate(() => SD.emote.mine().length) === 9, 'everyone has the 6 free emotes and 3 free actions');
-  await a.evaluate(() => { const lv = document.querySelector('#pt-leave'); if (lv) lv.click(); document.getElementById('pbox').remove(); });
+  // The other player readies up (picking a champion first if they have none), so the leader can start.
+  const readyUp = async (pg, box) => { await pg.evaluate(bx => { const r = document.querySelector(bx + ' #pt-ready'); if (r && r.disabled) { const c = document.querySelector(bx + ' [data-ch]'); if (c) c.click(); } }, box); await pg.waitForTimeout(400); await pg.evaluate(bx => { const r = document.querySelector(bx + ' #pt-ready'); if (r && r.getAttribute('aria-pressed') !== 'true') r.click(); }, box); };
+  const startAs = async (pg, box) => { await pg.waitForFunction(bx => { const s = document.querySelector(bx + ' #pt-start'); return s && !s.disabled; }, box, { timeout: 8000 }).catch(() => {}); await pg.evaluate(bx => document.querySelector(bx + ' #pt-start').click(), box); };
+  // Whiteboard Showdown's rounds have no seats: each name is a chip in its frame and nameplate, with emotes over it.
+  await readyUp(b, '#pbox'); await startAs(a, '#pbox');
+  const chip = b.locator(`#pbox .sh-players .wch.wf.frame-pager[data-peer="${peerA}"] .wpl.plate-ticker`);
+  await chip.waitFor({ timeout: 6000 }).then(() => check(true, 'in a Showdown round, the other player sees your name in your frame and nameplate'), () => check(false, 'in a Showdown round, the other player sees your name in your frame and nameplate'));
+  check(await a.locator('#pbox .emo-btn').count() === 1, 'a Showdown round has the Emote button');
+  await a.waitForTimeout(1600);
+  check(await a.evaluate(() => SD.emote.send('gg')), 'you can emote in a Showdown round');
+  await b.waitForFunction(p => { const bub = document.querySelector('.emo-bub[data-emo="gg"]'), c = document.querySelector(`.wch[data-peer="${p}"]`); if (!bub || !c) return false; const q = c.getBoundingClientRect(); return Math.abs(parseFloat(bub.style.left) - (q.left + q.width / 2)) < 2; }, peerA, { timeout: 4000 })
+    .then(() => check(true, 'the other player sees your emote over your name chip'), () => check(false, 'the other player sees your emote over your name chip'));
+  await a.evaluate(() => { const lv = document.querySelector('#sh-leave'); if (lv) lv.click(); document.getElementById('pbox').remove(); });
+  await b.evaluate(() => { const lv = document.querySelector('#sh-leave, #pt-leave'); if (lv) lv.click(); document.getElementById('pbox').remove(); });
+
+  // Pair Mock: a strip over the round with both names as chips, and the Emote button.
+  await a.evaluate(async () => {
+    const box = document.createElement('div'); box.id = 'pmbox'; document.body.appendChild(box);
+    window.__pcode = SD.net.code('pair'); SD.pair.play(box, __hub, __pcode, { create: true, settings: {} });
+  });
+  const pcode = await a.evaluate(() => __pcode);
+  await b.evaluate(c => { const box = document.createElement('div'); box.id = 'pmbox'; document.body.appendChild(box); SD.pair.play(box, __hub, c, {}); }, pcode);
+  await b.waitForSelector('#pmbox #pt-ready', { timeout: 8000 }).catch(() => {});
+  await readyUp(b, '#pmbox'); await startAs(a, '#pmbox');
+  await b.locator(`.pm-who .wch.wf.frame-pager[data-peer="${peerA}"] .wpl.plate-ticker`).waitFor({ timeout: 8000 })
+    .then(() => check(true, 'in a Pair Mock round, your partner sees your name in your frame and nameplate'), () => check(false, 'in a Pair Mock round, your partner sees your name in your frame and nameplate'));
+  check(await a.locator('.pm-who .emo-btn').count() === 1, 'a Pair Mock round has the Emote button');
+  await a.evaluate(() => { document.querySelectorAll('#pmbox [id$="leave"]').forEach(x => x.click()); });
+  await a.evaluate(() => { const r = document.getElementById('pmbox'); if (r) r.remove(); document.querySelectorAll('.pm-who').forEach(x => x.remove()); });
 
   // A raid fighter wears them too: a solo expedition on page A, started with a bot.
   await a.evaluate(async () => {

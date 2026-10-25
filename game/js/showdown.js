@@ -194,18 +194,25 @@
       }).join('') : '';
       return `<div class="wb-scroll"><div class="wb-board sh-board" style="aspect-ratio:${bp.w}/${bp.h}"><svg class="wb-lines" viewBox="0 0 ${bp.w} ${bp.h}" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>${labels}${nodes}${dist}</div></div>`;
     }
+    // A name in its frame and nameplate (js/wear.js chip), where that player's emotes show.
+    function who(peer, nick) {
+      const n = net.clean(nick, 24) || 'A hero', p = players().find(x => x.peer === peer);
+      if (!SD.wear || !p) return esc(n);
+      return SD.wear.chip(n, p.isMe ? SD.wear.worn(party && party.champ()) : p.presence.wear, peer);
+    }
     function playerList(mark) {
-      return `<ul class="sh-players">${players().map(p => `<li class="${mark && mark[p.peer] ? 'done' : ''}${p.isMe ? ' me' : ''}">${esc(net.clean(p.presence.nick, 24) || 'A hero')}${p.presence.host ? ' (host)' : ''}</li>`).join('')}</ul>`;
+      return `<ul class="sh-players">${players().map(p => `<li class="${mark && mark[p.peer] ? 'done' : ''}${p.isMe ? ' me' : ''}">${who(p.peer, p.presence.nick)}${p.presence.host ? ' (host)' : ''}</li>`).join('')}</ul>`;
     }
     function ranking() {
       const rows = Object.keys(S.scores).map(peer => [peer, S.scores[peer]]).sort((a, b) => b[1][1] - a[1][1]);
-      return `<table class="sh-rank"><tbody>${rows.map(([peer, [n, s]], i) => `<tr><td>${i + 1}. ${esc(net.clean(n, 24) || 'A hero')}${peer === me.peer ? ' (you)' : ''}${S.gain[peer] ? ` <span class="sh-gain ${S.gain[peer] > 0 ? 'up' : 'down'}">${S.gain[peer] > 0 ? '+' : ''}${S.gain[peer]}</span>` : ''}</td><td>${s}</td></tr>`).join('')}</tbody></table>`;
+      return `<table class="sh-rank"><tbody>${rows.map(([peer, [n, s]], i) => `<tr><td>${i + 1}. ${who(peer, n)}${peer === me.peer ? ' (you)' : ''}${S.gain[peer] ? ` <span class="sh-gain ${S.gain[peer] > 0 ? 'up' : 'down'}">${S.gain[peer] > 0 ? '+' : ''}${S.gain[peer]}</span>` : ''}</td><td>${s}</td></tr>`).join('')}</tbody></table>`;
     }
     function paint(html) {
       // Keep the board's sideways scroll across repaints (phones scroll it).
       const sc = root.querySelector('.wb-scroll'), left = sc ? sc.scrollLeft : 0;
-      root.innerHTML = `<div class="wb sh">${html}<div class="wb-row" style="justify-content:flex-end;margin-top:8px"><button class="wb-btn" type="button" id="sh-leave">Leave the party</button></div></div>`;
+      root.innerHTML = `<div class="wb sh">${html}<div class="wb-row" style="justify-content:flex-end;margin-top:8px">${SD.emote ? SD.emote.button() : ''}<button class="wb-btn" type="button" id="sh-leave">Leave the party</button></div></div>`;
       root.querySelector('#sh-leave').onclick = leave;
+      if (SD.emote) SD.emote.wire(root);
       const sc2 = root.querySelector('.wb-scroll'); if (sc2 && left) sc2.scrollLeft = left;
     }
     const head = (title, sub) => `<span class="sh-tag">Whiteboard Showdown · party ${esc(code.toUpperCase())}</span><h2>${esc(title)}</h2>${sub ? `<p class="wb-small">${sub}</p>` : ''}`;
