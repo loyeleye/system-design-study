@@ -61,6 +61,10 @@ const server = http.createServer((req, res) => {
   await page.waitForTimeout(150);
   check(await page.evaluate(() => !document.querySelector('#notes .sysnote') && !document.querySelector('#panel').style.paddingBottom), 'with no toast left the panel takes its full room back');
 
+  // "I don't know yet": centred under Guess / Think so / Sure, just below them, and a 44px tap.
+  const idk = await box(page, '#panel .q-idk'), cb = await box(page, '#panel .conf-b');
+  check(idk && cb && Math.abs((idk.x + idk.r) / 2 - (cb.x + cb.r) / 2) <= 1 && idk.y >= cb.b && idk.h >= 44, "I don't know yet sits centred under the confidence row (44px tall)");
+
   // Fields: 16px or more, so iOS doesn't zoom in when one takes focus.
   check(await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#q-text')).fontSize) >= 16), 'the typed answer box is 16px or more');
 

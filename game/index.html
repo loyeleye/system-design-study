@@ -385,6 +385,10 @@ button.mnu-row:hover { background: #f3f8ff; }
 /* .conf-b button's white would sit under .primary's white text (Say it first's "That's my answer"): keep the blue. */
 .conf-b button.primary { background: var(--blue); color: #fff; }
 .conf-b button.primary:hover:not(:disabled) { background: #4d98ff; }
+/* Typed answers' "I don't know yet" (js/quiz.js): a secondary text button, centred under the confidence row, 44px tall. */
+.q-idk { display: block; min-height: 44px; margin: 12px auto 0; padding: 8px 18px; font: 600 14px var(--f-head); letter-spacing: .02em; color: var(--ink); background: #fff; border: 2px solid var(--muted); border-radius: 12px; }
+.q-idk:hover { background: #f3f8ff; border-color: var(--ink); }
+.q-idk:active { transform: translateY(1px); }
 /* The confidence tally's stakes on each button, and its change after an answer (expeditions only, js/quiz.js). */
 .conf-b .stake { display: block; font: 700 11px var(--f-body); letter-spacing: .02em; opacity: .85; }
 .conf-b .stake .up { color: #17834f; } .conf-b .stake .dn { color: #c43a3a; }
