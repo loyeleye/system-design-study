@@ -151,7 +151,7 @@
 
   // ---------- Cosmetics ----------
   const KINDS = [['frame', 'Seat frames', 'Round your seat in the party room'], ['plate', 'Nameplates', 'Behind your name, in the party room and the raid'],
-    ['skin', 'Champion colours', 'Recolour one champion\'s clothes, wherever you play them'],
+    ['skin', 'Champion colours and looks', 'Recolour one champion\'s clothes, or redraw them, wherever you play them'],
     ['effect', 'Effects', 'Follow your champion in the party room and the raid'], ['emote', 'Emotes', 'For the Emote button: packs, or one at a time']];
   let tab = 'champs', trying = null;
   // The champion the preview wears it on: the one you picked last, if you can still pick them.
@@ -167,7 +167,7 @@
     const what = it ? `Trying on <b>${esc(it.name)}</b>${M.has(it.id) ? ' (yours)' : `, ${it.cost} ✦`}.` : 'What you wear now. Tap Try on to see an item here.';
     return `<div class="rs-try"><div><div class="pt-stage" id="rs-stage" data-who="${who}" data-wear="${esc(wear.join(' '))}">${emo ? `<span class="rs-pv-emo" aria-hidden="true">${emo}</span>` : ''}</div>
       <span class="rs-pv-name"><span class="${pl}">Your name</span></span></div>
-      <div><p>${what}</p><p class="gh-hint" style="margin-top:6px">On ${esc(c ? c.name : 'your champion')}${it && it.champ ? ', whose colour it is' : ', the champion you picked last'}. Everyone in your party sees what you wear. Never in the story.</p>
+      <div><p>${what}</p><p class="gh-hint" style="margin-top:6px">On ${esc(c ? c.name : 'your champion')}${it && it.champ ? `, whose ${SD.wear && SD.wear.ITEMS[it.id] && SD.wear.ITEMS[it.id].look ? 'look' : 'colour'} it is` : ', the champion you picked last'}. Everyone in your party sees what you wear. Never in the story.</p>
       ${trying ? '<p style="margin-top:6px"><button class="mi-btn sm" type="button" id="rs-untry">Stop trying on</button></p>' : ''}</div></div>`;
   }
   function itemCard(it) {
@@ -176,7 +176,7 @@
     const sw = it.slot === 'emote' ? `<span class="rs-many" aria-hidden="true">${it.has.map(o => emoSvg(M.item(o).emote)).join('')}</span>`
       : it.emote ? emoSvg(it.emote) : W ? W.swatch(it.id) : '';
     const sub = it.slot === 'emote' ? `${it.label} · ${it.has.length} ${it.label === 'Action pack' ? 'moves' : 'emotes'} · ${it.has.reduce((a, o) => a + M.cost(o), 0) - it.cost} ✦ less than singly`
-      : it.slot === 'skin' ? `For ${cc ? cc.short : ''}${W.ITEMS[it.id].season ? ' · seasonal, sold all year' : ''}`
+      : it.slot === 'skin' ? `${W.ITEMS[it.id].look ? 'Look' : 'Colour'} for ${cc ? cc.short : ''}${W.ITEMS[it.id].season ? ' · seasonal, sold all year' : ''}${W.ITEMS[it.id].note ? ' · ' + W.ITEMS[it.id].note : ''}`
       : M.SLOTS[it.slot] + (wearable && W.ITEMS[it.id].note ? ' · ' + W.ITEMS[it.id].note : '');
     let act;
     const wornHere = W && it.champ ? W.worn(it.champ).includes(it.id) : on;
@@ -206,7 +206,9 @@
   }
   function wireCos(el, redraw) {
     const st = el.querySelector('#rs-stage');
-    if (st) { const id = st.dataset.who, c = CH.get(id); if (c) st.appendChild(CH.sprite(id, Math.min(2, 104 / c.h), true)); if (SD.wear) SD.wear.dressStage(st, st.dataset.wear.split(' '), id); }
+    // Trying on a look shows it: for 307 Temporary Redirect, one of its four leads, another each time.
+    const lk = SD.wear && st && st.dataset.wear.split(' ').includes('look-hero404-307') ? CH.redirect() : null;
+    if (st) { const id = st.dataset.who, c = CH.get(id); if (c) st.appendChild(CH.sprite(id, Math.min(2, 104 / (lk ? SD.redirectArt.map.h : c.h)), true, lk)); if (SD.wear) SD.wear.dressStage(st, st.dataset.wear.split(' '), id); }
     el.querySelectorAll('[data-try]').forEach(b => { b.onclick = () => { trying = trying === b.dataset.try ? null : b.dataset.try; redraw(); const p = el.querySelector('.rs-try'); if (p && trying) p.scrollIntoView({ block: 'nearest' }); }; });
     const un = el.querySelector('#rs-untry'); if (un) un.onclick = () => { trying = null; redraw(); };
     el.querySelectorAll('[data-wear]').forEach(b => { b.onclick = () => { const it = M.item(b.dataset.wear), W = SD.wear; // The preview shows what you just put on, on its own champion for a colour.

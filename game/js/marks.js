@@ -96,7 +96,7 @@
   // ---------- Cosmetics ----------
   // One price per kind, in Ladi's order (Looks > Effects > Outfit colours > Frames > Emotes), each pinned to a champion
   // on the ladder above: a frame between Leilani and Dieynaba, an effect a little over Eun-ho.
-  M.TIERS = Object.freeze({ frame: 80, plate: 80, skin: 120, season: 200, effect: 300 });
+  M.TIERS = Object.freeze({ frame: 80, plate: 80, skin: 120, season: 200, effect: 300, look: 500 });
   // A single emote or action, and a pack's price as a share of its emotes' singly (the sequel's 70%).
   M.SINGLE = Object.freeze({ emote1: 40, act1: 80 });
   M.PACK_OFF = 0.7;
@@ -107,7 +107,7 @@
     if (ITEMS) return ITEMS;
     const W = SD.wear, E = SD.emote, out = [];
     // A champion's colour costs a plain one's price, or a seasonal one's (Ladi's Outfit colours tier).
-    if (W) Object.keys(W.ITEMS).forEach(id => { const it = W.ITEMS[id]; out.push({ id, name: it.name, slot: it.slot, champ: it.champ || null, cost: M.TIERS[it.slot === 'skin' && it.season ? 'season' : it.slot] }); });
+    if (W) Object.keys(W.ITEMS).forEach(id => { const it = W.ITEMS[id]; out.push({ id, name: it.name, slot: it.slot, champ: it.champ || null, cost: M.TIERS[it.look ? 'look' : it.slot === 'skin' && it.season ? 'season' : it.slot] }); });
     if (E) Object.keys(E.PACKS).forEach(pk => {
       const ones = Object.keys(E.EMOTES).filter(e => E.EMOTES[e].pack === pk)
         .map(e => ({ id: 'em-' + e, name: E.EMOTES[e].name, slot: E.EMOTES[e].act ? 'act1' : 'emote1', pack: pk, emote: e, cost: M.SINGLE[E.EMOTES[e].act ? 'act1' : 'emote1'] }));

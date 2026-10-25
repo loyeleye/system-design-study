@@ -63,6 +63,10 @@ const server = http.createServer((req, res) => {
   check(await a.evaluate(() => SD.marks.has('skin-doug-blue')), 'once Doug is hired, his colour is bought in two taps');
   await a.click('#shopbox [data-wear="skin-doug-blue"]');
   check(await a.evaluate(() => SD.wear.worn('doug').includes('skin-doug-blue') && !SD.wear.worn('uptima').includes('skin-doug-blue')), 'his colour is worn on Doug only');
+  // Hero #404's look, 307 Temporary Redirect: 500 ✦, worn in his colour's place, and a sequel lead only once an
+  // expedition starts (js/raid.js start), never in the party room.
+  check(await a.evaluate(() => SD.marks.cost('look-hero404-307') === 500), 'a champion look costs 500 ✦');
+  check(await a.evaluate(() => { const l = SD.champions.redirect(); return SD.redirectArt.leads.includes(l) && SD.champions.look('hero404', l) === l && SD.champions.look('uptima', l) === null && /hero404-smoke-/.test(SD.champions.sprite('hero404', 1, false, l).style.backgroundImage); }), 'the four sequel leads are Hero #404 looks, and only his');
   await a.evaluate(() => document.getElementById('shopbox').remove());
 
   // A Whiteboard Showdown party on page A, joined by page B (the standalone Guild Hall page: no save).

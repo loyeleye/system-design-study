@@ -102,7 +102,10 @@
     'skin-neel-ledger': { champ: 'neel', name: 'Ledger green', main: '#2f6b45' },
     'skin-neel-winterfest': { champ: 'neel', name: 'Winterfest', main: '#b3202d', season: 'Winter holidays' },
     'skin-kyu-night': { champ: 'kyu', name: 'Night shift', main: '#26336b' },
-    'skin-kyu-lunar': { champ: 'kyu', name: 'Lunar New Year', main: '#c01c2a', season: 'Lunar New Year' }
+    'skin-kyu-lunar': { champ: 'kyu', name: 'Lunar New Year', main: '#c01c2a', season: 'Lunar New Year' },
+    // Champion looks: a redraw, worn in a champion's colour place (one or the other). Hero #404's is one of the sequel's
+    // four leads, a new one each expedition (js/raid.js start); the party room keeps his silhouette.
+    'look-hero404-307': { champ: 'hero404', name: '307 Temporary Redirect', look: true, note: 'A sequel lead each expedition' }
   });
   Object.keys(SKINS).forEach(id => { ITEMS[id] = Object.freeze(Object.assign({ slot: 'skin' }, SKINS[id])); });
   const has = id => !!(SD.marks && SD.marks.has && SD.marks.has(id));
@@ -194,7 +197,7 @@
   const maskOf = src => 'assets/img/wear/mask/' + src.split('/').pop().split('?')[0];
   W.skinUrl = function (src, id) {
     const it = SKINS[id];
-    if (!it || !src) return null;
+    if (!it || !it.main || !src) return null;
     const key = src + '|' + id;
     if (made[key]) return made[key];
     if (busy[key]) return null;
@@ -220,7 +223,7 @@
   };
   // A sprite element drawing src: in colour id now if it's ready, else as soon as it is.
   W.mark = function (el, src, id) {
-    if (!el || !src || !SKINS[id]) return;
+    if (!el || !src || !SKINS[id] || !SKINS[id].main) return;
     el.dataset.wearSrc = src + '|' + id;
     const u = W.skinUrl(src, id);
     if (u) el.style.backgroundImage = `url(${u})`;
@@ -253,6 +256,7 @@
     css();
     if (it.slot === 'effect') return `<span class="wd-sw" style="background:#2b2340">${W.fx(id)}</span>`;
     if (it.slot === 'plate') return `<span class="wd-sw wd-pl"><span class="wpl ${id}">Name</span></span>`;
+    if (it.look) return '<span class="wd-sw wd-look" aria-hidden="true">307</span>';
     if (it.slot === 'skin') return `<span class="wd-sw" style="background:linear-gradient(135deg, ${it.main} 0 62%, #f4efe6 62%)"></span>`;
     return `<span class="wd-sw wf ${id}"></span>`;
   };
@@ -274,7 +278,7 @@
     // Colours: only for the champion you have picked, and only once one is sold for them.
     const mine = cn ? Object.keys(SKINS).filter(id => SKINS[id].champ === champ && has(id)) : [];
     const anyFor = cn && Object.keys(SKINS).some(id => SKINS[id].champ === champ);
-    const skin = anyFor ? `<div class="wd-slot"><h4>${esc(cn.short || cn.name)}'s colour</h4><div class="wd-items">
+    const skin = anyFor ? `<div class="wd-slot"><h4>${esc(cn.short || cn.name)}'s colour${Object.keys(SKINS).some(id => SKINS[id].champ === champ && SKINS[id].look) ? ' or look' : ''}</h4><div class="wd-items">
         <button type="button" class="wd-it" data-off="skin:${champ}" aria-pressed="${!W.skinOf(now, champ)}"><span class="wd-sw wd-off">—</span><span>As drawn</span></button>
         ${mine.map(id => `<button type="button" class="wd-it" data-wear="${id}" aria-pressed="${now.includes(id)}">${W.swatch(id)}<span>${esc(SKINS[id].name)}</span></button>`).join('')}
         ${mine.length ? '' : `<small class="wd-empty">None for ${esc(cn.short || cn.name)} yet. Kagemaru sells them at the Raid shop.</small>`}</div></div>` : '';
@@ -333,6 +337,7 @@ ${spots}
 .wd-it[aria-pressed="true"] { background: var(--mi-sun, #ffe14d); box-shadow: 0 2px 0 var(--mi-ink, #2b2340); }
 .wd-sw { position: relative; display: grid; place-items: center; width: 44px; height: 30px; border-radius: 6px; border: 2px solid var(--mi-ink, #2b2340); overflow: hidden; background: #eef8ff; font-size: 11px; }
 .wd-sw.wd-pl { width: 60px; background: #fff; }
+.wd-look { display: grid; place-items: center; background: #15121c; color: #c4b0f0; font: 800 15px ui-monospace, monospace; letter-spacing: .06em; }
 .wd-sw.wd-pl .wpl { font: 700 11px var(--f-body, system-ui); padding: 0 5px; }
 .wd-empty, .wd-note, .wd-none { font-size: 12px; color: var(--mi-muted, #6b6480); margin: 0; }
 `;
