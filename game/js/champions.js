@@ -166,7 +166,41 @@
     kyu: [
       ['signed', { name: 'Signed, K.', cost: 0, kind: 'action', draw: 2, stale: -1, art: 'paper-plane', text: 'Draw 2. -1 Stale. A small, neat note in every life she touched.' }],
       ['oncall', { name: 'Ten Thousand Years On Call', cost: 2, kind: 'infra', pow: 6, keepSh: true, each: { any: 5 }, tags: ['oncall'], art: 'alarm-clock', text: 'Infra. Your absorb is kept between turns. Absorb 5 each turn. Nobody should be on call for eighty-seven million hours.' }],
-      ['noticed', { name: 'Nobody Noticed', cost: 1, kind: 'action', mit: 9, clearStale: true, art: 'crystal-ball', text: 'Mitigate {mit}. Remove all Stale. That is how she knows the job was done.' }]]
+      ['noticed', { name: 'Nobody Noticed', cost: 1, kind: 'action', mit: 9, clearStale: true, art: 'crystal-ball', text: 'Mitigate {mit}. Remove all Stale. That is how she knows the job was done.' }]],
+    // The Raid Marks champions (Ladi, 2026-10-25): bought in the Raid shop (js/raid-shop.js); their effects are in
+    // js/raid.js ("The Raid Marks champions' effects").
+    doug: [
+      ['fetch', { name: 'Kevin, Fetch', cost: 1, kind: 'action', queue: 1, abs: { any: 3 }, art: 'robot-golem', text: 'Queue 1: your card with the biggest numbers goes in Kevin\'s slot, and when the foes act he plays it for free at 75% (at most Mitigate or Absorb 15). Absorb {any} load. Kevin plays one card a turn.' }],
+      ['retryafter', { name: 'Retry-After', cost: 0, kind: 'action', kevin: 100, art: 'hourglass', text: 'This turn Kevin plays at full strength. He politely waited. Now he doesn\'t.' }],
+      ['cats', { name: 'Mostly Cat Pictures', cost: 1, kind: 'action', draw: 2, queue: 1, stale: 1, art: 'cat', text: 'Draw 2, then Queue 1. +1 Stale. And a scraper. Mostly cat pictures.' }]],
+    dieynaba: [
+      ['bitter', { name: 'First Glass, Bitter', cost: 1, kind: 'action', abs: { any: 6 }, pour: 1, art: 'teapot', text: 'Absorb {any} load. Pour: the next glass of attaya (bitter, Absorb 4; sweet like life, the team Self-Healing 3; sweet like love, every teammate draws 1).' }],
+      ['teranga', { name: 'Teranga', cost: 0, kind: 'action', pour: 1, giveDraw: 1, exhaust: true, art: 'coffee-cup', text: 'Pour. The teammate you name draws 1. Exhaust. Sit. A glass appears.' }],
+      ['foam', { name: 'From High, So It Foams', cost: 2, kind: 'action', mit: 10, pour: 2, art: 'river', text: 'Mitigate {mit}. Pour twice. Never hurried. Never thirsty.' }]],
+    leilani: [
+      ['chalk', { name: 'Chalk the Crossing', cost: 1, kind: 'action', abs: { any: 7 }, sync: { nextDraw: 1 }, art: 'scroll-unfurled', text: 'Absorb {any} load. In sync (when the foes act, every player has played a card this turn): Runbook Ready 1.' }],
+      ['cup', { name: 'Second Cup of Tea', cost: 0, kind: 'action', givePrewarm: 1, exhaust: true, art: 'teapot', text: 'The teammate you name gets Pre-Warmed 1. Exhaust. "For Kwame. He\'ll be forty minutes."' }],
+      ['aboard', { name: 'Everyone Aboard', cost: 2, kind: 'action', mit: 11, tagUp: 6, art: 'wave-crest', text: 'Mitigate {mit}. This turn the Tag Team bonus is 6 higher. One ferry. Everyone on it.' }]],
+    suzu: [
+      ['pager', { name: 'Who Actually Answers the Pager?', cost: 1, kind: 'action', take: 1, mit: 5, perPager: 3, art: 'siren', text: 'Take 1: a teammate\'s biggest Pager Alert or Tech Debt into your hand. Mitigate {mit}, +3 for each one in your hand.' }],
+      ['armband', { name: 'Armband', cost: 1, kind: 'infra', each: { any: 3 }, eachPerPager: 2, art: 'checked-shield', text: 'Infra. Absorb 3 each turn, +2 for each Pager Alert or Tech Debt in your hand. S.O.S. Brigade, Chief.' }],
+      ['rotation', { name: 'Real Rotation', cost: 0, kind: 'action', givePrewarm: 1, brittle: 1, art: 'calendar', text: 'The teammate you name gets Pre-Warmed 1. You get Tightly Coupled 1. She takes the night.' }]],
+    gong: [
+      ['job', { name: 'I Hit the Gong. That Is the Job.', cost: 1, kind: 'action', mit: 4, mainEvent: { x: 1.5, cap: 12 }, art: 'ringing-bell', text: 'Mitigate {mit}. Main Event: the teammate you name\'s next card, this turn or next, hits x1.5 (at most +12). If it lands effective, the gong rings: you get Pre-Warmed 1. Alone: you, x1.25.' }],
+      ['back', { name: 'The Gong on His Back', cost: 1, kind: 'infra', each: { any: 3 }, meUp: 3, art: 'podium', text: 'Infra. Absorb 3 each turn. The main event\'s card gets +3 more.' }],
+      ['reflex', { name: 'Sorry. Reflex.', cost: 0, kind: 'action', ring: true, stale: 1, art: 'megaphone', text: 'The gong rings: Pre-Warmed 1. +1 Stale. "GONNNG. Sorry. Reflex."' }]],
+    sunny: [
+      ['logit', { name: 'LOG IT', cost: 0, kind: 'action', mit: 3, logTwice: true, art: 'notebook', text: 'Mitigate {mit}. Logged twice on the PR Board (reps: every card played this fight).' }],
+      ['bar', { name: 'The Bar Remembers', cost: 1, kind: 'action', mit: 4, perReps: [3, 8], art: 'histogram', text: 'Mitigate {mit}, +1 for every 3 reps the team has logged this fight (up to +8).' }],
+      ['spot', { name: 'Spot Me', cost: 1, kind: 'action', abs: { any: 5 }, temper: 1, temperWho: 'ally', spot: 'draw', art: 'fist', text: 'Absorb {any} load. Temper 1 card in a teammate\'s hand. If that card sets a New PR (beats their best Mitigate or Absorb this fight), they draw 1.' }]],
+    hero404: [
+      ['notfound', { name: 'NOT FOUND', cost: 1, kind: 'action', abs: { any: 6 }, unseen: { abs: { any: 9 } }, art: 'stop-sign', text: 'Absorb {any} load. Unseen: if it\'s still in your hand when the foes act, Absorb 9 instead, then it goes to your discard pile.' }],
+      ['lunch', { name: 'Lunch Left Out', cost: 0, kind: 'action', draw: 1, unseen: { mit: 5 }, art: 'croissant', text: 'Draw 1. Unseen: Mitigate 5 when the foes act. It disappears. Every time.' }],
+      ['shift', { name: 'Never Missed a Shift', cost: 2, kind: 'action', mit: 8, later: { mit: 6 }, hideMe: true, art: 'spectre', text: 'Mitigate {mit} now and 6 next turn. This turn Pager Alert and Tech Debt hand-outs can\'t find you.' }]],
+    eunho: [
+      ['traffic', { name: 'Shadow Traffic', cost: 1, kind: 'action', shadow: 50, art: 'linked-rings', text: 'Shadow 50%: replay the last card a teammate played this turn at half its numbers, free, without its drawbacks (at most Mitigate or Absorb 15).' }],
+      ['beat', { name: 'Every Difference, Down to the Beat', cost: 0, kind: 'action', reveal: true, nextDraw: 1, art: 'magnifying-glass', text: 'Reveal the incident\'s weaknesses. Runbook Ready 1.' }],
+      ['bows', { name: 'The Curtain Never Bows', cost: 1, kind: 'action', abs: { any: 7 }, when: { on: 'mateEff', mit: 5 }, art: 'closed-doors', text: 'Absorb {any} load. If a teammate has landed an effective card this turn, Mitigate 5 too.' }]]
   };
   C.cards = {};
   if (SD.cards) Object.keys(SIG).forEach(ch => {
