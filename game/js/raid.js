@@ -365,6 +365,16 @@
 .rd-peek { display: grid; gap: 4px; }
 .rd-tp { color: #c0571b; }
 .rd-inc { margin: 0; font-size: 13px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 4px 10px; }
+/* The Guild Hall's panel is dark wood (js/guild.js), so the raid sits on one cream card, like the solo battle's window:
+   its titles, story lines, HUD labels and turn line are drawn straight on it and need the light ground to read. */
+.rd { background: var(--cream, #fffaf0); color: var(--ink, #2b2340); border: 3px solid var(--ink, #2b2340); border-radius: 16px; box-shadow: 0 5px 0 var(--ink, #2b2340); padding: 14px; }
+.rd .mi-tag { display: inline-block; font: 700 12px/1.6 var(--f-body); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+/* Leave sits well clear of the hand, and asks before it goes. */
+.rd-leave { justify-content: flex-end; align-items: center; margin-top: 28px; padding-top: 14px; border-top: 3px dashed rgba(43,35,64,.2); }
+.rd-leave button { min-height: 44px; } .rd-leave button.danger { background: #ffe1e1; color: #a3172b; }
+.rd-leave-q { flex: 1 1 100%; text-align: right; font-weight: 700; }
+@media (max-width: 560px) { .rd { padding: 10px; border-radius: 14px; } .rd-leave-q { text-align: left; } }
+@media (max-width: 720px), (pointer: coarse) { .rd button.hud-chip { min-height: 44px; } }
 `;
     document.head.appendChild(st);
   }
@@ -2383,7 +2393,7 @@
 
     // ---------- What everyone sees ----------
     // Local choices that aren't the table's: the deck viewer, and which card a removal or refactor is picking.
-    const ui = { deck: false, pick: null, tg: null, tally: false };
+    const ui = { deck: false, pick: null, tg: null, tally: false, leave: false };
     // The confidence tally on the HUD (Ladi, Oct 23): what a right debrief answer heals now, a pip per point up to HEAL
     // (red pips below 0), and a tap for how it works.
     const healOf = t => (t < LOW ? LOW_HEAL : Math.min(HEAL, t));
@@ -2396,8 +2406,16 @@
     const tallyHelp = t => `On-call Cred is how much the team can trust your calls: it scores your last 20 answers anywhere in the game by how sure you said you were: Guess +1 right, 0 wrong; Think so +2, −1; Sure +3, −5; never above ${HEAL}. After each won fight a right debrief answer heals the team by it${t < LOW ? `. Under ${LOW} you get two easier-paying questions instead, ${LOW_HEAL} SLA each, so a few honest answers will lift you` : ''}.`;
     function paint(html) {
       const h = root.querySelector('.hand'), sx = h ? h.scrollLeft : 0, sc = root.closest('.win-b'), sy = sc ? sc.scrollTop : 0;
-      root.innerHTML = `<div class="rd" data-ph="${esc(G.ph)}">${html}<div class="row" style="justify-content:flex-end"><button class="ghost" type="button" id="rd-leave">Leave the expedition</button></div></div>`;
-      root.querySelector('#rd-leave').onclick = leave;
+      // Leaving mid-expedition asks first, in place (the Guild Hall is already a panel), like solo's Abandon run
+      // (Ladi, 2026-10-25). Once it's over there's nothing to lose.
+      const ask = ui.leave && G.ph !== 'done' && G.ph !== 'over';
+      root.innerHTML = `<div class="rd" data-ph="${esc(G.ph)}">${html}<div class="row rd-leave">${ask
+        ? `<span class="rd-leave-q" role="status">Leave the expedition?${players().length > 1 ? ' The others play on without you.' : ''}</span><button class="danger" type="button" id="rd-leave-y">Yes, leave</button><button class="ghost" type="button" id="rd-stay">Stay</button>`
+        : '<button class="ghost" type="button" id="rd-leave">Leave the expedition</button>'}</div></div>`;
+      const lv = root.querySelector('#rd-leave');
+      if (lv) lv.onclick = () => { if (G.ph === 'done' || G.ph === 'over') return leave(); ui.leave = true; render(); const s = root.querySelector('#rd-stay'); if (s) { s.focus({ preventScroll: true }); s.scrollIntoView({ block: 'nearest' }); } };
+      const ly = root.querySelector('#rd-leave-y'); if (ly) ly.onclick = () => leave();
+      const ls = root.querySelector('#rd-stay'); if (ls) ls.onclick = () => { ui.leave = false; render(); const b = root.querySelector('#rd-leave'); if (b) b.focus({ preventScroll: true }); };
       const h2 = root.querySelector('.hand'); if (h2 && sx) h2.scrollLeft = sx;
       if (sc) sc.scrollTop = sy;
       root.querySelectorAll('[data-send]').forEach(b => { b.onclick = () => { ui.pick = null; send(JSON.parse(b.dataset.send)); }; });

@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- Add to Home Screen: full screen, the HUD's cream behind the status bar (the HUDs pad for the notch with
+     env(safe-area-inset-top)). Above @page-start, so the claude.ai artifact (tools/artifact_page.py) leaves them out. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/app/icon-180.png">
+<meta name="theme-color" content="#fffaf0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Into Prod">
 <!-- @page-start -->
 <title>Isekai'd Into Prod</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -91,7 +100,7 @@ button:disabled { cursor: default; opacity: .5; }
 .snd { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); z-index: 3; }
 
 /* Hub */
-#hud { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
+#hud { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
 #hud .ghost { padding: 6px 12px; font-size: 14px; }
 .rank { width: 44px; height: 44px; display: grid; place-items: center; align-content: center; border: 3px solid var(--ink); background: var(--sun); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
 .rank b { font-family: var(--f-head); font-size: 20px; line-height: 1; }
@@ -103,7 +112,47 @@ button:disabled { cursor: default; opacity: .5; }
 #hub-canvas { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; }
 #room-canvas { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; background: #1a1530; }
 body:has(#dialog:not([hidden])) .hub-hint { display: none; }
-.hub-hint { position: absolute; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; color: var(--ink); background: rgba(255,250,240,.92); border: 2px solid var(--ink); padding: 4px 12px; border-radius: 20px; pointer-events: none; white-space: nowrap; }
+.hub-hint { position: absolute; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; color: var(--ink); background: rgba(255,250,240,.92); border: 2px solid var(--ink); padding: 4px 12px; border-radius: 20px; pointer-events: none; width: max-content; max-width: calc(100% - 32px); text-align: center; }
+/* Touch screens get only the tap wording (the walking hints, the dialogue's "Tap to continue"). */
+.on-touch { display: none; }
+@media (hover: none) and (pointer: coarse) { .on-key { display: none; } .on-touch { display: inline; } }
+/* Phones (Ladi, 2026-10-25): a walkable screen's HUD (the village, the North Road, the Isles) is one short row of who
+   and where you are, and its buttons (.hud-tools; Sound and Menu are js/main.js's M.hudTools) move to a bar along the
+   bottom as 44px icon buttons. Their words are hidden but still read out (data-ic is the icon); badges stay. Landscape
+   phones keep one top row, icons inline. Wider screens: .hud-tools is display: contents, so nothing moves. */
+.hud-tools { display: contents; }
+.nr-hud .hud-tools > :first-child { margin-left: auto; }
+.nr-hud .ghost { padding: 6px 12px; font-size: 14px; }
+.nr-ic { display: none; }
+@media (max-width: 600px), (max-height: 500px) {
+  #hud, #nr-hud, #isles-hud { gap: 8px; padding-top: calc(5px + env(safe-area-inset-top, 0px)); padding-bottom: 5px; }
+  #hud, #nr-hud { flex-wrap: nowrap; }
+  #hud .rank { width: 36px; height: 36px; flex: none; box-shadow: 0 2px 0 var(--ink); }
+  #hud .rank b { font-size: 18px; }
+  #hud .hud-mid { flex: 1 1 0; }
+  #hud .hud-chip, .nr-hud .hud-chip { flex: none; }
+  .nr-hud .nr-where { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .nr-lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .nr-ic { display: inline; }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 44px; min-height: 44px; padding: 0 8px; font-size: 15px; border: 3px solid var(--ink); border-radius: 12px; box-shadow: var(--pop); }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > button[data-ic] { font-size: 0; }
+  .hud-tools > button[data-ic]::before { content: attr(data-ic); font-size: 20px; line-height: 1; }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > .hud-ic { font-size: 20px; }
+  .hud-tools .small { display: none; }
+  #hud-due::after { content: attr(data-n); min-width: 18px; padding: 0 5px; border-radius: 9px; background: #fff; border: 2px solid var(--ink); font-size: 11px; font-weight: 800; line-height: 14px; }
+  .hud-tools .badge, #hud-due::after { position: absolute; top: -7px; right: -5px; margin: 0; }
+}
+@media (max-width: 600px) {
+  .screen:has(> * > .hud-tools) { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  .hud-tools { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; justify-content: center; gap: 6px; padding: 4px max(8px, env(safe-area-inset-right, 0px)) calc(5px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); background: var(--cream); border-top: 3px solid var(--ink); }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > button { flex: 1 1 auto; max-width: 120px; box-shadow: 0 2px 0 var(--ink); }
+  :is(#hud, #nr-hud, #isles-hud) .hud-tools > :is([data-ic], .hud-ic) { flex: 1 1 0; }
+  .nr-hud .hud-tools > :first-child { margin-left: 0; }
+  .screen:has(> * > .hud-tools) .hub-hint { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+  body:has(#dialog:not([hidden])) .hud-tools { visibility: hidden; }
+  /* The debug button (js/debug.js, testing only) moves up off the bar and the hint. */
+  body:has(.screen:not([hidden]) > * > .hud-tools) #dbg-btn { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+}
 
 /* Bars */
 .bar { position: relative; height: 10px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
@@ -122,6 +171,9 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .win.wide { width: min(860px, 100%); }
 .win-h { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 3px solid var(--ink); font-family: var(--f-head); font-weight: 600; font-size: 16px; color: #fff; background: var(--blue); }
 .win-h .x { background: #fff; border: 2px solid var(--ink); color: var(--ink); font-size: 13px; width: 28px; height: 28px; border-radius: 50%; padding: 0; line-height: 1; }
+/* The ✕ and ‹ draw as a 28px disc but take a 44px tap: a transparent 8px border around it, pulled back by negative
+   margins so the header stays as tall as before. The disc's ink ring is an inset shadow on the padding box. */
+.win-h .x { width: 44px; height: 44px; margin: -8px -8px -8px 0; border: 8px solid transparent; border-radius: 22px; background-clip: padding-box; box-shadow: inset 0 0 0 2px var(--ink); }
 .win-b { padding: 16px; overflow-y: auto; min-height: 0; }
 .win-b p { margin: 0 0 10px; }
 .q-ctx { font-family: var(--f-head); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--blue-d); margin-bottom: 6px; }
@@ -262,6 +314,7 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 @media (prefers-reduced-motion: reduce) { .rt-row .rt-sw i, .rt-row .rt-sw i::after { transition: none; } }
 /* The menu (js/main.js): grouped sections, 44px+ tap targets, switches that match the sound popover. */
 .win-h .x.back { flex: none; margin-right: 10px; font-size: 20px; font-weight: 700; padding-bottom: 2px; }
+.win-h .x.back { margin: -8px 2px -8px -8px; }
 .win-h .x.back + span { margin-right: auto; }
 .mnu section { margin-bottom: 16px; }
 .mnu-h { margin: 0 0 6px 2px; font: 600 12px var(--f-head); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -329,6 +382,9 @@ button.mnu-row:hover { background: #f3f8ff; }
 .conf-b { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .conf-b button { flex: 1 1 90px; background: #fff; }
 .conf-b button[data-c="2"]:not(:disabled) { background: var(--sun); }
+/* .conf-b button's white would sit under .primary's white text (Say it first's "That's my answer"): keep the blue. */
+.conf-b button.primary { background: var(--blue); color: #fff; }
+.conf-b button.primary:hover:not(:disabled) { background: #4d98ff; }
 /* The confidence tally's stakes on each button, and its change after an answer (expeditions only, js/quiz.js). */
 .conf-b .stake { display: block; font: 700 11px var(--f-body); letter-spacing: .02em; opacity: .85; }
 .conf-b .stake .up { color: #17834f; } .conf-b .stake .dn { color: #c43a3a; }
@@ -401,7 +457,12 @@ a.help-b { text-decoration: none; color: var(--ink); }
 .tier { display: inline-block; font-size: 0.78em; font-weight: 800; padding: 0 6px; border-radius: 6px; background: #eee; }
 .tier-broken { background: #f3d3d3; color: #8a2020; } .tier-bad { background: #fde3e3; color: #b23b3b; }
 .tier-good { background: #fff1c2; color: #7a5a00; } .tier-great { background: #e3f5e9; color: #1d7a43; }
-.q-text { width: 100%; box-sizing: border-box; font: inherit; padding: 8px 10px; border: 3px solid var(--ink, #2b2340); border-radius: 12px; resize: vertical; }
+.q-text { width: 100%; box-sizing: border-box; font: inherit; font-size: max(16px, 1em); padding: 8px 10px; border: 3px solid var(--ink, #2b2340); border-radius: 12px; resize: vertical; }
+/* iOS zooms the page into any field under 16px when it takes focus, so every field is at least 16px: this
+   no-specificity default covers unstyled ones, and each rule that styles a field (some injected by js/ modules) says so too. */
+:where(input, textarea, select) { font-size: max(16px, 1em); }
+/* With the on-screen keyboard up the quiz has little room: a shorter answer box keeps the commit row in view (js/quiz.js). */
+@media (max-height: 480px) { .win.quiz .q-text { height: 4.6em; min-height: 0; resize: none; } }
 blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a6ff; background: #f7f4ff; border-radius: 0 10px 10px 0; white-space: pre-wrap; }
 .rubric { display: grid; gap: 6px; margin: 6px 0; }
 .rubric .rp { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border: 2px solid #ddd5f0; border-radius: 10px; cursor: pointer; }
@@ -415,6 +476,7 @@ blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a
 .practice h3 { margin: 0 0 4px; font-family: var(--f-head); }
 .practice .pr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 8px 0 4px; }
 .practice .pr-list .opt { padding: 8px 10px; }
+.practice .pr-page { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
 .practice .row { align-items: center; gap: 12px; }
 #hud .practice-btn { background: var(--sun); }
 @media (max-width: 600px) { #hud #hud-journal { display: none; } }
@@ -641,6 +703,8 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .tab { padding: 6px 12px; background: #fff; border: 2px solid var(--ink); font-family: var(--f-head); font-weight: 600; font-size: 13px; border-radius: 20px; }
 .tab.on { background: var(--blue); color: #fff; }
+/* Tabs reach a 44px tap on touch screens; desktop keeps the slimmer pill. */
+@media (hover: none), (pointer: coarse) { .tab, .rt-f .tab { min-height: 44px; } }
 .cx-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .cx { padding: 12px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; min-width: 0; }
 .cx.locked { opacity: .55; background: #f4efe6; }
@@ -696,6 +760,8 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 #dlg-text { min-height: 3em; font-size: 16px; font-weight: 600; }
 .dlg-foot { display: flex; gap: 16px; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--muted); font-weight: 700; }
 #dlg-skip { background: none; border: 0; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 0; }
+/* Skip: 13px text and a 44px tap, the extra height pulled back by negative margins so the box stays the same size. */
+#dlg-skip { font-size: 13px; min-width: 44px; min-height: 44px; padding: 0 8px; margin: -14px -8px -14px 0; }
 @media (max-width: 520px) { #dlg-portrait svg { width: 70px; height: 82px; } #dlg-text { font-size: 15px; } }
 
 /* Cutscene stage */
@@ -785,6 +851,9 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 .sysnote.gold { border-left-color: var(--sun); background: #fffbe8; }
 .sysnote.red { border-left-color: var(--red); background: #fff0f0; }
 .sysnote.out { opacity: 0; transform: translateX(20px); }
+/* A toast can be tapped away (js/ui.js). Over an open panel it sits at the bottom, in a strip the panel gives up. */
+.sysnote { pointer-events: auto; cursor: pointer; }
+#notes.low { top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 .sys-h { font-family: var(--f-head); font-weight: 600; font-size: 14px; display: flex; gap: 8px; align-items: center; }
 .sys-i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 12px; font-weight: 800; flex: none; }
 .sysnote.gold .sys-i { background: var(--sun); color: var(--ink); } .sysnote.red .sys-i { background: var(--red); }
@@ -792,7 +861,7 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 
 /* Run screen */
 #screen-run { overflow-y: auto; background: linear-gradient(180deg, #d9d0ff, #f3efff 40%, #fff8ec); }
-#run { width: 100%; max-width: 980px; margin: 0 auto; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+#run { width: 100%; max-width: 980px; margin: 0 auto; padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
 .run-hud { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0 12px; border-bottom: 3px dashed rgba(43,35,64,.25); }
 .run-hud .hud-sla { flex: 1 1 200px; }
 .map-wrap { padding-top: 12px; }
@@ -826,6 +895,7 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 
 /* Combat */
 .combat { display: grid; gap: 10px; padding-top: 6px; }
+.cb-top { display: grid; gap: 10px; }
 .foe-zone { display: flex; gap: 14px; align-items: center; padding: 12px; border: 3px solid var(--ink); border-radius: 16px; background: linear-gradient(90deg, #ffe3ec, #fff); box-shadow: 0 4px 0 var(--ink); }
 .foe-zone:has(.stage) { display: grid; gap: 10px; padding: 0 0 12px; overflow: hidden; background: #fff; }
 .foe-zone:has(.stage) .foe-info { padding: 0 12px; }
@@ -863,6 +933,8 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 .hand-zone { display: grid; gap: 10px; }
 .hand-top { display: flex; align-items: center; gap: 12px; }
 .hand-top .muted { flex: 1; }
+/* .ht-sla: on phones your SLA rides in the pinned bar by End turn (see "Phone battle" below); elsewhere it stays in .me-zone. */
+.ht-mid { flex: 1; min-width: 0; display: grid; gap: 2px; } .ht-sla { display: none; }
 .energy { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; align-content: center; background: radial-gradient(circle at 35% 30%, #9fd1ff, var(--blue)); border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); color: #fff; }
 .energy b { font-family: var(--f-head); font-size: 22px; line-height: 1; }
 .energy span { font-size: 8px; font-weight: 800; letter-spacing: .1em; }
@@ -1020,10 +1092,62 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
   .hand .c-pow { min-width: 26px; height: 22px; font-size: 11px; padding: 0 3px; top: -8px; right: -6px; }
   .hand .card.has-pow .c-name { padding-right: 16px; }
 }
+/* Phone battle (js/run.js renderCombat): the foe's NEXT move, your SLA, End turn and the first row of the hand on one
+   screen, so no scrolling down to play and back up to read. The art is a strip, the foe and your status scroll in the
+   top pane (.cb-top), and the hand is pinned below with its own scroll. Short landscape screens put the hand in a
+   right-hand column instead. Solo fights only: raids (js/raid.js) reuse these classes and keep their own layout. */
+@media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
+  #screen-run:has(.combat.solo) { overflow: hidden; }
+  #run:has(> .combat.solo) { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)); }
+  .combat.solo { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; padding-top: 0; }
+  .combat.solo .cb-top { min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; padding-bottom: 6px; }
+  .combat.solo .cb-top > * { flex: none; }
+  .combat.solo .foe-zone:has(.stage) { gap: 6px; padding-bottom: 8px; }
+  .combat.solo .stage { aspect-ratio: auto; height: 84px; }
+  .combat.solo .stage .hero { transform: scale(1.3); }
+  .combat.solo .stage .foe { width: 76px; height: 76px; } .combat.solo.bossfight .stage .foe { width: 84px; height: 84px; }
+  .combat.solo .stage.group .foe { width: 62px; height: 62px; } .combat.solo .stage.g3 .foe { width: 54px; height: 54px; } .combat.solo .stage.group .foe.elite { width: 72px; height: 72px; }
+  .combat.solo .stage.group .foe.tgt::before { top: -8px; font-size: 14px; }
+  .combat.solo .foe-info { gap: 5px; }
+  .combat.solo .foe-flavor { margin-top: -3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .combat.solo .intent { padding: 5px 8px; }
+  .combat.solo .clog { min-height: 0; padding: 6px 10px; font-size: 13px; }
+  /* Pip's coaching (the tutorial fight) says what to play: it goes above the art so a small screen still shows it. */
+  .combat.solo .clog.coach { order: -1; }
+  .combat.solo .me-zone { gap: 6px; padding: 8px 10px; }
+  .combat.solo .infra:not(:has(.on)) { display: none; }
+  .combat.solo .me-zone .hud-sla { display: none; }
+  .combat.solo .ht-sla { display: flex; gap: 6px; font-size: 13px; } .combat.solo .ht-sla .bar { min-width: 0; height: 12px; }
+  .combat.solo .hand-top { gap: 10px; }
+  .combat.solo .hand-zone { gap: 0; padding-top: 6px; border-top: 3px dashed rgba(43,35,64,.25); }
+  .combat.solo .energy { width: 46px; height: 46px; } .combat.solo .energy b { font-size: 20px; }
+  .combat.solo .hand { max-height: 40vh; max-height: 40dvh; overflow-y: auto; overscroll-behavior: contain; }
+}
+@media (max-width: 600px) and (max-height: 600px) { .combat.solo .stage { height: 64px; } .combat.solo .stage .hero { transform: scale(1.05); } .combat.solo .stage .foe { width: 60px; height: 60px; } .combat.solo.bossfight .stage .foe { width: 64px; height: 64px; } .combat.solo .stage.group .foe { width: 50px; height: 50px; } .combat.solo .stage.g3 .foe { width: 44px; height: 44px; } .combat.solo .stage.group .foe.elite { width: 58px; height: 58px; } }
+/* A chapter's extra button by End turn (Lord Latency's Delay, js/arc.js) leaves no room on a narrow phone: SLA and the
+   pile counts get their own line above. */
+@media (max-width: 420px) {
+  .combat.solo .hand-top:has(> button:not(#end-turn)) { flex-wrap: wrap; row-gap: 6px; }
+  .combat.solo .hand-top:has(> button:not(#end-turn)) .ht-mid { order: -1; flex-basis: 100%; display: flex; align-items: center; gap: 10px; }
+  .combat.solo .hand-top:has(> button:not(#end-turn)) .ht-sla { flex: 1; }
+  .combat.solo .hand-top:has(> button:not(#end-turn)) .ht-mid + button { margin-left: auto; }
+}
+@media (max-height: 500px) and (orientation: landscape) and (min-width: 601px) {
+  .combat.solo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 12px; }
+  .combat.solo .hand-zone { min-height: 0; grid-template-rows: auto minmax(0, 1fr); padding-top: 0; border-top: 0; }
+  .combat.solo .hand { max-height: none; flex-wrap: wrap; justify-content: center; overflow-x: hidden; gap: 14px 6px; padding: 12px 0 8px; scroll-snap-type: none; }
+  .combat.solo .hand .card { width: calc((100% - 12px) / 3); min-height: 0; padding-bottom: 6px; }
+  .combat.solo .hand .c-name { font-size: 12px; padding: 5px 6px 5px 18px; min-height: 2.7em; }
+  .combat.solo .hand .c-art { height: 30px; } .combat.solo .hand .c-art svg { height: 26px; width: 26px; }
+  .combat.solo .hand .c-text { font-size: 10.5px; padding: 0 6px; }
+  .combat.solo .hand .c-cost { width: 26px; height: 26px; font-size: 13px; top: -9px; left: -7px; }
+  .combat.solo .hand .c-pow { min-width: 26px; height: 22px; font-size: 11px; padding: 0 3px; top: -8px; right: -6px; }
+  .combat.solo .hand .card.has-pow .c-name { padding-right: 16px; }
+}
 /* Chapters 7-10: the North Road screen, cutscenes, and the arc's run HUD (js/scene.js, js/arc.js, js/northroad.js) */
 #screen-north { background: #5fbf5f; }
 #north-canvas { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; }
-.nr-hud { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
+.nr-hud { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: calc(8px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); background: var(--cream); border-bottom: 3px solid var(--ink); z-index: 2; }
 button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; color: var(--ink); }
 .hud-chip.warn, .arc-meter { background: #ffd6d6; }
 .arc-tape { background: #e8e0ff; }
@@ -1066,7 +1190,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
   <section id="screen-hub" class="screen" hidden>
     <div id="hud"></div>
     <canvas id="hub-canvas" aria-label="Pingsby Village. Walk to a building's door to enter."></canvas>
-    <div class="hub-hint">Tap to walk · WASD or arrows · walk into doors and people</div>
+    <div class="hub-hint"><span class="on-key">Tap to walk · WASD or arrows · walk into doors and people</span><span class="on-touch">Tap to walk · walk into doors and people</span></div>
   </section>
 
   <section id="screen-run" class="screen" hidden><div id="run"></div></section>
@@ -1079,7 +1203,7 @@ button.hud-chip { cursor: pointer; font: inherit; font-size: 12px; font-weight: 
     <div class="dlg-box">
       <div class="dlg-nm"><span id="dlg-name"></span><span id="dlg-title"></span></div>
       <div id="dlg-text" aria-live="polite"></div>
-      <div class="dlg-foot"><span>Tap or Enter to continue</span><button id="dlg-skip">Skip</button></div>
+      <div class="dlg-foot"><span><span class="on-key">Tap or Enter to continue</span><span class="on-touch">Tap to continue</span></span><button id="dlg-skip">Skip</button></div>
     </div>
   </div>
 </div>

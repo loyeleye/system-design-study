@@ -31,7 +31,7 @@
 .sh .wb-card { margin-bottom: 12px; }
 .sh-tag { display: inline-block; font: 700 12px var(--f-head, system-ui); background: var(--wb-violet); color: #fff; border-radius: 99px; padding: 2px 10px; }
 .sh h2 { font-family: var(--f-head, system-ui); margin: 4px 0 6px; }
-.sh select { font: inherit; padding: 6px 10px; border: 3px solid var(--wb-ink); border-radius: 10px; background: #fff; max-width: 100%; }
+.sh select { font: inherit; font-size: max(16px, 1em); padding: 6px 10px; border: 3px solid var(--wb-ink); border-radius: 10px; background: #fff; max-width: 100%; }
 .sh-players { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; padding: 0; list-style: none; }
 .sh-players li { background: #fff; border: 2.5px solid var(--wb-ink); border-radius: 99px; padding: 2px 10px; font-weight: 800; font-size: 13px; }
 .sh-players li.done { background: #e7fbef; border-color: #1f8a57; }
