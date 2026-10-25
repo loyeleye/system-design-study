@@ -15,8 +15,8 @@
 //   SD.marks.set(n)                  the Debug menu's: sets the balance
 //   SD.marks.onChange(f)             f() after every change (the wallet buttons); returns an unsubscribe
 //
-// Cosmetics (Ladi, 2026-10-25: the sequel's Raid shop stock, priced on the champion ladder): frames, nameplates and
-// effects (js/wear.js) and emotes (js/emote.js), worn only in multiplayer. Looks only, no power.
+// Cosmetics (Ladi, 2026-10-25: the sequel's Raid shop stock, priced on the champion ladder): frames, nameplates,
+// effects and champion colours (js/wear.js) and emotes (js/emote.js), worn only in multiplayer. Looks only, no power.
 //   SD.marks.items()                 the shop: [{ id, name, slot, tier, cost, pack?, has? }], built once on first use
 //   SD.marks.item(id), cost(id)      one item, its price (a pack's is full price even when you have some of it)
 //   SD.marks.has(id)                 whether this save owns it (a pack owns its emotes, and all its emotes the pack)
@@ -96,17 +96,18 @@
   // ---------- Cosmetics ----------
   // One price per kind, in Ladi's order (Looks > Effects > Outfit colours > Frames > Emotes), each pinned to a champion
   // on the ladder above: a frame between Leilani and Dieynaba, an effect a little over Eun-ho.
-  M.TIERS = Object.freeze({ frame: 80, plate: 80, effect: 300 });
+  M.TIERS = Object.freeze({ frame: 80, plate: 80, skin: 120, season: 200, effect: 300 });
   // A single emote or action, and a pack's price as a share of its emotes' singly (the sequel's 70%).
   M.SINGLE = Object.freeze({ emote1: 40, act1: 80 });
   M.PACK_OFF = 0.7;
-  M.SLOTS = Object.freeze({ frame: 'Frame', plate: 'Nameplate', effect: 'Effect', emote: 'Emote pack', emote1: 'Emote', act1: 'Action' });
+  M.SLOTS = Object.freeze({ frame: 'Frame', plate: 'Nameplate', skin: 'Champion colour', effect: 'Effect', emote: 'Emote pack', emote1: 'Emote', act1: 'Action' });
   let ITEMS = null;
   // Built on first use, so it can list js/wear.js's and js/emote.js's items whatever order they load in.
   M.items = function () {
     if (ITEMS) return ITEMS;
     const W = SD.wear, E = SD.emote, out = [];
-    if (W) Object.keys(W.ITEMS).forEach(id => { const it = W.ITEMS[id]; out.push({ id, name: it.name, slot: it.slot, cost: M.TIERS[it.slot] }); });
+    // A champion's colour costs a plain one's price, or a seasonal one's (Ladi's Outfit colours tier).
+    if (W) Object.keys(W.ITEMS).forEach(id => { const it = W.ITEMS[id]; out.push({ id, name: it.name, slot: it.slot, champ: it.champ || null, cost: M.TIERS[it.slot === 'skin' && it.season ? 'season' : it.slot] }); });
     if (E) Object.keys(E.PACKS).forEach(pk => {
       const ones = Object.keys(E.EMOTES).filter(e => E.EMOTES[e].pack === pk)
         .map(e => ({ id: 'em-' + e, name: E.EMOTES[e].name, slot: E.EMOTES[e].act ? 'act1' : 'emote1', pack: pk, emote: e, cost: M.SINGLE[E.EMOTES[e].act ? 'act1' : 'emote1'] }));
@@ -132,6 +133,8 @@
   M.buy = function (id) {
     const it = M.item(id), cost = M.cost(id);
     if (!it || !M.on() || M.has(id) || st().n < cost) return false;
+    // A champion's colour only once you can play them.
+    if (it.champ && SD.champions && !SD.champions.unlocked(it.champ)) return false;
     const m = st();
     m.n -= cost; m.owned.push(id);
     changed();

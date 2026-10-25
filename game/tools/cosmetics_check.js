@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checks the Raid shop's cosmetics (js/marks.js, js/wear.js, js/emote.js, js/raid-shop.js, js/party.js), multiplayer
-// only (Ladi, 2026-10-25): Raid Marks buy a frame, a nameplate, an effect and an emote pack in the Cosmetics tab (two
-// taps each, never twice); the party room's Wardrobe puts them on; a second tab in the same party (the standalone
+// only (Ladi, 2026-10-25): Raid Marks buy a frame, a nameplate, an effect, an emote pack and Doug's colour (once he's
+// hired) in the Cosmetics tab (two taps each, never twice); the party room's Wardrobe puts them on; a second tab in the same party (the standalone
 // Guild Hall page, which has no save) sees them on your seat and your emote over it; a raid fighter wears the effect
 // and nameplate; and back in the story nothing of it is drawn.
 //
@@ -55,6 +55,14 @@ const server = http.createServer((req, res) => {
   check(bal === 2000 - 80 - 80 - 300 - 112, `the four cost ${2000 - bal} ✦ (${bal} left)`);
   check(await a.evaluate(() => SD.marks.has('em-coffee') && !SD.marks.buy('em-coffee') && !SD.marks.buy('fx-snow')), 'a pack owns its emotes, and nothing is bought twice');
   check(await a.evaluate(() => SD.state.save.mp.marks.owned.includes('frame-pager') && SD.state.save.mp.marks.owned.includes('champ-doug') === false), 'cosmetics are saved in the marks wallet\'s owned list');
+  // A champion's colour: only once you can play them, then worn on that champion alone.
+  check(await a.evaluate(() => SD.marks.cost('skin-doug-blue') === 120 && SD.marks.cost('skin-doug-harvest') === 200), 'a champion colour costs 120 ✦, a seasonal one 200');
+  check(await a.evaluate(() => !SD.marks.buy('skin-doug-blue')), 'Doug\'s colour can\'t be bought before he\'s hired');
+  await a.evaluate(() => { SD.marks.hire('doug'); window.__shop.redraw(); });
+  await a.click('#shopbox [data-buy="skin-doug-blue"]'); await a.click('#shopbox [data-buy="skin-doug-blue"]');
+  check(await a.evaluate(() => SD.marks.has('skin-doug-blue')), 'once Doug is hired, his colour is bought in two taps');
+  await a.click('#shopbox [data-wear="skin-doug-blue"]');
+  check(await a.evaluate(() => SD.wear.worn('doug').includes('skin-doug-blue') && !SD.wear.worn('uptima').includes('skin-doug-blue')), 'his colour is worn on Doug only');
   await a.evaluate(() => document.getElementById('shopbox').remove());
 
   // A Whiteboard Showdown party on page A, joined by page B (the standalone Guild Hall page: no save).
@@ -80,12 +88,15 @@ const server = http.createServer((req, res) => {
     window.__hub = await SD.net.open();
     SD.show.play(box, __hub, c, {});
   }, code);
+  // Page A plays Doug in his colour.
+  await a.evaluate(() => document.querySelector('#pbox [data-ch="doug"]').click());
   const seat = b.locator(`#pbox .pt-mem[data-peer="${peerA}"]`);
   await seat.waitFor({ timeout: 8000 });
   await b.waitForTimeout(800);
   check(await seat.locator('.pt-stage.wf.frame-pager').count() === 1, 'the other player sees your frame');
   check(await seat.locator('b.wpl.plate-ticker').count() === 1, 'the other player sees your nameplate');
   check(await seat.locator('.wfx.fx-snow').count() === 1, 'the other player sees your effect');
+  await b.waitForFunction(p => { const e = document.querySelector(`#pbox .pt-mem[data-peer="${p}"] .champ-spr`); return e && /^url\("?blob:/.test(e.style.backgroundImage); }, peerA, { timeout: 5000 }).then(() => check(true, 'the other player sees Doug in your colour'), () => check(false, 'the other player sees Doug in your colour'));
   check(await b.locator('#pbox .pt-wd').count() === 0, 'a page with no save shows no Wardrobe');
   check(await b.evaluate(() => SD.marks.balance() === 0 && !SD.marks.buy('fx-snow')), 'a page with no save has no wallet and can\'t buy');
 

@@ -173,7 +173,7 @@
     const unsub = [];
     const members = () => room.peers().filter(p => p.presence && p.presence.kind === kind)
       .map(p => ({ peer: p.peer, isMe: p.isMe, nick: p.isMe ? me.nick : net.clean(p.presence.nick, 24) || 'A hero', champ: CH && CH.get(p.isMe ? champ : p.presence.champ) ? (p.isMe ? champ : p.presence.champ) : null, look: p.isMe ? look : CH.look(p.presence.champ, p.presence.look), ready: p.isMe ? ready : !!p.presence.ready, since: p.isMe ? since : +p.presence.since || 0,
-        wear: SD.wear ? (p.isMe ? SD.wear.worn() : SD.wear.clean(p.presence.wear)) : [] }));
+        wear: SD.wear ? (p.isMe ? SD.wear.worn(champ) : SD.wear.clean(p.presence.wear)) : [] }));
     const before = m => m.since < since || (m.since === since && m.peer < me.peer);
     // A bot arrived after everyone (since: Infinity), so a human never gives way to one.
     const bots = () => (opts.bots ? opts.bots() : []).map(b => ({ peer: b.peer, isMe: false, bot: true, nick: net.clean(b.nick, 24) || 'Bot', champ: CH.get(b.champ) ? b.champ : null, look: CH.look(b.champ, b.look), ready: true, since: Infinity, wear: [] }));
@@ -223,7 +223,7 @@
 
     const P = {
       members, champ: () => champ, look: () => look, ready: () => ready,
-      fields: () => ({ nick: me.nick, champ, look, ready, since, wear: SD.wear ? SD.wear.worn() : [] }),
+      fields: () => ({ nick: me.nick, champ, look, ready, since, wear: SD.wear ? SD.wear.worn(champ) : [] }),
       setReady(v) { ready = !!v; if (opts.onChange) opts.onChange(); },
       leave() { unsub.forEach(f => f()); }
     };
@@ -264,7 +264,7 @@
       if (hiring && CH.state(hiring) !== 'hire') hiring = null;
       const hireCard = hiring && SD.raidShop ? `<ul class="pt-hire" id="pt-hire" aria-label="Hire ${esc(CH.get(hiring).name)}">${SD.raidShop.card(hiring)}</ul>` : '';
       const sig = ctx.deck && pick && CH.cards[pick] ? sigCards(pick, ed) : '';
-      const wd = SD.wear && SD.marks && SD.marks.on() ? `<details class="pt-wd" id="pt-wd"${wardrobe ? ' open' : ''}><summary>Wardrobe <small>what your party sees you wear</small></summary>${SD.wear.wardrobe()}</details>` : '';
+      const wd = SD.wear && SD.marks && SD.marks.on() ? `<details class="pt-wd" id="pt-wd"${wardrobe ? ' open' : ''}><summary>Wardrobe <small>what your party sees you wear</small></summary>${SD.wear.wardrobe(champ)}</details>` : '';
       const why = ctx.startWhy ? ctx.startWhy() : null;
       const notReady = list.filter(m => m.peer !== leaderPeer && !m.ready).length;
       const bossClash = list.some(m => CH.bossConflict(m.champ, ctx.boss));
@@ -295,7 +295,7 @@
         const lock = v.startsWith('lock:'), id = lock ? v.slice(5) : v, c = CH.get(id); if (!c) return;
         const big = el.classList.contains('pt-stage');
         el.appendChild(CH.sprite(id, big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h), big || (!lock && id === champ), el.dataset.look || (id === champ ? look : null)));
-        if (big && SD.wear && el.dataset.wear) SD.wear.dressStage(el, el.dataset.wear.split(' '));
+        if (big && SD.wear && el.dataset.wear) SD.wear.dressStage(el, el.dataset.wear.split(' '), id);
       });
       if (focusNick) { const i = root.querySelector('#pt-nick'); if (i) { i.focus(); i.value = draft; } }
       else if (keep) { const k = root.querySelector(keep); if (k) k.focus(); }

@@ -142,31 +142,37 @@
 
   // ---------- Cosmetics ----------
   const KINDS = [['frame', 'Seat frames', 'Round your seat in the party room'], ['plate', 'Nameplates', 'Behind your name, in the party room and the raid'],
+    ['skin', 'Champion colours', 'Recolour one champion\'s clothes, wherever you play them'],
     ['effect', 'Effects', 'Follow your champion in the party room and the raid'], ['emote', 'Emotes', 'For the Emote button: packs, or one at a time']];
   let tab = 'champs', trying = null;
   // The champion the preview wears it on: the one you picked last, if you can still pick them.
   const model = () => { const m = CH.mine(); return m && CH.unlocked(m) ? m : 'uptima'; };
   const emoSvg = e => (SD.emote && SD.emote.EMOTES[e] ? SD.emote.EMOTES[e].svg : '');
+  // A champion's colour is tried on that champion; anything else on the one you picked last.
+  const modelFor = it => (it && it.champ ? it.champ : model());
   function preview() {
-    const it = trying && M.item(trying), W = SD.wear;
-    const wear = it && W && W.ITEMS[it.id] ? [it.id] : W ? W.worn() : [];
-    const pl = W ? W.plate(wear) : '', c = CH.get(model());
+    const it = trying && M.item(trying), W = SD.wear, who = modelFor(it);
+    const wear = it && W && W.ITEMS[it.id] ? [it.id] : W ? W.worn(who) : [];
+    const pl = W ? W.plate(wear) : '', c = CH.get(who);
     const emo = it && it.emote ? emoSvg(it.emote) : it && it.has ? emoSvg(M.item(it.has[0]).emote) : '';
     const what = it ? `Trying on <b>${esc(it.name)}</b>${M.has(it.id) ? ' (yours)' : `, ${it.cost} ✦`}.` : 'What you wear now. Tap Try on to see an item here.';
-    return `<div class="rs-try"><div><div class="pt-stage" id="rs-stage" data-wear="${esc(wear.join(' '))}">${emo ? `<span class="rs-pv-emo" aria-hidden="true">${emo}</span>` : ''}</div>
+    return `<div class="rs-try"><div><div class="pt-stage" id="rs-stage" data-who="${who}" data-wear="${esc(wear.join(' '))}">${emo ? `<span class="rs-pv-emo" aria-hidden="true">${emo}</span>` : ''}</div>
       <span class="rs-pv-name"><span class="${pl}">Your name</span></span></div>
-      <div><p>${what}</p><p class="gh-hint" style="margin-top:6px">On ${esc(c ? c.name : 'your champion')}, the champion you picked last. Everyone in your party sees what you wear, on any champion. Never in the story.</p>
+      <div><p>${what}</p><p class="gh-hint" style="margin-top:6px">On ${esc(c ? c.name : 'your champion')}${it && it.champ ? ', whose colour it is' : ', the champion you picked last'}. Everyone in your party sees what you wear. Never in the story.</p>
       ${trying ? '<p style="margin-top:6px"><button class="mi-btn sm" type="button" id="rs-untry">Stop trying on</button></p>' : ''}</div></div>`;
   }
   function itemCard(it) {
     const W = SD.wear, own = M.has(it.id), need = it.cost - M.balance();
-    const wearable = W && W.ITEMS[it.id], on = wearable && W.worn().includes(it.id);
+    const wearable = W && W.ITEMS[it.id], on = wearable && W.worn().includes(it.id), cc = it.champ ? CH.get(it.champ) : null;
     const sw = it.slot === 'emote' ? `<span class="rs-many" aria-hidden="true">${it.has.map(o => emoSvg(M.item(o).emote)).join('')}</span>`
       : it.emote ? emoSvg(it.emote) : W ? W.swatch(it.id) : '';
     const sub = it.slot === 'emote' ? `${it.label} · ${it.has.length} ${it.label === 'Action pack' ? 'moves' : 'emotes'} · ${it.has.reduce((a, o) => a + M.cost(o), 0) - it.cost} ✦ less than singly`
+      : it.slot === 'skin' ? `For ${cc ? cc.short : ''}${W.ITEMS[it.id].season ? ' · seasonal, sold all year' : ''}`
       : M.SLOTS[it.slot] + (wearable && W.ITEMS[it.id].note ? ' · ' + W.ITEMS[it.id].note : '');
     let act;
-    if (own) act = `<p class="rs-own">✓ Yours</p>${wearable ? `<button class="mi-btn sm${on ? '' : ' go'}" type="button" data-wear="${it.id}" aria-pressed="${on}">${on ? 'Take off' : 'Wear'}</button>` : ''}`;
+    const wornHere = W && it.champ ? W.worn(it.champ).includes(it.id) : on;
+    if (own) act = `<p class="rs-own">✓ Yours</p>${wearable ? `<button class="mi-btn sm${wornHere ? '' : ' go'}" type="button" data-wear="${it.id}" aria-pressed="${wornHere}">${wornHere ? 'Take off' : 'Wear'}</button>` : ''}`;
+    else if (cc && !CH.unlocked(cc.id)) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${it.cost} ✦</button><small>${CH.state(cc.id) === 'hire' ? `Hire ${esc(cc.short)} first` : `Reach ${esc(cc.short)} first`}</small>`;
     else if (!M.on()) act = '<small>Buy it in the game, where your Raid Marks are.</small>';
     else if (need > 0) act = `<button class="mi-btn sm" type="button" disabled>Buy · ${it.cost} ✦</button><small>You need ${need} more ✦</small>`;
     else act = armed === it.id ? `<button class="mi-btn sm confirm" type="button" data-buy="${it.id}">Confirm: ${it.cost} ✦</button><small>Tap again to buy</small>`
@@ -183,15 +189,17 @@
         return packs.length ? `<section class="rs-region"><h3>${h}</h3><p class="gh-hint" style="margin:0">${why}. ${SD.emote ? SD.emote.mine().length : 9} are free for everyone.</p>${packs.map(pk => `<section class="rs-pack" aria-label="${esc(pk.name)}"><h3>${esc(pk.name)}</h3><ul class="rs-grid">${itemCard(pk)}${items.filter(it => it.pack === pk.id).map(itemCard).join('')}</ul></section>`).join('')}</section>` : '';
       }
       const cs = items.filter(it => it.slot === k);
+      // Colours by champion, in roster order.
+      if (k === 'skin') cs.sort((x, y) => CH.list.findIndex(c => c.id === x.champ) - CH.list.findIndex(c => c.id === y.champ));
       return cs.length ? `<section class="rs-region"><h3>${h}</h3><p class="gh-hint" style="margin:0">${why}.</p><ul class="rs-grid">${cs.map(itemCard).join('')}</ul></section>` : '';
     }).join('');
   }
   function wireCos(el, redraw) {
     const st = el.querySelector('#rs-stage');
-    if (st) { const id = model(), c = CH.get(id); if (c) st.appendChild(CH.sprite(id, Math.min(2, 104 / c.h), true)); if (SD.wear) SD.wear.dressStage(st, st.dataset.wear.split(' ')); }
+    if (st) { const id = st.dataset.who, c = CH.get(id); if (c) st.appendChild(CH.sprite(id, Math.min(2, 104 / c.h), true)); if (SD.wear) SD.wear.dressStage(st, st.dataset.wear.split(' '), id); }
     el.querySelectorAll('[data-try]').forEach(b => { b.onclick = () => { trying = trying === b.dataset.try ? null : b.dataset.try; redraw(); const p = el.querySelector('.rs-try'); if (p && trying) p.scrollIntoView({ block: 'nearest' }); }; });
     const un = el.querySelector('#rs-untry'); if (un) un.onclick = () => { trying = null; redraw(); };
-    el.querySelectorAll('[data-wear]').forEach(b => { b.onclick = () => { const it = M.item(b.dataset.wear), W = SD.wear; if (W.worn().includes(it.id)) W.unequip(it.slot); else W.equip(it.id); redraw(); }; });
+    el.querySelectorAll('[data-wear]').forEach(b => { b.onclick = () => { const it = M.item(b.dataset.wear), W = SD.wear; if (W.worn(it.champ).includes(it.id)) W.unequip(it.champ ? 'skin:' + it.champ : it.slot); else W.equip(it.id); redraw(); }; });
     el.querySelectorAll('[data-buy]').forEach(b => { b.onclick = () => {
       const id = b.dataset.buy;
       clearTimeout(armT);

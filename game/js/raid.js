@@ -2124,7 +2124,7 @@
     const W = SD.wear;
     const wearOf = k => {
       if (!W || isBot(k)) return [];
-      if (k === me.peer) return W.worn();
+      if (k === me.peer) return W.worn(G.players[k] && G.players[k].c);
       const p = players().find(x => x.peer === k);
       return p ? W.clean(p.presence.wear) : [];
     };
@@ -2145,7 +2145,9 @@
         const st = anim[k] && performance.now() - anim[k].t0 < 500 ? ' ' + anim[k].a : '';
         // What they wear (js/wear.js): their effect over the fighter and their nameplate under it. Bots wear nothing.
         const wr = wearOf(k), fx = W ? wr.map(id => W.fx(id, true)).join('') : '', pl = W ? W.plate(wr) : '';
-        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${G.me.some(x => x.p === k) ? ' spot' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}" style="width:${a.w}px;height:${a.h}px;background-image:url(${a.sheet});transform:scale(${s.toFixed(2)})"></i></div>${fx}<span class="rd-name${pl ? ' ' + pl : ''}">${esc(p.n)}</span></div>`;
+        // Their colour for this champion, on whichever sheet the fight draws (it arrives a moment later the first time).
+        const sk = W ? W.skinOf(wr, p.c || 'uptima') : null, sku = sk ? W.skinUrl(a.sheet, sk) : null;
+        return `<div class="rd-fighter${k === me.peer ? ' me' : ''}${p.ready ? ' ready' : ''}${G.me.some(x => x.p === k) ? ' spot' : ''}${st}" data-peer="${esc(k)}"><div class="rd-spr" style="width:${(a.w * s).toFixed(0)}px;height:${(a.h * s).toFixed(0)}px"><i data-c="${esc(p.c || 'uptima')}"${sk ? ` data-wear-src="${esc(a.sheet + '|' + sk)}"` : ''} style="width:${a.w}px;height:${a.h}px;background-image:url(${sku || a.sheet});transform:scale(${s.toFixed(2)})"></i></div>${fx}<span class="rd-name${pl ? ' ' + pl : ''}">${esc(p.n)}</span></div>`;
       }).join('');
       const bd = SD.battleArt ? SD.battleArt.backdrops : null, b = bd && bd.includes(String(e.ch || 1)) ? String(e.ch || 1) : '1';
       const col = x => (SD.art.enemyColor ? SD.art.enemyColor(x.sprite) : '#f66');

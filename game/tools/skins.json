@@ -1,0 +1,10 @@
+{
+  "doug": [["skin-doug-blue", "#2f5fa8"], ["skin-doug-harvest", "#c4621c"]],
+  "dieynaba": [["skin-dieynaba-indigo", "#2e3a8c"], ["skin-dieynaba-lunar", "#c01c2a"]],
+  "leilani": [["skin-leilani-coral", "#e0705a"], ["skin-leilani-winterfest", "#b3202d"]],
+  "suzu": [["skin-suzu-brigade", "#a8322e"], ["skin-suzu-spring", "#f4b9cc"]],
+  "gong": [["skin-gong-studio", "#2a4fa8"], ["skin-gong-harvest", "#c4621c"]],
+  "sunny": [["skin-sunny-forest", "#2f6b45"], ["skin-sunny-winterfest", "#b3202d"]],
+  "eunho": [["skin-eunho-velvet", "#6a2f8a"], ["skin-eunho-lunar", "#c01c2a"]],
+  "hero404": [["skin-hero404-ember", "#ff6b5a"], ["skin-hero404-spring", "#8ccbbd"]]
+}
