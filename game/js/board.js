@@ -445,7 +445,7 @@
         const p = show('est', `<div class="bd-head"><b>${esc(prob.name)}</b></div>
           <div class="bd-brief"><p class="small"><b>What you know:</b></p><ul class="small">${facts.map(i => `<li>${esc(I.ask[i].a)}${told.includes(i) ? ' <i>(you didn\'t ask, so the interviewer tells you)</i>' : ''}</li>`).join('')}</ul></div>
           <div class="bd-flow"><span class="q-ctx">Estimate</span><p>${esc(E.q)}</p></div>
-          <label class="num"><input id="bd-est" inputmode="decimal" autocomplete="off" placeholder="e.g. 4000, 4k, 1e6"> <span>${esc(E.unit)}</span></label>
+          <label class="num"><input id="bd-est" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="e.g. 4000, 4k, 1e6"> <span>${esc(E.unit)}</span></label>
           <p class="small muted">Round freely. A day is about 10^5 seconds; a month about 2.6 × 10^6.</p>
           <div class="row bd-tools"><button class="ghost" id="bd-est-skip">Skip</button><button class="primary" id="bd-est-go" disabled>Say it</button></div>`);
         const inp = p.querySelector('#bd-est'), go = p.querySelector('#bd-est-go');

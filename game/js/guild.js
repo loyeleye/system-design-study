@@ -50,7 +50,7 @@ body.gh-scene #panel > .win.gh-win { width: 100%; height: 100%; max-height: none
 body.gh-scene #panel > .win.gh-win > .win-h { padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
 body.gh-scene #panel > .win.gh-win > .win-b { width: min(940px, 100%); margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .gh-field { font: 600 16px var(--f-head, system-ui); border: 3px solid var(--mi-ink); border-radius: 12px; padding: 7px 12px; background: #fff; min-width: 0; width: 100%; color: var(--mi-ink); }
-select.gh-field { font-size: 15px; }
+select.gh-field { font-size: 16px; }
 .gh-seg { display: inline-flex; flex-wrap: wrap; border: 2.5px solid var(--mi-ink); border-radius: 12px; overflow: hidden; background: #fff; max-width: 100%; }
 .gh-seg button { border: 0; background: none; padding: 6px 12px; font: 700 13px var(--f-body, system-ui); cursor: pointer; display: grid; text-align: left; color: var(--mi-ink); }
 .gh-seg button small { font-weight: 600; font-size: 11px; color: var(--mi-muted); }

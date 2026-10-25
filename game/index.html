@@ -122,6 +122,9 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 .win.wide { width: min(860px, 100%); }
 .win-h { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 3px solid var(--ink); font-family: var(--f-head); font-weight: 600; font-size: 16px; color: #fff; background: var(--blue); }
 .win-h .x { background: #fff; border: 2px solid var(--ink); color: var(--ink); font-size: 13px; width: 28px; height: 28px; border-radius: 50%; padding: 0; line-height: 1; }
+/* The ✕ and ‹ draw as a 28px disc but take a 44px tap: a transparent 8px border around it, pulled back by negative
+   margins so the header stays as tall as before. The disc's ink ring is an inset shadow on the padding box. */
+.win-h .x { width: 44px; height: 44px; margin: -8px -8px -8px 0; border: 8px solid transparent; border-radius: 22px; background-clip: padding-box; box-shadow: inset 0 0 0 2px var(--ink); }
 .win-b { padding: 16px; overflow-y: auto; min-height: 0; }
 .win-b p { margin: 0 0 10px; }
 .q-ctx { font-family: var(--f-head); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--blue-d); margin-bottom: 6px; }
@@ -236,6 +239,7 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 @media (prefers-reduced-motion: reduce) { .rt-row .rt-sw i, .rt-row .rt-sw i::after { transition: none; } }
 /* The menu (js/main.js): grouped sections, 44px+ tap targets, switches that match the sound popover. */
 .win-h .x.back { flex: none; margin-right: 10px; font-size: 20px; font-weight: 700; padding-bottom: 2px; }
+.win-h .x.back { margin: -8px 2px -8px -8px; }
 .win-h .x.back + span { margin-right: auto; }
 .mnu section { margin-bottom: 16px; }
 .mnu-h { margin: 0 0 6px 2px; font: 600 12px var(--f-head); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -303,6 +307,9 @@ button.mnu-row:hover { background: #f3f8ff; }
 .conf-b { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .conf-b button { flex: 1 1 90px; background: #fff; }
 .conf-b button[data-c="2"]:not(:disabled) { background: var(--sun); }
+/* .conf-b button's white would sit under .primary's white text (Say it first's "That's my answer"): keep the blue. */
+.conf-b button.primary { background: var(--blue); color: #fff; }
+.conf-b button.primary:hover:not(:disabled) { background: #4d98ff; }
 /* The confidence tally's stakes on each button, and its change after an answer (expeditions only, js/quiz.js). */
 .conf-b .stake { display: block; font: 700 11px var(--f-body); letter-spacing: .02em; opacity: .85; }
 .conf-b .stake .up { color: #17834f; } .conf-b .stake .dn { color: #c43a3a; }
@@ -375,7 +382,12 @@ a.help-b { text-decoration: none; color: var(--ink); }
 .tier { display: inline-block; font-size: 0.78em; font-weight: 800; padding: 0 6px; border-radius: 6px; background: #eee; }
 .tier-broken { background: #f3d3d3; color: #8a2020; } .tier-bad { background: #fde3e3; color: #b23b3b; }
 .tier-good { background: #fff1c2; color: #7a5a00; } .tier-great { background: #e3f5e9; color: #1d7a43; }
-.q-text { width: 100%; box-sizing: border-box; font: inherit; padding: 8px 10px; border: 3px solid var(--ink, #2b2340); border-radius: 12px; resize: vertical; }
+.q-text { width: 100%; box-sizing: border-box; font: inherit; font-size: max(16px, 1em); padding: 8px 10px; border: 3px solid var(--ink, #2b2340); border-radius: 12px; resize: vertical; }
+/* iOS zooms the page into any field under 16px when it takes focus, so every field is at least 16px: this
+   no-specificity default covers unstyled ones, and each rule that styles a field (some injected by js/ modules) says so too. */
+:where(input, textarea, select) { font-size: max(16px, 1em); }
+/* With the on-screen keyboard up the quiz has little room: a shorter answer box keeps the commit row in view (js/quiz.js). */
+@media (max-height: 480px) { .win.quiz .q-text { height: 4.6em; min-height: 0; resize: none; } }
 blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a6ff; background: #f7f4ff; border-radius: 0 10px 10px 0; white-space: pre-wrap; }
 .rubric { display: grid; gap: 6px; margin: 6px 0; }
 .rubric .rp { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border: 2px solid #ddd5f0; border-radius: 10px; cursor: pointer; }
@@ -389,6 +401,7 @@ blockquote.typed { margin: 6px 0; padding: 6px 10px; border-left: 4px solid #b9a
 .practice h3 { margin: 0 0 4px; font-family: var(--f-head); }
 .practice .pr-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 8px 0 4px; }
 .practice .pr-list .opt { padding: 8px 10px; }
+.practice .pr-page { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
 .practice .row { align-items: center; gap: 12px; }
 #hud .practice-btn { background: var(--sun); }
 @media (max-width: 600px) { #hud #hud-journal { display: none; } }
@@ -615,6 +628,8 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .tab { padding: 6px 12px; background: #fff; border: 2px solid var(--ink); font-family: var(--f-head); font-weight: 600; font-size: 13px; border-radius: 20px; }
 .tab.on { background: var(--blue); color: #fff; }
+/* Tabs reach a 44px tap on touch screens; desktop keeps the slimmer pill. */
+@media (hover: none), (pointer: coarse) { .tab, .rt-f .tab { min-height: 44px; } }
 .cx-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .cx { padding: 12px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; min-width: 0; }
 .cx.locked { opacity: .55; background: #f4efe6; }
@@ -670,6 +685,8 @@ button.on[aria-pressed="true"] { background: #dcebff; box-shadow: 0 3px 0 var(--
 #dlg-text { min-height: 3em; font-size: 16px; font-weight: 600; }
 .dlg-foot { display: flex; gap: 16px; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--muted); font-weight: 700; }
 #dlg-skip { background: none; border: 0; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 0; }
+/* Skip: 13px text and a 44px tap, the extra height pulled back by negative margins so the box stays the same size. */
+#dlg-skip { font-size: 13px; min-width: 44px; min-height: 44px; padding: 0 8px; margin: -14px -8px -14px 0; }
 @media (max-width: 520px) { #dlg-portrait svg { width: 70px; height: 82px; } #dlg-text { font-size: 15px; } }
 
 /* Cutscene stage */
@@ -759,6 +776,9 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 .sysnote.gold { border-left-color: var(--sun); background: #fffbe8; }
 .sysnote.red { border-left-color: var(--red); background: #fff0f0; }
 .sysnote.out { opacity: 0; transform: translateX(20px); }
+/* A toast can be tapped away (js/ui.js). Over an open panel it sits at the bottom, in a strip the panel gives up. */
+.sysnote { pointer-events: auto; cursor: pointer; }
+#notes.low { top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 .sys-h { font-family: var(--f-head); font-weight: 600; font-size: 14px; display: flex; gap: 8px; align-items: center; }
 .sys-i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 12px; font-weight: 800; flex: none; }
 .sysnote.gold .sys-i { background: var(--sun); color: var(--ink); } .sysnote.red .sys-i { background: var(--red); }

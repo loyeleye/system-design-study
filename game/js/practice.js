@@ -101,7 +101,7 @@
       const openP = probs.filter(p => sv.flags['ch' + p.ch]);
       // mock.html sits next to index.html when the game runs from its files (a local copy or the Worker build). The
       // claude.ai artifact inlines its scripts and has no mock.html, so the link only shows when js/ files load.
-      const page = document.querySelector('script[src="js/mock.js"]') ? '<a class="small" href="mock.html" target="_blank" rel="noopener">Open in its own page ↗</a>' : '';
+      const page = document.querySelector('script[src="js/mock.js"]') ? '<a class="small pr-page" href="mock.html" target="_blank" rel="noopener">Open in its own page ↗</a>' : '';
       const nextB = bs.find(x => !met(x.b.boss));
       const b = U.panel(`<div class="practice">
         <section><h3>Review my weak spots</h3><p class="small muted">${esc(weakWhy(pool))}</p>
