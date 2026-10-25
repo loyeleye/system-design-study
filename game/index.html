@@ -860,6 +860,9 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
 .card.sold { display: grid; place-items: center; color: var(--muted); font-family: var(--f-head); cursor: default; }
 .c-cost { position: absolute; top: -10px; left: -10px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-family: var(--f-head); font-weight: 700; background: var(--sun); border: 3px solid var(--ink); font-size: 15px; z-index: 1; }
 .c-name { font-family: var(--f-head); font-weight: 600; font-size: 13px; line-height: 1.15; padding: 6px 8px 6px 20px; min-height: 2.9em; background: hsl(var(--h) 85% 72%); border-bottom: 3px solid var(--ink); border-radius: 9px 9px 0 0; }
+/* The ⚔ badge (U.cardHtml): the most a card's hit can mitigate, across from the cost. */
+.c-pow { position: absolute; top: -10px; right: -10px; min-width: 30px; height: 26px; padding: 0 5px; border-radius: 13px; display: grid; place-items: center; font-family: var(--f-head); font-weight: 700; font-size: 12px; background: #ffd9cf; border: 3px solid var(--ink); z-index: 1; white-space: nowrap; }
+.card.has-pow .c-name { padding-right: 22px; }
 .c-art { height: 54px; display: grid; place-items: center; }
 .c-art svg { height: 46px; width: 46px; }
 .c-kind { font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: hsl(var(--h) 60% 35%); line-height: 1.2; padding: 0 8px; }
@@ -988,6 +991,8 @@ body.cut #dialog[data-who="narr"] .dlg-box { background: rgba(43, 35, 64, .82); 
   .hand .c-art { height: 30px; } .hand .c-art svg { height: 26px; width: 26px; }
   .hand .c-text { font-size: 10.5px; padding: 0 6px; }
   .hand .c-cost { width: 26px; height: 26px; font-size: 13px; top: -9px; left: -7px; }
+  .hand .c-pow { min-width: 26px; height: 22px; font-size: 11px; padding: 0 3px; top: -8px; right: -6px; }
+  .hand .card.has-pow .c-name { padding-right: 16px; }
 }
 /* Chapters 7-10: the North Road screen, cutscenes, and the arc's run HUD (js/scene.js, js/arc.js, js/northroad.js) */
 #screen-north { background: #5fbf5f; }

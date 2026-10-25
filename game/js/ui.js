@@ -98,8 +98,9 @@
 
   // ---- Toasts ----
   const sq = []; let showing = false;
-  U.system = function (title, body, kind) {
-    sq.push({ title, body, kind }); if (!showing) pump();
+  // ms: how long it stays up (default 3 seconds), for a longer one-time tip.
+  U.system = function (title, body, kind, ms) {
+    sq.push({ title, body, kind, ms }); if (!showing) pump();
     if (SD.audio) SD.audio.sfx(kind === 'gold' ? 'coin' : kind === 'red' ? 'wrong' : 'blip');
   };
   function pump() {
@@ -113,8 +114,9 @@
     const bar = ['#hud', '.run-hud'].map(q => $(q)).find(h => h && h.offsetParent);
     $('#notes').style.top = (bar ? Math.max(12, bar.getBoundingClientRect().bottom + 8) : 12) + 'px';
     $('#notes').appendChild(el);
-    setTimeout(() => el.classList.add('out'), 2600);
-    setTimeout(() => { el.remove(); pump(); }, 3000);
+    const ms = n.ms || 3000;
+    setTimeout(() => el.classList.add('out'), ms - 400);
+    setTimeout(() => { el.remove(); pump(); }, ms);
   }
 
   // ---- Modal panels ----
@@ -141,6 +143,9 @@
     const n = {};
     if (d.abs) for (const k in d.abs) n[k] = d.abs[k] + up;
     if (d.mit) n.mit = d.mit + up;
+    // pow: the hit a card lands on the incident, full if a tag is its weakness, half if neutral, none if resisted.
+    // The card face shows only the most it can do (the ⚔ badge), so the weakness stays yours to work out.
+    if (d.pow) n.pow = d.pow + up;
     return n;
   };
   U.cardHtml = function (c, opts) {
@@ -151,8 +156,8 @@
     const tag = (d.tags || [])[0];
     const hue = tag != null && tagHue[tag] != null ? tagHue[tag] : 220;
     const cost = d.xcost ? 'X' : opts.cost != null ? opts.cost : d.cost;
-    return `<div class="card ${d.kind} r-${d.rarity}${opts.dim ? ' dim' : ''}" style="--h:${hue}" data-i="${opts.i != null ? opts.i : ''}" tabindex="0" role="button" aria-label="${U.esc(d.name)}, cost ${cost}. ${U.esc(text)}">
-      <div class="c-cost">${cost}</div>
+    return `<div class="card ${d.kind} r-${d.rarity}${n.pow ? ' has-pow' : ''}${opts.dim ? ' dim' : ''}" style="--h:${hue}" data-i="${opts.i != null ? opts.i : ''}" tabindex="0" role="button" aria-label="${U.esc(d.name)}, cost ${cost}.${n.pow ? ` Hits up to ${n.pow}.` : ''} ${U.esc(text)}">
+      <div class="c-cost">${cost}</div>${n.pow ? `<div class="c-pow" title="Hits the incident for up to ${n.pow}: full if it's weak to this card, half if neutral, none if it resists" aria-hidden="true">⚔${n.pow}</div>` : ''}
       <div class="c-name">${U.esc(d.name)}${c.up && c.plus !== false ? '+' : ''}${c.replay ? ` <b title="Replay ${c.replay}">⟳${c.replay}</b>` : ''}</div>
       <div class="c-art">${SD.art.glyph(d.art, `hsl(${hue},70%,38%)`)}</div>
       <div class="c-kind">${d.kind === 'infra' ? 'INFRA' : 'ACTION'}${d.concept ? ' · ' + U.esc(SD.concepts[d.concept].name) : ''}</div>

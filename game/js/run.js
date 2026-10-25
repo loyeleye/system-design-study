@@ -929,6 +929,8 @@
         }
         else { mitigate(boost(Math.floor((d.pow + up) / 2)), 'Partial: it helps a little, but this incident is not about that.', 'hit'); AU.sfx('hit'); }
         saveKnown();
+        // The first ⚔ card you ever play: say once how its hit works (the card face shows only the badge).
+        if (!sv.flags.powTip) { sv.flags.powTip = true; S.persist(); U.system('⚔ Cards that fit also fix', 'A ⚔ card hits the incident too: the full number if it is weak to that card, half if neutral, nothing if it resists.', '', 7000); }
       }
     };
     if (d.all) eachFoe(hit); else hit();
