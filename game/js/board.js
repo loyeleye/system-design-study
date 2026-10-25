@@ -81,6 +81,15 @@
 .bd .bd-ask .opt { text-align: left; }
 .bd .bd-asked { background: #e9fbf2; border: 2px solid #2f9e63; border-radius: 10px; padding: 6px 10px; margin: 4px 0; }
 .bd .bd-asked.bad { background: #fff6dd; border-color: #d99a00; }
+/* Phones and narrow windows: the tray is a strip stuck to the bottom of the window (one row, scrolling sideways), so the
+   board and the parts are on screen together; chips are full-size tap targets. -16px: past the .win-b padding. */
+@media (max-width: 899px) {
+  .bd .bd-tray { position: sticky; bottom: -16px; z-index: 3; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin;
+    margin: 4px -16px 8px; padding: 8px 16px; background: var(--cream, #fffaf0); border-top: 2px solid rgba(43,35,64,.2); box-shadow: 0 -6px 10px -6px rgba(43,35,64,.25); }
+  .bd-in .bd-tray { bottom: 0; margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+  .bd .bd-chip { flex: none; min-height: 44px; padding: 6px 12px; white-space: nowrap; }
+  .bd .bd-head .bd-mini { min-height: 44px; min-width: 44px; }
+}
 /* Desktop: the brief, flows and tray on the left, the board on the right, both inside the window, so you never
    scroll between picking a part and placing it. The board is sized from the window's height. */
 @media (min-width: 900px) {
@@ -217,14 +226,20 @@
         screen = name;
         if (opts.root) {
           // Inside the mock: the round's stage is the window. Keep the page where it is on a re-draw.
-          const y = window.scrollY;
+          const y = window.scrollY, at = same && anchor(cur);
           opts.root.innerHTML = `<div class="bd bd-in">${html}</div>`;
-          if (same) window.scrollTo(0, y); else if (opts.root.getBoundingClientRect().top < 0) opts.root.scrollIntoView({ block: 'start' });
+          if (same) { window.scrollTo(0, y); window.scrollBy(0, shift(opts.root, at)); } else if (opts.root.getBoundingClientRect().top < 0) opts.root.scrollIntoView({ block: 'start' });
           return opts.root.firstChild;
         }
-        if (same) { const y = cur.scrollTop; cur.innerHTML = html; cur.scrollTop = y; return cur; }
+        if (same) { const y = cur.scrollTop, at = anchor(cur); cur.innerHTML = html; cur.scrollTop = y + shift(cur, at); return cur; }
         return U.panel(html, { title: opts.title || 'DESIGN BOARD', noClose: true, cls: 'quiz bd' });
       }
+      // A re-draw keeps the board where it was on screen, even when the requirements fold away above it (the first box
+      // placed on a phone), so placing, connecting or removing never moves the board under your finger. Showing or
+      // hiding the requirements yourself (briefTap) keeps the scroll position instead, so they come into view.
+      let briefTap = false;
+      const anchor = el => { const b = !briefTap && el.querySelector('.bd-board'); briefTap = false; return b ? b.getBoundingClientRect().top : null; };
+      const shift = (el, at) => { const b = at != null && el.querySelector('.bd-board'); return b ? b.getBoundingClientRect().top - at : 0; };
       function boardSvg(hi) {
         const W = COLS * 100, H = ROWS * 80, cx = n => n.c * 100 + 50, cy = n => n.r * 80 + 40;
         const on = hi ? new Set(hi) : null;
@@ -270,7 +285,7 @@
           <div class="bd-tray">${prob.tray.map(k => `<button class="bd-chip${sel === k ? ' sel' : ''}" data-p="${k}" ${count(k) >= MAX_SAME ? 'disabled' : ''}>${icon(P[k].icon)}${esc(P[k].name)}</button>`).join('')}</div>
           <div class="row bd-tools"><button class="ghost" id="bd-rm" ${pick && pick !== 'u' ? '' : 'disabled'}>Remove</button><button class="ghost" id="bd-clear">Clear</button>
           <button class="primary" id="bd-next" ${edges.length >= 2 ? '' : 'disabled'}>Trace the flows →</button></div>`);
-        p.querySelector('#bd-brief').onclick = () => { showBrief = !showBrief; draw(); };
+        p.querySelector('#bd-brief').onclick = () => { showBrief = !showBrief; briefTap = true; draw(); };
         p.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
           const k = b.dataset.p; sel = sel === k ? null : k; pick = null;
           note = sel ? `${P[k].name}: ${P[k].name.endsWith('s') && P[k].pl ? '' : 'it '}${P[k].does}. Tap an empty square to place it.` : '';
@@ -306,7 +321,7 @@
         const p = show('trace' + fi, head() + `<div class="bd-flow"><span class="q-ctx">Flow ${fi + 1} of ${prob.flows.length}</span> <b>${esc(f.name)}</b><p class="small">${esc(f.hint || 'Tap every part this request touches, starting next to your users. Branches are fine: a server can call a cache and a database.')}</p></div>` +
           grid('trace') + `<p class="bd-note">${note || (path.length > 1 ? 'Keep going, or tap Done when the request has everything it needs.' : 'Tap the first part the request reaches.')}</p>
           <div class="row bd-tools"><button class="ghost" id="bd-back">${path.length > 1 ? 'Undo' : '← Edit the design'}</button><button class="primary" id="bd-done" ${path.length > 1 ? '' : 'disabled'}>Done</button></div>`);
-        p.querySelector('#bd-brief').onclick = () => { showBrief = !showBrief; trace(); };
+        p.querySelector('#bd-brief').onclick = () => { showBrief = !showBrief; briefTap = true; trace(); };
         p.querySelectorAll('[data-n]').forEach(b => b.onclick = () => {
           const id = b.dataset.n;
           if (path.includes(id)) return;

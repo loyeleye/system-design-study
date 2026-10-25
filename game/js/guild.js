@@ -49,6 +49,10 @@ body.gh-scene #panel { padding: 0; place-items: stretch; background:
 body.gh-scene #panel > .win.gh-win { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; box-shadow: none; background: transparent; animation: none; }
 body.gh-scene #panel > .win.gh-win > .win-h { padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
 body.gh-scene #panel > .win.gh-win > .win-b { width: min(940px, 100%); margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+/* A Pair Mock round (js/mock.js, the candidate's seat) draws its clock, timeline and Ploy straight on the page: on the
+   hall's dark wood they get the mock page's cream behind them. */
+body.gh-scene .mi:has(> .mi-top) { background: var(--mi-cream); border: 3px solid var(--mi-ink); border-radius: 16px; box-shadow: 0 5px 0 var(--mi-ink); padding: 14px; }
+@media (max-width: 560px) { body.gh-scene .mi:has(> .mi-top) { padding: 10px; } }
 .gh-field { font: 600 16px var(--f-head, system-ui); border: 3px solid var(--mi-ink); border-radius: 12px; padding: 7px 12px; background: #fff; min-width: 0; width: 100%; color: var(--mi-ink); }
 select.gh-field { font-size: 15px; }
 .gh-seg { display: inline-flex; flex-wrap: wrap; border: 2.5px solid var(--mi-ink); border-radius: 12px; overflow: hidden; background: #fff; max-width: 100%; }
@@ -136,6 +140,17 @@ select.gh-field { font-size: 15px; }
   .gh-bhead .mi-btn { padding: 6px 10px; font-size: 14px; white-space: nowrap; }
   .gh-tools .gh-join { flex: 1; } .gh-tools .gh-join input { flex: 1; max-width: none; }
   .gh-tools .rl { display: none; }
+}
+/* Touch: every control in the hall at least 44px each way (back links, Join, Refresh, the code fields, the link). */
+@media (max-width: 720px), (pointer: coarse) {
+  .gh-back { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px 0 0; }
+  .gh .mi-btn { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .gh-bhead .mi-btn { flex: none; }
+  .gh .gh-field { min-height: 44px; }
+  .gh-seg button { min-height: 44px; }
+  .gh-note a { display: inline-flex; align-items: center; min-height: 44px; }
+  /* The party room's sticky Start bar: anything scrolled to (or focused) stops clear of it. */
+  body.gh-scene #panel > .win.gh-win > .win-b { scroll-padding-bottom: 96px; }
 }
 `;
     document.head.appendChild(st);
