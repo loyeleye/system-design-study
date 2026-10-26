@@ -242,12 +242,13 @@
   };
   // The confidence tally (Ladi, Oct 23, ported from Isekai'd Into the Cloud): the last TALLY_N answers you committed,
   // anywhere in the game, each scored by how sure you said you were. Guess: right +1, wrong 0. Think so: +2, -1.
-  // Sure: +3, -5. It's capped at TALLY_MAX after each answer, so three confident misses take a full tally back to 0
-  // and nobody coasts. An expedition's debrief heals by it (js/raid.js).
+  // Sure: +3, -5. It's kept between 0 and TALLY_MAX after each answer, so three confident misses take a full tally
+  // back to 0 and nobody coasts, and it never goes below 0 (Ladi, Oct 26). An expedition's debrief heals by it
+  // (js/raid.js).
   S.TALLY = [[1, 0], [2, -1], [3, -5]];
   S.TALLY_MAX = 15;
   S.tally = function () {
-    return (Array.isArray(S.save.tally) ? S.save.tally : []).reduce((a, x) => Math.max(-S.TALLY_MAX, Math.min(S.TALLY_MAX, a + ((S.TALLY[x[1]] || S.TALLY[0])[x[0] ? 0 : 1]))), 0);
+    return (Array.isArray(S.save.tally) ? S.save.tally : []).reduce((a, x) => Math.max(0, Math.min(S.TALLY_MAX, a + ((S.TALLY[x[1]] || S.TALLY[0])[x[0] ? 0 : 1]))), 0);
   };
   // Concepts that are due or weak first, then interleave the rest.
   S.pickConcepts = function (n, pool) {

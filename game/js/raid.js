@@ -20,7 +20,7 @@
 //
 // The debrief and the tally (Ladi, 2026-10-23, ported from Isekai'd Into the Cloud): a player's tally is the score of
 // the last 20 answers they committed anywhere in the game (SD.state.tally; CONF: Guess, Think so and Sure pay +1, +2,
-// +3 right and 0, -1, -5 wrong), capped at 15 as it goes. A bot keeps its own, for the expedition.
+// +3 right and 0, -1, -5 wrong), kept between 0 and 15 as it goes. A bot keeps its own, for the expedition.
 // After every won fight, before the card pick, each player answers a debrief question on the incident they just
 // fought. With a tally of LOW or more it's one question, and a right answer heals the team by the new tally (up to
 // HEAL); under LOW it's two, the second on whatever review is due, and each right one heals LOW_HEAL. The team heals
@@ -79,6 +79,10 @@
   // The confidence tally (Guess, Think so, Sure: [right, wrong]) and the debrief's heal, as described at the top.
   const CONF = [[1, 0], [2, -1], [3, -5]], LOW = 2, LOW_HEAL = 1, HEAL = 15;
   const confOf = c => ([0, 1, 2].includes(c) ? c : 0);
+  // Cred never goes below 0 (Ladi, Oct 26) or above HEAL: a bot's after an answer (RD.credAfter), and a person's as
+  // their page sends it (RD.credOf), so an older save's or page's negative tally shows as 0.
+  RD.credAfter = (t, ok, conf) => Math.max(0, Math.min(HEAL, (t | 0) + CONF[confOf(conf)][ok ? 0 : 1]));
+  RD.credOf = v => Math.max(0, Math.min(999, Math.round(+v) || 0));
   const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
   // A player's statuses and the team's, all reset for each fight (each enemy's own are in G.foes, newFoe() below).
   // carry/fresh: Pre-Warmed Capacity that stays warm; debt: Capacity Tightly Coupled takes next turn; tax: a Missed
@@ -343,7 +347,6 @@
 .rd-tally .pips { display: inline-flex; gap: 2px; }
 .rd-tally .pips i { width: 5px; height: 12px; border-radius: 2px; background: #e7e1d3; border: 1px solid rgba(43,35,64,.35); }
 .rd-tally .pips i.on { background: var(--sun, #ffc93c); border-color: var(--ink, #2b2340); }
-.rd-tally .pips i.neg { background: var(--red, #ff5a5a); border-color: var(--ink, #2b2340); }
 .rd-tally.low { background: #ffe9e9; }
 .rd-tally .heal { font-family: var(--f-head); }
 .rd-tally-help { margin: 0 0 10px; padding: 8px 12px; font-size: 13px; color: var(--ink, #2b2340); background: #fff; border: 2px solid var(--ink, #2b2340); border-radius: 12px; }
@@ -1653,11 +1656,11 @@
     // A person's tally is their save's (SD.state.tally), which their page sends with every answer and whenever it
     // changes ('tal'); a bot keeps its own for the expedition, from 0.
     const talOk = v => Number.isFinite(+v) && v !== null && v !== '' && typeof v !== 'boolean';
-    function score(p, ok, conf) { if (p) p.tal = Math.max(-HEAL, Math.min(HEAL, (p.tal | 0) + CONF[confOf(conf)][ok ? 0 : 1])); }
+    function score(p, ok, conf) { if (p) p.tal = RD.credAfter(p.tal, ok, conf); }
     function mark(peer, d) {
       const p = G.players[peer];
       if (!p) return;
-      if (!isBot(peer) && talOk(d.tal)) p.tal = Math.max(-99, Math.min(999, Math.round(+d.tal)));
+      if (!isBot(peer) && talOk(d.tal)) p.tal = RD.credOf(d.tal);
       else score(p, !!d.ok, d.conf);
     }
     // Who answers the debrief and the tape room: the people here, or at a table of bots (the balance runs) the first seat.
@@ -1780,7 +1783,7 @@
       }
       if (d.k === 'peek' && G.ph === 'fight' && !p.ready && Number.isInteger(d.i)) { if (take(p, d.i)) push(); return; }
       if (d.k === 'ready' && G.ph === 'fight') { p.ready = !p.ready; push(); check(); return; }
-      if (d.k === 'tal' && !isBot(peer) && talOk(d.v)) { const v = Math.max(-99, Math.min(999, Math.round(+d.v))); if (v !== (p.tal | 0)) { p.tal = v; push(); } return; }
+      if (d.k === 'tal' && !isBot(peer) && talOk(d.v)) { const v = RD.credOf(d.v); if (v !== (p.tal | 0)) { p.tal = v; push(); } return; }
       if (d.k === 'vote' && G.ph === 'map' && typeof d.n === 'string' && reach(G).includes(d.n)) { G.votes[peer] = d.n; push(); check(); return; }
       if (!r || !r.wait[peer]) return;
       const fin = () => { delete r.wait[peer]; push(); check(); };
@@ -2462,16 +2465,16 @@
     // ---------- What everyone sees ----------
     // Local choices that aren't the table's: the deck viewer, and which card a removal or refactor is picking.
     const ui = { deck: false, pick: null, tg: null, tally: false, leave: false };
-    // The confidence tally on the HUD (Ladi, Oct 23): what a right debrief answer heals now, a pip per point up to HEAL
-    // (red pips below 0), and a tap for how it works.
+    // The confidence tally on the HUD (Ladi, Oct 23): what a right debrief answer heals now, a pip per point up to HEAL,
+    // and a tap for how it works. Cred is never below 0 (Ladi, Oct 26).
     const healOf = t => (t < LOW ? LOW_HEAL : Math.min(HEAL, t));
     const CRED_NOTE = `After each won fight, a right debrief answer heals the team by your Cred, up to ${HEAL} SLA. Under ${LOW}, it's two questions at ${LOW_HEAL} SLA each.`;
     function tallyChip(t) {
-      const n = Math.max(-HEAL, Math.min(HEAL, t)), pips = Array.from({ length: HEAL }, (_, i) => `<i class="${n >= 0 ? (i < n ? 'on' : '') : (i < -n ? 'neg' : '')}"></i>`).join('');
+      const n = Math.min(HEAL, t), pips = Array.from({ length: HEAL }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
       const what = t < LOW ? `Debrief +${LOW_HEAL} ×2` : `Debrief heals <b class="heal">+${healOf(t)}</b>`;
       return `<button class="hud-chip rd-tally${t < LOW ? ' low' : ''}" type="button" id="rd-tally" aria-expanded="${ui.tally}" aria-label="On-call Cred ${t}. ${t < LOW ? `Under ${LOW}: two debrief questions, ${LOW_HEAL} SLA each` : `A right debrief answer heals ${healOf(t)} SLA`}. Tap for how it works.">🎯 Cred ${t} <span class="pips" aria-hidden="true">${pips}</span> ${what}</button>`;
     }
-    const tallyHelp = t => `On-call Cred is how much the team can trust your calls: it scores your last 20 answers anywhere in the game by how sure you said you were: Guess +1 right, 0 wrong; Think so +2, −1; Sure +3, −5; never above ${HEAL}. After each won fight a right debrief answer heals the team by it${t < LOW ? `. Under ${LOW} you get two easier-paying questions instead, ${LOW_HEAL} SLA each, so a few honest answers will lift you` : ''}.`;
+    const tallyHelp = t => `On-call Cred is how much the team can trust your calls: it scores your last 20 answers anywhere in the game by how sure you said you were: Guess +1 right, 0 wrong; Think so +2, −1; Sure +3, −5; never below 0 or above ${HEAL}. After each won fight a right debrief answer heals the team by it${t < LOW ? `. Under ${LOW} you get two easier-paying questions instead, ${LOW_HEAL} SLA each, so a few honest answers will lift you` : ''}.`;
     function paint(html) {
       const h = root.querySelector('.hand'), sx = h ? h.scrollLeft : 0, hy = h ? h.scrollTop : 0, sc = root.closest('.win-b'), sy = sc ? sc.scrollTop : 0;
       // Leaving mid-expedition asks first, in place (the Guild Hall is already a panel), like solo's Abandon run
@@ -2499,9 +2502,9 @@
       return `<div class="run-hud"><div class="hud-sla"><span>Team SLA</span><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}/${SLA}</b></div>
         <div class="rd-hchips"><span class="hud-chip">Floor <b>${G.fl + 1}/${fs.length}</b></span>${mine ? `<span class="hud-chip">Bits <b>${mine.bits}</b></span>` : ''}
         <span class="hud-chip" title="Seymour's Tape: if the team goes down, one plays and you fight on at full SLA">📼 Tapes <b>${G.tapes}</b></span>
-        ${mine ? tallyChip(mine.tal | 0) : ''}
+        ${mine ? tallyChip(RD.credOf(mine.tal)) : ''}
         ${mine ? `<button class="hud-chip" type="button" id="rd-deck" aria-expanded="${ui.deck}">Deck (${mine.deck.length})</button>` : ''}</div>${emo !== false && SD.emote ? SD.emote.button() : ''}</div>
-        ${ui.tally && mine ? `<p class="rd-tally-help">${tallyHelp(mine.tal | 0)}</p>` : ''}
+        ${ui.tally && mine ? `<p class="rd-tally-help">${tallyHelp(RD.credOf(mine.tal))}</p>` : ''}
         ${G.note ? `<p class="rd-note" role="status">${esc(G.note)}</p>` : ''}
         ${ui.deck && mine ? `<div class="cardgrid mini">${mine.deck.map(id => chtml(id)).join('')}</div>` : ''}`;
     }
