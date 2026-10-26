@@ -3,7 +3,8 @@
 //   - the hall, Quest Board, Form a party and party room controls are at least 44px each way;
 //   - the party room scrolls fully clear of its sticky Start bar;
 //   - the raid is drawn on a cream card, so its title, story line and turn line read (contrast 4.5:1 or more);
-//   - the raid's HUD and "Leave the expedition" stay stuck to the top as you scroll, one compact row;
+//   - the raid's HUD and "Leave the expedition" stay stuck to the top as you scroll, folded to one compact row;
+//     a tap on the SLA or on the pull tab under it opens the chips row, another folds it;
 //   - Leave asks first, in place, and sits clear of the hand; Stay keeps you in, Yes leaves;
 //   - the board's parts tray is a strip stuck to the bottom of the window with 44px chips, the grid and the tray
 //     are on screen together, and placing or connecting a part keeps the board where it was;
@@ -132,6 +133,10 @@ const server = http.createServer((req, res) => {
   check(!s.length, `open, the HUD's buttons are 44px or more (${s.join(', ') || 'all'})`);
   await touch(page, '#rd-hudt'); await page.waitForTimeout(200); f = await shown();
   check(!f.chips && f.ex === 'false', 'another tap folds it again');
+  await touch(page, '#rd-hudtab'); await page.waitForTimeout(200); f = await shown();
+  check(f.chips, 'the pull tab under the bar opens it too');
+  await touch(page, '#rd-hudtab'); await page.waitForTimeout(200); f = await shown();
+  check(!f.chips, 'and folds it');
   await page.evaluate(() => document.querySelector('#panel .node.can').click());
   await page.waitForSelector('.rd .hand .card', { timeout: 15000 });
   await page.waitForTimeout(800); await clearDlg(page);
