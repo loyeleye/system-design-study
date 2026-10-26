@@ -43,7 +43,17 @@
 .pm-score { display: grid; gap: 6px; }
 .pm-score > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13.5px; font-weight: 700; }
 .pm-score .mi-pick button { padding: 3px 9px; }
-.pm-who { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 10px; } .pm-who small { color: var(--mi-muted, #5a5470); font-weight: 700; } .pm-who .emo-btn { margin-left: auto; }
+/* On a cream strip of its own: it sits on the Guild Hall's dark wood, where the role labels didn't read. On a phone
+   it stays stuck to the top of the window, so both names, your emotes over them and the Emote button stay in view
+   through the whole round (Ladi, 2026-10-26). */
+.pm-who { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 10px; padding: 6px 10px; background: var(--mi-cream, #fffaf0); border: 2.5px solid var(--mi-ink, #2b2340); border-radius: 14px; box-shadow: 0 3px 0 rgba(43,35,64,.35); }
+.pm-who > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.pm-who small { color: var(--mi-muted, #5a5470); font-weight: 700; } .pm-who .emo-btn { margin-left: auto; }
+@media (max-width: 600px) {
+  .pm-who { position: sticky; top: calc(-1 * var(--win-pad-t, 0px)); z-index: 5; gap: 6px 10px; padding: 6px 8px; }
+  .pm-who > span { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .pm-who small { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding-left: 4px; }
+}
 .pm-say { display: flex; gap: 6px; } .pm-say input, .pm-notes { flex: 1; min-width: 0; font: inherit; font-size: max(16px, 1em); padding: 6px 10px; border: 3px solid var(--mi-ink); border-radius: 10px; }
 .pm-notes { width: 100%; min-height: 70px; resize: vertical; }
 .pm-cmp { width: 100%; border-collapse: collapse; font-size: 14px; } .pm-cmp th, .pm-cmp td { text-align: left; padding: 4px 6px; border-bottom: 2px solid #ece7f5; }

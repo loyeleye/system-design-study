@@ -174,7 +174,7 @@ body:has(#dialog:not([hidden])) .hub-hint { display: none; }
 /* The ✕ and ‹ draw as a 28px disc but take a 44px tap: a transparent 8px border around it, pulled back by negative
    margins so the header stays as tall as before. The disc's ink ring is an inset shadow on the padding box. */
 .win-h .x { width: 44px; height: 44px; margin: -8px -8px -8px 0; border: 8px solid transparent; border-radius: 22px; background-clip: padding-box; box-shadow: inset 0 0 0 2px var(--ink); }
-.win-b { padding: 16px; overflow-y: auto; min-height: 0; }
+.win-b { --win-pad-t: 16px; --win-pad-b: 16px; padding: 16px; overflow-y: auto; min-height: 0; }
 .win-b p { margin: 0 0 10px; }
 .q-ctx { font-family: var(--f-head); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--blue-d); margin-bottom: 6px; }
 /* The question timer (js/quiz.js opts.timer): a burning fuse after Explodia's (.ex-fuse), in the colours of the
