@@ -346,7 +346,8 @@
    edge to edge on the card so the map and the fight slide under it. */
 .rd .run-hud { position: sticky; top: calc(-1 * var(--win-pad-t, 0px)); z-index: 5; margin: -14px -14px 12px; padding: 10px 14px; background: var(--cream, #fffaf0); border-radius: 13px 13px 0 0; box-shadow: 0 8px 10px -9px rgba(43,35,64,.35); }
 .rd .run-hud > #rd-leave { min-height: 36px; padding: 4px 12px; font-size: 14px; white-space: nowrap; }
-.rd .run-hud .hud-sla { flex-basis: 140px; }
+.rd .run-hud .hud-sla { display: flex; flex: 1 0 200px; white-space: nowrap; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: 600 14px var(--f-head); text-align: left; cursor: default; }
+.rd .run-hud .hud-sla .bar { display: block; } .rd .rd-chev { display: none; }
 .rd .run-hud > .rd-leave { flex: 1 1 100%; margin: 0; padding-top: 8px; border-top: 2px dashed rgba(43,35,64,.2); }
 .rd-tally { display: inline-flex; align-items: center; gap: 6px; }
 .rd-tally .pips { display: inline-flex; gap: 2px; }
@@ -390,15 +391,18 @@
    their own scroll, so the foe's NEXT and your cards are on one screen. The art is a shorter strip, the teammates
    compact, and empty infra slots hide until one is built. */
 @media (max-width: 600px) {
-  /* One compact row when it's stuck: a short SLA, the chips strip, then Emote and Leave as icons. */
-  .rd .run-hud { flex-wrap: nowrap; gap: 6px; margin: -10px -10px 10px; padding: 6px 10px; }
-  .rd .run-hud:has(> .rd-leave) { flex-wrap: wrap; }
-  .rd .rd-wide { display: none; }
-  .rd .run-hud .hud-sla { flex: none; gap: 4px; font-size: 12px; } .rd .run-hud .hud-sla .bar { min-width: 0; width: 44px; height: 10px; }
-  .rd .run-hud > .emo-btn { flex: none; } .rd .run-hud > #rd-leave { flex: none; min-height: 44px; padding: 0 8px; font-size: 12px; }
+  /* Folded (the default), the stuck HUD is one short row: the SLA, then Leave. A tap on it opens a second row, the
+     chips as a strip that scrolls sideways, with Emote by Leave; another tap folds it again. */
+  .rd .run-hud { gap: 6px; margin: -10px -10px 10px; padding: 6px 10px; }
+  .rd .run-hud .hud-sla { flex: 1 1 0; min-width: 0; min-height: 44px; gap: 6px; cursor: pointer; } .rd .run-hud .hud-sla .bar { flex: 1; min-width: 40px; height: 12px; }
+  .rd .rd-chev { display: block; flex: none; width: 8px; height: 8px; border: solid var(--ink, #2b2340); border-width: 0 2.5px 2.5px 0; transform: translateY(-2px) rotate(45deg); transition: transform .15s; }
+  .rd .run-hud.open .rd-chev { transform: translateY(2px) rotate(-135deg); }
+  @media (prefers-reduced-motion: reduce) { .rd .rd-chev { transition: none; } }
+  .rd .run-hud:not(.open) > .rd-hchips, .rd .run-hud:not(.open) > .emo-btn { display: none; }
+  .rd .run-hud > .emo-btn { flex: none; } .rd .run-hud > #rd-leave { flex: none; min-height: 44px; padding: 0 10px; font-size: 13px; margin-left: 0; }
   .rd .run-hud > .rd-leave button { min-height: 44px; }
   .rd .run-hud > .rd-leave { order: 5; }
-  .rd .rd-hchips { display: flex; flex: 1 1 0; min-width: 0; contain: inline-size; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  .rd .rd-hchips { display: flex; order: 3; flex: 1 1 100%; min-width: 0; contain: inline-size; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
   .rd .rd-hchips::-webkit-scrollbar { display: none; }
   .rd .rd-hchips > * { flex: none; }
   .rd .rd-hchips .hud-chip { display: inline-flex; align-items: center; gap: 4px; }
@@ -2475,7 +2479,9 @@
 
     // ---------- What everyone sees ----------
     // Local choices that aren't the table's: the deck viewer, and which card a removal or refactor is picking.
-    const ui = { deck: false, pick: null, tg: null, tally: false, leave: false };
+    const ui = { deck: false, pick: null, tg: null, tally: false, leave: false, hud: false };
+    // On a phone the stuck HUD folds down to the SLA and Leave; a tap on it opens the chips row (Ladi, Oct 26).
+    try { ui.hud = localStorage.getItem('sd.rdHud') === '1'; } catch (e) { /* no storage: start folded */ }
     // The confidence tally on the HUD (Ladi, Oct 23): what a right debrief answer heals now, a pip per point up to HEAL,
     // and a tap for how it works. Cred is never below 0 (Ladi, Oct 26).
     const healOf = t => (t < LOW ? LOW_HEAL : Math.min(HEAL, t));
@@ -2491,7 +2497,7 @@
       // Leaving mid-expedition asks first, in place (the Guild Hall is already a panel), like solo's Abandon run
       // (Ladi, 2026-10-25). Once it's over there's nothing to lose.
       // With a HUD on the page, Leave rides in it (it's stuck to the top, Ladi, Oct 26); otherwise it's a row at the end.
-      root.innerHTML = `<div class="rd" data-ph="${esc(G.ph)}">${html}${html.includes('class="run-hud"') ? '' : `<div class="row rd-leave">${leaveHtml()}</div>`}</div>`;
+      root.innerHTML = `<div class="rd" data-ph="${esc(G.ph)}">${html}${html.includes('class="run-hud') ? '' : `<div class="row rd-leave">${leaveHtml()}</div>`}</div>`;
       const lv = root.querySelector('#rd-leave');
       if (lv) lv.onclick = () => { if (G.ph === 'done' || G.ph === 'over') return leave(); ui.leave = true; render(); const s = root.querySelector('#rd-stay'); if (s) { s.focus({ preventScroll: true }); s.scrollIntoView({ block: 'nearest' }); } };
       const ly = root.querySelector('#rd-leave-y'); if (ly) ly.onclick = () => leave();
@@ -2501,6 +2507,13 @@
       if (sc) sc.scrollTop = sy;
       root.querySelectorAll('[data-send]').forEach(b => { b.onclick = () => { ui.pick = null; send(JSON.parse(b.dataset.send)); }; });
       const db = root.querySelector('#rd-deck'); if (db) db.onclick = () => { ui.deck = !ui.deck; render(); };
+      // The HUD folds on a phone: a tap on the SLA, or on the bar between its buttons, opens or shuts the chips row.
+      const hb = root.querySelector('.rd .run-hud');
+      if (hb) hb.onclick = e => {
+        if (!matchMedia('(max-width: 600px)').matches || (e.target.closest('button, a, .emo-pop') && !e.target.closest('#rd-hudt'))) return;
+        ui.hud = !ui.hud; try { localStorage.setItem('sd.rdHud', ui.hud ? '1' : '0'); } catch (er) { /* no storage */ }
+        render(); const t = root.querySelector('#rd-hudt'); if (t) t.focus({ preventScroll: true });
+      };
       const tb = root.querySelector('#rd-tally'); if (tb) tb.onclick = () => { ui.tally = !ui.tally; render(); };
     }
     // Leave the expedition, or the question it asks first.
@@ -2514,7 +2527,7 @@
     // emo: the Emote button goes here (in a fight it rides in the hand's bar instead, by Ready).
     function hud(emo) {
       const mine = G.players[me.peer], fs = floorsOf(X());
-      return `<div class="run-hud"><div class="hud-sla"><span><span class="rd-wide">Team </span>SLA</span><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}<span class="rd-wide">/${SLA}</span></b></div>
+      return `<div class="run-hud${ui.hud ? ' open' : ''}"><button class="hud-sla" type="button" id="rd-hudt" aria-expanded="${ui.hud}" aria-label="Team SLA ${G.sla} of ${SLA}. Tap to ${ui.hud ? 'hide' : 'show'} the floor, Bits, Tapes, Cred and Deck"><span>Team SLA</span><span class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></span><b>${G.sla}/${SLA}</b><i class="rd-chev" aria-hidden="true"></i></button>
         <div class="rd-hchips"><span class="hud-chip">Floor <b>${G.fl + 1}/${fs.length}</b></span>${mine ? `<span class="hud-chip">Bits <b>${mine.bits}</b></span>` : ''}
         <span class="hud-chip" title="Seymour's Tape: if the team goes down, one plays and you fight on at full SLA">📼 Tapes <b>${G.tapes}</b></span>
         ${mine ? tallyChip(RD.credOf(mine.tal)) : ''}

@@ -118,7 +118,20 @@ const server = http.createServer((req, res) => {
     return { off: Math.round(h.top - top), h: Math.round(h.height), lv: l.top >= top && l.bottom <= h.bottom };
   });
   check(Math.abs(stuck.off) <= 4 && stuck.lv, `the HUD and Leave stay at the top of the window, scrolled to the end (${stuck.off}px)`);
-  check(stuck.h <= 72, `the stuck HUD is one compact row on a phone (${stuck.h}px)`);
+  check(stuck.h <= 64, `folded, the stuck HUD is one compact row on a phone (${stuck.h}px)`);
+  // Folded it's the SLA and Leave; a tap on the SLA opens the chips row, another folds it again.
+  const shown = () => page.evaluate(() => ({ chips: !!document.querySelector('.rd .rd-hchips').offsetParent, ex: document.querySelector('#rd-hudt').getAttribute('aria-expanded') }));
+  // Past the floor's title card and its lines, so the tap reaches the HUD.
+  for (let i = 0; i < 20 && await page.evaluate(() => !!document.querySelector('.gatefx') || !document.querySelector('#dialog').hidden); i++) { await clearDlg(page); await page.waitForTimeout(300); }
+  let f = await shown();
+  check(!f.chips && f.ex === 'false', 'folded, the chips are hidden');
+  await touch(page, '#rd-hudt'); await page.waitForTimeout(200); f = await shown();
+  const tall = await page.evaluate(() => Math.round(document.querySelector('.rd .run-hud').getBoundingClientRect().height));
+  check(f.chips && f.ex === 'true', `a tap on the SLA opens the chips row (${tall}px)`);
+  s = await small(page, ['.rd button.hud-chip', '#rd-hudt', '#rd-leave']);
+  check(!s.length, `open, the HUD's buttons are 44px or more (${s.join(', ') || 'all'})`);
+  await touch(page, '#rd-hudt'); await page.waitForTimeout(200); f = await shown();
+  check(!f.chips && f.ex === 'false', 'another tap folds it again');
   await page.evaluate(() => document.querySelector('#panel .node.can').click());
   await page.waitForSelector('.rd .hand .card', { timeout: 15000 });
   await page.waitForTimeout(800); await clearDlg(page);
