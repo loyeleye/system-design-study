@@ -11,6 +11,7 @@
 //   ch=1..10      the chapter you are on: every chapter before it counts as cleared
 //   rank=E..S     your Guild rank (sets your level: E 1, D 3, C 5, B 7, A 9, S 11); default is the chapter's usual rank
 //   shards=N      shards to start with (default 2000)
+//   marks=N       Raid Marks (✦, js/marks.js) to start with (default 0)
 //   at=title | town | road | waystation | arena | camp | exchange | run   where to start (default town, or road for 7-10)
 //   floor=1..4    with at=run in chapters 7-10: start on this floor
 //   quests=done   mark every quest unlocked so far as finished (their Plot Devices too)
@@ -57,12 +58,12 @@
     S.reset();
     if (!P.get('ch')) {
       try { const raw = localStorage.getItem(KEY); if (raw) Object.assign(S.save, JSON.parse(raw)); } catch (e) { /* ignore */ }
-    } else D.build(+P.get('ch'), P.get('rank'), P.get('shards'));
+    } else D.build(+P.get('ch'), P.get('rank'), P.get('shards'), null, P.get('marks'));
     S.syncChapter();
   };
 
   // A fresh save that has just reached chapter `ch`.
-  D.build = function (ch, rank, shards, quests) {
+  D.build = function (ch, rank, shards, quests, marks) {
     ch = Math.max(1, Math.min(10, ch || 1));
     S.reset();
     const sv = S.save, f = sv.flags;
@@ -76,6 +77,7 @@
     const r = (rank || CH_RANK[ch] || 'E').toUpperCase();
     sv.level = LEVEL[r] || 1;
     sv.shards = shards != null && shards !== '' ? +shards : 2000;
+    if (marks != null && marks !== '') (sv.mp = sv.mp || {}).marks = { n: Math.max(0, Math.min(999999, Math.floor(+marks) || 0)) };
     sv.loop = ch + 1; sv.chapter = ch;
     if ((quests || P.get('quests')) === 'done') finishQuests();
     if (P.get('time') && SD.clock) SD.clock.set(P.get('time'), 'debug', true);
@@ -137,6 +139,12 @@
     .dbg-help { margin: 0 0 8px !important; font-size: 13px; color: var(--muted); }
     .dbg-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
     .dbg-f.wide { grid-column: 1 / -1; }
+    .dbg-bal { display: grid; gap: 6px; margin-top: 10px; padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; background: var(--paper); }
+    .dbg-bal-h { font-size: 13px; font-weight: 700; }
+    .dbg-bal-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: center; font-size: 14px; font-weight: 700; }
+    .dbg-bal-row input { font: 600 16px var(--f-body); color: var(--ink); padding: 6px 8px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; min-width: 0; width: 100%; }
+    .dbg-bal small { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .dbg-ic { display: inline-block; width: 1.4em; text-align: center; }
     .dbg-f { display: grid; gap: 3px; font-size: 13px; font-weight: 700; min-width: 0; }
     .dbg-f select, .dbg-f input { font: 600 16px var(--f-body); color: var(--ink); padding: 6px 8px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; min-width: 0; width: 100%; }
     .dbg-f select:disabled, .dbg-f input:disabled { background: #f1ede4; color: var(--muted); border-color: var(--muted); }
@@ -183,10 +191,10 @@
         <p class="dbg-help" style="margin:8px 0 0 !important">${C ? 'In a fight: a group fight has to wait until it ends.' : 'No fight on. A group fight (3 foes) starts a dungeon run if needed.'}</p>
       </fieldset>
 
-      <fieldset><legend>Raid Marks</legend>
-        <p class="dbg-help">Sets this save's balance, so a playtest can hire the multiplayer champions and buy cosmetics without the grind.</p>
-        <div class="dbg-fields"><label class="dbg-f">Raid Marks (✦)<input id="dbg-marks" type="number" inputmode="numeric" min="0" max="999999" value="${SD.marks ? SD.marks.balance() : 0}"></label></div>
-        <div class="row"><button type="button" class="ghost" id="dbg-mk">Set Raid Marks</button><button type="button" class="ghost" id="dbg-cos">Own every cosmetic</button></div>
+      <fieldset><legend><span aria-hidden="true">✦ </span>Raid Marks</legend>
+        <p class="dbg-help">Sets this save's balance right now, so a playtest can hire the multiplayer champions and buy cosmetics without the grind.</p>
+        <div class="dbg-fields"><label class="dbg-f">Balance<input id="dbg-marks" type="number" inputmode="numeric" min="0" max="999999" step="1" value="${SD.marks ? SD.marks.balance() : 0}"></label></div>
+        <div class="row"><button type="button" class="ghost" id="dbg-mk">✦ Set Raid Marks</button><button type="button" class="ghost" id="dbg-cos">Own every cosmetic</button></div>
       </fieldset>
 
       <fieldset><legend>Time and weather</legend>
@@ -204,8 +212,13 @@
           <label class="dbg-f wide">Chapter<select id="dbg-ch">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => opt(n, ch, name(n))).join('')}</select></label>
           <label class="dbg-f">Guild rank<select id="dbg-rank"></select></label>
           <label class="dbg-f">Start at<select id="dbg-at"></select></label>
-          <label class="dbg-f">Dungeon floor<select id="dbg-floor">${[1, 2, 3, 4].map(n => opt(n, P.get('floor') || 1, 'Floor ' + n)).join('')}</select><small id="dbg-floor-h"></small></label>
-          <label class="dbg-f">Shards<input id="dbg-shards" type="number" inputmode="numeric" placeholder="2000" min="0" value="${U.esc(P.get('shards') || '')}"></label>
+          <label class="dbg-f wide">Dungeon floor<select id="dbg-floor">${[1, 2, 3, 4].map(n => opt(n, P.get('floor') || 1, 'Floor ' + n)).join('')}</select><small id="dbg-floor-h"></small></label>
+        </div>
+        <div class="dbg-bal" role="group" aria-labelledby="dbg-bal-h" aria-describedby="dbg-bal-help">
+          <span class="dbg-bal-h" id="dbg-bal-h">Starting balance</span>
+          <label class="dbg-bal-row" for="dbg-shards"><span><span class="dbg-ic" aria-hidden="true">💎</span>Shards</span><input id="dbg-shards" type="number" inputmode="numeric" placeholder="2000" min="0" max="999999" step="1" value="${U.esc(P.get('shards') || '')}"></label>
+          <label class="dbg-bal-row" for="dbg-rmarks"><span><span class="dbg-ic" aria-hidden="true">✦</span>Raid Marks</span><input id="dbg-rmarks" type="number" inputmode="numeric" placeholder="0" min="0" max="999999" step="1" value="${U.esc(P.get('marks') || '')}"></label>
+          <small id="dbg-bal-help">Leave blank for 2,000 shards and 0 Raid Marks.</small>
         </div>
         <label class="dbg-check"><input id="dbg-q" type="checkbox"${P.get('quests') === 'done' ? ' checked' : ''}> Mark every quest so far as finished</label>
         <p class="dbg-warn">This replaces the current debug save.</p>
@@ -216,7 +229,7 @@
     const $ = id => b.querySelector('#dbg-' + id);
     const v = k => $(k).value;
     const now = () => {
-      $('now').innerHTML = [`Chapter ${sv.chapter || 1}`, `Rank ${rankOf(sv.level || 1)} · Lv ${sv.level || 1}`, `${(sv.shards || 0).toLocaleString()} shards`, `${SD.clock.label()}, ${SD.weather.now()}`]
+      $('now').innerHTML = [`Chapter ${sv.chapter || 1}`, `Rank ${rankOf(sv.level || 1)} · Lv ${sv.level || 1}`, `💎 ${(sv.shards || 0).toLocaleString()} shards`, `✦ ${(SD.marks ? SD.marks.balance() : 0).toLocaleString()} Raid Marks`, `${SD.clock.label()}, ${SD.weather.now()}`]
         .map(t => `<span>${U.esc(t)}</span>`).join('');
     };
     // The query string the "Jump" form stands for, so a setup can be shared or bookmarked.
@@ -226,6 +239,7 @@
       q.set('at', v('at'));
       if (!$('floor').disabled && v('floor') !== '1') q.set('floor', v('floor'));
       if (v('shards') !== '') q.set('shards', v('shards'));
+      if (v('rmarks') !== '') q.set('marks', v('rmarks'));
       if ($('q').checked) q.set('quests', 'done');
       return '?' + q.toString().replace('debug=&', fits(kept) && !local ? 'debug=' + kept + '&' : 'debug&');
     };
@@ -253,7 +267,7 @@
       const quests = $('q').checked ? 'done' : null, at = v('at'), floor = $('floor').disabled ? 1 : v('floor'), q = query();
       U.closePanel();
       if (fight()) fight().over = true;
-      D.build(+v('ch'), v('rank'), v('shards'), quests);
+      D.build(+v('ch'), v('rank'), v('shards'), quests, v('rmarks'));
       S.syncChapter();
       try { history.replaceState(null, '', q); } catch (e2) { /* hosted preview */ }
       D.goTo(at, floor);
