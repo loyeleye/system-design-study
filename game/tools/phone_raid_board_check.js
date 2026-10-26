@@ -3,7 +3,9 @@
 //   - the hall, Quest Board, Form a party and party room controls are at least 44px each way;
 //   - the party room scrolls fully clear of its sticky Start bar;
 //   - the raid is drawn on a cream card, so its title, story line and turn line read (contrast 4.5:1 or more);
-//   - "Leave the expedition" asks first, in place, and sits clear of the hand; Stay keeps you in, Yes leaves;
+//   - the raid's HUD and "Leave the expedition" stay stuck to the top as you scroll, folded to one compact row;
+//     a tap on the SLA or on the pull tab under it opens the chips row, another folds it;
+//   - Leave asks first, in place, and sits clear of the hand; Stay keeps you in, Yes leaves;
 //   - the board's parts tray is a strip stuck to the bottom of the window with 44px chips, the grid and the tray
 //     are on screen together, and placing or connecting a part keeps the board where it was;
 //   - on a 1280x800 desktop the tray is still an ordinary block under the board.
@@ -110,13 +112,43 @@ const server = http.createServer((req, res) => {
   check(await contrast(page, '.rd .hud-sla span') >= 4.5, `"Team SLA" reads (${(await contrast(page, '.rd .hud-sla span')).toFixed(1)}:1)`);
   s = await small(page, ['.rd button.hud-chip', '#rd-leave']);
   check(!s.length, `the raid's HUD buttons and Leave are 44px or more (${s.join(', ') || 'all'})`);
+  // The HUD and Leave stay stuck to the top of the window as the map scrolls, in one compact row.
+  const stuck = await page.evaluate(() => {
+    const w = document.querySelector('#panel .win-b'); w.scrollTop = w.scrollHeight;
+    const top = w.getBoundingClientRect().top, h = document.querySelector('.rd .run-hud').getBoundingClientRect(), l = document.querySelector('#rd-leave').getBoundingClientRect();
+    return { off: Math.round(h.top - top), h: Math.round(h.height), lv: l.top >= top && l.bottom <= h.bottom };
+  });
+  check(Math.abs(stuck.off) <= 4 && stuck.lv, `the HUD and Leave stay at the top of the window, scrolled to the end (${stuck.off}px)`);
+  check(stuck.h <= 64, `folded, the stuck HUD is one compact row on a phone (${stuck.h}px)`);
+  // Folded it's the SLA and Leave; a tap on the SLA opens the chips row, another folds it again.
+  const shown = () => page.evaluate(() => ({ chips: !!document.querySelector('.rd .rd-hchips').offsetParent, ex: document.querySelector('#rd-hudt').getAttribute('aria-expanded') }));
+  // Past the floor's title card and its lines, so the tap reaches the HUD.
+  for (let i = 0; i < 20 && await page.evaluate(() => !!document.querySelector('.gatefx') || !document.querySelector('#dialog').hidden); i++) { await clearDlg(page); await page.waitForTimeout(300); }
+  let f = await shown();
+  check(!f.chips && f.ex === 'false', 'folded, the chips are hidden');
+  await touch(page, '#rd-hudt'); await page.waitForTimeout(200); f = await shown();
+  const tall = await page.evaluate(() => Math.round(document.querySelector('.rd .run-hud').getBoundingClientRect().height));
+  check(f.chips && f.ex === 'true', `a tap on the SLA opens the chips row (${tall}px)`);
+  s = await small(page, ['.rd button.hud-chip', '#rd-hudt', '#rd-leave']);
+  check(!s.length, `open, the HUD's buttons are 44px or more (${s.join(', ') || 'all'})`);
+  await touch(page, '#rd-hudt'); await page.waitForTimeout(200); f = await shown();
+  check(!f.chips && f.ex === 'false', 'another tap folds it again');
+  await touch(page, '#rd-hudtab'); await page.waitForTimeout(200); f = await shown();
+  check(f.chips, 'the pull tab under the bar opens it too');
+  await touch(page, '#rd-hudtab'); await page.waitForTimeout(200); f = await shown();
+  check(!f.chips, 'and folds it');
   await page.evaluate(() => document.querySelector('#panel .node.can').click());
   await page.waitForSelector('.rd .hand .card', { timeout: 15000 });
   await page.waitForTimeout(800); await clearDlg(page);
   check(await contrast(page, '.rd .hand-top .muted') >= 4.5, `the turn line reads (${(await contrast(page, '.rd .hand-top .muted')).toFixed(1)}:1)`);
-  const gap = await page.evaluate(() => Math.round(document.querySelector('#rd-leave').getBoundingClientRect().top - document.querySelector('.rd .hand').getBoundingClientRect().bottom));
-  check(gap >= 40, `Leave sits clear of the hand (${gap}px)`);
-  await page.locator('#rd-leave').scrollIntoViewIfNeeded(); await touch(page, '#rd-leave'); await page.waitForTimeout(300);
+  // In a fight Leave is up in the stuck HUD, the hand stuck at the bottom: both on screen, well apart, at any scroll.
+  const gap = await page.evaluate(() => {
+    const w = document.querySelector('#panel .win-b'); w.scrollTop = 200;
+    const l = document.querySelector('#rd-leave').getBoundingClientRect(), z = document.querySelector('.rd .hand-zone').getBoundingClientRect(), wr = w.getBoundingClientRect();
+    return l.top >= wr.top && z.bottom <= wr.bottom + 1 ? Math.round(z.top - l.bottom) : -1;
+  });
+  check(gap >= 40, `Leave is stuck at the top, clear of the hand at the bottom (${gap}px)`);
+  await touch(page, '#rd-leave'); await page.waitForTimeout(300);
   check(await page.evaluate(() => !!document.querySelector('.rd .hand') && !!document.querySelector('#rd-leave-y') && !!document.querySelector('#rd-stay') && !document.querySelector('#rd-leave')),
     'Leave asks first, in place: Yes / Stay, still in the fight');
   s = await small(page, ['#rd-leave-y', '#rd-stay']);
