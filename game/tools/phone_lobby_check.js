@@ -39,6 +39,16 @@ const server = http.createServer((req, res) => {
       await page.evaluate(() => document.querySelector('#dialog').click()); await page.waitForTimeout(150);
     }
   };
+  // Visible controls under 44px either way, among these selectors.
+  const small = (page, sels) => page.evaluate(sels => {
+    const out = [];
+    for (const q of sels) for (const el of document.querySelectorAll(q)) {
+      if (!el.offsetParent || getComputedStyle(el).visibility === 'hidden') continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 43.5 || r.height < 43.5) out.push(`${q} ${Math.round(r.width)}x${Math.round(r.height)}`);
+    }
+    return out;
+  }, sels);
   // What runs off the right edge, and how far the window scrolls sideways.
   const over = page => page.evaluate(() => {
     const W = document.documentElement.clientWidth, sc = document.querySelector('#panel .win-b') || document.scrollingElement, out = [];
@@ -122,12 +132,22 @@ const server = http.createServer((req, res) => {
     await a.waitForSelector('#gh-make'); await a.tap('#gh-make'); await a.waitForSelector('#pt-bot');
     await a.tap('#pt-bot'); await a.waitForTimeout(300); await a.tap('#pt-bot'); await a.waitForTimeout(400);
     const g = await a.evaluate(() => {
-      const sc = document.querySelector('#panel .win-b'), ms = [...document.querySelectorAll('.pt-mem')].map(e => Math.round(e.getBoundingClientRect().top));
+      const sc = document.querySelector('#panel .win-b'), ms = [...document.querySelectorAll('.pt-mem')].map(e => e.offsetTop);
       return { h: sc.scrollHeight, view: innerHeight, rows: new Set(ms).size, seats: ms.length, pick: document.querySelector('#pt-lbl').open, cards: document.querySelector('#pt-cards').open, shut: document.querySelectorAll('.pt-region.shut').length };
     });
     check(g.seats === 4 && g.rows === 1, `the seats are one row you swipe (${g.seats} seats, ${g.rows} row${g.rows === 1 ? '' : 's'})`);
     check(!g.pick && !g.cards, 'the champion picker and signature cards start folded on a phone');
     check(g.h <= 2 * g.view, `the raid's party room is under two screens (${g.h}px for a ${g.view}px phone)`);
+    // A carousel: a dot for each seat, the arrows step one seat at a time, and the seat in the middle is the bright one.
+    const car = () => a.evaluate(() => ({ dots: document.querySelectorAll('.pt-dots i').length, on: [...document.querySelectorAll('.pt-dots i')].findIndex(e => e.classList.contains('on')), mid: [...document.querySelectorAll('.pt-mem')].findIndex(e => e.classList.contains('mid')), prev: document.querySelector('.pt-arw.prev').disabled, next: document.querySelector('.pt-arw.next').disabled }));
+    await a.evaluate(() => { document.querySelector('.pt-members').scrollLeft = 0; }); await a.waitForTimeout(300);
+    let c0 = await car();
+    check(c0.dots === 4 && c0.on === 0 && c0.mid === 0 && c0.prev && !c0.next, `the seats are a carousel: 4 dots, the first seat in the middle, only › to go (${JSON.stringify(c0)})`);
+    await a.tap('.pt-arw.next'); await a.waitForTimeout(700);
+    c0 = await car();
+    check(c0.on === 1 && c0.mid === 1 && !c0.prev, `› steps to the next seat (${JSON.stringify(c0)})`);
+    const s = await small(a, ['.pt-arw']);
+    check(!s.length, `the carousel's arrows are 44px or more (${s.join(', ') || 'all'})`);
     await a.evaluate(() => { document.querySelector('.pt-members').scrollLeft = 120; });
     await a.tap('#pt-lbl > summary'); await a.waitForTimeout(200);
     // Going Private and back redraws the room.

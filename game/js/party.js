@@ -122,6 +122,8 @@
 /* The seats' heading, with the Compact switch: names only, no portraits and no name box. */
 .pt-mh { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: -6px; }
 .pt-mh b { font: 700 13px var(--f-body, system-ui); } .pt-mh small { font-weight: 600; color: var(--mi-muted); margin-left: 4px; }
+.pt-slide { position: relative; min-width: 0; }
+.pt-arw, .pt-dots { display: none; }
 .pt-members.compact .pt-stage { display: none; }
 .pt-members.compact .pt-mem { padding-top: 30px; gap: 3px; }
 /* The champion picker and the signature cards fold (shut on a phone until opened). */
@@ -163,8 +165,22 @@
 @media (max-width: 600px) {
   .pt-long { display: none; } .pt-short { display: inline; }
   .pt-top { gap: 6px; } .pt-share { gap: 6px; }
-  .pt-members { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; contain: inline-size; gap: 10px; padding-bottom: 4px; }
-  .pt-members > .pt-mem { flex: 0 0 min(150px, 46%); scroll-snap-align: start; }
+  /* The seats are a carousel: the one in the middle bright, its neighbours peeking in dimmed on each side, arrows
+     to step through and a dot for each seat. */
+  .pt-members { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; contain: inline-size; gap: 10px; padding: 4px 19% 6px; scrollbar-width: none; }
+  .pt-members::-webkit-scrollbar { display: none; }
+  .pt-members > .pt-mem { flex: 0 0 100%; scroll-snap-align: center; opacity: .5; transition: opacity .2s; }
+  .pt-members > .pt-mem.mid { opacity: 1; }
+  .pt-arw { display: grid; place-items: center; position: absolute; top: 50%; z-index: 2; width: 44px; height: 44px; margin-top: -22px; border-radius: 50%; border: 2.5px solid var(--mi-ink); background: var(--mi-sun); color: var(--mi-ink); box-shadow: 0 3px 0 var(--mi-ink); cursor: pointer; padding: 0; }
+  .pt-arw svg { width: 20px; height: 20px; }
+  .pt-arw.prev { left: -6px; } .pt-arw.next { right: -6px; }
+  .pt-slide .pt-arw:disabled { visibility: hidden; }
+  .pt-dots { display: flex; justify-content: center; gap: 6px; margin-top: -6px; }
+  .pt-dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(43,35,64,.25); transition: width .2s, background .2s; }
+  .pt-dots i.on { width: 20px; border-radius: 4px; background: var(--mi-ink); }
+  @media (prefers-reduced-motion: reduce) { .pt-members > .pt-mem, .pt-dots i { transition: none; } }
+  /* The champion strips and tabs fade at an edge with more beyond it. */
+  .pt-rrow, .pt-rtabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
   /* The clip is at the padding's edge, so the top and bottom space is border instead, where a fourth line can't show. */
   .pt-note:not(.open) { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; padding-block: 0; border-block: 6px solid var(--mi-paper); }
   /* The champions, one region at a time: a row of region tabs over one strip you swipe. Locked champions, and the
@@ -393,7 +409,8 @@
           ${ctx.settings || vis ? `<div class="pt-set">${ctx.settings || ''}${vis}</div>` : ''}</div>
         ${ctx.note ? `<div class="pt-notew"><p class="pt-note${noteOpen ? ' open' : ''}" id="pt-note">${ctx.note}</p><button class="pt-more" type="button" id="pt-more" aria-controls="pt-note" aria-expanded="${noteOpen}" hidden>${noteOpen ? 'Less' : 'More'}</button></div>` : ''}
         <div class="pt-mh"><b>Party <small>${list.length} of ${max}</small></b><button class="pt-fold" type="button" id="pt-compact" aria-pressed="${compact}" title="${compact ? 'Show portraits and your name box' : 'Names only: no portraits, no name box'}">${compact ? 'Expand' : 'Compact'}</button></div>
-        <div class="pt-members${compact ? ' compact' : ''}">${seats.join('')}</div>
+        <div class="pt-slide"><button type="button" class="pt-arw prev" data-arw="-1" aria-label="Previous seat"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="pt-members${compact ? ' compact' : ''}">${seats.join('')}</div><button type="button" class="pt-arw next" data-arw="1" aria-label="Next seat"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+        <div class="pt-dots" aria-hidden="true">${seats.map(() => '<i></i>').join('')}</div>
         <details class="pt-lbl pt-pick" id="pt-lbl"${pickOpen ? ' open' : ''}><summary>${ed ? `<span class="pt-for" aria-live="polite">Choosing for ${esc(ed.nick)}</span>` : `<span aria-live="polite">Your champion${CH.get(champ) ? `: <b>${esc(CH.get(champ).name)}</b>` : ''}</span>`}<span class="pt-chgl" aria-hidden="true">${pickOpen ? 'Close' : 'Change'}</span></summary><div class="pt-sheet" role="dialog" aria-label="${ed ? `Pick a champion for ${esc(ed.nick)}` : 'Pick your champion'}"><div class="pt-sheet-h"><b>${ed ? `Choosing for ${esc(ed.nick)}` : 'Pick your champion'}</b><button type="button" class="pt-mini" id="pt-pickx">Close</button></div>${ed ? `<span class="pt-for"><button class="mi-btn sm pt-chg" type="button" id="pt-done">Done</button></span><small>Tap a champion for ${esc(ed.nick)}, or Done to keep this one.</small>` : `<div class="pt-pickbar"><button type="button" class="pt-mini" id="pt-whyb" aria-controls="pt-why" aria-expanded="${whyOpen}">ⓘ How picking works</button>${lockedN ? `<button type="button" class="pt-mini" id="pt-lockb" aria-pressed="${lockedOpen}">${lockedOpen ? 'Hide' : 'Show'} ${lockedN} locked</button>` : ''}</div><small class="pt-why${whyOpen ? ' on' : ''}" id="pt-why">${ctx.deck ? 'Each brings three signature cards to the raid. ' : ''}Two players can't pick the same one; a bot moves aside for you. Reach more of them in the game to unlock them.</small>`}<div class="pt-roster${showLock ? ' show-lock' : ''}">${rtabs}${regions}</div>${hireCard}</div><button type="button" class="pt-scrim" id="pt-scrim" tabindex="-1" aria-label="Close"></button></details>
         ${wd}
         ${sig ? `<details class="pt-cards" id="pt-cards"${cardsShown ? ' open' : ''}><summary>${esc(ed ? ed.nick + ': ' : '')}${esc(CH.get(pick).name)}'s signature cards <small>three, in the raid</small></summary>${sig}</details>` : ''}
@@ -409,6 +426,18 @@
         if (big && SD.wear && el.dataset.wear) SD.wear.dressStage(el, el.dataset.wear.split(' '), id);
       });
       root.querySelectorAll('.pt-members, .pt-rtabs, .pt-rrow').forEach((e, i) => { if (swiped[i]) e.scrollLeft = swiped[i]; });
+      // The seats' carousel: which seat is in the middle sets the dots, the arrows and who's full size.
+      const strip = root.querySelector('.pt-members'), mems = strip ? [...strip.children] : [];
+      const dots = [...root.querySelectorAll('.pt-dots i')], arws = [...root.querySelectorAll('[data-arw]')];
+      const mid = () => { const r = strip.getBoundingClientRect(), c = r.left + r.width / 2; let k = 0, d = Infinity; mems.forEach((m, i) => { const b = m.getBoundingClientRect(), x = Math.abs(b.left + b.width / 2 - c); if (x < d) { d = x; k = i; } }); return k; };
+      let raf = 0;
+      const spin = () => { raf = 0; const k = mid(); mems.forEach((m, i) => m.classList.toggle('mid', i === k)); dots.forEach((t, i) => t.classList.toggle('on', i === k)); arws.forEach(b => { b.disabled = +b.dataset.arw < 0 ? k === 0 : k === mems.length - 1; }); };
+      if (strip && mems.length) {
+        strip.onscroll = () => { if (!raf) raf = requestAnimationFrame(spin); };
+        arws.forEach(b => b.onclick = () => { const k = Math.max(0, Math.min(mems.length - 1, mid() + +b.dataset.arw)), m = mems[k];
+          strip.scrollTo({ left: m.offsetLeft - (strip.clientWidth - m.offsetWidth) / 2, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
+        spin();
+      }
       if (focusNick) { const i = root.querySelector('#pt-nick'); if (i) { i.focus(); i.value = draft; } }
       else if (keep) { const k = root.querySelector(keep); if (k) k.focus(); }
       const nick = root.querySelector('#pt-nick');
@@ -446,7 +475,10 @@
       const hc = root.querySelector('#pt-hire');
       if (hc) SD.raidShop.wire(hc, redraw, id => { hiring = null; if (phone()) picking = false; if (ed) { editing = null; ctx.botChamp(ed.peer, id); } else { pickC(id); CH.setMine(id); } if (opts.onChange) opts.onChange(); else redraw(); });
       const pk = root.querySelector('#pt-lbl');
-      if (pk) pk.ontoggle = () => { if (ed) return; picking = pk.open; const l = pk.querySelector('.pt-chgl'); if (l) l.textContent = pk.open ? 'Close' : 'Change'; };
+      // The tab of the region showing is brought into view when the picker opens.
+      const tabIn = () => { const tb = root.querySelector('.pt-rtabs'), t = tb && tb.querySelector('[aria-selected="true"]'); if (t && t.offsetWidth) tb.scrollLeft = t.offsetLeft - tb.offsetLeft - (tb.clientWidth - t.offsetWidth) / 2; };
+      if (pk && pk.open && !swiped[1]) tabIn();
+      if (pk) pk.ontoggle = () => { if (pk.open) tabIn(); if (ed) return; picking = pk.open; const l = pk.querySelector('.pt-chgl'); if (l) l.textContent = pk.open ? 'Close' : 'Change'; };
       // On a phone: the how-it-works line and the locked champions, each behind a small button.
       const wb = root.querySelector('#pt-whyb');
       if (wb) wb.onclick = () => { whyOpen = !whyOpen; wb.setAttribute('aria-expanded', whyOpen); root.querySelector('#pt-why').classList.toggle('on', whyOpen); };
