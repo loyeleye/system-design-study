@@ -3,7 +3,10 @@
 //   - the Guild Hall, Quest Board, Form a party and party room of every mode (Pair Mock, Whiteboard Showdown, Expedition
 //     Raid), with the raid's picker showing the longest expedition name a save can unlock;
 //   - the party room as the second player joins it, from the Guild Hall page (guild-hall.html);
-//   - at 320px, the raid's map, fight and end, and a Pair Mock and a Showdown round on both players' screens.
+//   - at 320px, the raid's map, fight and end, and a Pair Mock and a Showdown round on both players' screens;
+//   - at 390px, the raid's party room is short: the seats are one row you swipe (kept through a redraw), Compact drops
+//     the portraits and the name box, and the champion picker and signature cards are folded until opened, with a
+//     region nobody has unlocked as one line; on a 1280x800 desktop they start open.
 // "Runs off" is an element whose right edge is past the window, unless a strip that scrolls sideways (inside the
 // window) clips it; the window's own scroller doesn't count. The floor's title card is a moment's full-screen flourish.
 //
@@ -103,6 +106,50 @@ const server = http.createServer((req, res) => {
       await fits(a, '320px raid: the end card');
     }
     await ctx.close();
+  }
+
+  // ---------- A short party room ----------
+  {
+    const ctx = await browser.newContext({ ...devices['iPhone 13'] });
+    const a = await ctx.newPage(); a.on('pageerror', e => errors.push(e.message));
+    await a.goto(base + 'index.html?debug&ch=4');
+    await a.waitForFunction(() => window.SD && SD.main && SD.state.save && SD.guild); await a.waitForTimeout(800); await clearDlg(a);
+    await a.evaluate(() => { SD.ui.closePanel(); SD.guild.play(); });
+    await a.waitForSelector('.gh-card[data-card=raid]'); await a.tap('.gh-card[data-card=raid]'); await a.waitForTimeout(300);
+    await a.tap('.gh-card.open .mi-btn.go'); await a.waitForSelector('.gh-bhead .mi-btn.gold'); await a.tap('.gh-bhead .mi-btn.gold');
+    await a.waitForSelector('#gh-make'); await a.tap('#gh-make'); await a.waitForSelector('#pt-bot');
+    await a.tap('#pt-bot'); await a.waitForTimeout(300); await a.tap('#pt-bot'); await a.waitForTimeout(400);
+    const g = await a.evaluate(() => {
+      const sc = document.querySelector('#panel .win-b'), ms = [...document.querySelectorAll('.pt-mem')].map(e => Math.round(e.getBoundingClientRect().top));
+      return { h: sc.scrollHeight, view: innerHeight, rows: new Set(ms).size, seats: ms.length, pick: document.querySelector('#pt-lbl').open, cards: document.querySelector('#pt-cards').open, shut: document.querySelectorAll('.pt-region.shut').length };
+    });
+    check(g.seats === 4 && g.rows === 1, `the seats are one row you swipe (${g.seats} seats, ${g.rows} row${g.rows === 1 ? '' : 's'})`);
+    check(!g.pick && !g.cards, 'the champion picker and signature cards start folded on a phone');
+    check(g.h <= 2 * g.view, `the raid's party room is under two screens (${g.h}px for a ${g.view}px phone)`);
+    await a.evaluate(() => { document.querySelector('.pt-members').scrollLeft = 120; });
+    await a.tap('#pt-lbl > summary'); await a.waitForTimeout(200);
+    // Going Private and back redraws the room.
+    await a.evaluate(() => document.querySelector('[data-vis=""]').click()); await a.waitForTimeout(300);
+    await a.evaluate(() => document.querySelector('[data-vis="1"]').click()); await a.waitForTimeout(300);
+    check(await a.evaluate(() => document.querySelector('.pt-members').scrollLeft) >= 100, 'a redraw keeps the seats where you swiped them');
+    const pk = await a.evaluate(() => ({ open: document.querySelector('#pt-lbl').open, h: Math.round(document.querySelector('#pt-lbl').getBoundingClientRect().height), shutRow: [...document.querySelectorAll('.pt-region.shut .pt-rrow')].every(e => !e.getClientRects().length) }));
+    check(pk.open && pk.h <= 700, `Change opens the picker, and it stays open through a redraw (${pk.h}px tall)`);
+    check(g.shut === 0 || pk.shutRow, 'a region nobody has unlocked is one line');
+    await a.tap('#pt-compact'); await a.waitForTimeout(300);
+    check(await a.evaluate(() => !document.querySelector('#pt-nick') && [...document.querySelectorAll('.pt-mem .pt-stage')].every(e => !e.getClientRects().length)), 'Compact shows names only: no portraits, no name box');
+    await a.tap('#pt-compact'); await a.waitForTimeout(300);
+    check(await a.evaluate(() => !!document.querySelector('#pt-nick')), 'Expand brings them back');
+    await ctx.close();
+    const d = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const p = await d.newPage(); p.on('pageerror', e => errors.push(e.message));
+    await p.goto(base + 'index.html?debug&ch=4');
+    await p.waitForFunction(() => window.SD && SD.main && SD.state.save && SD.guild); await p.waitForTimeout(800); await clearDlg(p);
+    await p.evaluate(() => { SD.ui.closePanel(); SD.guild.play(); });
+    await p.waitForSelector('.gh-card[data-card=raid]'); await p.click('.gh-card[data-card=raid]'); await p.waitForTimeout(300);
+    await p.click('.gh-card.open .mi-btn.go'); await p.waitForSelector('.gh-bhead .mi-btn.gold'); await p.click('.gh-bhead .mi-btn.gold');
+    await p.waitForSelector('#gh-make'); await p.click('#gh-make'); await p.waitForSelector('#pt-lbl');
+    check(await p.evaluate(() => document.querySelector('#pt-lbl').open && document.querySelector('#pt-cards').open), 'on desktop the picker and signature cards start open');
+    await d.close();
   }
 
   check(!errors.length, `no page errors${errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''}`);
