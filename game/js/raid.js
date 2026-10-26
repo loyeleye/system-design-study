@@ -37,7 +37,8 @@
 // is ready. In a fight each player stands on the left as their champion, facing the foe.
 // The leader's page saves the expedition after every room (localStorage, by party code). Forming a party from a save
 // resumes it under the same code: returning players get their seats and decks back, matched by name or by tapping
-// their seat. Nobody new joins mid-expedition; they can watch.
+// their seat. Once it's under way (or resuming), a player who leaves becomes a bot playing their champion, and anyone
+// who joins takes a bot's place; with no bot there, someone new watches (or, resuming, is turned away).
 // The leader can fill seats with bots (below, "Bots"), which the host's page plays, so one person can raid alone.
 //   SD.raid.play(root, hub, code, { create, settings: { xp, resume }, status, vis, bind })
 //     -> Promise of how the player left: undefined, 'full', 'kicked' or 'resumed' (new to a resumed expedition with
@@ -50,8 +51,8 @@
 //   SD.raid.cardChoices(n, ch, champ, tier, rarity) -> this player's card reward (as js/run.js cardChoices)
 (function () {
   const RD = SD.raid = {};
-  // How often a bot answers right (the balance tools set it).
-  RD.botAcc = 0.7;
+  // How often a bot answers right (the balance tools set it): half the time (Ladi, 2026-10-26; was 70%).
+  RD.botAcc = 0.5;
   // Every raid enemy's load, on top of its own tuning: the knob the debrief's heal is balanced against (Ladi, Oct 23).
   // ×1.1 is the sequel's measured setting for the same engine (Isekai'd Into the Cloud, chapter 4 clean clears at 0% /
   // 70% / 100% right: 65/80/88 before the debrief, 47/81/84 with it at ×1.1). Not yet re-measured on this game's
@@ -1555,7 +1556,14 @@
     // Kyu can't fight her own raid boss (js/champions.js bossConflict).
     const kyuBoss = () => (X() && floorsOf(X()).some(f => f.boss === 'kyuburnout') ? 'kyuburnout' : null);
     // For the Guild Hall's Quest Board (js/guild.js): open while the table is in its party room (a resumed one isn't).
-    if (o.status) o.status(() => ({ players: Math.max(1, players().length + botKeys().length), max: MAX_PLAYERS, open: G.ph === 'lobby' && !G.rs, lead: hosting, champ: party && party.champ(), info: X() ? X().name + (G.rs ? ` · floor ${G.fl + 1}` : '') : '' }));
+    // Under way (or resuming) it's listed while a bot holds a seat: someone joining takes a bot's place, so its seats
+    // are the players' and the bots' (Ladi, 2026-10-26).
+    const joinable = () => G.ph !== 'done' && G.ph !== 'over' && botKeys().length > 0;
+    if (o.status) o.status(() => {
+      const fresh = G.ph === 'lobby' && !G.rs, on = !fresh && joinable();
+      return { players: Math.max(1, players().length + (on ? 0 : botKeys().length)), max: on ? players().length + botKeys().length : MAX_PLAYERS, open: fresh || on, lead: hosting, champ: party && party.champ(),
+        info: X() ? X().name + (fresh ? '' : ` · floor ${G.fl + 1}`) : '' };
+    });
     const unsub = [];
 
     // ---------- Host ----------
@@ -1795,6 +1803,7 @@
       if (d.k === 'bot') { if (peer === G.host && addBot()) push(); return; }
       if (d.k === 'botc') { if (peer === G.host && botChamp(d.b, d.c)) push(); return; }
       if (!p) return;
+      if (d.k === 'swap') { if (swapSeats(peer, d.w)) { push(); check(); } return; }
       if (d.k === 'play' && Number.isInteger(d.i) && d.i >= 0 && d.i < 10) { if (play(G, peer, d.i, d.t, d.w, d.q)) { settle(); push(); check(); } return; }
       // An answer to a rare's question: [right, band, sure, rubric points, late] from the answering player's own page.
       if (d.k === 'qa' && G.ph === 'fight') {
@@ -1901,7 +1910,7 @@
     // always Ready. Only the host's page runs them: a few times a second it asks each bot for its next move (botMove)
     // and, after a pause of 0.6 to 1.5 s (for a question, the time its speed band takes), feeds it through act() with
     // the bot's key, so every rule and check a human's move meets applies. A host who takes over runs them from the
-    // state. Bots answer right 70% of the time, 25% fast, 50% steady and 25% slow, as the balance assumes.
+    // state. Bots answer right half the time (RD.botAcc); their speed is 25% fast, 50% steady and 25% slow, as the balance assumes.
     const botDeck = c => (SD.champions && c ? SD.champions.deck(c, (SD.starterDeck || []).slice()) : (SD.starterDeck || []).slice()).filter(id => card(id));
     function addBot() {
       if (G.ph !== 'lobby' || G.rs || all().length >= MAX_PLAYERS) return false;
@@ -2075,6 +2084,24 @@
       if (G.players[peer] || typeof seat !== 'string' || !free().includes(seat)) return;
       rekey(seat, peer); push(); check();
     }
+    // Resuming, two seats trade champions (Ladi, 2026-10-26): someone back in the wrong seat, or who wants another
+    // champion, swaps with whoever has it. A bot's swaps at once; a player's once they accept the ask (asks: asker ->
+    // { to: whose seat they asked for, at }, kept on every page from the room's swapask messages). Each seat's champion,
+    // deck, bits and hand move; the people (name, bot or not, Ready) stay put. An ask nobody answers lapses in SWAP_WAIT.
+    const asks = {}, SWAP_WAIT = 20000;
+    function swapSeats(peer, w) {
+      const h = here();
+      if (G.ph !== 'lobby' || !G.rs || typeof w !== 'string' || w === peer || !G.players[peer] || !G.players[w] || !h.has(peer) || !h.has(w)) return false;
+      if (!isBot(w) && !(asks[w] && asks[w].to === peer)) return false;
+      const who = k => ({ n: G.players[k].n, bot: !!G.players[k].bot, ready: G.players[k].ready }), A = who(peer), B = who(w);
+      rekey(peer, '~sw'); rekey(w, peer); rekey('~sw', w);
+      Object.assign(G.players[peer], A); Object.assign(G.players[w], B);
+      delete asks[w]; delete asks[peer];
+      return true;
+    }
+    const lapse = (k, a) => setTimeout(() => { if (asks[k] === a) { if (k === me.peer) setAsk(null); else if (a.to === me.peer) clearAsk(k); else { delete asks[k]; render(); } } }, SWAP_WAIT + 500);
+    const setAsk = to => { if (to) lapse(me.peer, asks[me.peer] = { to, at: Date.now() }); else delete asks[me.peer]; room.emit('swapask', { to: to || null }); render(); };
+    const clearAsk = from => { delete asks[from]; room.emit('swapclr', { from }); render(); };
     const newSeat = (n, c, deck) => ({ n, c, deck, bits: BITS, draw: [], disc: [], hand: [], cap: 3, ready: false, played: [], o: [], sold: [], st: myStatus(), peek: [], take: 0, ab: 0, hd: {} });
     // In the party room a new hello (another champion, a new name) replaces the deck. Once the expedition exists, a
     // hello only finds a returning player's seat, by name; nobody new joins.
@@ -2092,17 +2119,19 @@
       if (cur || !n) return;
       const seat = free().find(k => G.players[k].n.toLowerCase() === n.toLowerCase());
       if (seat) { rekey(seat, peer); return; }
-      // Resuming, someone new takes a bot's place (the one playing their old seat, if a bot took it over), with its
-      // champion and deck (Ladi, 2026-10-26). With no bot left, there's no seat for them.
-      if (G.ph !== 'lobby' || !G.rs) return;
+      // Resuming, or once the expedition is under way, someone joining takes a bot's place (the one playing their old
+      // seat, if a bot took it over), with its champion, deck, hand and bits (Ladi, 2026-10-26). With no bot, there's no
+      // seat for them: in a resumed party room they're turned away, mid-expedition they can watch.
+      if (G.ph === 'done' || G.ph === 'over') return;
       const bk = botKeys(), b = bk.find(k => G.players[k].n.toLowerCase() === n.toLowerCase()) || bk[0];
-      if (b) { rekey(b, peer); Object.assign(G.players[peer], { n, bot: false, ready: false }); }
+      if (b) { rekey(b, peer); Object.assign(G.players[peer], { n, bot: false }, G.ph === 'lobby' ? { ready: false } : {}); }
     }
-    // Resuming, a player who leaves the party room (or isn't back a few seconds after it opens) is replaced by a bot
-    // playing their champion, under their name, so the seat is never empty (Ladi, 2026-10-26).
+    // A player who leaves mid-expedition, or a resumed party room (or isn't back a few seconds after it opens), is
+    // replaced by a bot playing their champion, under their name, so no seat sits empty (Ladi, 2026-10-26). A bot's
+    // place is anyone's who joins (addPlayer), so they can come back.
     const awaySince = {};
     function botFill() {
-      if (!hosting || G.ph !== 'lobby' || !G.rs) return false;
+      if (!hosting || (G.ph === 'lobby' && !G.rs) || G.ph === 'done' || G.ph === 'over') return false;
       const now = Date.now(), gone = free();
       Object.keys(awaySince).forEach(k => { if (!gone.includes(k)) delete awaySince[k]; });
       let changed = false;
@@ -2642,6 +2671,10 @@
         seat: G.rs ? k => (G.players[k] ? { champ: G.players[k].c, look: G.players[k].lk } : null) : null,
         // and its seats are the saved ones: no open seat. One whose player is away waits a moment, then a bot takes it.
         away: G.rs ? () => free().map(k => ({ nick: G.players[k].n, champ: G.players[k].c })) : null,
+        swap: G.rs ? { out: asks[me.peer] ? asks[me.peer].to : null, wait: SWAP_WAIT,
+          in: Object.keys(asks).filter(k => asks[k].to === me.peer).map(k => ({ peer: k, at: asks[k].at })).sort((x, y) => x.at - y.at),
+          ask: k => { if (isBot(k)) send({ k: 'swap', w: k }); else setAsk(k); },
+          accept: k => { send({ k: 'swap', w: k }); delete asks[k]; render(); setTimeout(() => room.emit('swapclr', { from: k }), 1500); }, decline: k => clearAsk(k), cancel: () => setAsk(null) } : null,
         startWhy: () => (!x ? (hosting ? 'No expedition is open in your save yet.' : 'No expedition is open in the leader\'s save yet.') : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
         start,
         bind: rt => {
@@ -2912,6 +2945,8 @@
     // Joining a code nobody hosts: if this browser led that expedition, it picks it up from its save.
     const lone = setTimeout(() => { if (!hosting && !G.host && savedHere()) { load(savedHere()); pres(); hello(); push(); } }, 2500);
 
+    unsub.push(room.on('swapask', msg => { if (msg.isMe) return; const t = (msg.data || {}).to; if (typeof t === 'string') lapse(msg.peer, asks[msg.peer] = { to: t, at: Date.now() }); else delete asks[msg.peer]; render(); }));
+    unsub.push(room.on('swapclr', msg => { if (msg.isMe) return; const f = (msg.data || {}).from; if (typeof f === 'string' && asks[f] && asks[f].to === msg.peer) { delete asks[f]; render(); } }));
     // The leader's Remove: the host takes the player's seat away too, before the expedition starts.
     unsub.push(room.on('kick', msg => { const d = msg.data || {}; if (hosting && msg.peer === me.peer && typeof d.peer === 'string' && G.ph === 'lobby' && !G.rs) { delete G.players[d.peer]; push(); } }));
     // A saved expedition under this code (this browser was its leader): the party room resumes it. Here, once
