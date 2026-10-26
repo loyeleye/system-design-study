@@ -8,7 +8,9 @@
 //     the portraits and the name box, and the champion picker and signature cards are folded until opened; opened,
 //     the picker shows one region at a time under region tabs, with the locked champions and the how-it-works line
 //     behind small buttons; on a
-//     1280x800 desktop they start open.
+//     1280x800 desktop they start open;
+//   - the leader changes a bot's champion from its seat or from the picker's "Picking for" row, on a phone and a
+//     desktop, and Add a bot brings the new bot's seat to the middle.
 // "Runs off" is an element whose right edge is past the window, unless a strip that scrolls sideways (inside the
 // window) clips it; the window's own scroller doesn't count. The floor's title card is a moment's full-screen flourish.
 //
@@ -131,6 +133,7 @@ const server = http.createServer((req, res) => {
     await a.tap('.gh-card.open .mi-btn.go'); await a.waitForSelector('.gh-bhead .mi-btn.gold'); await a.tap('.gh-bhead .mi-btn.gold');
     await a.waitForSelector('#gh-make'); await a.tap('#gh-make'); await a.waitForSelector('#pt-bot');
     await a.tap('#pt-bot'); await a.waitForTimeout(300); await a.tap('#pt-bot'); await a.waitForTimeout(400);
+    check(await a.evaluate(() => { const m = document.querySelector('.pt-mem.mid'); return !!m && /Bot 2/.test(m.textContent) && !!m.querySelector('[data-edit]'); }), 'Add a bot brings the new bot\'s seat, and its Change champion, to the middle');
     const g = await a.evaluate(() => {
       const sc = document.querySelector('#panel .win-b'), ms = [...document.querySelectorAll('.pt-mem')].map(e => e.offsetTop);
       return { h: sc.scrollHeight, view: innerHeight, rows: new Set(ms).size, seats: ms.length, pick: document.querySelector('#pt-lbl').open, cards: document.querySelector('#pt-cards').open, shut: document.querySelectorAll('.pt-region.shut').length };
@@ -183,6 +186,18 @@ const server = http.createServer((req, res) => {
     check(await a.evaluate(() => document.querySelector('#pt-lbl').open && /Choosing for/.test(document.querySelector('.pt-sheet-h').textContent)), 'a bot\'s Change champion opens the sheet for the bot');
     await a.evaluate(() => { const b = [...document.querySelectorAll('.pt-champ')].find(e => e.getClientRects().length && e.getAttribute('aria-disabled') !== 'true' && !e.classList.contains('sel')); b.click(); }); await a.waitForTimeout(400);
     check(await a.evaluate(() => !document.querySelector('#pt-lbl').open), 'picking for the bot shuts it');
+    // The picker's own "Picking for" row: the leader changes any bot's champion without finding its seat.
+    check(await a.evaluate(() => /Bot 1: .+ · Bot 2: /.test(document.querySelector('#pt-lbl > summary').textContent)), 'the folded picker names the bots\' champions too');
+    await a.tap('#pt-lbl > summary'); await a.waitForTimeout(200);
+    check(await a.evaluate(() => [...document.querySelectorAll('.pt-who [data-who]')].filter(e => e.getClientRects().length).map(e => e.textContent).join(',') === 'You,Bot 1,Bot 2'), 'the picker has a "Picking for" row: You, Bot 1, Bot 2');
+    await a.tap('[data-who="~b2"]'); await a.waitForTimeout(300);
+    const b2 = await a.evaluate(() => ({ open: document.querySelector('#pt-lbl').open, h: document.querySelector('.pt-sheet-h').textContent, c: SD.debug.raid.G().players['~b2'].c }));
+    check(b2.open && /Choosing for Bot 2/.test(b2.h), 'tapping Bot 2 there picks for Bot 2, in the same sheet');
+    // A free champion, in whichever region has one: its region's tab first.
+    const nb = await a.evaluate(() => { const b = [...document.querySelectorAll('.pt-champ')].find(e => e.getAttribute('aria-disabled') !== 'true' && !e.classList.contains('sel')); if (!b) return null; const t = document.querySelector(`[data-rtab="${b.closest('.pt-region').dataset.region}"]`); if (t && !b.getClientRects().length) t.click(); return b.dataset.ch; });
+    await a.waitForTimeout(150); await a.tap(`.pt-champ[data-ch="${nb}"]`); await a.waitForTimeout(400);
+    const b2a = await a.evaluate(() => ({ c: SD.debug.raid.G().players['~b2'].c, open: document.querySelector('#pt-lbl').open }));
+    check(b2a.c === nb && nb !== b2.c && !b2a.open, `and a champion tapped there is Bot 2's, and shuts the sheet (${b2.c} → ${nb})`);
     await a.tap('#pt-compact'); await a.waitForTimeout(300);
     check(await a.evaluate(() => !document.querySelector('#pt-nick') && [...document.querySelectorAll('.pt-mem .pt-stage')].every(e => !e.getClientRects().length)), 'Compact shows names only: no portraits, no name box');
     await a.tap('#pt-compact'); await a.waitForTimeout(300);
@@ -197,6 +212,14 @@ const server = http.createServer((req, res) => {
     await p.click('.gh-card.open .mi-btn.go'); await p.waitForSelector('.gh-bhead .mi-btn.gold'); await p.click('.gh-bhead .mi-btn.gold');
     await p.waitForSelector('#gh-make'); await p.click('#gh-make'); await p.waitForSelector('#pt-lbl');
     check(await p.evaluate(() => document.querySelector('#pt-lbl').open && document.querySelector('#pt-cards').open), 'on desktop the picker and signature cards start open');
+    // On a desktop too, the leader picks a bot's champion from the picker's "Picking for" row.
+    await p.click('#pt-bot'); await p.waitForTimeout(300);
+    await p.click('[data-who="~b1"]'); await p.waitForTimeout(300);
+    const was = await p.evaluate(() => SD.debug.raid.G().players['~b1'].c);
+    const to = await p.evaluate(() => { const b = [...document.querySelectorAll('.pt-champ')].find(e => e.getClientRects().length && e.getAttribute('aria-disabled') !== 'true' && !e.classList.contains('sel')); return b ? b.dataset.ch : null; });
+    await p.click(`.pt-champ[data-ch="${to}"]`); await p.waitForTimeout(300);
+    check(await p.evaluate(() => SD.debug.raid.G().players['~b1'].c) === to && to !== was, `on desktop, Picking for Bot 1 changes Bot 1's champion (${was} → ${to})`);
+    check(await p.evaluate(() => document.querySelector('#pt-lbl').open && document.querySelector('[data-who=""]').getAttribute('aria-pressed') === 'true'), 'and the picker goes back to your own champion');
     await d.close();
   }
 
