@@ -11,7 +11,8 @@
 //     hand are on screen together; nothing runs off the right edge;
 //   - Pair Mock's names-and-roles strip reads (contrast 4.5:1 or more) and stays stuck; Whiteboard Showdown's Emote
 //     button is a proper 44px button;
-//   - on a 1280x800 desktop the shop's nav is an ordinary block.
+//   - on a 1280x800 desktop the shop's nav is an ordinary block;
+//   - on both, the Guild Hall's Raid shop button shows your balance in a pill set apart from its label.
 //
 //   node tools/phone_cosmetics_check.js
 //
@@ -86,9 +87,17 @@ const server = http.createServer((req, res) => {
   const win = page => page.evaluate(() => { const r = document.querySelector('#panel .win-b').getBoundingClientRect(); return { top: r.top, bottom: Math.min(r.bottom, innerHeight) }; });
   const rect = (page, sel) => page.evaluate(sel => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, pos: getComputedStyle(e).position }; }, sel);
 
+  // The Guild Hall's wallet button, before the shop has ever opened: its balance is a pill set apart from the label.
+  const wallet = page => page.evaluate(() => {
+    const b = document.querySelector('#rs-wallet'), l = b.querySelector('span'), p = b.querySelector('b');
+    return { gap: Math.round(p.getBoundingClientRect().left - l.getBoundingClientRect().right), bg: getComputedStyle(p).backgroundColor, fits: b.scrollWidth <= b.clientWidth + 1 };
+  });
+  const walletOk = (w, where) => check(w.gap >= 6 && w.bg !== 'rgba(0, 0, 0, 0)' && w.fits, `${where}: the Raid shop button's balance is a pill apart from its label (${w.gap}px, ${w.bg})`);
+
   // ---------- The Raid shop ----------
   let page = await open(phone);
-  await page.waitForSelector('#rs-wallet'); await page.tap('#rs-wallet'); await page.waitForSelector('.rs');
+  await page.waitForSelector('#rs-wallet'); walletOk(await wallet(page), 'phone');
+  await page.tap('#rs-wallet'); await page.waitForSelector('.rs');
   await page.tap('[data-tab="cos"]'); await page.waitForSelector('.rs-jump');
   let s = await small(page, ['.rs-tabs button', '.rs-jump button', '.rs-var', '.rs-sw', '.rs-it .mi-btn']);
   check(!s.length, `the shop's tabs, jump chips, swatches, switches and buttons are 44px or more (${s.slice(0, 4).join(', ') || 'all'})`);
@@ -207,7 +216,8 @@ const server = http.createServer((req, res) => {
 
   // ---------- Desktop ----------
   page = await open({ viewport: { width: 1280, height: 800 } });
-  await page.waitForSelector('#rs-wallet'); await page.click('#rs-wallet'); await page.waitForSelector('.rs');
+  await page.waitForSelector('#rs-wallet'); walletOk(await wallet(page), 'desktop');
+  await page.click('#rs-wallet'); await page.waitForSelector('.rs');
   await page.click('[data-tab="cos"]'); await page.waitForTimeout(200);
   check((await rect(page, '.rs-nav')).pos === 'static', 'on desktop the shop\'s nav is an ordinary block (not sticky)');
   await page.context().close();

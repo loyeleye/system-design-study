@@ -38,8 +38,9 @@
     const st = document.createElement('style');
     st.id = 'rs-css';
     st.textContent = `
-.rs-wallet { display: inline-flex; align-items: center; gap: 8px; }
-.rs-wallet b { font: 800 13px var(--f-body, system-ui); background: var(--mi-sun, #ffe14d); border: 2px solid var(--mi-ink); border-radius: 999px; padding: 0 8px; }
+/* The wallet button: its label, then your balance in a pill of its own (Ladi, 2026-10-26: they ran together). */
+.rs-wallet { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.rs-wallet b { flex: none; display: inline-flex; align-items: center; gap: 3px; font: 800 13px/1.2 var(--f-body, system-ui); font-variant-numeric: tabular-nums; background: var(--mi-sun, #ffe14d); color: var(--mi-ink, #2b2340); border: 2px solid var(--mi-ink, #2b2340); border-radius: 999px; padding: 1px 8px; }
 .rs { display: grid; gap: 14px; }
 .rs-desk { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; background: var(--mi-paper); border: 2.5px solid var(--mi-ink); border-radius: 14px; padding: 10px 12px; }
 .rs-desk .face { width: 84px; height: 84px; border-radius: 12px; overflow: hidden; border: 2.5px solid var(--mi-ink); background: #2b2340; }
@@ -149,7 +150,8 @@
     document.head.appendChild(st);
   }
 
-  RS.wallet = () => (M && M.on() ? `<button class="mi-btn sm rs-wallet" type="button" id="rs-wallet" aria-label="Raid shop: you have ${M.balance()} Raid Marks">Raid shop <b>${M.balance()} ✦</b></button>` : '');
+  // Its styles come with it: the Guild Hall draws the button before the shop has ever opened.
+  RS.wallet = () => (M && M.on() ? (css(), `<button class="mi-btn sm rs-wallet" type="button" id="rs-wallet" aria-label="Raid shop: you have ${M.balance()} Raid Marks"><span>Raid shop</span> <b>${M.balance()}<span aria-hidden="true">✦</span></b></button>`) : '');
 
   // A card's rules, for the champion's card: its text without the joke.
   const rules = id => { const d = SD.cards[id]; if (!d) return ''; const t = SD.party && SD.party.sigText ? SD.party.sigText(d) : { rules: d.text }; return t.rules; };
