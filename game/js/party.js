@@ -110,6 +110,10 @@
 .pt-wd summary { cursor: pointer; font: 700 14px var(--f-body, system-ui); }
 .pt-wd summary small { font-weight: 600; color: var(--mi-muted); margin-left: 4px; }
 .pt-wd[open] summary { margin-bottom: 8px; }
+.wd-pv { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 10px; padding: 6px; background: var(--mi-cream, #fffaf0); border: 2px solid var(--mi-ink); border-radius: 12px; }
+.wd-pv .wd-stage { width: 96px; height: 80px; border-radius: 8px; background: radial-gradient(ellipse 26% 7% at 50% 93%, rgba(43,35,64,.22), transparent), linear-gradient(180deg, #cfeaff, #eef8ff); display: grid; place-items: end center; padding-bottom: 4px; overflow: hidden; position: relative; }
+.wd-pv-n { display: block; font: 600 16px var(--f-head, system-ui); }
+.wd-pv small { display: block; margin-top: 2px; font-size: 12px; color: var(--mi-muted); }
 .pt-note { font-size: 13px; background: var(--mi-paper); border-radius: 10px; padding: 6px 10px; margin: 0; }
 .pt-vis { display: inline-flex; border: 2.5px solid var(--mi-ink); border-radius: 10px; overflow: hidden; }
 .pt-vis button { font: 700 13px var(--f-body, system-ui); padding: 3px 10px; border: 0; background: #fff; color: var(--mi-ink); cursor: pointer; }
@@ -120,6 +124,7 @@
   .pt .mi-btn, .pt-vis button { min-height: 44px; min-width: 44px; }
   .pt-vis button { padding: 3px 14px; }
   .pt-kick { min-height: 44px; min-width: 44px; padding: 0 8px; }
+  .pt-wd summary { display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; min-height: 44px; }
   .pt-rename input, .pt-set select { min-height: 44px; }
 }
 /* Phones: a one-row Start bar, so it hides less of the roster while you scroll; the room ends with room to spare
@@ -129,6 +134,8 @@
   .pt-bar p { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
   .pt-bar .mi-btn { flex: none; white-space: nowrap; }
   .mi-card.pt { padding-bottom: 18px; }
+  .pt-wd { padding: 6px 10px; }
+  .pt-wd .wd-pv { position: sticky; top: calc(-1 * var(--win-pad-t, 0px)); z-index: 2; box-shadow: 0 6px 8px -8px rgba(43,35,64,.5); }
 }
 @media (max-width: 560px) { .pt-sig { padding: 8px 10px; gap: 4px; } .pt-sig p { font-size: 13.5px; } .pt-members { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pt-mem .pt-stage { height: 100px; } .pt-head h2 { font-size: 24px; } }
 `;
@@ -280,7 +287,11 @@
       if (hiring && CH.state(hiring) !== 'hire') hiring = null;
       const hireCard = hiring && SD.raidShop ? `<ul class="pt-hire" id="pt-hire" aria-label="Hire ${esc(CH.get(hiring).name)}">${SD.raidShop.card(hiring)}</ul>` : '';
       const sig = ctx.deck && pick && CH.cards[pick] ? sigCards(pick, ed) : '';
-      const wd = SD.wear && SD.marks && SD.marks.on() ? `<details class="pt-wd" id="pt-wd"${wardrobe ? ' open' : ''}><summary>Wardrobe <small>what your party sees you wear</small></summary>${SD.wear.wardrobe(champ)}</details>` : '';
+      // The Wardrobe opens on a small copy of your seat, so you see each change without scrolling back up to the seats
+      // (on a phone it stays stuck at the top while you scroll the Wardrobe).
+      const myNick = (list.find(m => m.isMe) || {}).nick || me.nick, worn = SD.wear ? SD.wear.worn(champ) : [], myPlate = SD.wear ? SD.wear.plate(worn) : '';
+      const wdPv = `<div class="wd-pv" aria-hidden="true"><div class="pt-stage wd-stage" data-spr="${esc(champ || '')}" data-wear="${esc(worn.join(' '))}"></div><div><span class="wd-pv-n"><span class="${myPlate}">${esc(myNick)}</span></span><small>What your party sees on your seat</small></div></div>`;
+      const wd = SD.wear && SD.marks && SD.marks.on() ? `<details class="pt-wd" id="pt-wd"${wardrobe ? ' open' : ''}><summary>Wardrobe <small>what your party sees you wear</small></summary>${champ ? wdPv : ''}${SD.wear.wardrobe(champ)}</details>` : '';
       const why = ctx.startWhy ? ctx.startWhy() : null;
       const notReady = list.filter(m => m.peer !== leaderPeer && !m.ready).length;
       const bossClash = list.some(m => CH.bossConflict(m.champ, ctx.boss));
@@ -309,8 +320,8 @@
       root.querySelectorAll('[data-spr]').forEach(el => {
         const v = el.dataset.spr; if (!v) return;
         const lock = v.startsWith('lock:'), id = lock ? v.slice(5) : v, c = CH.get(id); if (!c) return;
-        const big = el.classList.contains('pt-stage');
-        el.appendChild(CH.sprite(id, big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h), big || (!lock && id === champ), el.dataset.look || (id === champ ? look : null)));
+        const big = el.classList.contains('pt-stage'), pv = el.classList.contains('wd-stage');
+        el.appendChild(CH.sprite(id, pv ? Math.min(1.6, 66 / c.h) : big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h), big || (!lock && id === champ), el.dataset.look || (id === champ ? look : null)));
         if (big && SD.wear && el.dataset.wear) SD.wear.dressStage(el, el.dataset.wear.split(' '), id);
       });
       if (focusNick) { const i = root.querySelector('#pt-nick'); if (i) { i.focus(); i.value = draft; } }

@@ -48,7 +48,7 @@ body.gh-scene #panel { padding: 0; place-items: stretch; background:
   linear-gradient(#5b3a26, #3b2416); }
 body.gh-scene #panel > .win.gh-win { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; box-shadow: none; background: transparent; animation: none; }
 body.gh-scene #panel > .win.gh-win > .win-h { padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
-body.gh-scene #panel > .win.gh-win > .win-b { width: min(940px, 100%); margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+body.gh-scene #panel > .win.gh-win > .win-b { --win-pad-t: 18px; --win-pad-b: calc(18px + env(safe-area-inset-bottom, 0px)); width: min(940px, 100%); margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 /* A Pair Mock round (js/mock.js, the candidate's seat) draws its clock, timeline and Ploy straight on the page: on the
    hall's dark wood they get the mock page's cream behind them. */
 body.gh-scene .mi:has(> .mi-top) { background: var(--mi-cream); border: 3px solid var(--mi-ink); border-radius: 16px; box-shadow: 0 5px 0 var(--mi-ink); padding: 14px; }

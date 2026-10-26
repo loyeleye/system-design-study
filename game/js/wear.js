@@ -390,8 +390,11 @@ ${spots}
 
 .wd { display: grid; gap: 10px; }
 .wd-slot h4 { margin: 0 0 6px; font: 700 11px var(--f-body, system-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--mi-muted, #6b6480); }
-.wd-items { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.wd-it { display: grid; justify-items: center; gap: 3px; min-width: 84px; padding: 6px; font: 600 12px var(--f-body, system-ui); background: #fff; border: 2px solid var(--mi-ink, #2b2340); border-radius: 10px; cursor: pointer; color: var(--mi-ink, #2b2340); }
+/* Even tiles in a grid, so a row of them lines up whatever their names (Ladi, 2026-10-26: on a phone they wrapped
+   into ragged rows). A long name wraps onto a second line inside its tile. */
+.wd-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; align-items: stretch; }
+.wd-it { display: grid; justify-items: center; align-content: start; gap: 3px; min-width: 0; min-height: 44px; padding: 6px 4px; font: 600 12px/1.2 var(--f-body, system-ui); text-align: center; background: #fff; border: 2px solid var(--mi-ink, #2b2340); border-radius: 10px; cursor: pointer; color: var(--mi-ink, #2b2340); }
+.wd-items .wd-empty { grid-column: 1 / -1; }
 .wd-it[aria-pressed="true"] { background: var(--mi-sun, #ffe14d); box-shadow: 0 2px 0 var(--mi-ink, #2b2340); }
 .wd-sw { position: relative; display: grid; place-items: center; width: 44px; height: 30px; border-radius: 6px; border: 2px solid var(--mi-ink, #2b2340); overflow: hidden; background: #eef8ff; font-size: 11px; }
 .wd-sw.wd-pl { width: 60px; background: #fff; }

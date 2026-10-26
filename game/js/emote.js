@@ -79,9 +79,17 @@
 .emo-bub svg { width: 32px; height: 32px; display: block; }
 @keyframes emo-pop { 0% { transform: translateY(8px) scale(.4); opacity: 0; } 10% { transform: translateY(-2px) scale(1.1); opacity: 1; } 18% { transform: none; } 82% { transform: translateY(-6px); opacity: 1; } 100% { transform: translateY(-12px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .emo-bub { animation: emo-fade 2.4s linear forwards; } @keyframes emo-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } } }
+.emo-bub.emo-up::after { bottom: auto; top: -8px; border-top: 0; border-bottom: 7px solid ${INK}; }
 .emo-btn svg { width: 18px; height: 18px; vertical-align: -4px; }
+/* Its own look, so it's a proper button wherever it sits: the party room's bar, a raid's HUD, Pair Mock's strip,
+   Showdown's row on the wood. On a phone it's the face alone, 44px square. */
+.emo-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 36px; padding: 4px 12px; font: 600 14px var(--f-head, "Fredoka", system-ui); color: ${INK}; background: #fff; border: 2.5px solid ${INK}; border-radius: 12px; box-shadow: 0 3px 0 ${INK}; cursor: pointer; }
+.emo-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 ${INK}; }
+.emo-btn[aria-expanded="true"] { background: var(--mi-sun, #ffc93c); }
+.emo-btn:focus-visible { outline: 3px solid var(--mi-sun, #ffc93c); outline-offset: 2px; }
+@media (max-width: 720px), (pointer: coarse) { .emo-btn { min-height: 44px; min-width: 44px; } }
 /* Phones: the party room's Start bar keeps one row, so the button is its face alone (44px square). */
-@media (max-width: 600px) { .pt-bar .emo-btn { min-width: 44px; padding-left: 0; padding-right: 0; } .pt-bar .emo-btn .emo-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .pt-bar .emo-btn svg { width: 24px; height: 24px; } }
+@media (max-width: 600px) { .emo-btn { min-width: 44px; padding-left: 0; padding-right: 0; } .emo-btn .emo-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .emo-btn svg { width: 24px; height: 24px; } }
 .emo-pick { position: fixed; z-index: 61; background: var(--mi-cream, #fff8ec); border: 2.5px solid ${INK}; border-radius: 14px; padding: 8px; box-shadow: 0 4px 0 rgba(43,35,64,.25); display: grid; gap: 6px; max-width: calc(100vw - 32px); }
 .emo-pick .emo-grid { display: grid; grid-template-columns: repeat(5, 44px); gap: 6px; }
 .emo-pick button { width: 44px; height: 44px; padding: 0; border: 2px solid ${INK}; border-radius: 10px; background: #fff; cursor: pointer; display: grid; place-items: center; }
@@ -101,6 +109,17 @@
     const q = CSS.escape(peer), vis = el => el && el.getClientRects().length;
     return [`.rd-fighter[data-peer="${q}"] .rd-spr`, `.pt-mem[data-peer="${q}"] .pt-stage`, `[data-peer="${q}"]`]
       .map(s => document.querySelector(s)).find(vis) || null;
+  }
+  // The part of the screen that shows el: the window, cut down by every scrolling box around it, and above a bar that
+  // stays stuck to the bottom (the party room's Start bar, the raid's hand).
+  function shown(el) {
+    let top = 0, bottom = innerHeight, left = 0, right = innerWidth;
+    for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+      const o = getComputedStyle(e).overflowY;
+      if (o === 'auto' || o === 'scroll') { const r = e.getBoundingClientRect(); top = Math.max(top, r.top); bottom = Math.min(bottom, r.bottom); left = Math.max(left, r.left); right = Math.min(right, r.right); }
+    }
+    document.querySelectorAll('.pt-bar, .rd .hand-zone').forEach(f => { if (getComputedStyle(f).position !== 'sticky' || f.contains(el)) return; const r = f.getBoundingClientRect(); if (r.top > top + 80 && r.top < bottom) bottom = r.top; });
+    return { top, bottom, left, right };
   }
   // ---------- Actions on a seat or a fighter ----------
   // The whole picture moves, t seconds in: [x, y] in px, a turn in degrees, and a scale (sx -1 is a flip).
@@ -151,10 +170,12 @@
   E.show = function (peer, id) {
     if (!E.valid(id) || typeof peer !== 'string') return false;
     const A = E.EMOTES[id];
+    // An action moves the picture itself, so it has no bubble while the picture is on screen (onlyOff).
+    let onlyOff = false;
     if (A.act) {
       const quiet = still();
       act(peer, quiet ? null : id);
-      if (!quiet && !A.bub) { const b = live[peer]; if (b) { cancelAnimationFrame(b.raf); b.el.remove(); delete live[peer]; } return true; }
+      onlyOff = !quiet && !A.bub;
     }
     else act(peer, null);
     css();
@@ -167,11 +188,19 @@
     el.innerHTML = E.EMOTES[id].svg;
     const b = { el, until: performance.now() + (A.act ? A.secs * 1000 : 2400), raf: 0 };
     live[peer] = b;
-    // The party room and the raid redraw often, so the bubble looks for its seat again every frame.
+    // The party room and the raid redraw often, so the bubble looks for its seat again every frame. A seat scrolled out
+    // of sight (a phone shows one or two at a time) gets its bubble at the near edge of what's showing, pointing its way.
     const follow = () => {
       const t = spot(peer);
       if (performance.now() > b.until) { el.remove(); if (live[peer] === b) delete live[peer]; return; }
-      if (t) { const r = t.getBoundingClientRect(); el.style.left = (r.left + r.width / 2) + 'px'; el.style.top = (r.top + 6) + 'px'; el.style.visibility = ''; }
+      if (t) {
+        const r = t.getBoundingClientRect(), v = shown(t), x = Math.max(v.left + 27, Math.min(v.right - 27, r.left + r.width / 2));
+        const edge = r.top + 6 < v.top + 50 ? 'up' : r.top + 6 > v.bottom - 4 ? 'down' : '';
+        el.style.left = x + 'px';
+        el.style.top = (edge === 'up' ? v.top + 62 : edge === 'down' ? v.bottom - 4 : r.top + 6) + 'px';
+        el.classList.toggle('emo-up', edge === 'up');
+        el.style.visibility = onlyOff && !edge ? 'hidden' : '';
+      }
       else el.style.visibility = 'hidden';
       b.raf = requestAnimationFrame(follow);
     };

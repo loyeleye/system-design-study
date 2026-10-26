@@ -106,8 +106,44 @@
 .rs-var.mine { color: #1f6b46; }
 .rs-var[aria-pressed="true"] { border-color: var(--mi-ink); box-shadow: 0 0 0 2px var(--mi-sun, #ffe14d); color: var(--mi-ink); }
 .rs-var:focus-visible { outline: 3px solid var(--mi-sun, #ffe14d); outline-offset: 2px; }
+.rs-var { position: relative; }
+.rs-var span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rs-var.mine::after { content: '✓'; position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: #1f8a57; color: #fff; font: 800 10px/16px var(--f-body, system-ui); text-align: center; }
+.rs-navrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rs-navbal { display: none; font: 800 14px var(--f-body, system-ui); background: var(--mi-sun, #ffe14d); border: 2px solid var(--mi-ink); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.rs-jump { display: flex; gap: 6px; contain: inline-size; overflow-x: auto; scrollbar-width: none; padding: 8px 1px 2px; }
+.rs-jump::-webkit-scrollbar { display: none; }
+.rs-jump button { flex: none; font: 700 13px var(--f-body, system-ui); color: var(--mi-ink); background: #fff; border: 2px solid var(--mi-ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.rs-act .rs-own { margin: 0; }
+@media (max-width: 720px), (pointer: coarse) {
+  .rs-tabs button, .rs-jump button { min-height: 44px; }
+  .rs-sw { min-height: 44px; }
+  .rs-var { min-height: 44px; }
+}
+/* Phones (Ladi, 2026-10-26): the tabs, your balance and a row of jump chips stay stuck to the top; Kagemaru's desk
+   and the cards are compact; and what you try on shows in a small preview stuck under the tabs, so the item you
+   tapped stays in view instead of the page jumping up to a big preview and back. */
+@media (max-width: 600px) {
+  .rs { gap: 10px; }
+  .rs-nav { position: sticky; top: calc(-1 * var(--win-pad-t, 0px)); z-index: 4; margin: 0 -16px; padding: 8px 16px; background: var(--mi-cream, #fffaf0); border-bottom: 2.5px solid var(--mi-ink); box-shadow: 0 6px 8px -8px rgba(43,35,64,.5); }
+  .rs-navbal { display: inline-block; }
+  .rs-region, .rs-try, .rs-it, .rs-ch { scroll-margin-top: calc(var(--rs-nav, 100px) + 8px); }
+  .rs-desk { grid-template-columns: 56px minmax(0, 1fr); gap: 10px; padding: 8px 10px; }
+  .rs-desk .face { width: 56px; height: 56px; border-radius: 10px; }
+  .rs-desk p { font-size: 14px; }
+  .rs-bal b { font-size: 20px; } .rs-bal span { font-size: 13px; }
+  .rs-try { grid-template-columns: 96px minmax(0, 1fr); justify-items: stretch; text-align: left; gap: 10px; padding: 8px; }
+  .rs-try .pt-stage { width: 96px; height: 84px; }
+  .rs-try .rs-pv-name { font-size: 12px; margin-top: 2px; }
+  .rs-try .gh-hint { display: none; }
+  .rs-try p { font-size: 13px; }
+  .rs-try.on { position: sticky; top: calc(var(--rs-nav, 100px) - var(--win-pad-t, 0px)); z-index: 3; box-shadow: 0 6px 10px -6px rgba(43,35,64,.45); }
+  .rs-it, .rs-ch { grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 8px 10px; }
+  .rs-it b { font-size: 15px; } .rs-it .sw .wd-sw { width: 50px; height: 36px; } .rs-it .sw .wd-sw.wd-pl { width: 52px; }
+  .rs-it .sw svg { width: 32px; height: 32px; }
+  .rs-act { margin-top: 6px; }
+}
 .rs-pack h3 { margin: 0; font: 700 11px var(--f-body, system-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--mi-muted); }
-@media (max-width: 520px) { .rs-try { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; } }
 .rs-cards h4 { margin: 6px 0 0; font: 700 11px var(--f-body, system-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--mi-muted); grid-column: 1 / -1; }
 `;
     document.head.appendChild(st);
@@ -160,6 +196,7 @@
   const KINDS = [['frame', 'Seat frames', 'Round your seat in the party room'], ['plate', 'Nameplates', 'Behind your name, in the party room and the raid'],
     ['skin', 'Champion colours and looks', 'Recolour one champion\'s clothes, or redraw them, wherever you play them'],
     ['effect', 'Effects', 'Follow your champion in the party room and the raid'], ['emote', 'Emotes', 'For the Emote button: packs, or one at a time']];
+  const JUMP = { frame: 'Frames', plate: 'Nameplates', skin: 'Looks', effect: 'Effects', emote: 'Emotes' };
   let tab = 'champs', trying = null;
   // The champion the preview wears it on: the one you picked last, if you can still pick them.
   const model = () => { const m = CH.mine(); return m && CH.unlocked(m) ? m : 'uptima'; };
@@ -172,7 +209,7 @@
     const pl = W ? W.plate(wear) : '', c = CH.get(who);
     const emo = it && it.emote ? emoSvg(it.emote) : it && it.has ? emoSvg(M.item(it.has[0]).emote) : '';
     const what = it ? `Trying on <b>${esc(W && W.ITEMS[it.id] ? W.label(it.id) : it.name)}</b>${M.has(it.id) ? ' (yours)' : `, ${M.cost(it.id)} ✦`}.` : 'What you wear now. Tap Try on to see an item here.';
-    return `<div class="rs-try"><div><div class="pt-stage" id="rs-stage" data-who="${who}" data-wear="${esc(wear.join(' '))}">${emo ? `<span class="rs-pv-emo" aria-hidden="true">${emo}</span>` : ''}</div>
+    return `<div class="rs-try${it ? ' on' : ''}"><div><div class="pt-stage" id="rs-stage" data-who="${who}" data-wear="${esc(wear.join(' '))}">${emo ? `<span class="rs-pv-emo" aria-hidden="true">${emo}</span>` : ''}</div>
       <span class="rs-pv-name"><span class="${pl}">Your name</span></span></div>
       <div><p>${what}</p><p class="gh-hint" style="margin-top:6px">On ${esc(c ? c.name : 'your champion')}${it && it.champ ? `, whose ${SD.wear && SD.wear.ITEMS[it.id] && SD.wear.ITEMS[it.id].look ? 'look' : 'colour'} it is` : ', the champion you picked last'}. Everyone in your party sees what you wear. Never in the story.</p>
       ${trying ? '<p style="margin-top:6px"><button class="mi-btn sm" type="button" id="rs-untry">Stop trying on</button></p>' : ''}</div></div>`;
@@ -206,40 +243,57 @@
     if (vs && !own && !hint) hint = mineN ? `Every variant after your first is ${M.TIERS.variant} ✦` : `Pick any variant. After this one, the others are ${M.TIERS.variant} ✦ each`;
     const tryB = `<button class="mi-btn sm" type="button" data-try="${it.id}" aria-pressed="${trying === it.id}">Try on</button>`;
     // One swatch a variant: tap to see it on the preview, whether it's yours or not.
-    const vars = vs ? `<div class="rs-vars" role="group" aria-label="${esc(it.name)} variants">${vs.map(v => `<button type="button" class="rs-var${M.has(v.id) ? ' mine' : ''}" data-var="${v.id}" aria-pressed="${v.id === it.id}" aria-label="${esc(v.variant)}${M.has(v.id) ? ', yours' : `, ${M.cost(v.id)} ✦`}">${W.swatch(v.id)}<span>${M.has(v.id) ? '✓ ' : ''}${esc(v.variant)}</span></button>`).join('')}</div>` : '';
-    return `<li class="rs-it${own ? ' own' : ''}" data-it="${it.id}"><span class="sw">${sw}</span><div><b>${esc(it.name)}</b>${vs ? ` <span class="rs-vn">${esc(it.variant)}</span>` : ''}<span class="sty">${esc(sub)}${own ? '' : ` · ${cost} ✦`}</span>${own ? '<span class="rs-own">✓ Yours</span>' : ''}
-      ${vars}<div class="rs-act rs-row">${act}${own ? '' : tryB}</div>${hint ? `<small class="rs-hint">${hint}</small>` : ''}</div></li>`;
+    const vars = vs ? `<div class="rs-vars" role="group" aria-label="${esc(it.name)} variants">${vs.map(v => `<button type="button" class="rs-var${M.has(v.id) ? ' mine' : ''}" data-var="${v.id}" aria-pressed="${v.id === it.id}" aria-label="${esc(v.variant)}${M.has(v.id) ? ', yours' : `, ${M.cost(v.id)} ✦`}">${W.swatch(v.id)}<span>${esc(v.variant)}</span></button>`).join('')}</div>` : '';
+    return `<li class="rs-it${own ? ' own' : ''}" data-it="${it.id}"><span class="sw">${sw}</span><div><b>${esc(it.name)}</b>${vs ? ` <span class="rs-vn">${esc(it.variant)}</span>` : ''}<span class="sty">${esc(sub)}${own ? '' : ` · ${cost} ✦`}</span>
+      ${vars}<div class="rs-act rs-row">${act}${own ? '<span class="rs-own">✓ Yours</span>' : tryB}</div>${hint ? `<small class="rs-hint">${hint}</small>` : ''}</div></li>`;
   }
   function cosmetics() {
     const items = M.items();
     return preview() + KINDS.map(([k, h, why]) => {
       if (k === 'emote') {
         const packs = items.filter(it => it.slot === 'emote');
-        return packs.length ? `<section class="rs-region"><h3>${h}</h3><p class="gh-hint" style="margin:0">${why}. ${SD.emote ? SD.emote.mine().length : 9} are free for everyone.</p>${packs.map(pk => `<section class="rs-pack" aria-label="${esc(pk.name)}"><h3>${esc(pk.name)}</h3><ul class="rs-grid">${itemCard(pk)}${items.filter(it => it.pack === pk.id).map(itemCard).join('')}</ul></section>`).join('')}</section>` : '';
+        return packs.length ? `<section class="rs-region" data-sec="${k}"><h3>${h}</h3><p class="gh-hint" style="margin:0">${why}. ${SD.emote ? SD.emote.mine().length : 9} are free for everyone.</p>${packs.map(pk => `<section class="rs-pack" aria-label="${esc(pk.name)}"><h3>${esc(pk.name)}</h3><ul class="rs-grid">${itemCard(pk)}${items.filter(it => it.pack === pk.id).map(itemCard).join('')}</ul></section>`).join('')}</section>` : '';
       }
       let cs = items.filter(it => it.slot === k);
       // Colours by champion, in roster order.
       if (k === 'skin') cs = cs.filter(it => !it.set || M.variants(it.set)[0] === it), cs.sort((x, y) => CH.list.findIndex(c => c.id === x.champ) - CH.list.findIndex(c => c.id === y.champ));
-      return cs.length ? `<section class="rs-region"><h3>${h}</h3><p class="gh-hint" style="margin:0">${why}.</p><ul class="rs-grid">${cs.map(itemCard).join('')}</ul></section>` : '';
+      return cs.length ? `<section class="rs-region" data-sec="${k}"><h3>${h}</h3><p class="gh-hint" style="margin:0">${why}.</p><ul class="rs-grid">${cs.map(itemCard).join('')}</ul></section>` : '';
     }).join('');
+  }
+  // Whether the preview is stuck to the top of the window (a phone's layout).
+  const pinned = el => { const p = el.querySelector('.rs-try'); return !!p && getComputedStyle(p).position === 'sticky'; };
+  // Runs a redraw and scrolls back so what matched sel (or the tapped button's card) is where it was on screen: a phone's
+  // stuck preview grows and shrinks above the list, and the list shouldn't jump under your finger.
+  function stay(el, b, sel, fn) {
+    const sc = el.closest('.win-b'), card = b.closest('[data-it]'), key = card ? `[data-it="${card.dataset.it}"]` : sel;
+    const was = (card || b).getBoundingClientRect().top;
+    fn();
+    const now = el.querySelector(key) || el.querySelector(sel);
+    if (!sc || !now) return;
+    sc.scrollTop += now.getBoundingClientRect().top - was;
+    // ...unless the preview, just stuck open, now covers it: then it goes just below the preview.
+    const p = el.querySelector('.rs-try.on'), t = now.getBoundingClientRect().top;
+    if (p && pinned(el) && t < p.getBoundingClientRect().bottom + 8) sc.scrollTop -= p.getBoundingClientRect().bottom + 8 - t;
   }
   function wireCos(el, redraw) {
     const st = el.querySelector('#rs-stage');
     // Trying on a look shows it: for 307 Temporary Redirect, one of its four leads, another each time.
     const lk = SD.wear && st && st.dataset.wear.split(' ').includes('look-hero404-307') ? CH.redirect() : null;
     if (st) { const id = st.dataset.who, c = CH.get(id); if (c) st.appendChild(CH.sprite(id, Math.min(2, 104 / (lk ? SD.redirectArt.map.h : c.h)), true, lk)); if (SD.wear) SD.wear.dressStage(st, st.dataset.wear.split(' '), id); }
-    el.querySelectorAll('[data-try]').forEach(b => { b.onclick = () => { trying = trying === b.dataset.try ? null : b.dataset.try; redraw(); const p = el.querySelector('.rs-try'); if (p && trying) p.scrollIntoView({ block: 'nearest' }); }; });
-    el.querySelectorAll('[data-var]').forEach(b => { b.onclick = () => { trying = b.dataset.var; armed = null; redraw(); const p = el.querySelector('.rs-try'); if (p) p.scrollIntoView({ block: 'nearest' }); const f = el.querySelector(`[data-var="${b.dataset.var}"]`); if (f) f.focus({ preventScroll: true }); }; });
+    // On a phone the preview is stuck under the tabs, so trying something on keeps the list where it was (the card you
+    // tapped stays under your finger); on a wider screen the preview is scrolled into view.
+    const show = (b, sel) => { const p = el.querySelector('.rs-try'); if (p && trying && !pinned(el)) p.scrollIntoView({ block: 'nearest' }); const f = el.querySelector(sel); if (f) f.focus({ preventScroll: true }); };
+    el.querySelectorAll('[data-try]').forEach(b => { b.onclick = () => { const sel = `[data-try="${b.dataset.try}"]`; stay(el, b, sel, () => { trying = trying === b.dataset.try ? null : b.dataset.try; redraw(); }); show(b, sel); }; });
+    el.querySelectorAll('[data-var]').forEach(b => { b.onclick = () => { const sel = `[data-var="${b.dataset.var}"]`; stay(el, b, sel, () => { trying = b.dataset.var; armed = null; redraw(); }); show(b, sel); }; });
     const un = el.querySelector('#rs-untry'); if (un) un.onclick = () => { trying = null; redraw(); };
     el.querySelectorAll('[data-wear]').forEach(b => { b.onclick = () => { const it = M.item(b.dataset.wear), W = SD.wear; // The preview shows what you just put on, on its own champion for a colour.
-      if (W.worn(it.champ).includes(it.id)) { W.unequip(it.champ ? 'skin:' + it.champ : it.slot); trying = null; } else { W.equip(it.id); trying = it.id; } redraw(); }; });
+      stay(el, b, `[data-wear="${it.id}"]`, () => { if (W.worn(it.champ).includes(it.id)) { W.unequip(it.champ ? 'skin:' + it.champ : it.slot); trying = null; } else { W.equip(it.id); trying = it.id; } redraw(); }); }; });
     el.querySelectorAll('[data-buy]').forEach(b => { b.onclick = () => {
       const id = b.dataset.buy;
       clearTimeout(armT);
-      if (armed !== id) { armed = id; armT = setTimeout(() => { if (armed === id) { armed = null; redraw(); } }, 4000); return redraw(); }
+      if (armed !== id) { armed = id; armT = setTimeout(() => { if (armed === id) { armed = null; redraw(); } }, 4000); return stay(el, b, `[data-it="${id}"]`, redraw); }
       armed = null;
-      said = M.buy(id) ? LINES.bought : LINES.short;
-      redraw();
+      stay(el, b, `[data-it="${id}"]`, () => { said = M.buy(id) ? LINES.bought : LINES.short; redraw(); });
       const f = el.querySelector(`[data-it="${id}"] button`); if (f) f.focus({ preventScroll: true });
     }; });
   }
@@ -254,7 +308,8 @@
       root.innerHTML = `<div class="mi gh"><div class="mi-card rs">
         <div class="gh-top"><button class="gh-back" type="button" id="rs-back">← ${esc(o.back || 'Guild Hall')}</button><span class="gh-eye">The Raid shop</span></div>
         <h1>${tab === 'cos' ? 'Cosmetics' : 'Hire a champion'}</h1>
-        <div class="rs-tabs" role="tablist" aria-label="Raid shop"><button type="button" role="tab" data-tab="champs" aria-selected="${tab === 'champs'}">Champions</button><button type="button" role="tab" data-tab="cos" aria-selected="${tab === 'cos'}">Cosmetics</button></div>
+        <div class="rs-nav"><div class="rs-navrow"><div class="rs-tabs" role="tablist" aria-label="Raid shop"><button type="button" role="tab" data-tab="champs" aria-selected="${tab === 'champs'}">Champions</button><button type="button" role="tab" data-tab="cos" aria-selected="${tab === 'cos'}">Cosmetics</button></div><b class="rs-navbal" aria-hidden="true">${M.balance()} ✦</b></div>
+        ${tab === 'cos' ? `<nav class="rs-jump" aria-label="Jump to">${KINDS.filter(([k]) => M.items().some(it => it.slot === k)).map(([k]) => `<button type="button" data-jump="${k}">${JUMP[k]}</button>`).join('')}</nav>` : ''}</div>
         <div class="rs-desk"><div class="face" aria-hidden="true">${face}</div><div><p>"${esc(said)}"</p><small>Kagemaru, at the hiring counter</small></div></div>
         <div class="rs-bal"><b>${M.balance()} ✦</b><span>Raid Marks to spend. Raids pay them; they never buy shards, and shards never buy them.</span></div>
         <details class="rs-earn"><summary>How to earn Raid Marks</summary><ul>${M.earnLines().map(l => `<li>${esc(l)}</li>`).join('')}</ul></details>
@@ -262,6 +317,9 @@
         <p class="gh-hint" style="margin:0">${tab === 'cos' ? 'Cosmetics are looks only, worn in the Guild Hall, the party room and raids. Yours for good on this save.' : 'Hired champions are yours for good on this save: pick them in any raid party, and give them to your bots.'}</p></div></div>`;
       root.querySelector('#rs-back').onclick = () => { said = LINES.hi; trying = null; if (o.onBack) o.onBack(); };
       root.querySelectorAll('[data-tab]').forEach(b => { b.onclick = () => { if (tab === b.dataset.tab) return; tab = b.dataset.tab; armed = null; trying = null; draw(); const t = root.querySelector(`[data-tab="${tab}"]`); if (t) t.focus(); }; });
+      root.querySelectorAll('[data-jump]').forEach(b => { b.onclick = () => { const s2 = root.querySelector(`[data-sec="${b.dataset.jump}"]`); if (s2) s2.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }; });
+      // The stuck preview and the sections stop below the stuck tabs, however tall they wrap.
+      const nav = root.querySelector('.rs-nav'); if (nav) root.querySelector('.rs').style.setProperty('--rs-nav', nav.offsetHeight + 'px');
       if (tab === 'cos') wireCos(root, draw); else RS.wire(root, draw);
     };
     draw();

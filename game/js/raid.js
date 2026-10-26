@@ -373,7 +373,42 @@
 .rd-leave { justify-content: flex-end; align-items: center; margin-top: 28px; padding-top: 14px; border-top: 3px dashed rgba(43,35,64,.2); }
 .rd-leave button { min-height: 44px; } .rd-leave button.danger { background: #ffe1e1; color: #a3172b; }
 .rd-leave-q { flex: 1 1 100%; text-align: right; font-weight: 700; }
-@media (max-width: 560px) { .rd { padding: 10px; border-radius: 14px; } .rd-leave-q { text-align: left; } }
+@media (max-width: 600px) { .rd { padding: 10px; border-radius: 14px; } .rd-leave-q { text-align: left; } }
+.rd-hchips { display: contents; }
+.run-hud > .emo-btn { margin-left: auto; }
+.rd .hand-top .emo-btn { flex: none; }
+/* Phones (Ladi, 2026-10-26): the HUD is the SLA on one line and the chips on one more, a strip that scrolls sideways;
+   in a fight the hand's bar (CAP, your SLA, Emote, Ready) and the hand stay stuck to the bottom of the window with
+   their own scroll, so the foe's NEXT and your cards are on one screen. The art is a shorter strip, the teammates
+   compact, and empty infra slots hide until one is built. */
+@media (max-width: 600px) {
+  .rd .run-hud { gap: 6px; padding: 2px 0 8px; }
+  .rd .run-hud .hud-sla { flex: 1 1 0; min-width: 0; }
+  .rd .rd-hchips { display: flex; order: 3; flex: 1 1 100%; min-width: 0; contain: inline-size; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  .rd .rd-hchips::-webkit-scrollbar { display: none; }
+  .rd .rd-hchips > * { flex: none; }
+  .rd .rd-hchips .hud-chip { display: inline-flex; align-items: center; gap: 4px; }
+  .rd .rd-tally .pips i { width: 3px; }
+  .rd .combat { gap: 8px; padding-top: 0; }
+  .rd .combat .stage { aspect-ratio: auto; height: 118px; }
+  .rd .combat .foe-zone:has(.stage) { gap: 6px; padding-bottom: 8px; }
+  .rd .combat .stage .foe { width: 96px; height: 96px; } .rd .combat .stage.group .foe { width: 72px; height: 72px; }
+  .rd .combat .foe-info { gap: 5px; }
+  .rd .combat .intent { padding: 5px 8px; }
+  .rd .combat .clog { min-height: 0; padding: 6px 10px; font-size: 13px; }
+  .rd .combat .me-zone { gap: 6px; padding: 8px 10px; }
+  .rd .combat .me-zone > .infra:not(:has(.on)) { display: none; }
+  .rd-team { gap: 4px; } .rd-mate { gap: 2px 8px; padding: 4px 8px; font-size: 12px; }
+  .rd .hand-zone { position: sticky; bottom: calc(-1 * var(--win-pad-b, 0px)); z-index: 4; gap: 0; margin: 0 -10px; padding: 6px 10px max(6px, env(safe-area-inset-bottom, 0px)); background: var(--cream, #fffaf0); border-top: 3px dashed rgba(43,35,64,.25); box-shadow: 0 -8px 10px -8px rgba(43,35,64,.35); }
+  .rd .hand-top { gap: 8px; }
+  .rd .energy { width: 46px; height: 46px; } .rd .energy b { font-size: 20px; }
+  .rd .ht-mid { flex: 1; min-width: 0; display: grid; gap: 2px; }
+  .rd .ht-sla { display: flex; align-items: center; gap: 6px; font: 600 13px var(--f-head); } .rd .ht-sla .bar { flex: 1; min-width: 0; height: 12px; }
+  .rd .hand-top .muted { font-size: 12px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rd .hand-top #rd-ready { flex: none; padding-left: 14px; padding-right: 14px; }
+  .rd .hand-zone .rd-wait { margin: 4px 0 0; font-size: 12px; }
+  .rd .hand { max-height: 30vh; max-height: 30dvh; overflow-y: auto; overscroll-behavior: contain; }
+}
 @media (max-width: 720px), (pointer: coarse) { .rd button.hud-chip { min-height: 44px; } }
 `;
     document.head.appendChild(st);
@@ -2438,7 +2473,7 @@
     }
     const tallyHelp = t => `On-call Cred is how much the team can trust your calls: it scores your last 20 answers anywhere in the game by how sure you said you were: Guess +1 right, 0 wrong; Think so +2, −1; Sure +3, −5; never above ${HEAL}. After each won fight a right debrief answer heals the team by it${t < LOW ? `. Under ${LOW} you get two easier-paying questions instead, ${LOW_HEAL} SLA each, so a few honest answers will lift you` : ''}.`;
     function paint(html) {
-      const h = root.querySelector('.hand'), sx = h ? h.scrollLeft : 0, sc = root.closest('.win-b'), sy = sc ? sc.scrollTop : 0;
+      const h = root.querySelector('.hand'), sx = h ? h.scrollLeft : 0, hy = h ? h.scrollTop : 0, sc = root.closest('.win-b'), sy = sc ? sc.scrollTop : 0;
       // Leaving mid-expedition asks first, in place (the Guild Hall is already a panel), like solo's Abandon run
       // (Ladi, 2026-10-25). Once it's over there's nothing to lose.
       const ask = ui.leave && G.ph !== 'done' && G.ph !== 'over';
@@ -2449,7 +2484,8 @@
       if (lv) lv.onclick = () => { if (G.ph === 'done' || G.ph === 'over') return leave(); ui.leave = true; render(); const s = root.querySelector('#rd-stay'); if (s) { s.focus({ preventScroll: true }); s.scrollIntoView({ block: 'nearest' }); } };
       const ly = root.querySelector('#rd-leave-y'); if (ly) ly.onclick = () => leave();
       const ls = root.querySelector('#rd-stay'); if (ls) ls.onclick = () => { ui.leave = false; render(); const b = root.querySelector('#rd-leave'); if (b) b.focus({ preventScroll: true }); };
-      const h2 = root.querySelector('.hand'); if (h2 && sx) h2.scrollLeft = sx;
+      const h2 = root.querySelector('.hand'); if (h2 && sx) h2.scrollLeft = sx; if (h2 && hy) h2.scrollTop = hy;
+      if (SD.emote) SD.emote.wire(root);
       if (sc) sc.scrollTop = sy;
       root.querySelectorAll('[data-send]').forEach(b => { b.onclick = () => { ui.pick = null; send(JSON.parse(b.dataset.send)); }; });
       const db = root.querySelector('#rd-deck'); if (db) db.onclick = () => { ui.deck = !ui.deck; render(); };
@@ -2457,13 +2493,14 @@
     }
     const head = t => `<span class="mi-tag">Expedition Raid · party ${esc(code.toUpperCase())}</span><h2 style="margin:2px 0 6px">${esc(t)}</h2>`;
     const sendAttr = d => `data-send="${esc(JSON.stringify(d))}"`;
-    function hud() {
+    // emo: the Emote button goes here (in a fight it rides in the hand's bar instead, by Ready).
+    function hud(emo) {
       const mine = G.players[me.peer], fs = floorsOf(X());
       return `<div class="run-hud"><div class="hud-sla"><span>Team SLA</span><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}/${SLA}</b></div>
-        <span class="hud-chip">Floor <b>${G.fl + 1}/${fs.length}</b></span>${mine ? `<span class="hud-chip">Bits <b>${mine.bits}</b></span>` : ''}
+        <div class="rd-hchips"><span class="hud-chip">Floor <b>${G.fl + 1}/${fs.length}</b></span>${mine ? `<span class="hud-chip">Bits <b>${mine.bits}</b></span>` : ''}
         <span class="hud-chip" title="Seymour's Tape: if the team goes down, one plays and you fight on at full SLA">📼 Tapes <b>${G.tapes}</b></span>
         ${mine ? tallyChip(mine.tal | 0) : ''}
-        ${mine ? `<button class="hud-chip" type="button" id="rd-deck" aria-expanded="${ui.deck}">Deck (${mine.deck.length})</button>` : ''}</div>
+        ${mine ? `<button class="hud-chip" type="button" id="rd-deck" aria-expanded="${ui.deck}">Deck (${mine.deck.length})</button>` : ''}</div>${emo !== false && SD.emote ? SD.emote.button() : ''}</div>
         ${ui.tally && mine ? `<p class="rd-tally-help">${tallyHelp(mine.tal | 0)}</p>` : ''}
         ${G.note ? `<p class="rd-note" role="status">${esc(G.note)}</p>` : ''}
         ${ui.deck && mine ? `<div class="cardgrid mini">${mine.deck.map(id => chtml(id)).join('')}</div>` : ''}`;
@@ -2620,14 +2657,14 @@
       const chooser = md ? `<div class="rd-peek"><p class="muted small">${esc(md.name)}: ${md.ask && md.ask.who === 'pair' ? 'who answers with you?' : md.ask && md.ask.who === 'ally' ? 'which teammate answers?' : self ? 'which player?' : 'which teammate?'}</p><div class="row">${seatsHere().filter(k => self || k !== me.peer).map(k => `<button type="button" class="mi-btn sm" data-mate="${esc(k)}">${esc(G.players[k].n)}${k === me.peer ? ' (you)' : ''}</button>`).join('')}<button type="button" class="ghost" id="rd-mate-x">Cancel</button></div></div>` : '';
       // Runbook Ready: the cards this player is looking at, to take some into hand.
       const peek = mine && mine.peek.length ? `<div class="rd-peek"><p class="muted small">Runbook Ready: take ${mine.take} of these. The rest go to the bottom.</p><div class="cardgrid pick">${mine.peek.map((id, i) => `<div ${mine.ready ? '' : sendAttr({ k: 'peek', i })} class="rd-pickc">${chtml(id, { i })}</div>`).join('')}</div></div>` : '';
-      paint(`${hud()}<div class="combat${G.tier === 'boss' ? ' bossfight' : ''}">
+      paint(`${hud(!mine)}<div class="combat${G.tier === 'boss' ? ' bossfight' : ''}">
         <div class="foe-zone">${stageHtml(e)}${info}</div>
         <div class="clog" aria-live="polite">${esc(G.log || 'Plan together, then play.')}</div>
         <div class="me-zone"><div class="chips">${chips.join('') || '<span class="muted small">No defences up.</span>'}</div><div class="infra">${slots}</div></div>
         ${mates ? `<div class="rd-team">${mates}</div>` : ''}
         ${mine ? `<div class="hand-zone"><div class="hand-top"><div class="energy" aria-label="Capacity ${mine.cap}"><b>${mine.cap}</b><span>CAP</span></div>
-            <span class="muted small">Turn ${G.turn} · Draw ${mine.draw.length} · Discard ${mine.disc.length}</span>${stChips(mine.st, ME_ST)}${meExtra(G, mine)}
-            <button class="${mine.ready ? 'ghost' : 'primary'}" type="button" id="rd-ready">${mine.ready ? 'Not ready yet' : 'Ready'}</button></div>
+            <div class="ht-mid"><div class="ht-sla" aria-hidden="true"><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}</b></div><span class="muted small">Turn ${G.turn} · Draw ${mine.draw.length} · Discard ${mine.disc.length}</span></div>${stChips(mine.st, ME_ST)}${meExtra(G, mine)}
+            ${SD.emote ? SD.emote.button() : ''}<button class="${mine.ready ? 'ghost' : 'primary'}" type="button" id="rd-ready">${mine.ready ? 'Not ready yet' : 'Ready'}</button></div>
           ${mine.ready ? '<p class="rd-wait">Waiting for the others. The foe acts when everyone is ready.</p>' : ''}${incoming}${peek}${asking}${chooser}
           <div class="hand">${mine.hand.map((id, i) => chtml(id, { i, cost: card(id).unplayable ? '–' : card(id).xcost ? undefined : costFor(mine, id), dim: mine.ready || card(id).unplayable || costFor(mine, id) > mine.cap })).join('')}</div></div>` : '<p class="muted small">You\'re watching this expedition.</p>'}
       </div>`);
@@ -2646,6 +2683,8 @@
         el.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(); } };
       });
       const rb = root.querySelector('#rd-ready'); if (rb) rb.onclick = () => send({ k: 'ready' });
+      // A phone opens each fight scrolled to the foe, so its NEXT sits right above the stuck hand.
+      if (ui.fk !== G.k && matchMedia('(max-width: 600px)').matches) { ui.fk = G.k; const fz = root.querySelector('.foe-zone'); if (fz) fz.scrollIntoView({ block: 'start' }); }
     }
     function rewardView(r, mine) {
       const e = SD.enemies[G.main] || {}, wait = mine && r.wait[me.peer];
