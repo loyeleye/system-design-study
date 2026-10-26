@@ -11,7 +11,8 @@
 //     1280x800 desktop they start open;
 //   - the leader changes a bot's champion from its seat or from the picker's "Picking for" row, on a phone and a
 //     desktop, and Add a bot brings the new bot's seat to the middle;
-//   - resuming an expedition, nobody can change a champion, their own or a bot's, on a phone and a desktop.
+//   - resuming an expedition, nobody can change a champion, their own or a bot's, on a phone and a desktop; someone
+//     new takes a bot's place (and a bot takes it back when they leave), and with no bot there they're turned away.
 // "Runs off" is an element whose right edge is past the window, unless a strip that scrolls sideways (inside the
 // window) clips it; the window's own scroller doesn't count. The floor's title card is a moment's full-screen flourish.
 //
@@ -260,6 +261,26 @@ const server = http.createServer((req, res) => {
     await hall(b); await b.fill('#gh-code', code); await hit(b, '#gh-go');
     await b.waitForSelector('#pt-ready', { timeout: 8000 }); await b.waitForTimeout(1200);
     check(await b.evaluate(() => !document.querySelectorAll('.pt-champ').length && !!document.querySelector('.pt-fixed') && !document.querySelector('#pt-ready').disabled), `${label}: a player joining the resumed party can't change champion either, and can still say Ready`);
+    // Someone new takes a bot's place, with its champion; when they leave, a bot takes the seat back.
+    const took = await a.evaluate(() => { const G = SD.debug.raid.G(), k = Object.keys(G.players).find(k => !G.players[k].bot && k !== SD.debug.raid.me()); return k ? { c: G.players[k].c, bots: Object.keys(G.players).filter(j => G.players[j].bot).length, seats: Object.keys(G.players).length } : null; });
+    check(!!took && took.bots === 1 && took.seats === 3, `${label}: the player joining takes a bot's place (${JSON.stringify(took)})`);
+    await b.close(); await a.waitForTimeout(4500);
+    const back = await a.evaluate(() => { const P = SD.debug.raid.G().players; return { bots: Object.keys(P).filter(j => P[j].bot).length, seats: Object.keys(P).length }; });
+    check(back.bots === 2 && back.seats === 3, `${label}: when they leave, a bot takes their seat again (${JSON.stringify(back)})`);
+    if (label === 'desktop') {
+      // With no bot's place to take, someone new is turned away.
+      await hit(a, '#pt-leave'); await a.waitForTimeout(1000);
+      await toForm(); await hit(a, '#gh-make'); await a.waitForSelector('#pt-start');
+      const solo = (await a.textContent('.pt-code')).trim().toLowerCase();
+      await hit(a, '#pt-start'); await a.waitForSelector('.rd .map-title'); await a.waitForTimeout(700); await clearDlg(a);
+      await hit(a, '#rd-leave'); await a.waitForTimeout(200); await hit(a, '#rd-leave-y'); await a.waitForTimeout(1200);
+      await toForm();
+      await a.evaluate(v => { const s = document.querySelector('#gh-xp'); s.value = v; s.dispatchEvent(new Event('change', { bubbles: true })); }, 'resume:' + solo);
+      await a.waitForTimeout(200); await hit(a, '#gh-make'); await a.waitForSelector('.pt-code'); await a.waitForTimeout(1200);
+      const e = await ctx.newPage(); e.on('pageerror', x => errors.push('E ' + x.message));
+      await hall(e); await e.fill('#gh-code', solo); await hit(e, '#gh-go'); await e.waitForTimeout(5000);
+      check(await e.evaluate(() => !document.querySelector('.pt-code') && /only its own players/.test(document.body.innerText)), `${label}: with no bot's place to take, someone new is turned away, and told why`);
+    }
     await ctx.close();
   }
 

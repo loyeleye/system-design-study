@@ -40,7 +40,8 @@
 // their seat. Nobody new joins mid-expedition; they can watch.
 // The leader can fill seats with bots (below, "Bots"), which the host's page plays, so one person can raid alone.
 //   SD.raid.play(root, hub, code, { create, settings: { xp, resume }, status, vis, bind })
-//     -> Promise of how the player left: undefined, 'full' or 'kicked'
+//     -> Promise of how the player left: undefined, 'full', 'kicked' or 'resumed' (new to a resumed expedition with
+//        every seat a player's: no bot's place to take)
 //   SD.raid.available()   -> whether this page has the game's cards and styles (the in-game Guild Hall does)
 //   SD.raid.expeditions() -> the expeditions open to this player
 //   SD.raid.level(x)      -> an expedition's difficulty by its floors: Easy (2), Medium (3), Hard (4) or Master (5)
@@ -2039,6 +2040,7 @@
     // The host's bot loop. A move waits its pause from when it became possible (or from the bot's last move).
     const botAt = {};
     function bots() {
+      if (botFill()) push();
       if (!hosting || left || G.ph === 'lobby') return;
       const now = Date.now();
       botKeys().forEach(k => {
@@ -2089,7 +2091,27 @@
       }
       if (cur || !n) return;
       const seat = free().find(k => G.players[k].n.toLowerCase() === n.toLowerCase());
-      if (seat) rekey(seat, peer);
+      if (seat) { rekey(seat, peer); return; }
+      // Resuming, someone new takes a bot's place (the one playing their old seat, if a bot took it over), with its
+      // champion and deck (Ladi, 2026-10-26). With no bot left, there's no seat for them.
+      if (G.ph !== 'lobby' || !G.rs) return;
+      const bk = botKeys(), b = bk.find(k => G.players[k].n.toLowerCase() === n.toLowerCase()) || bk[0];
+      if (b) { rekey(b, peer); Object.assign(G.players[peer], { n, bot: false, ready: false }); }
+    }
+    // Resuming, a player who leaves the party room (or isn't back a few seconds after it opens) is replaced by a bot
+    // playing their champion, under their name, so the seat is never empty (Ladi, 2026-10-26).
+    const awaySince = {};
+    function botFill() {
+      if (!hosting || G.ph !== 'lobby' || !G.rs) return false;
+      const now = Date.now(), gone = free();
+      Object.keys(awaySince).forEach(k => { if (!gone.includes(k)) delete awaySince[k]; });
+      let changed = false;
+      gone.forEach(k => {
+        if (k === me.peer || now - (awaySince[k] = awaySince[k] || now) < 3000) return;
+        let n = 1; while (G.players['~b' + n]) n++;
+        rekey(k, '~b' + n); G.players['~b' + n].bot = true; delete awaySince[k]; changed = true;
+      });
+      return changed;
     }
 
     // ---------- The state on the wire ----------
@@ -2618,6 +2640,8 @@
         botChamp: hosting && !G.rs ? (k, c) => send({ k: 'botc', b: k, c }) : null,
         // Resuming: every seat keeps the champion it started the expedition with, bots too (Ladi, 2026-10-26).
         seat: G.rs ? k => (G.players[k] ? { champ: G.players[k].c, look: G.players[k].lk } : null) : null,
+        // and its seats are the saved ones: no open seat. One whose player is away waits a moment, then a bot takes it.
+        away: G.rs ? () => free().map(k => ({ nick: G.players[k].n, champ: G.players[k].c })) : null,
         startWhy: () => (!x ? (hosting ? 'No expedition is open in your save yet.' : 'No expedition is open in the leader\'s save yet.') : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
         start,
         bind: rt => {
@@ -2863,6 +2887,9 @@
       G = Object.assign(S, { host: msg.peer });
       mismatch = false;
       if (!G.players[me.peer] && Date.now() - helloAt > 4000 && G.ph !== 'done' && G.ph !== 'over') hello();
+      // A resumed expedition takes only its own players back: someone new, with no seat free and no bot's to take, is
+      // turned away.
+      if (G.rs && G.ph === 'lobby' && !G.players[me.peer] && !free().length && !botKeys().length) { leave('resumed'); return; }
       if (G.ph !== 'lobby' && party.ready()) party.setReady(false);
       render();
     }));

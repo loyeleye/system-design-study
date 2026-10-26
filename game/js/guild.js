@@ -224,7 +224,7 @@ select.gh-field { font-size: 16px; }
       }
       if (isClosed()) return;
       view.scr = 'board';
-      view.note = res === 'full' ? 'That party just filled up. Try another, or form your own.' : res === 'kicked' ? 'The leader removed you from that party.' : res === 'gone' ? 'That party isn\'t here any more. It may have started or closed.' : '';
+      view.note = res === 'full' ? 'That party just filled up. Try another, or form your own.' : res === 'kicked' ? 'The leader removed you from that party.' : res === 'resumed' ? 'That party is resuming an expedition, and only its own players can rejoin it.' : res === 'gone' ? 'That party isn\'t here any more. It may have started or closed.' : '';
       draw();
     }
     // A code from a friend: its first letter names the mode. An older 4-letter code needs the board it came from.
