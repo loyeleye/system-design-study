@@ -68,7 +68,9 @@ const server = http.createServer((req, res) => {
   // Elements that run past the right edge of the window, inside sel (a strip that scrolls sideways clips its own).
   const wide = (page, sel) => page.evaluate(sel => {
     const W = document.documentElement.clientWidth, out = [];
-    const clipped = e => { for (let p = e.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o !== 'visible' && p.getBoundingClientRect().right <= W + 1) return true; } return false; };
+    // The window's own scroller doesn't count: content wider than it is what makes the window scroll sideways.
+    const sc = document.querySelector('#panel .win-b');
+    const clipped = e => { for (let p = e.parentElement; p && p !== sc; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o !== 'visible' && p.getBoundingClientRect().right <= W + 1) return true; } return false; };
     document.querySelectorAll(sel + ', ' + sel + ' *').forEach(e => { const r = e.getBoundingClientRect(); if (r.width && r.right > W + 1 && !clipped(e)) out.push(e.tagName.toLowerCase() + '.' + [...e.classList].join('.')); });
     return out;
   }, sel);
