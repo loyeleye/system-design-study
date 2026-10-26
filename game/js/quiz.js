@@ -452,11 +452,11 @@
         let cred = '', healTxt = '', credMore = '';
         if (T) {
           const t1 = SD.state.tally(), d = t1 - tal0, st = (T[conf] || T[0])[ok ? 0 : 1];
-          const why = `${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}, ${ok ? 'right' : 'wrong'}: ${sgn(st)}${d !== st ? `. Cred counts your last 20 answers, at most ${SD.state.TALLY_MAX}` : ''}`;
+          const why = `${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}, ${ok ? 'right' : 'wrong'}: ${sgn(st)}${d !== st ? `. Cred counts your last 20 answers, from 0 to ${SD.state.TALLY_MAX}` : ''}`;
           cred = `<span class="cred-badge ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}" title="${U.esc(why)}" aria-label="On-call Cred ${tal0} to ${t1}. ${U.esc(why)}">🎯 Cred ${tal0} → <b>${t1}</b> <span class="tally-d">${sgn(d)}</span></span>`;
           healTxt = opts.heal ? opts.heal(ok, t1) : '';
           // The same, spelled out, in the pinned footer above Continue, where a phone always sees it (no hover needed).
-          credMore = `<details class="cred-more"><summary>🎯 Why Cred ${sgn(d)}?</summary><p>You said <b>${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}</b> and were ${ok ? 'right' : 'wrong'}: ${sgn(st)}.${d !== st ? ` Cred counts only your last 20 answers and never goes above ${SD.state.TALLY_MAX}, so it moved ${sgn(d)}.` : ''} Every answer you commit moves it: Guess ${sgn(T[0][0])} / ${sgn(T[0][1])}, Think so ${sgn(T[1][0])} / ${sgn(T[1][1])}, Sure ${sgn(T[2][0])} / ${sgn(T[2][1])}.${opts.credNote ? ' ' + U.esc(opts.credNote) : ''}</p></details>`;
+          credMore = `<details class="cred-more"><summary>🎯 Why Cred ${sgn(d)}?</summary><p>You said <b>${['Guess', 'Think so', 'Sure'][conf] || 'Guess'}</b> and were ${ok ? 'right' : 'wrong'}: ${sgn(st)}.${d !== st ? ` Cred counts only your last 20 answers and never goes below 0 or above ${SD.state.TALLY_MAX}, so it moved ${sgn(d)}.` : ''} Every answer you commit moves it: Guess ${sgn(T[0][0])} / ${sgn(T[0][1])}, Think so ${sgn(T[1][0])} / ${sgn(T[1][1])}, Sure ${sgn(T[2][0])} / ${sgn(T[2][1])}.${opts.credNote ? ' ' + U.esc(opts.credNote) : ''}</p></details>`;
         }
         let h = `<div class="verdict-row"><div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? (conf === 0 ? 'CORRECT... BUT A GUESS' : 'CORRECT!') : late ? 'TIME\'S UP!' : 'NOT QUITE!'}</div>${cred}</div>`;
         if (over) h += `<p class="warn small">You were sure and it was wrong. That gap is the most valuable thing you found today, so this comes back first.</p>`;

@@ -99,7 +99,7 @@ async function runOne(cfg) {
   // (the last 20 answers, bots' confidence mix: a quarter Sure, half Think so, a quarter Guess), not the bots' 0.
   if (cfg.tal === 'warm') {
     const a = RD.botAcc, m = 0.25 * (3 * a - 5 * (1 - a)) + 0.5 * (2 * a - (1 - a)) + 0.25 * a;
-    Object.values(G().players).forEach(p => { p.tal = Math.max(-15, Math.min(15, Math.round(20 * m))); });
+    Object.values(G().players).forEach(p => { p.tal = Math.max(0, Math.min(15, Math.round(20 * m))); });
   }
   const rnd = a => a[Math.floor(Math.random() * a.length)];
   const nodes = ['B'].concat([0, 1, 2, 3, 4, 5, 6, 7].flatMap(f => [0, 1, 2].map(l => f + '-' + l)));
