@@ -112,8 +112,7 @@
   // M opens and closes the menu in game. Not Escape: in Claude, Escape closes the whole artifact window.
   window.addEventListener('keydown', e => {
     if (e.key.toLowerCase() !== 'm' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
-    const t = e.target;
-    if (t && t.closest && (t.isContentEditable || t.closest('input, textarea, select'))) return;
+    if (U.typing(e.target)) return;
     const head = $('#panel').hidden ? null : $('#panel .win-h span');
     if (head && head.textContent === 'MENU') { e.preventDefault(); U.closePanel(); return; }
     // Any walkable screen's Menu button that is showing (M.hudTools).
@@ -124,10 +123,8 @@
 
   // V (for volume) is the mute key, everywhere, quizzes and dialogue included: it mutes everything and brings back
   // what was on before (js/audio.js). Not while you type in a text field.
-  const typing = t => t && t.closest && (t.isContentEditable || t.closest('textarea, select') ||
-    (t.closest('input') && !/^(checkbox|radio|button|submit|reset|range|color|file|image)$/.test(t.closest('input').type)));
   window.addEventListener('keydown', e => {
-    if (e.key.toLowerCase() !== 'v' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || typing(e.target)) return;
+    if (e.key.toLowerCase() !== 'v' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || U.typing(e.target)) return;
     e.preventDefault();
     const on = AU.toggleMute();
     sndClose(false); sndSync();

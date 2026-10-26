@@ -155,8 +155,10 @@
     if (SD.clock) SD.clock.onChange(() => { if (active) placeFolk(); });
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
-      // The Enter that closes a conversation must not open the next one: the dialogue box already used it.
-      if (!active || drop || e.defaultPrevented) return;
+      // The Enter that closes a conversation must not open the next one: the dialogue box already used it. Nor do the
+      // keys reach the plaza while a panel is up over it (the Guild Hall and its raids open as one): the hero stays
+      // put, and W, A, S, D and Space typed into an answer stay in the answer.
+      if (!active || drop || e.defaultPrevented || SD.ui.typing(e.target) || !document.getElementById('panel').hidden) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = talkTarget(); if (t) { e.preventDefault(); onDoor(t); } }
