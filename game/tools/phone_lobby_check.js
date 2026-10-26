@@ -12,7 +12,9 @@
 //   - the leader changes a bot's champion from its seat or from the picker's "Picking for" row, on a phone and a
 //     desktop, and Add a bot brings the new bot's seat to the middle;
 //   - resuming an expedition, nobody can change a champion, their own or a bot's, on a phone and a desktop; someone
-//     new takes a bot's place (and a bot takes it back when they leave), and with no bot there they're turned away.
+//     new takes a bot's place (and a bot takes it back when they leave), and with no bot there they're turned away;
+//     Swap champions trades seats with a bot at once, and with a player once they say yes in the swap dialog; under way, someone leaving
+//     becomes a bot and someone joining takes a bot's place.
 // "Runs off" is an element whose right edge is past the window, unless a strip that scrolls sideways (inside the
 // window) clips it; the window's own scroller doesn't count. The floor's title card is a moment's full-screen flourish.
 //
@@ -256,11 +258,25 @@ const server = http.createServer((req, res) => {
     check(/Locked/.test(r.lock) && /Bot 1: .+ · Bot 2: /.test(r.lock) && r.start, `${label}: the picker says it's locked and names everyone's champion, and Resume still works`);
     check(r.seats.length === started.length && started.every(n => r.seats.includes('as ' + n)), `${label}: each seat shows the champion it started with (${r.seats.join(', ')})`);
     await fits(a, `${label}: the resumed party room`);
+    // But you can swap champions with another seat: a bot's at once.
+    const sw0 = await a.evaluate(() => { const G = SD.debug.raid.G(), me = SD.debug.raid.me(), b = document.querySelector('[data-swap]'); return { mine: G.players[me].c, bot: b && G.players[b.dataset.swap].c, k: b && b.dataset.swap }; });
+    if (sw0.k) await hit(a, `[data-swap="${sw0.k}"]`);
+    await a.waitForTimeout(500);
+    const sw1 = await a.evaluate(k => { const G = SD.debug.raid.G(); return { mine: G.players[SD.debug.raid.me()].c, bot: G.players[k] && G.players[k].c, botStill: !!(G.players[k] && G.players[k].bot) }; }, sw0.k);
+    check(!!sw0.k && sw1.mine === sw0.bot && sw1.bot === sw0.mine && sw1.botStill, `${label}: resuming, Swap champions trades yours with a bot's (${sw0.mine} ⇄ ${sw0.bot})`);
     const code = (await a.textContent('.pt-code')).trim();
     const b = await ctx.newPage(); b.on('pageerror', e => errors.push('B ' + e.message));
     await hall(b); await b.fill('#gh-code', code); await hit(b, '#gh-go');
     await b.waitForSelector('#pt-ready', { timeout: 8000 }); await b.waitForTimeout(1200);
-    check(await b.evaluate(() => !document.querySelectorAll('.pt-champ').length && !!document.querySelector('.pt-fixed') && !document.querySelector('#pt-ready').disabled), `${label}: a player joining the resumed party can't change champion either, and can still say Ready`);
+    check(await b.evaluate(() => !document.querySelectorAll('.pt-champ').length && !!document.querySelector('.pt-fixed') && !document.querySelector('#pt-ready').disabled), `${label}: a player joining the resumed party can't pick a champion either, and can still say Ready`);
+    // A player's seat: they're asked, and the swap happens once they say yes.
+    const bk = await b.evaluate(() => SD.debug.raid.me()), pre = await a.evaluate(k => { const G = SD.debug.raid.G(); return [G.players[SD.debug.raid.me()].c, G.players[k] && G.players[k].c]; }, bk);
+    await hit(a, `.pt-mem[data-peer="${bk}"] [data-swap]`); await a.waitForTimeout(800);
+    check(await b.evaluate(() => { const d = document.querySelector('.pt-sw[role="alertdialog"]'); return !!d && /wants to swap with you/.test(d.textContent) && document.activeElement && document.activeElement.id === 'pt-swap-yes'; }), `${label}: asking a player to swap shows them the swap dialog, focused on its yes`);
+    check(await a.evaluate(() => /^Asked .+ to swap/.test((document.querySelector('.pt-swap') || {}).textContent || '')), `${label}: and the asker sees who they asked, with Take it back`);
+    await hit(b, '[data-swapok]'); await a.waitForTimeout(1200);
+    const post = await a.evaluate(k => { const G = SD.debug.raid.G(); return [G.players[SD.debug.raid.me()].c, G.players[k] && G.players[k].c]; }, bk);
+    check(post[0] === pre[1] && post[1] === pre[0], `${label}: and their Swap trades the two champions (${pre.join(' ⇄ ')})`);
     // Someone new takes a bot's place, with its champion; when they leave, a bot takes the seat back.
     const took = await a.evaluate(() => { const G = SD.debug.raid.G(), k = Object.keys(G.players).find(k => !G.players[k].bot && k !== SD.debug.raid.me()); return k ? { c: G.players[k].c, bots: Object.keys(G.players).filter(j => G.players[j].bot).length, seats: Object.keys(G.players).length } : null; });
     check(!!took && took.bots === 1 && took.seats === 3, `${label}: the player joining takes a bot's place (${JSON.stringify(took)})`);
@@ -268,8 +284,16 @@ const server = http.createServer((req, res) => {
     const back = await a.evaluate(() => { const P = SD.debug.raid.G().players; return { bots: Object.keys(P).filter(j => P[j].bot).length, seats: Object.keys(P).length }; });
     check(back.bots === 2 && back.seats === 3, `${label}: when they leave, a bot takes their seat again (${JSON.stringify(back)})`);
     if (label === 'desktop') {
+      // Under way, a player who leaves becomes a bot, and someone joining takes a bot's place.
+      await hit(a, '#pt-start'); await a.waitForSelector('.rd .map-title'); await a.waitForTimeout(700); await clearDlg(a);
+      const f = await ctx.newPage(); f.on('pageerror', x => errors.push('F ' + x.message));
+      await hall(f); await f.fill('#gh-code', code); await hit(f, '#gh-go'); await f.waitForTimeout(4000);
+      const mid = await a.evaluate(() => { const P = SD.debug.raid.G().players; return Object.keys(P).filter(k => !P[k].bot).length; });
+      check(mid === 2 && await f.evaluate(() => /Tap a room to vote/.test(document.body.innerText)), `${label}: someone joining an expedition under way takes a bot's place and plays`);
+      await f.close(); await a.waitForTimeout(4500);
+      check(await a.evaluate(() => { const P = SD.debug.raid.G().players; return Object.keys(P).filter(k => P[k].bot).length; }) === 2, `${label}: when they leave mid-expedition, a bot takes their seat`);
+      await hit(a, '#rd-leave'); await a.waitForTimeout(200); await hit(a, '#rd-leave-y'); await a.waitForTimeout(1200);
       // With no bot's place to take, someone new is turned away.
-      await hit(a, '#pt-leave'); await a.waitForTimeout(1000);
       await toForm(); await hit(a, '#gh-make'); await a.waitForSelector('#pt-start');
       const solo = (await a.textContent('.pt-code')).trim().toLowerCase();
       await hit(a, '#pt-start'); await a.waitForSelector('.rd .map-title'); await a.waitForTimeout(700); await clearDlg(a);
