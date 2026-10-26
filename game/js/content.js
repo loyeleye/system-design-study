@@ -298,11 +298,12 @@ SD.cards = {
   quorumrw: { name: 'Quorum Read (W+R>N)', cost: 1, kind: 'action', abs: { read: 6 }, pow: 6, tags: ['quorum'], clearStale: true, text: 'Absorb {read} read load. Remove all Stale: the read set overlaps the latest write.', art: 'quorum', rarity: 'uncommon', concept: 'consistency', ch: 3 },
   loadshed: { name: 'Load Shedding', cost: 1, kind: 'action', abs: { any: 6 }, pow: 6, tags: ['shed'], shed: true, text: 'Absorb {any} load. This turn an Overload is halved: drop the least important work, keep checkout alive.', art: 'shed', rarity: 'common', concept: 'backpressure', ch: 3 },
   // Multi-attack cards (`all: true`): their mitigation hits every incident in a group fight (see SD.groupFights).
+  // Multi-hit cards (every incident, Replay, or a hit now and next turn) that would cost 2+ cost 1 less (Ladi, Oct 26).
   broadcast: { name: 'Broadcast Fix', cost: 1, kind: 'action', mit: 5, all: true, tags: ['ops'], text: 'Mitigate {mit} to ALL incidents. One config push reaches every server at once.', art: 'fanout', rarity: 'common', ch: 3 },
-  fleetrollback: { name: 'Fleet-wide Rollback', cost: 2, kind: 'action', mit: 10, all: true, exhaust: true, tags: ['ops'], text: 'Mitigate {mit} to ALL incidents. Exhaust. Every region goes back to the last good build.', art: 'undo', rarity: 'uncommon', ch: 3 },
-  globalrl: { name: 'Global Rate Limit', cost: 2, kind: 'action', abs: { any: 4 }, pow: 8, all: true, tags: ['ratelimit'], text: 'Absorb {any} load. Hit ALL incidents with rate limiting: full effect on those weak to it, half on the rest.', art: 'earth2', rarity: 'uncommon', concept: 'ratelimit', ch: 3 },
+  fleetrollback: { name: 'Fleet-wide Rollback', cost: 1, kind: 'action', mit: 10, all: true, exhaust: true, tags: ['ops'], text: 'Mitigate {mit} to ALL incidents. Exhaust. Every region goes back to the last good build.', art: 'undo', rarity: 'uncommon', ch: 3 },
+  globalrl: { name: 'Global Rate Limit', cost: 1, kind: 'action', abs: { any: 4 }, pow: 8, all: true, tags: ['ratelimit'], text: 'Absorb {any} load. Hit ALL incidents with rate limiting: full effect on those weak to it, half on the rest.', art: 'earth2', rarity: 'uncommon', concept: 'ratelimit', ch: 3 },
   // A delayed blast (`fuse`): Slay the Spire's Bomb. A quest reward only (`quest: true` keeps it out of rewards and shops).
-  'sre-bomb': { name: 'Error Budget Bomb', cost: 2, kind: 'action', fuse: { turns: 3, mit: 40 }, exhaust: true, quest: true, tags: ['ops'], text: 'Exhaust. In 3 turns, deal 40 to ALL incidents: the error budget runs out on everyone at once.', art: 'alarm-clock', rarity: 'rare' }
+  'sre-bomb': { name: 'Error Budget Bomb', cost: 1, kind: 'action', fuse: { turns: 3, mit: 40 }, exhaust: true, quest: true, tags: ['ops'], text: 'Exhaust. In 3 turns, deal 40 to ALL incidents: the error budget runs out on everyone at once.', art: 'alarm-clock', rarity: 'rare' }
 };
 
 SD.starterDeck = ['hotfix', 'hotfix', 'hotfix', 'hotfix', 'bigbox', 'bigbox', 'bigbox', 'bigbox', 'replica', 'cacheaside'];

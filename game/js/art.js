@@ -260,6 +260,10 @@
     furnace: { col: '#ff9a4d', anim: 'shake' }, judge: { col: '#c8b48a', anim: 'float' }, crystalhead: { col: '#7ef0e0', anim: 'float' }, helpdesk: { col: '#ffcf6b', anim: 'shake' }
   };
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
+  // Foes stand on the right and should look left at the party. These were drawn looking right, so they're mirrored.
+  // (spamslime is too, but its sign says FREE GOLD, which wouldn't survive a mirror.)
+  const FACES_RIGHT = new Set(['goblin', 'scanner', 'escalation', 'forgedcoin', 'hotshard', 'jobswarm', 'mimic', 'statue', 'tilehoarder']);
+  A.faceParty = sprite => (FACES_RIGHT.has(sprite) ? ' transform="translate(120 0) scale(-1 1)"' : '');
   A.enemy = function (sprite, boss, hue) {
     const f = FOE[sprite] ? FOE[sprite] : FOE.slime;
     // PixelLab monsters (tools/battle_art.py) already wear their own crowns.
@@ -267,7 +271,7 @@
     return `<svg viewBox="0 0 120 120" aria-hidden="true">
       <ellipse cx="60" cy="113" rx="36" ry="6" fill="rgba(43,35,64,.18)"/>
       <g class="${f.anim}">
-        <image href="${IMG}monsters/${FOE[sprite] ? sprite : 'slime'}.webp" x="8" y="4" width="104" height="110" preserveAspectRatio="xMidYMax meet"${hue ? ` style="filter:hue-rotate(${hue}deg)"` : ''}/>
+        <image href="${IMG}monsters/${FOE[sprite] ? sprite : 'slime'}.webp" x="8" y="4" width="104" height="110" preserveAspectRatio="xMidYMax meet"${A.faceParty(sprite)}${hue ? ` style="filter:hue-rotate(${hue}deg)"` : ''}/>
         ${crown}
       </g></svg>`;
   };

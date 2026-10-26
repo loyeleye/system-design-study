@@ -65,7 +65,7 @@
     return `<svg viewBox="0 0 120 120" aria-hidden="true">
       <ellipse cx="60" cy="113" rx="36" ry="6" fill="rgba(43,35,64,.18)"/>
       <g class="${SD.arcBattleArt.anims[sprite] || 'float'}">
-        <image href="assets/img/monsters/${sprite}.webp" x="8" y="4" width="104" height="110" preserveAspectRatio="xMidYMax meet"${hue ? ` style="filter:hue-rotate(${hue}deg)"` : ''}/>
+        <image href="assets/img/monsters/${sprite}.webp" x="8" y="4" width="104" height="110" preserveAspectRatio="xMidYMax meet"${SD.art.faceParty(sprite)}${hue ? ` style="filter:hue-rotate(${hue}deg)"` : ''}/>
       </g></svg>`;
   };
   // Arc art joins the dungeon map and battle tables (js/arc-dungeon-art.js, js/arc-battle-art.js).
