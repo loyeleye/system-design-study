@@ -131,7 +131,8 @@
     .dbg .win-b { padding: 12px 16px 16px; }
     .dbg-note { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; padding: 6px 10px; border: 2px dashed var(--line); border-radius: 10px; background: var(--paper); font-size: 13px; color: var(--muted); }
     .dbg-now { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 4px; }
-    .dbg-cols { display: grid; gap: 0 16px; }
+    .dbg-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 16px; }
+    .dbg-cols > * { min-width: 0; }
     @media (min-width: 760px) { .dbg-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; } }
     .dbg-now span { font-size: 12px; font-weight: 700; padding: 2px 9px; border: 2px solid var(--ink); border-radius: 20px; background: #fff; white-space: nowrap; }
     .dbg fieldset { margin: 12px 0 0; padding: 8px 12px 12px; border: 2px solid var(--line); border-radius: 12px; background: #fff; min-width: 0; }
@@ -158,7 +159,22 @@
     .dbg-link { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 12px; }
     .dbg-link code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; padding: 4px 8px; border-radius: 6px; background: var(--paper); }
     .dbg-link button { padding: 3px 10px; font-size: 12px; box-shadow: 0 2px 0 var(--ink); border-width: 2px; }
-    .dbg-warn { font-size: 12px; color: #b26b00; font-weight: 700; margin: 8px 0 0 !important; }`;
+    .dbg-warn { font-size: 12px; color: #b26b00; font-weight: 700; margin: 8px 0 0 !important; }
+    /* Phones: one field per row so selects show their whole value, 44px taps, and the link wraps instead of scrolling. */
+    @media (max-width: 600px) {
+      .dbg .win-b { padding: 10px 12px 14px; }
+      .dbg fieldset { padding: 6px 10px 10px; }
+      .dbg-fields { grid-template-columns: minmax(0, 1fr); }
+      .dbg-f select, .dbg-f input, .dbg-bal-row input { min-height: 44px; }
+      .dbg-acts button, .dbg .row button, .dbg-link button { min-height: 44px; }
+      .dbg .row button { flex: 1 1 auto; }
+      .dbg-check { min-height: 44px; margin-top: 4px; }
+      .dbg-check input { width: 22px; height: 22px; }
+      .dbg-link { flex-wrap: wrap; }
+      .dbg-link code { flex-basis: 100%; order: 1; white-space: normal; word-break: break-all; }
+      .dbg-link button { margin-left: auto; }
+    }
+    @media (max-width: 360px) { .dbg-acts { grid-template-columns: minmax(0, 1fr); } }`;
   function badge() {
     if (document.getElementById('dbg-btn')) return;
     const st = document.createElement('style'); st.id = 'dbg-css'; st.textContent = CSS; document.head.appendChild(st);
