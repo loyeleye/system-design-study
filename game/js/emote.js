@@ -80,6 +80,8 @@
 @keyframes emo-pop { 0% { transform: translateY(8px) scale(.4); opacity: 0; } 10% { transform: translateY(-2px) scale(1.1); opacity: 1; } 18% { transform: none; } 82% { transform: translateY(-6px); opacity: 1; } 100% { transform: translateY(-12px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .emo-bub { animation: emo-fade 2.4s linear forwards; } @keyframes emo-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } } }
 .emo-btn svg { width: 18px; height: 18px; vertical-align: -4px; }
+/* Phones: the party room's Start bar keeps one row, so the button is its face alone (44px square). */
+@media (max-width: 600px) { .pt-bar .emo-btn { min-width: 44px; padding-left: 0; padding-right: 0; } .pt-bar .emo-btn .emo-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .pt-bar .emo-btn svg { width: 24px; height: 24px; } }
 .emo-pick { position: fixed; z-index: 61; background: var(--mi-cream, #fff8ec); border: 2.5px solid ${INK}; border-radius: 14px; padding: 8px; box-shadow: 0 4px 0 rgba(43,35,64,.25); display: grid; gap: 6px; max-width: calc(100vw - 32px); }
 .emo-pick .emo-grid { display: grid; grid-template-columns: repeat(5, 44px); gap: 6px; }
 .emo-pick button { width: 44px; height: 44px; padding: 0; border: 2px solid ${INK}; border-radius: 10px; background: #fff; cursor: pointer; display: grid; place-items: center; }
@@ -115,10 +117,10 @@
     moonwalk: t => [-30 * Math.sin(Math.PI * Math.min(1, t / 3)), -Math.abs(Math.sin(t * 13)) * 1.5, -4, 1, 1]
   };
   const still = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-  // The picture to move: a fighter's sprite, a seat's champion, else whatever's marked theirs.
+  // The picture to move: a fighter's sprite, a seat's champion, or a name chip (js/wear.js chip).
   function body(peer) {
     const q = CSS.escape(peer), vis = el => el && el.getClientRects().length;
-    return [`.rd-fighter[data-peer="${q}"] .rd-spr`, `.pt-mem[data-peer="${q}"] .pt-stage > .champ-spr`]
+    return [`.rd-fighter[data-peer="${q}"] .rd-spr`, `.pt-mem[data-peer="${q}"] .pt-stage > .champ-spr`, `.wch[data-peer="${q}"]`]
       .map(s => document.querySelector(s)).find(vis) || null;
   }
   const acts = {};                      // peer -> { raf, el }
@@ -203,7 +205,7 @@
   };
 
   // ---------- The button and its picker ----------
-  E.button = () => `<button class="mi-btn sm emo-btn" type="button" data-emo-open aria-haspopup="true" aria-expanded="false" title="Emote">${E.EMOTES.laugh.svg} Emote</button>`;
+  E.button = () => `<button class="mi-btn sm emo-btn" type="button" data-emo-open aria-haspopup="true" aria-expanded="false" title="Emote" aria-label="Emote">${E.EMOTES.laugh.svg}<span class="emo-l"> Emote</span></button>`;
   let pick = null;
   function close() { if (!pick) return; pick.box.remove(); pick.btn.setAttribute('aria-expanded', 'false'); document.removeEventListener('pointerdown', pick.out, true); pick = null; }
   function open(btn) {

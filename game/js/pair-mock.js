@@ -43,6 +43,7 @@
 .pm-score { display: grid; gap: 6px; }
 .pm-score > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13.5px; font-weight: 700; }
 .pm-score .mi-pick button { padding: 3px 9px; }
+.pm-who { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 10px; } .pm-who small { color: var(--mi-muted, #5a5470); font-weight: 700; } .pm-who .emo-btn { margin-left: auto; }
 .pm-say { display: flex; gap: 6px; } .pm-say input, .pm-notes { flex: 1; min-width: 0; font: inherit; font-size: max(16px, 1em); padding: 6px 10px; border: 3px solid var(--mi-ink); border-radius: 10px; }
 .pm-notes { width: 100%; min-height: 70px; resize: vertical; }
 .pm-cmp { width: 100%; border-collapse: collapse; font-size: 14px; } .pm-cmp th, .pm-cmp td { text-align: left; padding: 4px 6px; border-bottom: 2px solid #ece7f5; }
@@ -137,7 +138,7 @@
     const lead = () => pairs().find(p => p.peer === leaderPeer() && !p.isMe);
     const unsub = [];
     let left = false;
-    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (party) party.leave(); room.leave(); done(typeof why === 'string' ? why : undefined); };
+    const leave = why => { if (left) return; left = true; unsub.forEach(f => f()); if (strip) strip.remove(); if (party) party.leave(); room.leave(); done(typeof why === 'string' ? why : undefined); };
     if (o.bind) o.bind(leave);
     let party = null;
     // Presence goes out only when it changes (a room's own presence change calls onPeers, which redraws).
@@ -192,13 +193,23 @@
         }
       });
     }
+    // During the round, a strip above it (outside root, which the interview redraws): both of you, each name in its
+    // frame and nameplate (js/wear.js chip), where your emotes show, and the Emote button.
+    let strip = null;
+    function who() {
+      if (!SD.wear || !root.parentNode) return;
+      if (!strip) { strip = document.createElement('div'); strip.className = 'pm-who'; root.parentNode.insertBefore(strip, root); }
+      strip.innerHTML = pairs().map(p => `<span>${SD.wear.chip(nickOf(p), p.isMe ? SD.wear.worn(party && party.champ()) : p.presence.wear, p.peer)} <small>${p.peer === cand ? 'Candidate' : 'Interviewer'}</small></span>`).join('')
+        + (SD.emote ? SD.emote.button() : '');
+      if (SD.emote) SD.emote.wire(strip);
+    }
     function begin() { if (party) party.setReady(false); if (role === 'candidate') candidate(); else interviewer(); }
 
     // ---------- Candidate ----------
     const log = [];
     let link = null, lastTick = 0, scores = null, myRes = null;
     async function candidate() {
-      started = true; pres();
+      started = true; pres(); who();
       const send = ev => { log.push(ev); room.emit('ev', { n: log.length - 1, ev }); };
       send({ k: 'start', pid: settings.pid, pace: settings.pace });
       const res = await M.interview(root, {
@@ -232,7 +243,7 @@
     const feed = [];
     let P = null, mine = { grades: {}, verdict: null, note: '' }, gary = null, sent = false;
     function interviewer() {
-      started = true; pres();
+      started = true; pres(); who();
       room.emit('hello', {});
       renderI();
     }
@@ -330,7 +341,7 @@
       const c = partner();
       if (!started && role === 'interviewer' && c && c.presence.role === 'candidate' && c.presence.started) { interviewer(); return; }
       if (!started) lobby();
-      else if (role === 'interviewer') refreshI();
+      else { who(); if (role === 'interviewer') refreshI(); }
     }));
 
     party = SD.party.join(hub, room, 'pair', { leader: leaderPeer, max: 2, onKick: () => leave('kicked'), onFull: () => { if (!started) leave('full'); }, onChange: () => lobby() });

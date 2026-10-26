@@ -2343,12 +2343,20 @@
         if (c.n) { earned.n += c.n; earned.first += c.first; earned.two = earned.two || humans >= 2; }
       }
     }
-    // The end card's line: what this expedition paid, and who it now hires.
+    // The end card's line: what this expedition paid, and who it now hires (or, once everyone is, a look it buys).
     function earnedHtml() {
       const M = SD.marks, CH = SD.champions;
       if (!M || !M.on() || !earned.n) return '';
       const can = CH ? CH.list.filter(c => CH.state(c.id) === 'hire' && M.price(c.id) <= M.balance()).map(c => c.short) : [];
-      return `<p class="rd-marks"><b>+${earned.n} ✦ Raid Marks</b>${earned.two ? ' (doubled: you played with another person)' : ''}${earned.first ? `, with ${earned.first} for your first clear` : ''}. You have ${M.balance()} ✦.${can.length ? ` You can hire ${esc(can.length > 1 ? can.slice(0, -1).join(', ') + ' or ' + can[can.length - 1] : can[0])} at the Raid shop.` : ''}</p>`;
+      // Once everyone's hired, a look you can afford: for the champion you just played if there's one, else the first
+      // on the roster (champions first, so this only shows when there's nobody left to hire).
+      let look = null;
+      if (CH && !CH.list.some(c => CH.state(c.id) === 'hire') && M.items) {
+        const mine = G.players[me.peer] && G.players[me.peer].c, ok = it => it.slot === 'skin' && SD.wear && SD.wear.ITEMS[it.id] && SD.wear.ITEMS[it.id].look && !M.has(it.id) && CH.unlocked(it.champ) && M.cost(it.id) <= M.balance();
+        const looks = M.items().filter(ok), it = looks.find(x => x.champ === mine) || looks.sort((x, y) => CH.list.findIndex(c => c.id === x.champ) - CH.list.findIndex(c => c.id === y.champ))[0];
+        if (it) look = CH.get(it.champ).short;
+      }
+      return `<p class="rd-marks"><b>+${earned.n} ✦ Raid Marks</b>${earned.two ? ' (doubled: you played with another person)' : ''}${earned.first ? `, with ${earned.first} for your first clear` : ''}. You have ${M.balance()} ✦.${can.length ? ` You can hire ${esc(can.length > 1 ? can.slice(0, -1).join(', ') + ' or ' + can[can.length - 1] : can[0])} at the Raid shop.` : look ? ` Kagemaru has a new look for ${esc(look)} at the Raid shop.` : ''}</p>`;
     }
     const askKey = r => r.k + ':' + (r.todo[me.peer] || []).length;
     const myTally = () => (SD.state && SD.state.tally ? SD.state.tally() : undefined);

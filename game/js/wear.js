@@ -13,6 +13,8 @@
 //   SD.wear.dressStage(el, list)   a party seat's stage: its frame, and its effect running over the champion
 //   SD.wear.fx(id, big)      an effect's layer of particles, for a stage or a raid fighter
 //   SD.wear.plate(list)      -> the class for a name in a nameplate ('' with none)
+//   SD.wear.chip(name, list, peer)  a name chip for screens with no fighters or seats (Pair Mock, Whiteboard
+//                            Showdown): the name in its nameplate, ringed in its frame; emotes show over it
 //   SD.wear.swatch(id)       an item's preview (the Wardrobe's and the Raid shop's)
 //   SD.wear.wardrobe(champ)  the Wardrobe's HTML (the party room's fold), with a row for that champion's colours;
 //                            wireWardrobe(el, redraw)
@@ -295,6 +297,12 @@
     else if (spr) W.mark(spr, W.srcOf(spr), skin);
   };
   W.plate = list => { const p = of(W.clean(list), 'plate'); if (p) css(); return p ? 'wpl ' + p : ''; };
+  // The design's "Partly" row: frame, nameplate and emotes on a name chip, but no champion, so no colour or effect.
+  W.chip = function (name, list, peer) {
+    css();
+    const l = W.clean(list), fr = of(l, 'frame'), pl = W.plate(l);
+    return `<span class="wch${fr ? ' wf ' + fr : ''}"${peer ? ` data-peer="${esc(peer)}"` : ''}><span class="${pl}">${esc(name)}</span></span>`;
+  };
   W.swatch = function (id) {
     const it = ITEMS[id];
     if (!it) return '';
@@ -369,6 +377,9 @@ ${spots}
 .frame-temple { --wf-bg: linear-gradient(180deg, #a9cbe8 0%, #e6f0f8 55%, #cfd6de 56%, #b9c1ca 100%); --wf-line: #8a8f99; --wf-glow: inset 0 0 0 7px #d8b85a; }
 .frame-starlit { --wf-bg: radial-gradient(circle at 20% 25%, #fff 0 1px, transparent 2px), radial-gradient(circle at 70% 15%, #fff 0 1px, transparent 2px), radial-gradient(circle at 85% 60%, #fff6c8 0 1.5px, transparent 2.5px), radial-gradient(circle at 35% 70%, #fff 0 1px, transparent 2px), radial-gradient(circle at 55% 40%, #cfe2ff 0 1px, transparent 2px), radial-gradient(ellipse at 50% 0%, #2c3a7a, #0e1230 75%); --wf-line: #9fb4ff; }
 
+.wch { display: inline-flex; align-items: center; min-height: 26px; padding: 2px 4px; border-radius: 10px; background: #fff; font-weight: 700; }
+.wch > span:not([class]), .wch > span[class=""] { padding: 0 4px; }
+.wch.wf { background: #fff !important; box-shadow: 0 0 0 3px var(--wf-line), var(--wf-glow, 0 0 0 transparent); }
 .wpl { display: inline-block; max-width: 100%; border-radius: 6px; padding: 0 8px; background: var(--wp-bg); color: var(--wp-ink) !important; box-shadow: inset 0 0 0 2px var(--wp-line); }
 .rd-fighter .rd-name.wpl, .pt-rename input.wpl { background: var(--wp-bg); }
 .plate-board { --wp-bg: linear-gradient(180deg, #f6e7c1, #ead39c); --wp-ink: #4a2e18; --wp-line: #a0703c; }
