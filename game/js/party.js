@@ -35,7 +35,7 @@
 @keyframes champ-step { to { background-position-x: var(--end); } }
 .champ-spr.anim { animation: champ-step var(--dur) steps(var(--n)) infinite; }
 @media (prefers-reduced-motion: reduce) { .champ-spr.anim { animation: none; } }
-.pt { display: grid; gap: 14px; }
+.pt { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .pt-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pt-back { font: 600 14px var(--f-head, system-ui); background: none; border: 0; padding: 0; cursor: pointer; color: var(--mi-muted); }
 .pt-share { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -43,7 +43,7 @@
 .pt-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .pt-head h2 { margin: 0; font: 700 28px/1.1 var(--f-head, system-ui); }
 .pt-set { display: grid; gap: 6px; background: #fff; border: 2.5px solid var(--mi-ink); border-radius: 12px; padding: 8px 12px; min-width: 0; max-width: 100%; }
-.pt-set select { font: inherit; font-size: max(16px, 1em); padding: 4px 8px; border: 2.5px solid var(--mi-ink); border-radius: 10px; background: #fff; max-width: 100%; }
+.pt-set select { font: inherit; font-size: max(16px, 1em); padding: 4px 8px; border: 2.5px solid var(--mi-ink); border-radius: 10px; background: #fff; width: 100%; max-width: 100%; text-overflow: ellipsis; }
 .pt-members { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .pt-mem { position: relative; background: #fff; border: 3px solid var(--mi-ink); border-radius: 16px; padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 5px; text-align: center; min-width: 0; }
 .pt-mem.ready { border-color: #1f8a57; }
@@ -66,7 +66,7 @@
 .pt-lbl .pt-for { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pt-champ.held::after { content: attr(data-by); position: absolute; top: 4px; right: 4px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 9px var(--f-body, system-ui); background: var(--mi-muted); color: #fff; border-radius: 6px; padding: 1px 4px; }
 .pt-kick { font: 600 12px var(--f-body, system-ui); background: none; border: 0; color: var(--mi-muted); text-decoration: underline; cursor: pointer; padding: 0; }
-.pt-lbl { font: 700 13px var(--f-body, system-ui); display: grid; gap: 6px; }
+.pt-lbl { font: 700 13px var(--f-body, system-ui); display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
 .pt-lbl small { font-weight: 600; color: var(--mi-muted); }
 .pt-roster { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
 /* The multiplayer champions (js/marks.js): a ✦ corner, and a dashed tile with its price until they're hired */
