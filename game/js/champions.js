@@ -200,7 +200,7 @@
     hero404: [
       ['notfound', { name: 'NOT FOUND', cost: 1, kind: 'action', abs: { any: 6 }, unseen: { abs: { any: 9 } }, art: 'stop-sign', text: 'Absorb {any} load. Unseen: if it\'s still in your hand when the foes act, Absorb 9 instead, then it goes to your discard pile.' }],
       ['lunch', { name: 'Lunch Left Out', cost: 0, kind: 'action', draw: 1, unseen: { mit: 5 }, art: 'croissant', text: 'Draw 1. Unseen: Mitigate 5 when the foes act. It disappears. Every time.' }],
-      ['shift', { name: 'Never Missed a Shift', cost: 2, kind: 'action', mit: 8, later: { mit: 6 }, hideMe: true, art: 'spectre', text: 'Mitigate {mit} now and 6 next turn. This turn Pager Alert and Tech Debt hand-outs can\'t find you.' }]],
+      ['shift', { name: 'Never Missed a Shift', cost: 1, kind: 'action', mit: 8, later: { mit: 6 }, hideMe: true, art: 'spectre', text: 'Mitigate {mit} now and 6 next turn. This turn Pager Alert and Tech Debt hand-outs can\'t find you.' }]],
     eunho: [
       ['traffic', { name: 'Shadow Traffic', cost: 1, kind: 'action', shadow: 50, art: 'linked-rings', text: 'Shadow 50%: replay the last card a teammate played this turn at half its numbers, free, without its drawbacks (at most Mitigate or Absorb 15).' }],
       ['beat', { name: 'Every Difference, Down to the Beat', cost: 0, kind: 'action', reveal: true, nextDraw: 1, art: 'magnifying-glass', text: 'Reveal the incident\'s weaknesses. Runbook Ready 1.' }],
