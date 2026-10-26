@@ -142,7 +142,7 @@
     const $dlg = document.getElementById('dialog'), $panel = document.getElementById('panel');
     const locked = () => !$dlg.hidden || !$panel.hidden || SC.playing;
     function onKey(e) {
-      if (!sc.active || !sc.P || sc.hold || e.defaultPrevented || locked()) return;
+      if (!sc.active || !sc.P || sc.hold || e.defaultPrevented || locked() || SD.ui.typing(e.target)) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { if (!e.repeat && !keys[k]) fresh = true; keys[k] = true; sc.P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = talkTarget(); if (t && sc.onTalk) { e.preventDefault(); sc.onTalk(t); } }

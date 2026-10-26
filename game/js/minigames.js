@@ -245,7 +245,7 @@
       };
       // The row redraws ten times a second, so taps are caught on pointerdown at the row (and keys 1 to 3).
       b.querySelector('#dp-row').addEventListener('pointerdown', e => { const el = e.target.closest('[data-k]'); if (el) assign(+el.dataset.k); });
-      const keys = e => { if (['1', '2', '3'].includes(e.key)) assign(+e.key - 1); };
+      const keys = e => { if (['1', '2', '3'].includes(e.key) && !SD.ui.typing(e.target)) assign(+e.key - 1); };
       window.addEventListener('keydown', keys);
       const assign = k => {
         if (desk == null) return;

@@ -4,6 +4,10 @@
   const $ = s => document.querySelector(s);
   U.$ = $;
   U.esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // Is this key going into a text field (a textarea, a text input, a select or anything contenteditable)? Then the
+  // game's own keys (WASD and the arrows, E, Space, M, V, 1 to 3) leave it alone and the letter is typed.
+  U.typing = t => !!(t && t.closest && (t.isContentEditable || t.closest('textarea, select') ||
+    (t.closest('input') && !/^(checkbox|radio|button|submit|reset|range|color|file|image)$/.test(t.closest('input').type))));
 
   // ---- Dialogue with typewriter text ----
   let dq = [], dDone = null, typing = null, full = '';

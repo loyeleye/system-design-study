@@ -365,7 +365,7 @@
     cv = sec.querySelector('#isles-canvas'); ctx = cv.getContext('2d');
     window.addEventListener('resize', resize);
     window.addEventListener('keydown', e => {
-      if (!active || busyTalk || e.defaultPrevented || !$panelClosed()) return;
+      if (!active || busyTalk || e.defaultPrevented || !$panelClosed() || SD.ui.typing(e.target)) return;
       const k = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; P.path = []; e.preventDefault(); }
       if (k === 'e' || k === 'enter' || k === ' ') { const t = target(); if (t) { e.preventDefault(); interact(t); } }
