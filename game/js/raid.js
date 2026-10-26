@@ -2616,6 +2616,8 @@
         note: `${floors ? floors + '<br>' : ''}Each floor is a dungeon map: vote on every room; the most votes win and the leader breaks ties. The SLA is shared and carries from room to room; your deck and bits are your own. After each fight you each pick a card. Going down ends the expedition, unless someone bought Seymour's Tape at a café: then you answer a question and fight on. No shards or XP: a raid pays Raid Marks (✦), which hire the multiplayer champions at the Raid shop.${seats}`,
         addBot: hosting && !G.rs && all().length < MAX_PLAYERS ? () => send({ k: 'bot' }) : null,
         botChamp: hosting && !G.rs ? (k, c) => send({ k: 'botc', b: k, c }) : null,
+        // Resuming: every seat keeps the champion it started the expedition with, bots too (Ladi, 2026-10-26).
+        seat: G.rs ? k => (G.players[k] ? { champ: G.players[k].c, look: G.players[k].lk } : null) : null,
         startWhy: () => (!x ? (hosting ? 'No expedition is open in your save yet.' : 'No expedition is open in the leader\'s save yet.') : G.rs ? (seatsHere().length ? null : 'Waiting for someone with a seat.') : all().length ? null : 'Waiting for the table to answer.'),
         start,
         bind: rt => {
