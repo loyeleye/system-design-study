@@ -3,7 +3,8 @@
 // hero, on every walkable screen: the village (js/hub.js), a scene (js/scene.js, the PR Club's yard) and the Eventual
 // Isles (js/isles/isles-map.js). In the village it also opens the Guild Hall, which is a panel over the plaza, and
 // checks that the party code box and a typed answer (as an Expedition Raid asks it) take every letter, and that the
-// hero stays put behind the panel. Outside a text field the keys still walk.
+// hero stays put behind the panel. Then it plays a real expedition with a bot to its first Debrief and types the
+// answer there. Outside a text field the keys still walk.
 //
 //   node tools/typed_keys_check.js
 //
@@ -101,6 +102,47 @@ const WORDS = 'wasd was a sad dew';
   t = await took();
   check(!t.length, `Guild Hall raid question: the game takes no key from the answer${t.length ? ' (took ' + t.join(' ') + ')' : ''}`);
   check(await page.evaluate(() => !document.querySelector('#panel').hidden && !!document.querySelector('#q-text')), 'Guild Hall raid question: Space and E open no door behind the panel');
+
+  // A real expedition (Ladi, Oct 26: "The c" in the Debrief): a party with a bot, the first room, cards until the fight
+  // is won, then the Debrief's typed question. Every question is the typed x-bk1, so the Debrief is a typed one.
+  await page.goto(base + 'index.html?debug&ch=4');
+  await page.waitForFunction(() => window.SD && SD.main && SD.state.save && SD.guild);
+  await page.waitForTimeout(800);
+  for (let i = 0; i < 30 && await page.evaluate(() => !document.querySelector('#dialog').hidden); i++) { await page.evaluate(() => document.querySelector('#dialog').click()); await page.waitForTimeout(150); }
+  await page.evaluate(() => SD.ui.closePanel());
+  await watchKeys();
+  await page.evaluate(() => { SD.guild.play(); });
+  await page.waitForSelector('.gh-card[data-card=raid]'); await page.click('.gh-card[data-card=raid]'); await page.waitForTimeout(500);
+  await page.click('.gh-card.open .mi-btn.go'); await page.waitForSelector('#gh-hall');
+  await page.click('.gh-bhead .mi-btn.gold'); await page.waitForSelector('#gh-make');
+  await page.click('#gh-make'); await page.waitForSelector('#pt-bot'); await page.click('#pt-bot'); await page.waitForTimeout(300);
+  await page.click('#pt-start'); await page.waitForSelector('.rd .map-title');
+  await page.evaluate(() => { const x = SD.explain.find(q => q.id === 'x-bk1'); SD.state.pickQuestion = () => x; });
+  const t0 = Date.now();
+  let debrief = null;
+  while (Date.now() - t0 < 150000) {
+    if (await page.$('#q-text')) { debrief = await page.evaluate(() => (document.querySelector('#panel .win-h') || {}).textContent || ''); break; }
+    await page.evaluate(() => {
+      const d = document.querySelector('#dialog'); if (d && !d.hidden) return d.click();
+      const n = document.querySelector('#panel .node.can'); if (n) return n.click();
+      const c = [...document.querySelectorAll('.rd .hand .card')].find(c => !c.classList.contains('off') && !c.classList.contains('dim') && !c.disabled && getComputedStyle(c).opacity > 0.6);
+      if (c) { c.click(); const f = document.querySelector('.rd [data-fi]'); if (f) f.click(); return; }
+      const bs = [...document.querySelectorAll('#panel button')].filter(b => b.offsetParent && !b.disabled && !/Leave|Menu|Shop|Bag|✕|Log|Map|Deck/i.test(b.textContent));
+      const b = bs.find(b => /End turn/i.test(b.textContent)) || bs.find(b => /Continue|Next|Take|Skip|Ready|Done|Vote|OK|Pick|Choose/i.test(b.textContent));
+      if (b) b.click();
+    });
+    await page.waitForTimeout(250);
+  }
+  check(/DEBRIEF/.test(debrief || ''), `expedition: the fight is won and the Debrief asks a typed question (${debrief || 'none in 150 s'})`);
+  if (debrief) {
+    await page.click('#q-text');
+    await took();
+    await page.keyboard.type(WORDS);
+    const deb = await page.$eval('#q-text', el => el.value);
+    check(deb === WORDS, `expedition Debrief: the typed answer takes "${WORDS}" (got "${deb}")`);
+    t = await took();
+    check(!t.length, `expedition Debrief: the game takes no key from the answer${t.length ? ' (took ' + t.join(' ') + ')' : ''}`);
+  }
 
   // 2. A scene: the PR Club's yard (js/scene.js).
   await page.goto(base + 'index.html?debug&ch=8&time=morning');
