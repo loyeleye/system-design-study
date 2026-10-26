@@ -588,9 +588,11 @@
     if (st.spotP || st.spotD) o.push(xChip('Spotted', `A tempered card of theirs that sets a New PR gives them ${st.spotP ? 'Pre-Warmed 1' : 'a draw'}.`));
     return o.join('');
   }
+  // Sunny's on this expedition: only then does the PR Board (its chip and the New PR log lines) show.
+  const hasSunny = G => Object.keys(G.players).some(k => G.players[k].c === 'sunny');
   function teamExtra(G) {
     const o = [], ps = Object.keys(G.players);
-    if (ps.some(k => G.players[k].c === 'sunny')) o.push(xChip(`PR Board: ${G.reps} rep${G.reps === 1 ? '' : 's'}${G.prs ? `, ${G.prs} PR${G.prs === 1 ? '' : 's'}` : ''} · ${ps.filter(k => G.players[k].st.pb).map(k => `${G.players[k].n} ${G.players[k].st.pb}`).join(', ') || 'no bests yet'}`, 'Reps: every card any player has played this fight. A New PR: a card that beats its player\'s biggest Mitigate or Absorb of the fight.'));
+    if (hasSunny(G)) o.push(xChip(`PR Board: ${G.reps} rep${G.reps === 1 ? '' : 's'}${G.prs ? `, ${G.prs} PR${G.prs === 1 ? '' : 's'}` : ''} · ${ps.filter(k => G.players[k].st.pb).map(k => `${G.players[k].n} ${G.players[k].st.pb}`).join(', ') || 'no bests yet'}`, 'Reps: every card any player has played this fight. A New PR: a card that beats its player\'s biggest Mitigate or Absorb of the fight.'));
     G.me.forEach(e => { if (G.players[e.p]) o.push(xChip(`Main event: ${G.players[e.p].n} ×${e.x / 100}`, `Their next card, this turn or next, has its Mitigate and Absorb ×${e.x / 100} (at most +${e.c}). If it lands effective, the gong rings.`)); });
     if (tagBonus(G) > TAG_TEAM) o.push(xChip(`Tag Team +${tagBonus(G)}`, 'When two players land an effective card this turn, this much more mitigation.'));
     if (G.rang) o.push(xChip('The gong rang', 'The gong rang this turn.'));
@@ -1170,7 +1172,7 @@
     if (landed > 0) {
       if (st.pb > 0 && landed > st.pb) {
         G.prs++;
-        log += `NEW PR for ${p.n}: ${landed}! `;
+        if (hasSunny(G) || d.pr) log += `NEW PR for ${p.n}: ${landed}! `;
         if (d.pr) log += fxApply(G, peer, d.pr, ti, { mate });
         if (isTp(id) && (st.spotP || st.spotD)) { if (st.spotP) st.prewarm++; if (st.spotD) drawN(p, 1); log += `Spotted: ${st.spotP ? 'Pre-Warmed 1' : 'draw 1'}. `; st.spotP = 0; st.spotD = 0; }
       }
