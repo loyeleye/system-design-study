@@ -342,7 +342,12 @@
 @keyframes rd-hurt { 20% { transform: translateX(-6px); filter: brightness(2) saturate(0); } 50% { transform: translateX(3px); } }
 @media (prefers-reduced-motion: reduce) { .rd-fighter .rd-spr { animation: none !important; } }
 .rd-end h2 { font-family: var(--f-head); margin: 4px 0; }
-.rd .run-hud { padding-top: 0; }
+/* The HUD (SLA, the chips, Emote and Leave) stays stuck to the top of the window as you scroll (Ladi, 2026-10-26),
+   edge to edge on the card so the map and the fight slide under it. */
+.rd .run-hud { position: sticky; top: calc(-1 * var(--win-pad-t, 0px)); z-index: 5; margin: -14px -14px 12px; padding: 10px 14px; background: var(--cream, #fffaf0); border-radius: 13px 13px 0 0; box-shadow: 0 8px 10px -9px rgba(43,35,64,.35); }
+.rd .run-hud > #rd-leave { min-height: 36px; padding: 4px 12px; font-size: 14px; white-space: nowrap; }
+.rd .run-hud .hud-sla { flex-basis: 140px; }
+.rd .run-hud > .rd-leave { flex: 1 1 100%; margin: 0; padding-top: 8px; border-top: 2px dashed rgba(43,35,64,.2); }
 .rd-tally { display: inline-flex; align-items: center; gap: 6px; }
 .rd-tally .pips { display: inline-flex; gap: 2px; }
 .rd-tally .pips i { width: 5px; height: 12px; border-radius: 2px; background: #e7e1d3; border: 1px solid rgba(43,35,64,.35); }
@@ -378,16 +383,22 @@
 .rd-leave-q { flex: 1 1 100%; text-align: right; font-weight: 700; }
 @media (max-width: 600px) { .rd { padding: 10px; border-radius: 14px; } .rd-leave-q { text-align: left; } }
 .rd-hchips { display: contents; }
-.run-hud > .emo-btn { margin-left: auto; }
+.run-hud > .emo-btn, .run-hud > #rd-leave { margin-left: auto; } .run-hud > .emo-btn + #rd-leave { margin-left: 0; }
 .rd .hand-top .emo-btn { flex: none; }
 /* Phones (Ladi, 2026-10-26): the HUD is the SLA on one line and the chips on one more, a strip that scrolls sideways;
    in a fight the hand's bar (CAP, your SLA, Emote, Ready) and the hand stay stuck to the bottom of the window with
    their own scroll, so the foe's NEXT and your cards are on one screen. The art is a shorter strip, the teammates
    compact, and empty infra slots hide until one is built. */
 @media (max-width: 600px) {
-  .rd .run-hud { gap: 6px; padding: 2px 0 8px; }
-  .rd .run-hud .hud-sla { flex: 1 1 0; min-width: 0; }
-  .rd .rd-hchips { display: flex; order: 3; flex: 1 1 100%; min-width: 0; contain: inline-size; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  /* One compact row when it's stuck: a short SLA, the chips strip, then Emote and Leave as icons. */
+  .rd .run-hud { flex-wrap: nowrap; gap: 6px; margin: -10px -10px 10px; padding: 6px 10px; }
+  .rd .run-hud:has(> .rd-leave) { flex-wrap: wrap; }
+  .rd .rd-wide { display: none; }
+  .rd .run-hud .hud-sla { flex: none; gap: 4px; font-size: 12px; } .rd .run-hud .hud-sla .bar { min-width: 0; width: 44px; height: 10px; }
+  .rd .run-hud > .emo-btn { flex: none; } .rd .run-hud > #rd-leave { flex: none; min-height: 44px; padding: 0 8px; font-size: 12px; }
+  .rd .run-hud > .rd-leave button { min-height: 44px; }
+  .rd .run-hud > .rd-leave { order: 5; }
+  .rd .rd-hchips { display: flex; flex: 1 1 0; min-width: 0; contain: inline-size; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 2px 1px 4px; mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
   .rd .rd-hchips::-webkit-scrollbar { display: none; }
   .rd .rd-hchips > * { flex: none; }
   .rd .rd-hchips .hud-chip { display: inline-flex; align-items: center; gap: 4px; }
@@ -2479,10 +2490,8 @@
       const h = root.querySelector('.hand'), sx = h ? h.scrollLeft : 0, hy = h ? h.scrollTop : 0, sc = root.closest('.win-b'), sy = sc ? sc.scrollTop : 0;
       // Leaving mid-expedition asks first, in place (the Guild Hall is already a panel), like solo's Abandon run
       // (Ladi, 2026-10-25). Once it's over there's nothing to lose.
-      const ask = ui.leave && G.ph !== 'done' && G.ph !== 'over';
-      root.innerHTML = `<div class="rd" data-ph="${esc(G.ph)}">${html}<div class="row rd-leave">${ask
-        ? `<span class="rd-leave-q" role="status">Leave the expedition?${players().length > 1 ? ' The others play on without you.' : ''}</span><button class="danger" type="button" id="rd-leave-y">Yes, leave</button><button class="ghost" type="button" id="rd-stay">Stay</button>`
-        : '<button class="ghost" type="button" id="rd-leave">Leave the expedition</button>'}</div></div>`;
+      // With a HUD on the page, Leave rides in it (it's stuck to the top, Ladi, Oct 26); otherwise it's a row at the end.
+      root.innerHTML = `<div class="rd" data-ph="${esc(G.ph)}">${html}${html.includes('class="run-hud"') ? '' : `<div class="row rd-leave">${leaveHtml()}</div>`}</div>`;
       const lv = root.querySelector('#rd-leave');
       if (lv) lv.onclick = () => { if (G.ph === 'done' || G.ph === 'over') return leave(); ui.leave = true; render(); const s = root.querySelector('#rd-stay'); if (s) { s.focus({ preventScroll: true }); s.scrollIntoView({ block: 'nearest' }); } };
       const ly = root.querySelector('#rd-leave-y'); if (ly) ly.onclick = () => leave();
@@ -2494,16 +2503,22 @@
       const db = root.querySelector('#rd-deck'); if (db) db.onclick = () => { ui.deck = !ui.deck; render(); };
       const tb = root.querySelector('#rd-tally'); if (tb) tb.onclick = () => { ui.tally = !ui.tally; render(); };
     }
+    // Leave the expedition, or the question it asks first.
+    function leaveHtml() {
+      return ui.leave && G.ph !== 'done' && G.ph !== 'over'
+        ? `<span class="rd-leave-q" role="status">Leave the expedition?${players().length > 1 ? ' The others play on without you.' : ''}</span><button class="danger" type="button" id="rd-leave-y">Yes, leave</button><button class="ghost" type="button" id="rd-stay">Stay</button>`
+        : '<button class="ghost" type="button" id="rd-leave" aria-label="Leave the expedition" title="Leave the expedition">🚪 Leave</button>';
+    }
     const head = t => `<span class="mi-tag">Expedition Raid · party ${esc(code.toUpperCase())}</span><h2 style="margin:2px 0 6px">${esc(t)}</h2>`;
     const sendAttr = d => `data-send="${esc(JSON.stringify(d))}"`;
     // emo: the Emote button goes here (in a fight it rides in the hand's bar instead, by Ready).
     function hud(emo) {
       const mine = G.players[me.peer], fs = floorsOf(X());
-      return `<div class="run-hud"><div class="hud-sla"><span>Team SLA</span><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}/${SLA}</b></div>
+      return `<div class="run-hud"><div class="hud-sla"><span><span class="rd-wide">Team </span>SLA</span><div class="bar sla"><i style="width:${G.sla / SLA * 100}%"></i></div><b>${G.sla}<span class="rd-wide">/${SLA}</span></b></div>
         <div class="rd-hchips"><span class="hud-chip">Floor <b>${G.fl + 1}/${fs.length}</b></span>${mine ? `<span class="hud-chip">Bits <b>${mine.bits}</b></span>` : ''}
         <span class="hud-chip" title="Seymour's Tape: if the team goes down, one plays and you fight on at full SLA">📼 Tapes <b>${G.tapes}</b></span>
         ${mine ? tallyChip(RD.credOf(mine.tal)) : ''}
-        ${mine ? `<button class="hud-chip" type="button" id="rd-deck" aria-expanded="${ui.deck}">Deck (${mine.deck.length})</button>` : ''}</div>${emo !== false && SD.emote ? SD.emote.button() : ''}</div>
+        ${mine ? `<button class="hud-chip" type="button" id="rd-deck" aria-expanded="${ui.deck}">Deck (${mine.deck.length})</button>` : ''}</div>${emo !== false && SD.emote ? SD.emote.button() : ''}${ui.leave && G.ph !== 'done' && G.ph !== 'over' ? `<div class="row rd-leave">${leaveHtml()}</div>` : leaveHtml()}</div>
         ${ui.tally && mine ? `<p class="rd-tally-help">${tallyHelp(RD.credOf(mine.tal))}</p>` : ''}
         ${G.note ? `<p class="rd-note" role="status">${esc(G.note)}</p>` : ''}
         ${ui.deck && mine ? `<div class="cardgrid mini">${mine.deck.map(id => chtml(id)).join('')}</div>` : ''}`;
