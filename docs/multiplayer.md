@@ -28,7 +28,7 @@ Names: you arrive as your remembered name if nobody in the party has it, else th
 
 The standalone page has no save, so only Pingsby is open there. Kyu can't be picked against her own raid boss (Kyu, Cosmic Burnout Mode).
 
-In an Expedition Raid each champion brings three signature cards, which replace one Hotfix and two Bigger Boxes in that player's starting deck. They are `quest` cards marked `champ`, so they never appear as rewards, in the shop or in Seymour's bunker count. Costs follow the game's curve (1 Capacity is about Mitigate 6 or Absorb 6 to 9); a card above the curve pays with SLA, Stale or Exhaust. Uptima's are the strongest and cost the most.
+In an Expedition Raid each champion brings three signature cards, which replace one Hotfix and two Bigger Boxes in that player's starting deck. They are `quest` cards marked `champ`, so they never appear as rewards, in the shop or in Seymour's bunker count. Costs follow the game's curve (1 Capacity is about Mitigate 6 or Absorb 6 to 9); a card above the curve pays with SLA, Stale or Exhaust. Uptima's are the strongest and cost the most. Infra that keeps absorb between turns (Seymour's Backup of the Backup, Persistent Volumes and the like) keeps only its owner's share in a raid: what they kept before plus what they added last turn, at most what's left after the foes act (`G.kp`). Everyone else's absorb resets as usual, so a whole party blocking for a few turns can't bank shields for the rest of the fight (Ladi, 2026-10-26).
 
 In a fight each player stands on the left as their champion, facing the enemies: idle, casting when they land a card, flinching when the boss deals damage.
 

@@ -105,7 +105,7 @@
   // unseenT, an unseen card worked this turn; hurt, the SLA the team lost when the foes last acted. me: the main event
   // (Gong), [{ p, by, x (%), c (cap), t (turns left) }]; pl: this turn's plays, [peer, card, target]; sy: what lands
   // if the team is in sync (Leilani), [peer, card, target]; rq: what lands when the gong next rings, [peer, card, target].
-  const TEAM = ['hardened', 'regen', 'regenT', 'turnSla', 'retry', 'intangible', 'artifact', 'thorns', 'buffer', 'cnN', 'cnT', 'cnU', 'cob', 'bk', 'qk', 'reps', 'prs', 'tagUp', 'rang', 'mp', 'unseenT', 'hurt'];
+  const TEAM = ['hardened', 'regen', 'regenT', 'turnSla', 'retry', 'intangible', 'artifact', 'thorns', 'buffer', 'cnN', 'cnT', 'cnU', 'cob', 'bk', 'qk', 'reps', 'prs', 'tagUp', 'rang', 'mp', 'unseenT', 'hurt', 'kp'];
   const fightStatus = () => { const o = { hardK: null, lastHit: null, foes: [], fi: 0, lead: true, lt: [], rf: null, qs: [], me: [], pl: [], sy: [], rq: [] }; TEAM.forEach(k => { o[k] = 0; }); return o; };
   const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
   const rnd = a => a[Math.floor(Math.random() * a.length)];
@@ -1297,6 +1297,11 @@
   function newTurn(G) {
     G.turn++;
     G.eff = [];
+    // Infra that keeps absorb ("your absorb is kept") keeps only its owners' share of the team's shields: what they
+    // kept before plus what they added last turn, at most what's left. Everyone else's resets (Ladi, 2026-10-26: a
+    // whole party blocking with one Backup of the Backup in play banked shields for the rest of the fight).
+    const own = new Set(G.infra.filter(x => card(x.id).keepSh).map(x => x.by)), tot = shSum(G);
+    G.kp = own.size ? Math.min(tot, G.kp + [...own].reduce((a, k) => a + (G.players[k] ? G.players[k].ab : 0), 0)) : 0;
     // What each player adds to the shields this turn: their cards' Absorb and their infra's each-turn Absorb.
     Object.values(G.players).forEach(p => { p.ab = 0; });
     G.intangible = 0; G.cnU = 0;
@@ -1311,8 +1316,8 @@
         if (G.leakM >= 12) { G.leakM = 0; G.sev = Math.max(0, G.sev - 10); G.skip = 1; G.log = (G.log ? G.log + ' ' : '') + `${multi ? foeName(G, i) : 'The incident'} was OOM-killed! It restarts: -10 Severity, and it skips its next move.`; }
       }
     }));
-    // Shields reset, unless an infra keeps them or a card held them (holdSh, once).
-    if (!G.infra.some(x => card(x.id).keepSh) && !G.flags.holdSh) G.sh = zero();
+    // Shields reset to the kept share, unless a card held them all (holdSh, once).
+    if (!G.flags.holdSh && tot > G.kp) for (const k in G.sh) G.sh[k] *= G.kp / tot;
     const keep = { jitter: G.flags.jitter, chunk: G.flags.chunk, sketch: G.flags.sketch };
     G.flags = {}; Object.keys(keep).forEach(k => { if (keep[k]) G.flags[k] = true; });
     G.infra.forEach(x => {
