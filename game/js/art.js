@@ -262,7 +262,7 @@
   A.enemyColor = sprite => (FOE[sprite] || FOE.slime).col;
   // Foes stand on the right and should look left at the party. These were drawn looking right, so they're mirrored.
   // (spamslime is too, but its sign says FREE GOLD, which wouldn't survive a mirror.)
-  const FACES_RIGHT = new Set(['goblin', 'scanner', 'escalation', 'forgedcoin', 'hotshard', 'jobswarm', 'mimic', 'statue', 'tilehoarder', 'vanish']);
+  const FACES_RIGHT = new Set(['goblin', 'scanner', 'escalation', 'forgedcoin', 'hotshard', 'jobswarm', 'mimic', 'statue', 'tilehoarder']);
   A.faceParty = sprite => (FACES_RIGHT.has(sprite) ? ' transform="translate(120 0) scale(-1 1)"' : '');
   A.enemy = function (sprite, boss, hue) {
     const f = FOE[sprite] ? FOE[sprite] : FOE.slime;
