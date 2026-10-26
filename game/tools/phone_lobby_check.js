@@ -10,7 +10,8 @@
 //     behind small buttons; on a
 //     1280x800 desktop they start open;
 //   - the leader changes a bot's champion from its seat or from the picker's "Picking for" row, on a phone and a
-//     desktop, and Add a bot brings the new bot's seat to the middle.
+//     desktop, and Add a bot brings the new bot's seat to the middle;
+//   - resuming an expedition, nobody can change a champion, their own or a bot's, on a phone and a desktop.
 // "Runs off" is an element whose right edge is past the window, unless a strip that scrolls sideways (inside the
 // window) clips it; the window's own scroller doesn't count. The floor's title card is a moment's full-screen flourish.
 //
@@ -221,6 +222,45 @@ const server = http.createServer((req, res) => {
     check(await p.evaluate(() => SD.debug.raid.G().players['~b1'].c) === to && to !== was, `on desktop, Picking for Bot 1 changes Bot 1's champion (${was} → ${to})`);
     check(await p.evaluate(() => document.querySelector('#pt-lbl').open && document.querySelector('[data-who=""]').getAttribute('aria-pressed') === 'true'), 'and the picker goes back to your own champion');
     await d.close();
+  }
+
+  // ---------- A resumed expedition ----------
+  // Everyone keeps the champion they started with: the leader's picker, its "Picking for" row and the bots' Change
+  // champion are locked, on a phone and a desktop, and for a player who joins the resumed party too.
+  for (const [label, opts] of [['phone', { ...devices['iPhone 13'] }], ['desktop', { viewport: { width: 1280, height: 800 } }]]) {
+    const ctx = await browser.newContext(opts);
+    const a = await ctx.newPage(); a.on('pageerror', e => errors.push(e.message));
+    const hit = (page, q) => page.evaluate(q => document.querySelector(q).click(), q);
+    const hall = async page => {
+      await page.goto(base + 'index.html?debug&ch=4');
+      await page.waitForFunction(() => window.SD && SD.main && SD.state.save && SD.guild); await page.waitForTimeout(800); await clearDlg(page);
+      await page.evaluate(() => { SD.ui.closePanel(); SD.guild.play(); }); await page.waitForTimeout(400); await clearDlg(page);
+    };
+    const toForm = async () => {
+      await a.evaluate(() => { SD.ui.closePanel(); SD.guild.play(); }); await a.waitForTimeout(400); await clearDlg(a);
+      await a.waitForSelector('.gh-card[data-card=raid]'); await hit(a, '.gh-card[data-card=raid]'); await a.waitForTimeout(300);
+      await hit(a, '.gh-card.open .mi-btn.go'); await a.waitForSelector('.gh-bhead .mi-btn.gold'); await hit(a, '.gh-bhead .mi-btn.gold');
+      await a.waitForSelector('#gh-make');
+    };
+    await hall(a); await toForm(); await hit(a, '#gh-make'); await a.waitForSelector('#pt-bot');
+    await hit(a, '#pt-bot'); await a.waitForTimeout(300); await hit(a, '#pt-bot'); await a.waitForTimeout(400);
+    const started = await a.evaluate(() => { const P = SD.debug.raid.G().players; return Object.keys(P).map(k => SD.champions.get(P[k].c).name); });
+    await hit(a, '#pt-start'); await a.waitForSelector('.rd .map-title'); await a.waitForTimeout(700); await clearDlg(a);
+    await hit(a, '#rd-leave'); await a.waitForTimeout(200); await hit(a, '#rd-leave-y'); await a.waitForTimeout(1200);
+    await toForm();
+    await a.evaluate(() => { const s = document.querySelector('#gh-xp'), o = [...s.options].find(o => o.value.startsWith('resume:')); s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); });
+    await a.waitForTimeout(200); await hit(a, '#gh-make'); await a.waitForSelector('.pt-code'); await a.waitForTimeout(1200);
+    const r = await a.evaluate(() => ({ rs: SD.debug.raid.G().rs, champs: document.querySelectorAll('.pt-champ').length, who: document.querySelectorAll('.pt-who').length, edit: document.querySelectorAll('[data-edit]').length, lock: (document.querySelector('.pt-fixed') || {}).textContent || '', start: !!document.querySelector('#pt-start:not([disabled])'), seats: [...document.querySelectorAll('.pt-mem:not(.empty) .as')].map(e => e.textContent) }));
+    check(r.rs && r.champs === 0 && r.who === 0 && r.edit === 0, `${label}: resuming, the leader can't change anyone's champion (no picker, no "Picking for", no Change champion)`);
+    check(/Locked/.test(r.lock) && /Bot 1: .+ · Bot 2: /.test(r.lock) && r.start, `${label}: the picker says it's locked and names everyone's champion, and Resume still works`);
+    check(r.seats.length === started.length && started.every(n => r.seats.includes('as ' + n)), `${label}: each seat shows the champion it started with (${r.seats.join(', ')})`);
+    await fits(a, `${label}: the resumed party room`);
+    const code = (await a.textContent('.pt-code')).trim();
+    const b = await ctx.newPage(); b.on('pageerror', e => errors.push('B ' + e.message));
+    await hall(b); await b.fill('#gh-code', code); await hit(b, '#gh-go');
+    await b.waitForSelector('#pt-ready', { timeout: 8000 }); await b.waitForTimeout(1200);
+    check(await b.evaluate(() => !document.querySelectorAll('.pt-champ').length && !!document.querySelector('.pt-fixed') && !document.querySelector('#pt-ready').disabled), `${label}: a player joining the resumed party can't change champion either, and can still say Ready`);
+    await ctx.close();
   }
 
   check(!errors.length, `no page errors${errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''}`);
