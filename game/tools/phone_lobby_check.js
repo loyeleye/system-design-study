@@ -5,8 +5,10 @@
 //   - the party room as the second player joins it, from the Guild Hall page (guild-hall.html);
 //   - at 320px, the raid's map, fight and end, and a Pair Mock and a Showdown round on both players' screens;
 //   - at 390px, the raid's party room is short: the seats are one row you swipe (kept through a redraw), Compact drops
-//     the portraits and the name box, and the champion picker and signature cards are folded until opened, with a
-//     region nobody has unlocked as one line; on a 1280x800 desktop they start open.
+//     the portraits and the name box, and the champion picker and signature cards are folded until opened; opened,
+//     the picker shows one region at a time under region tabs, with the locked champions and the how-it-works line
+//     behind small buttons; on a
+//     1280x800 desktop they start open.
 // "Runs off" is an element whose right edge is past the window, unless a strip that scrolls sideways (inside the
 // window) clips it; the window's own scroller doesn't count. The floor's title card is a moment's full-screen flourish.
 //
@@ -132,9 +134,35 @@ const server = http.createServer((req, res) => {
     await a.evaluate(() => document.querySelector('[data-vis=""]').click()); await a.waitForTimeout(300);
     await a.evaluate(() => document.querySelector('[data-vis="1"]').click()); await a.waitForTimeout(300);
     check(await a.evaluate(() => document.querySelector('.pt-members').scrollLeft) >= 100, 'a redraw keeps the seats where you swiped them');
-    const pk = await a.evaluate(() => ({ open: document.querySelector('#pt-lbl').open, h: Math.round(document.querySelector('#pt-lbl').getBoundingClientRect().height), shutRow: [...document.querySelectorAll('.pt-region.shut .pt-rrow')].every(e => !e.getClientRects().length) }));
-    check(pk.open && pk.h <= 700, `Change opens the picker, and it stays open through a redraw (${pk.h}px tall)`);
-    check(g.shut === 0 || pk.shutRow, 'a region nobody has unlocked is one line');
+    const pk = await a.evaluate(() => ({ open: document.querySelector('#pt-lbl').open, h: Math.round(document.querySelector('.pt-sheet').getBoundingClientRect().height), fixed: getComputedStyle(document.querySelector('.pt-sheet')).position === 'fixed', room: document.querySelector('#panel .win-b').scrollHeight, locked: [...document.querySelectorAll('.pt-champ.lock')].filter(e => e.getClientRects().length).length, rows: new Set([...document.querySelectorAll('.pt-roster .pt-champ')].filter(e => e.getClientRects().length).map(e => Math.round(e.getBoundingClientRect().top))).size }));
+    check(pk.open && pk.fixed && pk.h <= 0.55 * 664, `Change opens the picker as a sheet over the room, and it stays open through a redraw (${pk.h}px tall)`);
+    check(pk.room === g.h, `the open sheet doesn't make the room any longer (${pk.room}px)`);
+    check(pk.rows === 1 && pk.locked === 0, `the open picker is one strip, without the locked champions (${pk.rows} row${pk.rows === 1 ? '' : 's'}, ${pk.locked} locked shown)`);
+    const tab = await a.evaluate(() => { const t = [...document.querySelectorAll('.pt-rtab')].find(e => e.getClientRects().length && e.getAttribute('aria-selected') !== 'true'); return t ? t.dataset.rtab : null; });
+    if (tab) {
+      await a.tap(`[data-rtab="${tab}"]`); await a.waitForTimeout(150);
+      check(await a.evaluate(r => { const on = [...document.querySelectorAll('.pt-region')].filter(e => e.getClientRects().length); return on.length === 1 && on[0].dataset.region === r; }, tab), `a region tab swaps the strip to that region (${tab})`);
+    }
+    if (await a.$('#pt-lockb')) {
+      await a.tap('#pt-lockb'); await a.waitForTimeout(150);
+      check(await a.evaluate(() => document.querySelector('.pt-roster').classList.contains('show-lock') && [...document.querySelectorAll('.pt-rtab.shut')].some(e => e.getClientRects().length)), '"Show N locked" shows them, and their regions\' tabs');
+    }
+    await a.tap('#pt-whyb'); await a.waitForTimeout(150);
+    check(await a.evaluate(() => !!document.querySelector('#pt-why').getClientRects().length), '"How picking works" shows the rules');
+    // Close shuts the sheet; picking a champion shuts it too.
+    await a.tap('#pt-pickx'); await a.waitForTimeout(200);
+    check(await a.evaluate(() => !document.querySelector('#pt-lbl').open), 'Close shuts the sheet');
+    await a.tap('#pt-lbl > summary'); await a.waitForTimeout(200);
+    const other = await a.evaluate(() => { const b = [...document.querySelectorAll('.pt-champ')].find(e => e.getClientRects().length && e.getAttribute('aria-disabled') !== 'true' && !e.classList.contains('sel')); return b ? b.dataset.ch : null; });
+    if (other) {
+      await a.tap(`.pt-champ[data-ch="${other}"]`); await a.waitForTimeout(400);
+      check(await a.evaluate(id => !document.querySelector('#pt-lbl').open && SD.champions.mine && true, other), `picking a champion (${other}) shuts the sheet`);
+    }
+    // A bot's Change champion opens the same sheet, for the bot; picking for it shuts it.
+    await a.evaluate(() => document.querySelector('[data-edit]').click()); await a.waitForTimeout(300);
+    check(await a.evaluate(() => document.querySelector('#pt-lbl').open && /Choosing for/.test(document.querySelector('.pt-sheet-h').textContent)), 'a bot\'s Change champion opens the sheet for the bot');
+    await a.evaluate(() => { const b = [...document.querySelectorAll('.pt-champ')].find(e => e.getClientRects().length && e.getAttribute('aria-disabled') !== 'true' && !e.classList.contains('sel')); b.click(); }); await a.waitForTimeout(400);
+    check(await a.evaluate(() => !document.querySelector('#pt-lbl').open), 'picking for the bot shuts it');
     await a.tap('#pt-compact'); await a.waitForTimeout(300);
     check(await a.evaluate(() => !document.querySelector('#pt-nick') && [...document.querySelectorAll('.pt-mem .pt-stage')].every(e => !e.getClientRects().length)), 'Compact shows names only: no portraits, no name box');
     await a.tap('#pt-compact'); await a.waitForTimeout(300);

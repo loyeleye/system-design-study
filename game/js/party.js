@@ -137,7 +137,12 @@
 .pt-short { display: none; }
 /* The fold's heading names the cards, so the list's own heading is for screen readers only. */
 .pt-cards .pt-deck-h b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.pt-shut { display: none; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.pt-pickbar, .pt-rtabs, .pt-sheet-h, .pt-scrim { display: none; }
+.pt-sheet { display: grid; gap: 6px; min-width: 0; }
+.pt-rtab { flex: none; font: 700 12px var(--f-body, system-ui); color: var(--mi-ink); background: #fff; border: 2px solid var(--mi-ink); border-radius: 999px; padding: 2px 12px; cursor: pointer; white-space: nowrap; }
+.pt-rtab[aria-selected="true"] { background: var(--mi-ink); color: #fff; }
+.pt-mini { font: 700 12px var(--f-body, system-ui); color: var(--mi-ink); background: var(--mi-paper); border: 2px solid var(--mi-ink); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.pt-mini[aria-expanded="true"], .pt-mini[aria-pressed="true"] { background: var(--mi-sun); }
 .pt-vis { display: inline-flex; border: 2.5px solid var(--mi-ink); border-radius: 10px; overflow: hidden; }
 .pt-vis button { font: 700 13px var(--f-body, system-ui); padding: 3px 10px; border: 0; background: #fff; color: var(--mi-ink); cursor: pointer; }
 .pt-vis button.on { background: var(--mi-ink); color: #fff; }
@@ -151,6 +156,7 @@
   .pt-rename input, .pt-set select { min-height: 44px; }
   .pt-pick > summary, .pt-cards > summary, .pt-fold, .pt-more { min-height: 44px; }
   .pt-fold { min-width: 44px; }
+  .pt-mini, .pt-rtab { min-height: 44px; }
 }
 /* Phones: the seats are one row you swipe; each region of champions is a strip you swipe; the story shows three lines
    until More; the share row drops its longer words. */
@@ -161,12 +167,28 @@
   .pt-members > .pt-mem { flex: 0 0 min(150px, 46%); scroll-snap-align: start; }
   /* The clip is at the padding's edge, so the top and bottom space is border instead, where a fourth line can't show. */
   .pt-note:not(.open) { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; padding-block: 0; border-block: 6px solid var(--mi-paper); }
-  .pt-roster { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; }
-  .pt-region { display: grid; gap: 4px; }
+  /* The champions, one region at a time: a row of region tabs over one strip you swipe. Locked champions, and the
+     how-it-works line, wait behind the two small buttons above it. */
+  .pt-roster { display: grid; gap: 6px; }
+  .pt-rtabs { display: flex; gap: 6px; overflow-x: auto; contain: inline-size; overscroll-behavior-x: contain; padding: 2px 2px 4px; }
+  .pt-region { display: none; } .pt-region.on { display: block; } .pt-region > span { display: none; }
   .pt-rrow { display: flex; gap: 8px; overflow-x: auto; contain: inline-size; scroll-snap-type: x proximity; overscroll-behavior-x: contain; padding: 2px 2px 6px; }
-  .pt-rrow > .pt-champ { flex: none; scroll-snap-align: start; }
-  /* A region with nobody unlocked yet is one line on a phone. */
-  .pt-region.shut .pt-rrow { display: none; } .pt-region.shut .pt-shut { display: inline; }
+  .pt-rrow > .pt-champ { flex: none; width: 58px; padding: 4px 2px 3px; scroll-snap-align: start; }
+  .pt-rrow > .pt-champ .pic { height: 62px; overflow: hidden; }
+  .pt-rrow > .pt-champ b { font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pt-rrow > .pt-champ small { font-size: 9px; }
+  .pt-rrow > .pt-champ.taken::after, .pt-rrow > .pt-champ.held::after, .pt-rrow > .pt-champ.hire::after { top: 2px; right: 2px; max-width: 50px; font-size: 8px; padding: 0 3px; }
+  .pt-roster:not(.show-lock) .pt-champ.lock, .pt-roster:not(.show-lock) .pt-rtab.shut { display: none; }
+  .pt-pickbar { display: flex; flex-wrap: wrap; gap: 6px; }
+  /* Change opens the picker as a sheet over the room, from the bottom, so the room never grows; a tap outside, Close,
+     or picking someone shuts it. */
+  .pt-pick[open] > summary { margin-bottom: 0; }
+  .pt-pick[open] > .pt-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; max-height: 78dvh; overflow-y: auto; overscroll-behavior: contain; gap: 8px; background: var(--mi-cream, #fffaf0); border-top: 3px solid var(--mi-ink); border-radius: 18px 18px 0 0; padding: 0 max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); box-shadow: 0 -10px 24px rgba(20,14,30,.3); animation: pt-up .18s ease-out; }
+  .pt-pick[open] > .pt-scrim { display: block; position: fixed; inset: 0; z-index: 60; border: 0; padding: 0; background: rgba(20,14,30,.45); cursor: pointer; }
+  .pt-pick[open] .pt-sheet-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 1; padding: 10px 0 4px; background: var(--mi-cream, #fffaf0); font: 700 16px var(--f-head, system-ui); }
+  @keyframes pt-up { from { transform: translateY(40px); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .pt-pick[open] > .pt-sheet { animation: none; } }
+  .pt-why:not(.on) { display: none; }
 }
 /* Phones: a one-row Start bar, so it hides less of the roster while you scroll; the room ends with room to spare
    below it, so the last row scrolls fully clear. */
@@ -235,7 +257,7 @@
     // The phone-size folds, kept through redraws: seats without portraits (and remembered on this device), the champion
     // picker, the story note and the signature cards. null means "as fits the screen": open on a desktop, shut on a phone.
     let compact = false; try { compact = localStorage.getItem('sd-pt-compact') === '1'; } catch (e) { /* private mode */ }
-    let picking = null, noteOpen = false, cardsOpen = null;
+    let picking = null, noteOpen = false, cardsOpen = null, whyOpen = false, lockedOpen = false, regTab = null;
     const phone = () => matchMedia('(max-width: 600px)').matches;
     // When this player arrived: in a clash of names or champions, whoever came later gives way.
     const since = Date.now();
@@ -320,10 +342,17 @@
       // every champion someone else holds is off.
       const taken = {}, heldBot = {};
       list.forEach(m => { if (!m.champ || m === ed || (!ed && m.isMe)) return; if (m.bot && !ed) heldBot[m.champ] = m.nick; else taken[m.champ] = m.nick; });
+      // On a phone the roster shows one region, picked by a tab: first the region of the champion being picked.
+      const lockedN = CH.list.filter(c => CH.state(c.id) === 'locked').length;
+      const shutR = r => CH.list.filter(c => c.region === r).every(c => CH.state(c.id) === 'locked');
+      const showLock = lockedOpen || !!ed;
+      const pickR = (CH.get(pick) || {}).region;
+      let tabR = regTab && (showLock || !shutR(regTab)) ? regTab : pickR && CH.regions.includes(pickR) ? pickR : CH.regions.find(r => !shutR(r)) || CH.regions[0];
+      const rtabs = `<div class="pt-rtabs" role="tablist" aria-label="Regions">${CH.regions.map(r => `<button type="button" role="tab" class="pt-rtab${shutR(r) ? ' shut' : ''}" data-rtab="${esc(r)}" aria-selected="${r === tabR}">${esc(r)}</button>`).join('')}</div>`;
       const regions = CH.regions.map(r => {
         const cs = CH.list.filter(c => c.region === r);
         const shut = cs.every(c => CH.state(c.id) === 'locked');
-        return `<div class="pt-region${shut ? ' shut' : ''}"><span>${esc(r)}${shut ? `<small class="pt-shut"> · ${cs.length} to unlock in the story</small>` : ''}</span><div class="pt-rrow">${cs.map(c => {
+        return `<div class="pt-region${shut ? ' shut' : ''}${r === tabR ? ' on' : ''}" data-region="${esc(r)}" role="tabpanel"><span>${esc(r)}</span><div class="pt-rrow">${cs.map(c => {
           const stt = CH.state(c.id), lock = stt === 'locked', hire = stt === 'hire', boss = CH.bossConflict(c.id, ctx.boss), by = taken[c.id], hb = !by && heldBot[c.id];
           const off = lock || hire || by || boss, price = SD.marks ? SD.marks.price(c.id) : null;
           // A champion for hire opens their card below the roster (js/raid-shop.js), where they're hired.
@@ -355,7 +384,7 @@
       const a = document.activeElement, focusNick = a && a.id === 'pt-nick', draft = focusNick ? a.value : null;
       // A redraw keeps keyboard focus on the same champion or button.
       // The room redraws whenever anyone changes anything: the swiped seats and champion strips stay where they were.
-      const swiped = [...root.querySelectorAll('.pt-members, .pt-rrow')].map(e => e.scrollLeft);
+      const swiped = [...root.querySelectorAll('.pt-members, .pt-rtabs, .pt-rrow')].map(e => e.scrollLeft);
       const keep = a && root.contains(a) ? (a.dataset.ch ? `[data-ch="${a.dataset.ch}"]` : a.dataset.edit ? `[data-edit="${CSS.escape(a.dataset.edit)}"]` : a.id && a.id !== 'pt-nick' ? '#' + a.id : null) : null;
       root.innerHTML = `<div class="mi"><div class="mi-card pt">
         <div class="pt-top"><button class="pt-back" type="button" id="pt-leave" aria-label="Leave the party">← Leave<span class="pt-long"> the party</span></button>
@@ -365,19 +394,21 @@
         ${ctx.note ? `<div class="pt-notew"><p class="pt-note${noteOpen ? ' open' : ''}" id="pt-note">${ctx.note}</p><button class="pt-more" type="button" id="pt-more" aria-controls="pt-note" aria-expanded="${noteOpen}" hidden>${noteOpen ? 'Less' : 'More'}</button></div>` : ''}
         <div class="pt-mh"><b>Party <small>${list.length} of ${max}</small></b><button class="pt-fold" type="button" id="pt-compact" aria-pressed="${compact}" title="${compact ? 'Show portraits and your name box' : 'Names only: no portraits, no name box'}">${compact ? 'Expand' : 'Compact'}</button></div>
         <div class="pt-members${compact ? ' compact' : ''}">${seats.join('')}</div>
-        <details class="pt-lbl pt-pick" id="pt-lbl"${pickOpen ? ' open' : ''}><summary>${ed ? `<span class="pt-for" aria-live="polite">Choosing for ${esc(ed.nick)}</span>` : `<span aria-live="polite">Your champion${CH.get(champ) ? `: <b>${esc(CH.get(champ).name)}</b>` : ''}</span>`}<span class="pt-chgl" aria-hidden="true">${pickOpen ? 'Close' : 'Change'}</span></summary>${ed ? `<span class="pt-for"><button class="mi-btn sm pt-chg" type="button" id="pt-done">Done</button></span><small>Tap a champion for ${esc(ed.nick)}, or Done to keep this one.</small>` : `<small>${ctx.deck ? 'Each brings three signature cards to the raid. ' : ''}Two players can't pick the same one; a bot moves aside for you. Reach more of them in the game to unlock them.</small>`}<div class="pt-roster">${regions}</div></details>
-        ${hireCard}
+        <details class="pt-lbl pt-pick" id="pt-lbl"${pickOpen ? ' open' : ''}><summary>${ed ? `<span class="pt-for" aria-live="polite">Choosing for ${esc(ed.nick)}</span>` : `<span aria-live="polite">Your champion${CH.get(champ) ? `: <b>${esc(CH.get(champ).name)}</b>` : ''}</span>`}<span class="pt-chgl" aria-hidden="true">${pickOpen ? 'Close' : 'Change'}</span></summary><div class="pt-sheet" role="dialog" aria-label="${ed ? `Pick a champion for ${esc(ed.nick)}` : 'Pick your champion'}"><div class="pt-sheet-h"><b>${ed ? `Choosing for ${esc(ed.nick)}` : 'Pick your champion'}</b><button type="button" class="pt-mini" id="pt-pickx">Close</button></div>${ed ? `<span class="pt-for"><button class="mi-btn sm pt-chg" type="button" id="pt-done">Done</button></span><small>Tap a champion for ${esc(ed.nick)}, or Done to keep this one.</small>` : `<div class="pt-pickbar"><button type="button" class="pt-mini" id="pt-whyb" aria-controls="pt-why" aria-expanded="${whyOpen}">ⓘ How picking works</button>${lockedN ? `<button type="button" class="pt-mini" id="pt-lockb" aria-pressed="${lockedOpen}">${lockedOpen ? 'Hide' : 'Show'} ${lockedN} locked</button>` : ''}</div><small class="pt-why${whyOpen ? ' on' : ''}" id="pt-why">${ctx.deck ? 'Each brings three signature cards to the raid. ' : ''}Two players can't pick the same one; a bot moves aside for you. Reach more of them in the game to unlock them.</small>`}<div class="pt-roster${showLock ? ' show-lock' : ''}">${rtabs}${regions}</div>${hireCard}</div><button type="button" class="pt-scrim" id="pt-scrim" tabindex="-1" aria-label="Close"></button></details>
         ${wd}
         ${sig ? `<details class="pt-cards" id="pt-cards"${cardsShown ? ' open' : ''}><summary>${esc(ed ? ed.nick + ': ' : '')}${esc(CH.get(pick).name)}'s signature cards <small>three, in the raid</small></summary>${sig}</details>` : ''}
         <div class="pt-bar"><p>${status}</p><div class="pt-acts">${SD.emote ? SD.emote.button() : ''}${btn}</div></div></div></div>`;
+      const small = phone();
       root.querySelectorAll('[data-spr]').forEach(el => {
         const v = el.dataset.spr; if (!v) return;
         const lock = v.startsWith('lock:'), id = lock ? v.slice(5) : v, c = CH.get(id); if (!c) return;
         const big = el.classList.contains('pt-stage'), pv = el.classList.contains('wd-stage');
-        el.appendChild(CH.sprite(id, pv ? Math.min(1.6, 66 / c.h) : big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h), big || (!lock && id === champ), el.dataset.look || (id === champ ? look : null)));
+        // A phone's smaller roster tiles draw the art at exactly 1x (½x for the few tall ones), so no pixel row is lost.
+        const tile = small && !big && !pv && el.closest('.pt-champ') ? (c.h <= 64 ? 1 : 0.5) : null;
+        el.appendChild(CH.sprite(id, tile || (pv ? Math.min(1.6, 66 / c.h) : big ? Math.min(2, 104 / c.h) : Math.min(1.2, 62 / c.h)), big || (!lock && id === champ), el.dataset.look || (id === champ ? look : null)));
         if (big && SD.wear && el.dataset.wear) SD.wear.dressStage(el, el.dataset.wear.split(' '), id);
       });
-      root.querySelectorAll('.pt-members, .pt-rrow').forEach((e, i) => { if (swiped[i]) e.scrollLeft = swiped[i]; });
+      root.querySelectorAll('.pt-members, .pt-rtabs, .pt-rrow').forEach((e, i) => { if (swiped[i]) e.scrollLeft = swiped[i]; });
       if (focusNick) { const i = root.querySelector('#pt-nick'); if (i) { i.focus(); i.value = draft; } }
       else if (keep) { const k = root.querySelector(keep); if (k) k.focus(); }
       const nick = root.querySelector('#pt-nick');
@@ -393,6 +424,7 @@
         if (b.getAttribute('aria-disabled') === 'true') return;
         if (ed) { const k = ed.peer; editing = null; refocus = k; if (id !== ed.champ) ctx.botChamp(k, id); redraw(); return; }
         if (id === champ) return;
+        if (phone()) picking = false;
         pickC(id); CH.setMine(id); if (opts.onChange) opts.onChange();
       });
       const stopEdit = () => { refocus = editing; editing = null; redraw(); };
@@ -412,9 +444,23 @@
       const rd = root.querySelector('#pt-ready'); if (rd) rd.onclick = () => P.setReady(!ready);
       // Hired from the lobby: they're picked straight away (for the bot being picked for, if any).
       const hc = root.querySelector('#pt-hire');
-      if (hc) SD.raidShop.wire(hc, redraw, id => { hiring = null; if (ed) { editing = null; ctx.botChamp(ed.peer, id); } else { pickC(id); CH.setMine(id); } if (opts.onChange) opts.onChange(); else redraw(); });
+      if (hc) SD.raidShop.wire(hc, redraw, id => { hiring = null; if (phone()) picking = false; if (ed) { editing = null; ctx.botChamp(ed.peer, id); } else { pickC(id); CH.setMine(id); } if (opts.onChange) opts.onChange(); else redraw(); });
       const pk = root.querySelector('#pt-lbl');
-      if (pk) pk.ontoggle = () => { if (ed || pk.open === pickOpen) return; picking = pk.open; const l = pk.querySelector('.pt-chgl'); if (l) l.textContent = pk.open ? 'Close' : 'Change'; };
+      if (pk) pk.ontoggle = () => { if (ed) return; picking = pk.open; const l = pk.querySelector('.pt-chgl'); if (l) l.textContent = pk.open ? 'Close' : 'Change'; };
+      // On a phone: the how-it-works line and the locked champions, each behind a small button.
+      const wb = root.querySelector('#pt-whyb');
+      if (wb) wb.onclick = () => { whyOpen = !whyOpen; wb.setAttribute('aria-expanded', whyOpen); root.querySelector('#pt-why').classList.toggle('on', whyOpen); };
+      const lb = root.querySelector('#pt-lockb');
+      if (lb) lb.onclick = () => { lockedOpen = !lockedOpen; redraw(); };
+      root.querySelectorAll('[data-rtab]').forEach(b => b.onclick = () => {
+        regTab = b.dataset.rtab;
+        root.querySelectorAll('[data-rtab]').forEach(t => t.setAttribute('aria-selected', t === b));
+        root.querySelectorAll('.pt-region').forEach(g => g.classList.toggle('on', g.dataset.region === regTab));
+      });
+      // The sheet's Close and the dimmed room behind it: picking for a bot stops, else the picker folds.
+      const shut = () => { if (ed) { stopEdit(); return; } picking = false; if (pk) pk.open = false; };
+      ['#pt-pickx', '#pt-scrim'].forEach(q => { const b = root.querySelector(q); if (b) b.onclick = e => { e.preventDefault(); shut(); }; });
+      const sh = root.querySelector('.pt-sheet'); if (sh) sh.onkeydown = e => { if (e.key === 'Escape' && pk && pk.open && phone()) shut(); };
       const cd = root.querySelector('#pt-cards'); if (cd) cd.ontoggle = () => { cardsOpen = cd.open; };
       const cp = root.querySelector('#pt-compact');
       if (cp) cp.onclick = () => { compact = !compact; try { localStorage.setItem('sd-pt-compact', compact ? '1' : '0'); } catch (e) { /* private mode */ } redraw(); };
