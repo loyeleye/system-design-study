@@ -41,3 +41,5 @@ const leaks = [];
 
 console.log(`${OUT}: ${files} files, ${changed} rewritten`);
 if (leaks.length) { console.error('Still names the author:\n  ' + leaks.join('\n  ')); process.exit(1); }
+// The offline service worker's file list (game/sw.js), with the hashes of the rewritten files.
+require('../game/tools/offline_files.js').write(OUT);

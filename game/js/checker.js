@@ -52,7 +52,7 @@
   // ---------- What this device and copy can run ----------
   let llmProbe = null, reachProbe = null;
   // The Worker answers a GET on api/grade with 405 when it has the AI binding, 501 without.
-  const llmOk = () => llmProbe || (llmProbe = (async () => {
+  const llmOk = () => navigator.onLine === false ? Promise.resolve({ ok: false, why: 'You\'re offline. It needs a connection to the game\'s server.' }) : llmProbe || (llmProbe = (async () => {
     if (!SD.cloud || !SD.cloud.available || !(await SD.cloud.available())) return { ok: false, why: 'Only on the Cloudflare copy of the game, which has a server to run it.' };
     try {
       const r = await fetch(new URL('api/grade', location.href), { cache: 'no-store' });
@@ -63,6 +63,7 @@
   const offlineOk = async () => {
     if (!canRun()) return { ok: false, why: 'This browser can\'t run it.' };
     if (dl.state === 'ready' || dl.state === 'downloading') return { ok: true };
+    if (navigator.onLine === false) return { ok: false, why: 'You\'re offline. Download it once you\'re back online.' };
     if (!reachProbe) reachProbe = (async () => {
       try {
         const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 5000);
@@ -208,7 +209,7 @@
           const found = await within(llm(text, points, q), 15000);
           return Object.assign(found, { by: 'llm', note: 'The LLM read your answer for meaning. It can still misjudge.' });
         } catch (e) { K.lastError = e; why = 'The LLM couldn\'t be reached, so the Basic checker read this one.'; }
-      } else why = 'The LLM isn\'t available here, so the Basic checker read this one.';
+      } else why = navigator.onLine === false ? 'You\'re offline, so the Basic checker read this one.' : 'The LLM isn\'t available here, so the Basic checker read this one.';
     }
     if (chosen === 'offline') {
       if (dl.state === 'ready') {
