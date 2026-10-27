@@ -93,6 +93,12 @@
       }
     } catch (e) { /* cloud unavailable: local save only */ }
   }
+  // Back online (js/offline.js lets the game open with no connection): connect the cloud if it wasn't reachable at
+  // launch, or send it the save made while offline.
+  addEventListener('online', () => {
+    if (!S.save) return;
+    if (S.cloud) S.persist(); else connectCloud();
+  });
   // The player typed another device's save code (Cloudflare build). That device's save replaces this browser's,
   // whichever is newer, since this one is usually a fresh start. With no save under the code yet, this browser's
   // save goes there. Resolves 'loaded', 'moved', or 'bad' for a code that isn't 32 characters.

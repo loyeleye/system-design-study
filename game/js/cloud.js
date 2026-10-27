@@ -14,18 +14,26 @@
   const api = p => new URL('api/' + p, location.href);
 
   // The Worker build's mark on this page's own response. A *.workers.dev address counts too, for a browser that
-  // doesn't share Server-Timing with the page.
+  // doesn't share Server-Timing with the page. Once seen it's remembered for this site, since a page the offline
+  // service worker (sw.js) serves from its cache may not show it.
+  const MARK_KEY = 'sd-cloud-marked';
   function marked() {
     try {
       const nav = performance.getEntriesByType('navigation')[0];
-      if (nav && Array.isArray(nav.serverTiming) && nav.serverTiming.some(t => t.name === 'sd-cloud')) return true;
+      if (nav && Array.isArray(nav.serverTiming) && nav.serverTiming.some(t => t.name === 'sd-cloud')) {
+        try { localStorage.setItem(MARK_KEY, '1'); } catch (e) { /* private mode */ }
+        return true;
+      }
     } catch (e) { /* no timing API */ }
+    try { if (localStorage.getItem(MARK_KEY) === '1') return true; } catch (e) { /* private mode */ }
     return /\.workers\.dev$/.test(location.hostname);
   }
 
   let probe = null;
   C.available = function () {
     if (probe) return probe;
+    // Offline (js/offline.js): no server now, but ask again once the connection is back.
+    if (navigator.onLine === false) return Promise.resolve(false);
     probe = (async () => {
       if (!/^https?:$/.test(location.protocol)) return false;
       if (!marked()) return false;
@@ -34,7 +42,7 @@
         const r = await fetch(api('hello'), { cache: 'no-store', signal: ctl.signal });
         clearTimeout(t);
         return r.ok && (await r.json()).game === 'isekaid';
-      } catch (e) { return false; }
+      } catch (e) { probe = null; return false; }
     })();
     return probe;
   };

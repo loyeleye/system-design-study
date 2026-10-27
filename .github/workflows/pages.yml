@@ -23,6 +23,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # The offline service worker's file list (game/sw.js), made from exactly the files being deployed.
+      - run: node game/tools/offline_files.js
       # Build tools aren't served (as in game/.assetsignore).
       - run: rm -rf game/tools && find game -name __pycache__ -type d -prune -exec rm -rf {} +
       - uses: actions/configure-pages@v5

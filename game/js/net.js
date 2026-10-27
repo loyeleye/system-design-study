@@ -4,7 +4,7 @@
 // Anywhere else it falls back to a BroadcastChannel, so two tabs of the same browser can play each other,
 // which is also how the tests run.
 //
-//   const hub = await SD.net.open()      -> { mode: 'claude' | 'cloud' | 'local', me: { peer, nick }, lobby, join(code),
+//   const hub = await SD.net.open()      -> { mode: 'claude' | 'cloud' | 'local', offline, me: { peer, nick }, lobby, join(code),
 //                                             setNick(n, temp), remembered() }
 //   const r = await hub.join('pm-abcd')   -> a room: emit(topic, data), on(topic, fn), presence(patch), peers(), onPeers(fn), leave()
 //   const d = await hub.directory('pair')  -> that game's open tables, oldest first, at most 10:
@@ -141,8 +141,11 @@
       if (room) room.onPeers(() => { const s = room.peers().find(p => p.isMe && p.sameTab); if (s) me.peer = s.peer; });
       const rooms = {};
       let remembered = saved;
+      // Offline (js/offline.js): this tab only for now; the next open looks for the server again.
+      const offline = !room && navigator.onLine === false;
+      if (offline) setTimeout(() => { hubP = null; }, 0);
       return {
-        mode, me, lobby,
+        mode, me, lobby, offline,
         // temp: a name given by the party room, not one the player typed, so it isn't remembered.
         setNick(n, temp) { me.nick = N.clean(n, 24) || me.nick; if (!temp) { store.set(NICK, me.nick); remembered = true; } },
         remembered: () => remembered,

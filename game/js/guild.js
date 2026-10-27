@@ -248,6 +248,7 @@ select.gh-field { font-size: 16px; }
     }
     // The hub's mode, in one line, above the hall.
     function where() {
+      if (hub.offline) return '<p class="gh-note"><b>You\'re offline.</b> Parties need a connection to reach other players, so for now they only reach your other tabs. Single player works as usual.</p>';
       if (hub.mode === 'local') return opts.inGame
         ? `<p class="gh-note"><b>Only this browser for now.</b> This copy of the game can't reach other players, so parties only reach your other tabs. To play a friend, use the <a href="${G.URL}" target="_blank" rel="noopener">Guild Hall page</a>.</p>`
         : '<p class="gh-note"><b>Practice mode.</b> This copy isn\'t on claude.ai, so parties only reach other tabs of this browser. Open the page in a second tab to try both seats.</p>';

@@ -8,3 +8,6 @@ game/assets/model/*.b64.txt
 cloudflare/node_modules/
 cloudflare/.wrangler/
 cloudflare/dist-anon/
+
+# Made at deploy time by game/tools/offline_files.js (the offline service worker's file list)
+game/offline-files.json

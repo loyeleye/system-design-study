@@ -5,6 +5,9 @@
   "name": "isekaid-into-prod",
   "main": "src/worker.js",
   "compatibility_date": "2026-10-01",
+  // Before every deploy (and wrangler dev): the offline service worker's file list (game/sw.js), made from the files
+  // being deployed, so a Builds deploy from GitHub gets it too.
+  "build": { "command": "node ../game/tools/offline_files.js" },
   "assets": {
     "directory": "../game",
     "binding": "ASSETS",
