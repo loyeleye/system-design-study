@@ -891,22 +891,20 @@
     if (n.bench) return drawBench(n.x, n.y);
     const a = !n.moving && n.act ? doing(n, t) : null;
     let face = 'south', yawn = -1, gag = null;
-    if (n.bird) drawBird(n, t);
-    else {
-      // You walking up gets their attention; otherwise they face their work.
-      const near = Math.abs(P.x - n.x) + Math.abs(P.y - n.y) <= 1;
-      face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
-      ctx.save(); if (a && a.dy) ctx.translate(0, a.dy * ts);
-      yawn = !n.moving && face === 'south' && SD.clock ? SD.clock.yawnFrame(n.id, t) : -1;
-      const going = !!n.moving || !!(a && a.anim);
-      // Uptima's idle gags (js/uptima-idle.js): a spin on the spot, or a frame of her gag sheet instead of her own.
-      gag = n.id === 'uptima' && SD.uptimaIdle ? SD.uptimaIdle.pose(n, t, { still: !going && face === 'south' && yawn < 0 }) : null;
-      if (gag && gag.im) cell(gag.im, gag.col, gag.row, ART().chars.uptima, xx(n), yy(n));
-      else if (a && a.sweep != null && !near && ok(pic('sw-' + n.id))) sweeping(n, a.sweep, face);
-      else person(n.id, xx(n), yy(n), t, gag ? gag.face : face, going, false, n.moving ? pace(n) : 1, yawn, SD.art.turned(n, gag ? gag.face : face, going, t));
-      ctx.restore();
-      if (a && a.fx && !gag) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
-    }
+    // You walking up gets their attention; otherwise they face their work.
+    const near = Math.abs(P.x - n.x) + Math.abs(P.y - n.y) <= 1;
+    face = n.moving ? n.face : near || !a ? facing(n) : a.face || facing(n);
+    ctx.save(); if (a && a.dy) ctx.translate(0, a.dy * ts);
+    yawn = !n.moving && face === 'south' && SD.clock ? SD.clock.yawnFrame(n.id, t) : -1;
+    const going = !!n.moving || !!(a && a.anim);
+    // Uptima's idle gags (js/uptima-idle.js): a spin on the spot, or a frame of her gag sheet instead of her own.
+    gag = n.id === 'uptima' && SD.uptimaIdle ? SD.uptimaIdle.pose(n, t, { still: !going && face === 'south' && yawn < 0 }) : null;
+    if (gag && gag.im) cell(gag.im, gag.col, gag.row, ART().chars.uptima, xx(n), yy(n));
+    else if (a && a.sweep != null && !near && ok(pic('sw-' + n.id))) sweeping(n, a.sweep, face);
+    else person(n.id, xx(n), yy(n), t, gag ? gag.face : face, going, false, n.moving ? pace(n) : 1, yawn, SD.art.turned(n, gag ? gag.face : face, going, t));
+    ctx.restore();
+    // Coo's too short to hold the props up in front of him: they'd cover him.
+    if (a && a.fx && !gag && !n.bird) a.fx(xx(n) * ts + ts / 2, yy(n) * ts + ts * 0.95, face);
     // A quest marker replaces any bubble, so the two never overlap.
     if (n.moving || (H.npcMarks && H.npcMarks[n.id])) return;
     const X = xx(n) * ts + ts / 2, Y = n.bird ? yy(n) * ts : headY(yy(n)) + (a && a.dy ? a.dy * ts : 0);
@@ -1026,12 +1024,6 @@
     rr(X - 15 * s, Y - 9 * s, 30 * s, 6 * s, 2); ctx.fill(); ctx.stroke();
     rr(X - 15 * s, Y - 19 * s, 30 * s, 6 * s, 2); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#7a4a2a'; ctx.fillRect(X - 13 * s, Y - 13 * s, 3 * s, 4 * s); ctx.fillRect(X + 10 * s, Y - 13 * s, 3 * s, 4 * s);
-  }
-  // Postmaster Coo is a pigeon, bobbing like pigeons do.
-  function drawBird(n, t) {
-    const X = xx(n) * ts + ts / 2, Y = yy(n) * ts + ts * 0.9, bob = Math.sin(t * 5) > 0.6 ? -3 * ts / 32 : 0;
-    ctx.fillStyle = 'rgba(43,35,64,0.22)'; ctx.beginPath(); ctx.ellipse(X, Y, ts * 0.28, ts * 0.09, 0, 0, Math.PI * 2); ctx.fill();
-    obj('coo', X, Y + bob, 1, n.x < P.x);
   }
   const WANDER = [{ id: 'v1', x: 9, y: 1 }, { id: 'v2', x: 22, y: 18 }, { id: 'v3', x: 10, y: 10 }, { id: 'v4', x: 28, y: 10 }];
   WANDER.forEach(w => { w.px = w.x; w.py = w.y; w.wait = Math.random() * 3; w.face = 'south'; w.emo = null; w.emoT = 0; });

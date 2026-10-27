@@ -900,16 +900,8 @@
     ctx.beginPath(); ctx.ellipse(x, y, w * 0.4, ts * 0.1, 0, 0, Math.PI * 2); ctx.fill();
     ctx.drawImage(im, f * NAP.w, 0, NAP.w, NAP.h, Math.round(x - w / 2), fy - h, w, h);
   }
-  // Coo is a pigeon: he has no sprite sheet, so he's drawn from his village picture, bobbing.
-  function bird(ctx, x, y, ts, t) {
-    const a = SD.villageArt && SD.villageArt.objects.coo, im = BIRD();
-    if (!a || !ok(im)) return;
-    const w = a[0] * ts / 32, h = a[1] * ts / 32;
-    ctx.drawImage(im, x - w / 2, y - h + Math.sin(t * 3) * 2, w, h);
-  }
-  let birdPic = null;
-  const BIRD = () => birdPic || (birdPic = load('assets/img/village/coo.webp'));
-  const looks = id => id === 'coo' ? { draw: bird } : {};
+  // Coo is a pigeon, a head shorter than everyone else: his bubbles sit lower (tall, js/scene.js).
+  const looks = id => id === 'coo' ? { tall: 34 } : {};
   // Worried villagers have a worried bubble now and then, in the storm.
   // And the arrows at the spots you talk to people across furniture from.
   function fx(ctx, t, ts) {
