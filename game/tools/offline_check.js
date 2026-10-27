@@ -6,7 +6,8 @@
 //
 // For a GitHub Pages copy on desktop and a Cloudflare copy (Server-Timing: sd-cloud, with api/hello and api/save) on
 // an iPhone 13:
-//   - online: the service worker saves core and then music, and Menu > Offline play says so
+//   - off by default: no service worker until Menu > Settings > Play offline is switched on; switching it on warns
+//     how many MB it downloads (with and without music), then saves core and music, and the switch says so
 //   - offline: the game reloads from the cache with no request reaching the server, starts a chapter run, plays a
 //     card and ends a turn; music plays from the cache (a byte range comes back as a 206); typed answers are checked
 //     by the Basic checker even with the LLM picked; the cloud, the Guild Hall and the Offline Model's download all
@@ -14,6 +15,7 @@
 //   - a deploy: a changed file is picked up on the next launch, and a list naming a file the server doesn't have yet
 //     keeps the old version
 //   - back online (Cloudflare): the save made offline goes to the cloud
+//   - switching it off warns, then deletes the saved copy and unregisters the worker; the game still opens online
 // Needs Playwright (npm i -g playwright).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium, devices } = require('playwright');
@@ -64,17 +66,44 @@ const ms = async f => { const t = Date.now(); const v = await f(); return [v, Da
     const errs = [];
     page.on('pageerror', e => errs.push(e.message));
 
-    // ---- Online: the first visit saves the game ----
+    // ---- Online: off until the player switches it on ----
     await page.goto(base + 'index.html');
     await page.waitForFunction(() => window.SD && SD.offline && SD.state && SD.state.save);
     check(await page.evaluate(() => SD.offline.supported()), 'the game can be saved for offline here');
+    await page.waitForTimeout(500);
+    check(await page.evaluate(async () => !SD.offline.enabled() && !(await navigator.serviceWorker.getRegistrations()).length), 'off by default: no service worker');
+    // The menu's switch opens the warning (a debug start puts you in the village, where the menu is).
+    await page.goto(base + 'index.html?debug&ch=2');
+    await page.waitForFunction(() => window.SD && SD.main && SD.state.save);
+    await page.evaluate(() => { SD.ui.closePanel(); SD.ui.dialog = async () => {}; });
+    await page.keyboard.press('m');
+    const row = await page.waitForSelector('#m-offline', { timeout: 5000 }).then(el => el.evaluate(e => ({ on: e.getAttribute('aria-checked'), text: e.textContent })), () => null);
+    check(row && row.on === 'false' && /Play offline/.test(row.text), `Menu > Settings has a Play offline switch, off ${JSON.stringify(row)}`);
+    if (row) await page.click('#m-offline');
+    const warn = await page.waitForSelector('#of-on', { timeout: 5000 }).then(() => page.evaluate(() => {
+      const with_ = document.querySelector('#of-on').textContent; document.querySelector('#of-mu').click();
+      const without = document.querySelector('#of-on').textContent; document.querySelector('#of-mu').click();
+      return { with_, without, music: document.querySelector('#of-mu').checked };
+    }), () => null);
+    const mbOf = t => +((/(\d+) MB/.exec(t || '') || [])[1] || 0);
+    check(warn && mbOf(warn.with_) > mbOf(warn.without) && mbOf(warn.without) > 5, `switching it on warns how much it downloads ${JSON.stringify(warn)}`);
+    if (warn && !warn.music) await page.click('#of-mu');
+    await page.click('#of-on');
+    await page.waitForSelector('#m-offline', { timeout: 5000 }).catch(() => null);
+    check(await page.evaluate(() => SD.offline.enabled() && document.querySelector('#m-offline').getAttribute('aria-checked') === 'true'), 'Download turns the switch on and goes back to the menu');
+    await page.evaluate(() => SD.ui.closePanel());
     const [, coreMs] = await ms(() => page.waitForFunction(() => SD.offline.ready(), null, { timeout: 120000 }).catch(() => null));
     check(await page.evaluate(() => SD.offline.ready()), `core saved (${(coreMs / 1000).toFixed(1)} s)`);
     await page.waitForFunction(() => { const s = SD.offline.state(); return s.music.total && s.music.got >= s.music.total; }, null, { timeout: 180000 }).catch(() => null);
     const st = await page.evaluate(() => SD.offline.state());
     check(st.music.total > 0 && st.music.got >= st.music.total, `music saved too (${Math.round(st.music.got / 1e6)} of ${Math.round(st.music.total / 1e6)} MB)`);
     check(await page.evaluate(() => !!navigator.serviceWorker.controller), 'the service worker controls the page');
-    if (isCloud) check(await page.evaluate(() => SD.state.cloud && SD.state.cloud.where === 'code'), 'online: cloud saves are on');
+    if (isCloud) {
+      // Off the debug start, which keeps its own save and never uses the cloud.
+      await page.goto(base + 'index.html');
+      await page.waitForFunction(() => window.SD && SD.state && SD.state.cloud, null, { timeout: 10000 }).catch(() => null);
+      check(await page.evaluate(() => SD.state.cloud && SD.state.cloud.where === 'code'), 'online: cloud saves are on');
+    }
 
     // ---- Offline ----
     const goOffline = async () => { down = true; hits.length = 0; await ctx.setOffline(true); };
@@ -122,11 +151,10 @@ const ms = async f => { const t = Date.now(); const v = await f(); return [v, Da
     await page.evaluate(() => { SD.state.save.shards = 4321; SD.state.persist(); });
     check(await page.evaluate(() => JSON.parse(localStorage.getItem('last-uptime-save-v1') || '{}').shards === 4321), 'offline: progress saves in this browser');
 
-    // Menu > Offline play.
+    // The switch's line in the menu.
     await page.waitForFunction(() => SD.offline.ready(), null, { timeout: 10000 }).catch(() => null);
-    const panel = await page.evaluate(() => { SD.offline.open(); return document.querySelector('#of-st').textContent; });
-    check(/saved on this device/.test(panel) && /Music too/.test(panel), `offline: Menu > Offline play says the game and its music are saved ("${panel}")`);
-    await page.evaluate(() => SD.ui.closePanel());
+    const label = await page.evaluate(() => SD.offline.label());
+    check(/Saved on this device/.test(label) && /with music/.test(label), `offline: the switch says the game and its music are saved ("${label}")`);
     let m = missed();
     check(!m.length, 'offline: no request reached the server' + (m.length ? ': ' + m.slice(0, 8).join(', ') : ''));
 
@@ -168,6 +196,25 @@ const ms = async f => { const t = Date.now(); const v = await f(); return [v, Da
     check(!m.length, 'offline: no request reached the server during the run' + (m.length ? ': ' + m.slice(0, 8).join(', ') : ''));
     down = false;
     await ctx.setOffline(false);
+
+    // ---- Switching it off ----
+    await page.goto(base + 'index.html?debug&ch=2');
+    await page.waitForFunction(() => window.SD && SD.main && SD.state.save);
+    await page.evaluate(() => { SD.ui.closePanel(); SD.ui.dialog = async () => {}; });
+    await page.keyboard.press('m');
+    await page.click('#m-offline');
+    const del = await page.waitForSelector('#of-off', { timeout: 5000 }).then(() => page.evaluate(() => document.querySelector('#panel').textContent), () => '');
+    check(/delete/i.test(del) && /\d+ MB/.test(del) && /download it again/.test(del), `switching it off warns that the download is deleted ("${del.replace(/\s+/g, ' ').slice(0, 90)}…")`);
+    await page.click('#of-off');
+    await page.waitForSelector('#m-offline', { timeout: 5000 }).catch(() => null);
+    const gone = await page.evaluate(async () => ({
+      on: SD.offline.enabled(), sw: (await navigator.serviceWorker.getRegistrations()).length,
+      caches: (await caches.keys()).filter(k => /^sd-(offline|fonts)/.test(k)), row: document.querySelector('#m-offline').getAttribute('aria-checked')
+    }));
+    check(!gone.on && !gone.sw && !gone.caches.length && gone.row === 'false', `Turn off and delete: nothing saved, no worker, switch off ${JSON.stringify(gone)}`);
+    await page.goto(base + 'index.html');
+    await page.waitForFunction(() => window.SD && SD.main && SD.state.save, null, { timeout: 20000 });
+    check(await page.evaluate(() => !navigator.serviceWorker.controller), 'after switching off, the game opens from the network');
     check(!errs.length, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
@@ -179,7 +226,8 @@ const ms = async f => { const t = Date.now(); const v = await f(); return [v, Da
     cloud = false; down = false;
     const ctx = await browser.newContext();
     await ctx.addInitScript(() => { try { localStorage.setItem('sd-sw', '1'); } catch (e) { /* about:blank */ } });
-    await ctx.addInitScript(() => { try { localStorage.setItem('sd-offline-music', '0'); } catch (e) { /* about:blank */ } });
+    // Switched on without music, as the warning does.
+    await ctx.addInitScript(() => { try { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('sd-offline', '1'); localStorage.setItem('sd-offline-music', '0'); sessionStorage.setItem('seeded', '1'); } } catch (e) { /* about:blank */ } });
     const page = await ctx.newPage();
     await page.goto(base + 'index.html');
     await page.waitForFunction(() => window.SD && SD.offline && SD.offline.ready(), null, { timeout: 120000 });

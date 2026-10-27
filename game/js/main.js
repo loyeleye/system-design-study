@@ -158,7 +158,7 @@
             `<button type="button" role="radio" data-v="${m}" aria-checked="${m === say}" tabindex="${m === say ? 0 : -1}">${SAY_LABELS[m]}</button>`).join('')}</span></div>
         ${sw('m-typed', 'Typed answers', !(sv && sv.typed === false), 'Sometimes explain a concept instead of picking an answer.')}
         ${SD.checker ? nav('m-checker', 'Answer checker', SD.checker.label()) : ''}
-        ${SD.offline && SD.offline.supported() ? nav('m-offline', 'Offline play', SD.offline.label()) : ''}
+        ${SD.offline && SD.offline.supported() ? sw('m-offline', 'Play offline', SD.offline.enabled(), U.esc(SD.offline.label())) : ''}
         ${sv && SD.relicToggles && SD.relicToggles.count().all ? nav('m-relics', 'Relics', `${SD.relicToggles.count().on} of ${SD.relicToggles.count().all} on`) : ''}
       </div></section>
       <section aria-labelledby="mh-save"><h3 class="mnu-h" id="mh-save">Save</h3><div class="mnu-list">
@@ -199,8 +199,16 @@
     on('m-typed', () => { if (!S.save) return; S.save.typed = S.save.typed === false; S.persist(); menuSync(); });
     // Which checker reads typed answers: LLM, Offline Model or Basic (js/checker.js).
     on('m-checker', () => SD.checker.open(back('m-checker')));
-    // Whether the game is saved on this device for play with no connection (js/offline.js).
-    on('m-offline', () => SD.offline.open(back('m-offline')));
+    // Play offline (js/offline.js): its warning (download size, or deleting the download) decides the switch.
+    on('m-offline', () => SD.offline.toggle(back('m-offline')));
+    if (SD.offline && b.querySelector('#m-offline')) {
+      const off = SD.offline.onState(() => {
+        const el = b.querySelector('#m-offline');
+        if (!el || !el.isConnected) return off();
+        el.setAttribute('aria-checked', SD.offline.enabled());
+        el.querySelector('#m-offline-d').textContent = SD.offline.label();
+      });
+    }
     // Relic switches (js/relic-toggles.js).
     on('m-relics', () => SD.relicToggles.open(back('m-relics')));
     on('m-name', () => askName(() => { M.hud(); menu('m-name'); }));

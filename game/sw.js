@@ -1,10 +1,10 @@
 // The offline service worker (Ladi, 2026-10-27: single player plays as well as possible with no connection).
-// js/offline.js registers it and asks it to sync on each launch.
+// js/offline.js registers it when the player turns on Menu > Settings > Play offline, and asks it to sync on each launch.
 //
 // Sync: read offline-files.json (tools/offline_files.js, made at deploy), download every core file this device doesn't
 // have at that hash, check each one's hash, and only when all of core is in, switch to that version in one step. A
 // half-finished download or a mid-deploy mix of old and new files never gets served. Music (assets/audio) is saved
-// after core, file by file, unless the player is on Save-Data or cellular (they can save it from Menu > Offline play).
+// after core, file by file, if the player chose to include it when turning offline play on.
 //
 // Serving: a file of the current version that's saved comes from the cache, online or not, so the game opens the same
 // way on a plane as at home, and a deploy reaches a device on its next launch after the sync. Anything else goes to the
@@ -86,7 +86,8 @@ self.addEventListener('fetch', e => {
 });
 
 // ---------- Sync ----------
-let syncing = null, music = false;
+// stopped: the player turned offline play off (sd-clear) while a sync ran; it stops at the next file.
+let syncing = null, music = false, stopped = false;
 const state = { phase: 'idle', v: null, core: { got: 0, total: 0 }, music: { got: 0, total: 0 }, error: '' };
 async function tell() {
   for (const c of await self.clients.matchAll({ includeUncontrolled: true })) c.postMessage({ k: 'sd-offline', state });
@@ -134,9 +135,11 @@ async function sync() {
     state.phase = 'core'; tell();
     let bad = 0, last = 0;
     await pool(entries.filter(([p, f]) => f[2] === 'core' && !have.has(key(p, f[0]))).map(([p, f]) => async () => {
+      if (stopped) { bad++; return; }
       try { if (await fetchOne(c, p, f[0])) state.core.got += f[1]; else bad++; } catch (e) { bad++; state.error = String(e.message || e); }
       if (Date.now() - last > 300) { last = Date.now(); tell(); }
     }), 4);
+    if (stopped) return;
     if (bad) { state.phase = old ? 'ready' : 'idle'; state.error = state.error || 'Some files were mid-update; trying again next launch.'; return tell(); }
     // Music already saved at an unchanged hash carries over; switch, then drop what the new version doesn't use.
     await c.put(ME, new Response(JSON.stringify(list), { headers: { 'content-type': 'application/json' } }));
@@ -151,7 +154,7 @@ async function sync() {
   state.phase = 'music'; tell();
   for (const [p, f] of entries) {
     if (f[2] !== 'music' || have.has(key(p, f[0]))) continue;
-    if (!cur || cur.v !== list.v) break;  // a newer version took over
+    if (stopped || !cur || cur.v !== list.v) break;  // turned off, or a newer version took over
     try { if (await fetchOne(c, p, f[0])) state.music.got += f[1]; } catch (e) { state.error = String(e.message || e); break; }
     tell();
   }
@@ -163,6 +166,7 @@ self.addEventListener('message', e => {
   if (m.k === 'sd-sync') {
     // Music asked for while a sync runs without it: run again after, for the music.
     const again = syncing && m.music && !music;
+    stopped = false;
     if (m.music) music = true;
     if (!syncing || again) {
       const run = (syncing || Promise.resolve()).then(sync).catch(err => { state.phase = 'idle'; state.error = String(err && err.message || err); return tell(); });
@@ -172,4 +176,10 @@ self.addEventListener('message', e => {
     e.waitUntil(syncing);
   }
   if (m.k === 'sd-state') e.waitUntil(tell());
+  // Offline play turned off (js/offline.js): stop, and delete everything saved. The page then unregisters this worker.
+  if (m.k === 'sd-clear') {
+    stopped = true; music = false; cur = null;
+    Object.assign(state, { phase: 'off', v: null, core: { got: 0, total: 0 }, music: { got: 0, total: 0 }, error: '' });
+    e.waitUntil(Promise.all([caches.delete(CACHE), caches.delete(FONTS)]).then(tell));
+  }
 });
