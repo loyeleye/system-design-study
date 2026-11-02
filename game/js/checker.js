@@ -50,29 +50,32 @@
   K.set = m => { if (K.MODES.includes(m)) { chosen = m; store.set(m); } };
 
   // ---------- What this device and copy can run ----------
+  // Each probe keeps only a success. A failure (offline, a flaky connection, a server error) is asked again the next
+  // time, so a checker greyed out while offline comes back once the connection does (Ladi, 2026-11-02).
   let llmProbe = null, reachProbe = null;
+  const keepOk = (get, set) => p => p.then(v => { if (!v.ok && get() === p) set(null); return v; }, () => { if (get() === p) set(null); return { ok: false, why: '' }; });
+  const keepLlm = keepOk(() => llmProbe, v => { llmProbe = v; }), keepReach = keepOk(() => reachProbe, v => { reachProbe = v; });
   // The Worker answers a GET on api/grade with 405 when it has the AI binding, 501 without.
-  const llmOk = () => navigator.onLine === false ? Promise.resolve({ ok: false, why: 'You\'re offline. It needs a connection to the game\'s server.' }) : llmProbe || (llmProbe = (async () => {
+  const llmOk = () => navigator.onLine === false ? Promise.resolve({ ok: false, why: 'You\'re offline. It needs a connection to the game\'s server.' }) : llmProbe || keepLlm(llmProbe = (async () => {
     if (!SD.cloud || !SD.cloud.available || !(await SD.cloud.available())) return { ok: false, why: 'Only on the Cloudflare copy of the game, which has a server to run it.' };
     try {
       const r = await fetch(new URL('api/grade', location.href), { cache: 'no-store' });
       return r.status === 405 ? { ok: true } : { ok: false, why: 'This copy\'s server has no AI model set up.' };
-    } catch (e) { llmProbe = null; return { ok: false, why: 'The game\'s server isn\'t answering right now.' }; }
+    } catch (e) { return { ok: false, why: 'The game\'s server isn\'t answering right now.' }; }
   })());
   const canRun = () => typeof WebAssembly === 'object' && typeof Worker === 'function' && typeof caches === 'object' && typeof BigInt64Array === 'function';
   const offlineOk = async () => {
     if (!canRun()) return { ok: false, why: 'This browser can\'t run it.' };
     if (dl.state === 'ready' || dl.state === 'downloading') return { ok: true };
     if (navigator.onLine === false) return { ok: false, why: 'You\'re offline. Download it once you\'re back online.' };
-    if (!reachProbe) reachProbe = (async () => {
+    return reachProbe || keepReach(reachProbe = (async () => {
       try {
         const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 5000);
         const r = await fetch(FILES.config.url, { cache: 'no-store', credentials: 'omit', signal: ctl.signal });
         clearTimeout(t);
         return r.ok ? { ok: true } : { ok: false, why: 'Can\'t reach the download right now.' };
-      } catch (e) { reachProbe = null; return { ok: false, why: 'Can\'t reach the download right now.' }; }
-    })();
-    return reachProbe;
+      } catch (e) { return { ok: false, why: 'Can\'t reach the download right now.' }; }
+    })());
   };
   K.support = async () => {
     const [llm, offline] = await Promise.all([llmOk(), offlineOk()]);
@@ -274,7 +277,11 @@
         : dl.state === 'downloading' ? 'Stops the download and frees what it saved.' : 'Nothing downloaded on this device.';
     };
     paint();
-    K.support().then(s => { sup = s; if (b.isConnected) paint(); });
+    // Asked on open, and again whenever the connection comes or goes while this is open.
+    const ask = () => K.support().then(s => { if (!b.isConnected) return; sup = s; paint(); });
+    ask();
+    const net = () => { if (!b.isConnected) { removeEventListener('online', net); removeEventListener('offline', net); return; } ask(); };
+    addEventListener('online', net); addEventListener('offline', net);
     const off = K.onDownload(() => { if (!b.isConnected) return off(); paint(); });
     const pick = m => {
       K.set(m); paint();

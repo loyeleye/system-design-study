@@ -43,12 +43,13 @@ const serve = cloud => http.createServer((req, res) => {
     await page.screenshot({ path: path.join(SHOTS, name + '.png') });
   };
 
-  // hf: 'fake' serves the stand-in model, 'down' refuses, 'slow' holds the big file until released.
+  // hf: 'fake' serves the stand-in model, 'down' refuses, 'error' answers 503, 'slow' holds the big file until released.
   const open = async (ctx, url, hf) => {
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push(e.message));
     await page.route('https://huggingface.co/**', async route => {
       if (hf.mode === 'down') return route.abort();
+      if (hf.mode === 'error') return route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, body: '' });
       const name = route.request().url().split('/resolve/main/')[1].replace('onnx/', '');
       if (name === 'model_quantized.onnx' && hf.hold) await hf.hold;
       route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*', 'content-type': 'application/octet-stream' }, body: fs.readFileSync(path.join(FAKE, name)) });
@@ -151,6 +152,29 @@ const serve = cloud => http.createServer((req, res) => {
   check(byMode(s, 'basic').on, 'deleting switches back to Basic');
   check(await page.evaluate(async () => !(await caches.keys()).includes('sd-models-v1')), 'the model files are gone from the device');
   check(byMode(s, 'offline').off && /reach/.test(byMode(s, 'offline').st), 'with the download unreachable, Offline Model is greyed: ' + byMode(s, 'offline').st);
+
+  // 5b. Greyed out doesn't stick (Ladi, 2026-11-02): a server error, then the menu opened again, offers it again;
+  // and with the menu left open offline, the connection coming back offers it without reopening.
+  await page.evaluate(() => SD.ui.closePanel());
+  hf.mode = 'error';
+  await openChecker(page);
+  s = await state(page);
+  check(byMode(s, 'offline').off, 'with Hugging Face answering 503, Offline Model is greyed');
+  hf.mode = 'fake';
+  await page.evaluate(() => SD.ui.closePanel());
+  await openChecker(page);
+  s = await state(page);
+  check(!byMode(s, 'offline').off && /Not downloaded/.test(byMode(s, 'offline').st), 'once Hugging Face answers again, reopening offers Offline Model: ' + byMode(s, 'offline').st);
+  await page.evaluate(() => SD.ui.closePanel());
+  hf.mode = 'down';
+  await ctx.setOffline(true);
+  await openChecker(page);
+  s = await state(page);
+  check(byMode(s, 'offline').off && /offline/i.test(byMode(s, 'offline').st), 'offline, Offline Model is greyed: ' + byMode(s, 'offline').st);
+  hf.mode = 'fake';
+  await ctx.setOffline(false);
+  const back = await page.waitForFunction(() => !document.querySelector('.ck-opt[data-m="offline"]').disabled, null, { timeout: 8000 }).then(() => true, () => false);
+  check(back, 'back online with the menu still open, Offline Model can be picked again without reopening');
   await page.close();
   await ctx.close();
 
