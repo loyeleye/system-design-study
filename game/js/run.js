@@ -630,6 +630,7 @@
     if (opts.diagnose) diagnose(go); else go();
   }
   const zero = () => ({ cache: 0, replica: 0, read: 0, write: 0, any: 0 });
+  const POLY = ['redis', 'nosql', 'postgres', 'lexicabinet'];
   // Wen's Notebook (Ladi, 2026-10-24): a café buy, NOTE bits, for this run only. You carry at most one, so a rich run
   // can't stack lives; Seymour's tapes cover the long chapters. Wen writes down every step as you go (her second
   // notebook, cast bible arc 2), so reading it back puts you back mid-fight, the way she reads Mio the next step of a
@@ -865,6 +866,8 @@
     if (d.abs) for (const k in d.abs) {
       let v = d.abs[k] + up + (cacheSpec ? 3 : 0);
       if (c.id === 'addserver' && hasInfra('stateless')) v += 4;
+      // Polyglot Persistence (js/isles/drawers.js): the four store cards each absorb a little more.
+      if (POLY.includes(c.id) && hasInfra('polyglot')) v += 2;
       if (c.id === 'addserver' && dev('hammer')) v += 3;
       C.sh[k] += v;
     }

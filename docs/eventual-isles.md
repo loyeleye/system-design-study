@@ -38,6 +38,7 @@ Load after `quests.js` (and after any chapter files such as `ch4.js`), before `m
 | `isles-kit.js` | `SD.isles`, the registration helpers (`addConcepts`, `addQuestions`, `addChain`...), the mini-game kit, waves |
 | `isles-data.js` | The islanders (`SD.cast` entries and looks), code-drawn portraits hooked into `SD.art.portrait`, the islands |
 | `landing.js` `ledger.js` `twins.js` `mill.js` `tower.js` `lighthouse.js` `fish.js` `carto.js` | One island each: concepts, questions, ELI5, glossary, idle lines, mini-games and quest chains |
+| `drawers.js` | Cartographers' Isle, part 2 of the NoSQL quests: "The Four Drawers" (Minh, after "The Right Tool for the Job" and the Pingsby side quest "The Cabinet from the East"). Four Workbench rooms (Leilani's Redis, Lúcia's MongoDB, Ruth's Cassandra, the Twins' Neo4j), Festival Night, and Polyglot Persistence for the starting deck. Uses `js/drawers-engine.js` and `js/drawers-bench.js`, which load before the Isles |
 | `commissions.js` | The five Hello Interview commissions |
 | `bridges.js` | The eight bridges (the concept map) |
 | `isles-story.js` | Scenes: the letter, arrival, wave openings, crossings, the festival |

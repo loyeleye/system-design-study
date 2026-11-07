@@ -8,7 +8,7 @@ Then open isles.html?all (every wave open), ?game=anomalyHunt (one mini-game), ?
 import sys
 
 # Load order matters: the kit first, then the cast, the islands' content, and the engine and map last.
-ISLES = ['isles-kit', 'isles-data', 'landing', 'ledger', 'twins', 'mill', 'tower', 'lighthouse', 'fish', 'carto',
+ISLES = ['isles-kit', 'isles-data', 'landing', 'ledger', 'twins', 'mill', 'tower', 'lighthouse', 'fish', 'carto', 'drawers',
          'commissions', 'bridges', 'isles-story', 'isles-engine', 'isles-map']
 
 src = open(sys.argv[1] if len(sys.argv) > 1 else 'index.html').read()
