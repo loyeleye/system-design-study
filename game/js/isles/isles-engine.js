@@ -21,7 +21,7 @@
 
   // ---------- Quest chains ----------
   const cs = () => I.st().chains;
-  const cStatus = c => { const s = cs()[c.id]; return s && s.done ? 'done' : s ? 'active' : I.islandOpen(c.island) && (!c.after || c.after.every(id => I.chainStatus(id) === 'done')) ? 'open' : 'locked'; };
+  const cStatus = c => { const s = cs()[c.id]; return s && s.done ? 'done' : s ? 'active' : I.islandOpen(c.island) && (!c.after || c.after.every(id => I.chainStatus(id) === 'done')) && (!c.requires || c.requires()) ? 'open' : 'locked'; };
   const stepOf = c => c.steps[cs()[c.id].step];
   I.chainStatus = id => { const c = I.chains.find(x => x.id === id); return c ? cStatus(c) : 'locked'; };
   I.pending = w => I.chains.filter(c => (cStatus(c) === 'open' && c.giver === w) || (cStatus(c) === 'active' && stepOf(c).at === w));
@@ -92,6 +92,7 @@
     if (a.say) await U.dialog(a.say.map(([w, t, e]) => ({ s: w, t, e })));
     if (a.item) { s.items.push(a.item); AU.sfx('coin'); U.system('ITEM GET!', esc((c.items || {})[a.item] || a.item)); }
     if (a.take) s.items = s.items.filter(x => x !== a.take);
+    if (a.fn) await a.fn(c, s);
     if (a.teach) await teach(a.teach);
     if (a.game) {
       AU.music('quest');

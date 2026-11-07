@@ -9,7 +9,9 @@
 //   I.addGlossary([['Term', /regex/i, 'one-line definition']])
 //   I.addIdle({ who: ['line when there is nothing to do', ...] }, when?) — with `when` (a function), those lines are
 //     used instead while when() is true, e.g. () => SD.state.save.flags.ch7 for lines that only make sense after chapter 7
-//   I.addChain({ id, island, giver, title, blurb, teaches, concepts, xp, shells, keepsake, items, steps, school })
+//   I.addChain({ id, island, giver, title, blurb, teaches, concepts, xp, shells, keepsake, items, steps, school, after?, requires? })
+//     after: chain ids that must be done; requires: () => bool for anything else (e.g. a Pingsby quest). A step's
+//     `do` list may also hold { fn: async (chain, state) => {} } for a reward or a custom moment.
 //     steps: [{ at: who, hint, do: [{ say: [[who, text, mood]] }, { item }, { take }, { music }, { teach: conceptId },
 //              { game: name, def: { title, who, intro } }, { ask: questionObject | questionId }] }]
 //     school: { c, q, opts, a, why, cheer } — the Isles School's "But why?" teach-back after the last step
