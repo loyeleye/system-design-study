@@ -257,6 +257,69 @@
     });
   };
 
+  // ---------- Town review drills: one small problem, typed into a fresh store ----------
+  // SD.drawers.drill(q, opts) -> Promise<{ ok, conf, ms, score, drill: true }>, called by SD.quiz.ask for type 'drill'
+  // (the items are SD.drills in js/drawers-quest.js). Solved on the first run with no hint counts as Sure; solved
+  // later or after the hint, Think so; "Show me the answer" counts as a miss. Records like any review answer.
+  D.drill = function (q, opts) {
+    opts = opts || {};
+    return new Promise(res => {
+      const X = D.drillCase(q), E = D.make(q.kind), t0 = Date.now();
+      X.seed.forEach(l => { const r = E.run(l); if (!r.ok) console.warn('[drill] seed failed:', l, r.err); });
+      const concept = SD.concepts[q.c];
+      let tries = 0, hinted = false, last = null, mine = '';
+      const b = U.panel(`<div class="q-ctx">${esc(opts.context || (concept ? concept.name : 'Drill'))} · type it</div>
+        <p class="q-q">${esc(X.q)}</p>
+        <div class="dw-wrap">
+          <div class="dw-pic" id="dw-pic" aria-live="polite"></div>
+          <div class="dw-task">${esc(X.task)}</div>
+          <div class="dw-console">
+            <pre class="dw-log" id="dw-log" aria-live="polite"></pre>
+            <div class="dw-fb" id="dw-fb" aria-live="polite" hidden></div>
+            <div class="dw-in"><label class="dw-prompt" for="dw-line">${esc(D.prompt(E))}</label><input id="dw-line" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Command"></div>
+          </div>
+          <div class="row dw-btns"><button class="primary" id="dw-run">Run</button><button class="ghost" id="dw-hint" hidden>Hint</button><button class="ghost" id="dw-show">Show me the answer</button></div>
+        </div>`, { title: opts.title || 'WHITEBOARD', cls: 'wide dw-panel quiz', noClose: true });
+      const $ = id => b.querySelector('#' + id), input = $('dw-line'), log = $('dw-log');
+      const touch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+      const draw = r => { $('dw-pic').innerHTML = P[E.kind](E, r); };
+      const fb = (html, kind) => { const el = $('dw-fb'); el.hidden = !html; el.className = 'dw-fb' + (kind ? ' dw-fb-' + kind : ''); el.innerHTML = html || ''; };
+      const finish = ok => {
+        const conf = !ok ? 0 : tries === 1 && !hinted ? 2 : 1, ms = Date.now() - t0;
+        let page = null;
+        if (q.c && !opts.noRecord) page = SD.state.recordAnswer(q.c, ok, conf, ms);
+        sfx(ok ? 'right' : 'wrong');
+        const b2 = U.panel(`<div class="verdict-row"><div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? 'IT RAN!' : 'NOT THIS TIME'}</div></div>
+          <p class="muted small">${ok ? (conf === 2 ? 'First try, no hint: counted as Sure.' : 'Solved with a retry or the hint: counted as Think so.') : 'Shown the answer: this one comes back soon.'}</p>
+          ${ok && mine ? `<p class="why-a"><span class="q-ctx">Your line</span><code class="dw-code">${esc(mine)}</code></p>` : ''}
+          <div class="why"><p class="why-a"><span class="q-ctx">${ok ? 'One way to write it' : 'The answer'}</span><code class="dw-code">${esc(X.answer)}</code></p>
+          ${X.alt.length ? `<p class="small muted">Also works: ${X.alt.map(a => `<code class="dw-code">${esc(a)}</code>`).join(' ')}</p>` : ''}<p>${esc(X.why)}</p></div>
+          <div class="q-foot"><button class="primary" id="q-next">Continue</button></div>`, { title: opts.title || 'WHITEBOARD', noClose: true, cls: 'quiz' });
+        b2.querySelector('#q-next').onclick = () => { U.closePanel(); res({ ok, conf, ms, score: ok ? 1 : 0, drill: true }); };
+        if (!touch) b2.querySelector('#q-next').focus();
+        if (page) U.system('CHEAT SHEET PAGE RESTORED!', esc(concept.name) + ': a page in Uptima\'s handwriting fades back in.', 'gold');
+      };
+      const run = () => {
+        const line = input.value.trim(); if (!line) return;
+        const r = E.run(line); last = r; tries++;
+        log.insertAdjacentHTML('beforeend', `<span class="dw-cmd">${esc(D.prompt(E))} ${esc(line)}</span>\n${(r.ok ? r.out : r.err) ? `<span class="${r.ok ? 'dw-out' : 'dw-err'}">${esc(r.ok ? r.out : r.err)}</span>\n` : ''}`);
+        log.scrollTop = log.scrollHeight; draw(r); input.value = '';
+        const ok = r.ok ? q.check(r, E, line, X.v) : 'The store said no. Read the error in the console, then try again.';
+        if (ok === true) { mine = line; return finish(true); }
+        sfx('wrong');
+        fb(typeof ok === 'string' ? esc(ok) : 'That ran, but it doesn\'t do what was asked yet.', 'bad');
+        $('dw-hint').hidden = hinted;
+        // Each try runs on the store as it is now. A write that went wrong stays, as it would in a real shell.
+      };
+      $('dw-run').onclick = run;
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } else if (e.key === 'ArrowUp' && log.lastElementChild) { e.preventDefault(); const c = [...log.querySelectorAll('.dw-cmd')].pop(); if (c) input.value = c.textContent.slice(D.prompt(E).length + 1); } });
+      $('dw-hint').onclick = () => { hinted = true; sfx('blip'); $('dw-hint').hidden = true; fb(`Shape: <code>${esc(X.hint)}</code>`, 'note'); };
+      $('dw-show').onclick = () => { sfx('blip'); finish(false); };
+      draw(null);
+      if (!touch) setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (e) { /* old browsers */ } }, 30);
+    });
+  };
+
   const css = document.createElement('style');
   css.textContent = `
     .dw-panel .win-b { padding-top:6px; }
@@ -310,6 +373,7 @@
     .dw-cloud circle { fill:#eee; stroke-dasharray:3 3; }
     .dw-dcard { border:2px solid var(--ink,#2b2340); border-radius:10px; padding:8px; background:#fffaf0; margin:8px 0; }
     .dw-sw { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:.85rem; } .dw-sw ul { margin:4px 0; padding-left:18px; }
+    .dw-code { font:12px ui-monospace,Menlo,Consolas,monospace; background:#1e1a2b; color:#ffd56b; padding:2px 6px; border-radius:5px; display:inline-block; max-width:100%; white-space:pre-wrap; word-break:break-word; }
     .dw-pitch { font-size:.9rem; background:#e5f4e4; border-radius:8px; padding:6px 8px; }
     @media (max-width:520px) { .dw-ring { grid-template-columns:repeat(3,1fr); gap:4px; } .dw-node { padding:3px; } .dw-drawer i { font-size:.58rem; } .dw-meta { font-size:.68rem; } .dw-sw { grid-template-columns:1fr; } .dw-pic { max-height:32vh; } .dw-log { max-height:18vh; } }
   `;

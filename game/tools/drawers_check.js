@@ -58,6 +58,45 @@ Object.values(D.part1).forEach(room);
 Object.values(D.part2).forEach(room);
 D.festival.forEach(a => room({ title: 'FESTIVAL · ' + a.id, kind: a.kind, setup: a.setup, beats: a.beats }));
 
+// Typed drills for town reviews: every case's answer and alts must pass; the lines in WRONG must get coaching.
+const WRONG = {
+  'dr-kvstore1': ['SET session:{u} "{tok}"', 'SET session:{u} "{tok}" EX {min}'],
+  'dr-kvstore2': ['ZRANGE board:{g} 0 2 WITHSCORES', 'ZREVRANGE board:{g} 0 2', 'ZREVRANGE board:{g} 0 3 WITHSCORES'],
+  'dr-docstore1': ['db.users.find({ address: { city: "{city}" } })', 'db.users.find({ city: "{city}" })'],
+  'dr-docstore2': ['db.users.updateOne({ name: "{who}" }, { tags: ["{tag}"] })', 'db.users.updateOne({ name: "{who}" }, { $set: { tags: ["{tag}"] } })', 'db.users.updateMany({}, { $push: { tags: "{tag}" } })'],
+  'dr-widecol1': ['SELECT * FROM orders_by_customer LIMIT 3;', "SELECT * FROM orders_by_customer WHERE customer = '{cu}';"],
+  'dr-widecol2': ['CREATE TABLE {t} ({e} text, day date, ts timestamp, {val}, PRIMARY KEY (({e}), day, ts));', 'CREATE TABLE {t} ({e} text, day date, ts timestamp, {val}, PRIMARY KEY (({e}, day), ts));'],
+  'dr-graphdb1': ["MATCH (:Person {name: '{a}'})<-[:FOLLOWS]-(p) RETURN p.name"],
+  'dr-graphdb2': ["MATCH (a:Person {name: '{a}'}), (b:Person {name: '{b}'}) CREATE (a)-[:FOLLOWS]->(b)", "MERGE (:Person {name: '{a}'})-[:FOLLOWS]->(:Person {name: '{b}'})"],
+};
+console.log('TOWN DRILLS');
+const drillIds = new Set();
+(SD.drills || []).forEach(q => {
+  ['id', 'c', 'kind', 'q', 'task', 'answer', 'hint', 'why', 'check', 'cases'].forEach(k => { if (!q[k]) bad(q.id || '?', `missing ${k}`); });
+  if (drillIds.has(q.id)) bad(q.id, 'duplicate drill id'); drillIds.add(q.id);
+  if (q.type !== 'drill') bad(q.id, "type should be 'drill'");
+  if (!SD.concepts[q.c]) bad(q.id, 'unknown concept ' + q.c);
+  q.cases.forEach((v, i) => {
+    const X = D.drillCase(q, i), where = `${q.id} · case ${i + 1}`;
+    ['q', 'task', 'answer', 'hint', 'why'].concat(X.alt.map((_, j) => j)).forEach(k => { const t = typeof k === 'number' ? X.alt[k] : X[k]; if (/\{\w+\}/.test(t.replace(/\{\s*[\w"'$.]+\s*:/g, ''))) bad(where, `unfilled slot in ${k}: ${t}`); });
+    const fresh = () => { const E = D.make(q.kind); X.seed.forEach(l => { const r = E.run(l); if (!r.ok) bad(where, `seed failed: ${l} -> ${r.err}`); }); return E; };
+    [X.answer].concat(X.alt).forEach((line, j) => {
+      beats++;
+      const E = fresh(), r = E.run(line); log(line, r);
+      if (!r.ok) return bad(where + (j ? ` (alt ${j})` : ''), `${line}\n      -> ${r.err}`);
+      const ok = q.check(r, E, line, v);
+      if (ok !== true) bad(where + (j ? ` (alt ${j})` : ''), `check said: ${ok}\n      for: ${line}`);
+    });
+    (WRONG[q.id] || []).forEach(t => {
+      const line = t.replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m)), E = fresh(), r = E.run(line); log(line, r);
+      const ok = r.ok ? q.check(r, E, line, v) : 'error';
+      if (ok === true) bad(where, `a wrong line passed: ${line}`);
+      else if (verbose) console.log('      coached: ' + ok);
+    });
+  });
+});
+SD.drills.forEach(q => { if (SD.questions.some(x => x.id === q.id)) bad(q.id, 'drill id clashes with a question'); });
+
 // Multiple-choice questions added by the two quests.
 const mine = SD.questions.concat(I.chains.flatMap(c => c.steps.flatMap(s => s.do.filter(a => a.ask && typeof a.ask === 'object' && a.ask.type === 'mc').map(a => a.ask))));
 const quest1 = SD.quests.list.find(q => q.id === 'cabinet');
@@ -81,5 +120,5 @@ for (const f of ['js/drawers-quest.js', 'js/isles/drawers.js', 'js/drawers-bench
 // Polyglot Persistence stays out of pools and shops.
 if (!SD.cards.polyglot || !SD.cards.polyglot.quest) bad('polyglot', 'card missing or not quest: true');
 
-console.log(`\n${beats} beats, ${mine.length} questions checked, ${problems} problem${problems === 1 ? '' : 's'}.`);
+console.log(`\n${beats} beats and drill answers, ${mine.length} questions checked, ${problems} problem${problems === 1 ? '' : 's'}.`);
 process.exit(problems ? 1 : 0);

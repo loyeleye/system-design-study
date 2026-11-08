@@ -111,6 +111,12 @@
         }
         case 'EXISTS': { if (!a.length) return fail(argc(cmd)); return done(`(integer) ${a.filter(k => alive(k)).length}`, { touched: a }); }
         case 'TYPE': { if (a.length !== 1) return fail(argc(cmd)); const e = alive(a[0]); return done(e ? ({ str: 'string', hash: 'hash', set: 'set', zset: 'zset' })[e.t] : 'none', { touched: a }); }
+        case 'SETEX': {   // the older spelling of SET key value EX seconds
+          if (a.length !== 3) return fail(argc(cmd));
+          const n = intOf(a[1]); if (n == null || n <= 0) return fail('(error) ERR invalid expire time in \'setex\' command');
+          E.data.set(a[0], { t: 'str', v: a[2], exp: E.now + n });
+          return done('OK', { touched: [a[0]], wrote: a[0] });
+        }
         case 'EXPIRE': case 'PEXPIRE': {
           if (a.length !== 2) return fail(argc(cmd));
           const n = intOf(a[1]); if (n == null) return fail('(error) ERR value is not an integer or out of range');

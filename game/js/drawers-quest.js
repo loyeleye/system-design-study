@@ -361,4 +361,161 @@ SD.explain.push(
     { id: 'rv-graphdb1', c: 'graphdb', type: 'mc', q: 'In SQL, "friends of friends of friends" needs a friendships table joined to itself three times, and it gets slow. Why does a graph database handle it better?', opts: ['Graph databases keep the whole dataset in memory at all times', 'Each hop follows a stored link, not an index lookup across a table', 'Graph databases cache the result of every query they have run', 'Graph databases run each hop on a different machine in parallel'], a: 1, no: ['Many graph databases are disk-based with a cache, like most databases. Memory alone isn\'t the difference.', null, 'Caching helps repeated questions in any database; the graph wins on the first run too.', 'Splitting hops over machines would add network calls per hop. Graphs are actually hard to shard.'], why: 'A graph database stores each relationship as a link from one node to the next, so a hop costs the same however big the graph. A SQL self join looks up matching rows in an index at every level, and the work grows with the table.' },
     { id: 'rv-graphdb2', c: 'graphdb', type: 'mc', q: 'In Neo4j, MATCH (g:Guest {name: \'Tomas\'}) DELETE g fails with "it still has relationships". What does the error protect against, and what is the usual fix?', opts: ['A unique constraint: drop the constraint first, then delete', 'A running transaction: retry once its lock has been released', 'A lagging replica: send the delete to the primary node instead', 'Dangling relationships: use DETACH DELETE to remove them too'], a: 3, no: ['Constraints stop duplicates on create, not deletes. Uniqueness has nothing to do with this error.', 'A lock would time out or wait; this error is immediate and names relationships.', 'Writes already go to the primary (the leader); replicas don\'t refuse deletes.', null], why: 'A relationship needs a node at each end. Neo4j won\'t leave arrows pointing at nothing, so DELETE refuses; DETACH DELETE removes the node and its relationships together.' }
   );
+
+  // ---------- Typed drills (town reviews, js/quiz.js Q.session): a fresh small problem, typed into the real store ----------
+  // Each drill picks one of its cases (v), fills {name} slots in its text, seeds a small store, and runs the player's
+  // one line through js/drawers-engine.js. check(r, E, line, v) looks at what the store now holds or returned, so any
+  // command that does the job passes; a string back is coaching. The drill screen is SD.drawers.drill (js/drawers-bench.js).
+  // S.pickQuestion serves one about a third of the time in town reviews, once you've answered the concept right before.
+  // tools/drawers_check.js runs every case's answer and alt answers through its check.
+  const fill = (x, v) => typeof x === 'string' ? x.replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m)) : x;
+  SD.drawers.drillCase = function (q, i) {
+    const v = q.cases[i == null ? Math.floor(Math.random() * q.cases.length) : i];
+    return { v, kind: q.kind, q: fill(q.q, v), task: fill(q.task, v), answer: fill(q.answer, v), alt: (q.alt || []).map(a => fill(a, v)),
+      hint: fill(q.hint, v), why: fill(q.why, v), seed: (typeof q.seed === 'function' ? q.seed(v) : q.seed || []).map(l => fill(l, v)) };
+  };
+  const rowsOf = r => (r.rows || []).map(x => Array.isArray(x) ? x : [x]);
+  const nameOf = x => x && typeof x === 'object' ? (x.props ? x.props.name : x.name) : x;
+  const KS = ["CREATE KEYSPACE shop WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3};", 'USE shop;'];
+  const PEOPLE = ['Ana', 'Ben', 'Cy', 'Dee', 'Eli', 'Fay'];
+  const people = follows => ["CREATE " + PEOPLE.map(n => `(:Person {name: '${n}'})`).join(', ')]
+    .concat(follows.map(([a, b]) => `MATCH (a:Person {name: '${a}'}), (b:Person {name: '${b}'}) CREATE (a)-[:FOLLOWS]->(b)`));
+  const followsOf = (E, a) => { const n = E.nodes.find(x => x.props.name === a); return E.rels.filter(r => r.type === 'FOLLOWS' && r.from === n.id).map(r => E.nodes.find(x => x.id === r.to).props.name); };
+  SD.drills = [
+    { id: 'dr-kvstore1', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ u: '42', tok: 'tk-9f3a', min: 15, sec: 900 }, { u: '7', tok: 'tk-a11c', min: 30, sec: 1800 }, { u: '318', tok: 'tk-07be', min: 5, sec: 300 }],
+      q: 'A login session for user {u} has the token "{tok}". Store it under the key session:{u} so Redis throws it away by itself after {min} minutes.',
+      task: 'Store session:{u} with a {min}-minute expiry, in one command.',
+      answer: 'SET session:{u} "{tok}" EX {sec}', alt: ['SETEX session:{u} {sec} "{tok}"', 'SET session:{u} {tok} PX {sec}000'],
+      hint: 'SET key "value" EX seconds',
+      check: (r, E, line, v) => {
+        const e = E.get('session:' + v.u);
+        if (!e) return E.data.size ? `The key should be named session:${v.u}.` : 'Nothing was stored yet.';
+        if (e.t !== 'str' || e.v !== v.tok) return `session:${v.u} should hold the token ${v.tok}.`;
+        if (e.exp == null) return 'Stored, but it never expires: add EX and a number of seconds to the same SET.';
+        const left = Math.round(e.exp - E.now);
+        return left === v.sec ? true : `It expires in ${left} seconds. ${v.min} minutes is ${v.sec} seconds.`;
+      },
+      why: 'EX on the SET writes the value and its timer in one step, so there is no moment where the session exists with no expiry. Expiry is what makes Redis a good home for sessions and caches: stale entries clean themselves up.' },
+    { id: 'dr-kvstore2', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ g: 'chess', top: 'dee 410, ben 340, eli 200' }, { g: 'darts', top: 'cy 95, fay 81, ana 77' }],
+      seed: v => v.g === 'chess' ? ['ZADD board:chess 120 ana 340 ben 90 cy 410 dee 200 eli 150 fay'] : ['ZADD board:darts 77 ana 40 ben 95 cy 12 dee 60 eli 81 fay'],
+      q: 'The {g} leaderboard is a sorted set at board:{g}, score per player. Show the top 3 players with their scores, highest first.',
+      task: 'Read the top 3 of board:{g}, highest first, with scores.',
+      answer: 'ZREVRANGE board:{g} 0 2 WITHSCORES', alt: ['ZRANGE board:{g} 0 2 REV WITHSCORES'],
+      hint: 'ZREVRANGE key start stop WITHSCORES',
+      check: (r, E, line, v) => {
+        if (!/^Z(REV)?RANGE$/.test(r.cmd || '')) return 'Read it from the sorted set with a range command.';
+        const want = v.top.split(', ').map(x => x.split(' '));
+        const got = (r.out.match(/"[^"]*"/g) || []).map(x => x.slice(1, -1));
+        if (!/WITHSCORES/i.test(line)) return 'Those are the names, but the scores are missing: add WITHSCORES.';
+        const names = got.filter((x, i) => i % 2 === 0);
+        if (names.length !== 3) return `That returned ${names.length} players. Ranks are counted from 0, so the top 3 is 0 2.`;
+        if (names.join() !== want.map(x => x[0]).join()) return names[0] === want[0][0] ? 'Close, but not the top 3.' : 'ZRANGE reads lowest score first. Use ZREVRANGE (or REV) for highest first.';
+        return true;
+      },
+      why: 'A sorted set keeps members ordered by score as you write them, so the top N is a read of the first N ranks: no sort at query time, however many players there are. ZINCRBY updates a score in place.' },
+    { id: 'dr-docstore1', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ city: 'Lisbon' }, { city: 'Porto' }, { city: 'Braga' }],
+      seed: ['db.users.insertMany([{ name: "ana", address: { city: "Lisbon", zip: "1100" }, tags: ["new"] }, { name: "ben", address: { city: "Porto", zip: "4000" }, tags: [] }, { name: "cy", address: { city: "Lisbon", zip: "1200" }, tags: ["vip"] }, { name: "dee", address: { city: "Braga", zip: "4700" }, tags: [] }, { name: "eli", address: { city: "Porto", zip: "4100" }, tags: ["new"] }])'],
+      q: 'Each document in users has an address subdocument, like { address: { city: "Lisbon", zip: "1100" } }. Find every user whose city is {city}.',
+      task: 'Find the users in {city}.',
+      answer: 'db.users.find({ "address.city": "{city}" })', alt: ["db.users.find({'address.city': '{city}'})"],
+      hint: 'db.users.find({ "field.inside": "value" })',
+      check: (r, E, line, v) => {
+        if (!r.docs || r.col !== 'users') return 'Read from the users collection with find.';
+        const want = E.col('users').docs.filter(d => d.address.city === v.city).length;
+        if (r.docs.length === want && r.docs.every(d => d.address && d.address.city === v.city)) return true;
+        if (!r.docs.length && /address\s*:\s*\{/.test(line)) return 'Matching a whole subdocument needs every field to match, zip too. Reach inside with dot notation: "address.city".';
+        return `That found ${r.docs.length} of the ${want} users in ${v.city}.`;
+      },
+      why: 'Dot notation reaches into a nested field, and an index on "address.city" works the same way. Matching { address: { city: ... } } compares the whole subdocument, so the zip makes it miss.' },
+    { id: 'dr-docstore2', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ who: 'ana', tag: 'beta' }, { who: 'ben', tag: 'vip' }, { who: 'dee', tag: 'early' }],
+      seed: ['db.users.insertMany([{ name: "ana", plan: "pro", tags: ["new"] }, { name: "ben", plan: "free", tags: [] }, { name: "dee", plan: "pro", tags: ["new", "eu"] }])'],
+      q: 'Add the tag "{tag}" to {who}\'s tags array, keeping the tags already there and every other field.',
+      task: 'Add "{tag}" to {who}\'s tags, in place.',
+      answer: 'db.users.updateOne({ name: "{who}" }, { $push: { tags: "{tag}" } })', alt: ['db.users.updateOne({ name: "{who}" }, { $addToSet: { tags: "{tag}" } })'],
+      hint: 'db.users.updateOne({ filter }, { $push: { field: value } })',
+      check: (r, E, line, v) => {
+        const all = E.col('users').docs, d = all.find(x => x.name === v.who);
+        if (all.length !== 3) return 'This one changes an existing document; nothing should be added or removed.';
+        if (!d) return `${v.who} is missing now.`;
+        if (!d.plan) return 'The update replaced the whole document and lost plan. Use an operator like $push so only tags changes.';
+        if (!Array.isArray(d.tags) || !d.tags.includes(v.tag)) return all.some(x => x !== d && x.tags.includes(v.tag)) ? 'That tagged the wrong user: filter on the name.' : `${v.who}'s tags don't have "${v.tag}" yet.`;
+        if (/\$set/.test(line)) return 'That works, but $set rewrites the whole array from what the app read, so two writers can lose each other\'s tags. $push adds one item inside the database.';
+        if (all.some(x => x !== d && x.tags.includes(v.tag))) return 'Other users got the tag too. updateOne with a filter on the name changes one document.';
+        return true;
+      },
+      why: '$push (or $addToSet, which skips duplicates) changes one array inside the database, atomically, without the app reading and rewriting the document. A plain replacement document would wipe every other field.' },
+    { id: 'dr-widecol1', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ cu: 'c7' }, { cu: 'c2' }, { cu: 'c9' }],
+      seed: KS.concat(['CREATE TABLE orders_by_customer (customer text, placed timestamp, total int, PRIMARY KEY ((customer), placed)) WITH CLUSTERING ORDER BY (placed DESC);'],
+        ['c7', 'c2', 'c9', 'c4'].flatMap((c, k) => [1, 2, 3, 4, 5].map(d => `INSERT INTO orders_by_customer (customer, placed, total) VALUES ('${c}', '2026-11-0${d} 1${k}:00:00', ${(d * 7 + k * 11) % 60 + 5});`))),
+      q: 'orders_by_customer is partitioned by customer and clustered by placed, newest first. Get customer {cu}\'s 3 most recent orders, reading just one partition.',
+      task: 'The 3 newest orders for {cu}.',
+      answer: "SELECT * FROM orders_by_customer WHERE customer = '{cu}' LIMIT 3;", alt: ["SELECT placed, total FROM orders_by_customer WHERE customer = '{cu}' LIMIT 3;"],
+      hint: "SELECT * FROM table WHERE partition_key = 'value' LIMIT n;",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with SELECT.';
+        if (r.filtering || r.scanAll) return 'That read every partition on every node. Put the partition key, customer, in the WHERE.';
+        const ci = r.header.indexOf('customer');
+        if (ci >= 0 && rowsOf(r).some(x => x[ci] !== v.cu)) return `Those aren't all ${v.cu}'s orders.`;
+        if (rowsOf(r).length !== 3) return `That returned ${rowsOf(r).length} rows. LIMIT 3 keeps the first three.`;
+        return true;
+      },
+      why: 'One partition key means one partition on a few nodes. The clustering order already keeps rows newest first, so LIMIT 3 reads the first three off disk and stops: no sort, no scan.' },
+    { id: 'dr-widecol2', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ t: 'readings', e: 'sensor', val: 'temp double' }, { t: 'meter_reads', e: 'meter', val: 'kwh double' }, { t: 'heartbeats', e: 'device', val: 'battery int' }],
+      seed: KS,
+      q: 'Make a table {t} for {e} data with columns {e} text, day date, ts timestamp, {val}. The only query is "one {e}\'s rows for one day, newest first". A {e} reports every second for years, so a partition per {e} alone would grow forever.',
+      task: 'CREATE TABLE {t}: partition by {e} and day, cluster by ts, newest first.',
+      answer: 'CREATE TABLE {t} ({e} text, day date, ts timestamp, {val}, PRIMARY KEY (({e}, day), ts)) WITH CLUSTERING ORDER BY (ts DESC);',
+      alt: ['CREATE TABLE {t} (ts timestamp, {e} text, {val}, day date, PRIMARY KEY ((day, {e}), ts)) WITH CLUSTERING ORDER BY (ts DESC);'],
+      hint: 'CREATE TABLE t (cols..., PRIMARY KEY ((part1, part2), clust)) WITH CLUSTERING ORDER BY (clust DESC);',
+      check: (r, E, line, v) => {
+        const T = E.table(v.t);
+        if (!T) return Object.keys(E.tables).length ? `Name the table ${v.t}.` : 'Create the table with CREATE TABLE.';
+        const pk = T.pk.slice().sort().join();
+        if (pk === v.e) return `One partition per ${v.e} grows forever. Put day in the partition key too: PRIMARY KEY ((${v.e}, day), ts).`;
+        if (pk !== ['day', v.e].sort().join()) return `The partition key should be (${v.e}, day): it is (${T.pk.join(', ')}).`;
+        if (T.ck[0] !== 'ts') return 'Cluster by ts, so a day\'s rows sit in time order.';
+        if ((T.order || {}).ts !== 'DESC') return 'Rows sort oldest first. Add WITH CLUSTERING ORDER BY (ts DESC).';
+        return true;
+      },
+      why: 'Model the table from the query. ({e}, day) gives one bounded partition per {e} per day, which spreads the writes and caps the size; ts DESC stores each day newest first, so the query is a read from the top.' },
+    { id: 'dr-graphdb1', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ a: 'Ana', want: 'Ben,Dee' }, { a: 'Cy', want: 'Ana,Eli,Fay' }, { a: 'Eli', want: 'Ana' }],
+      seed: people([['Ana', 'Ben'], ['Ana', 'Dee'], ['Cy', 'Ana'], ['Cy', 'Eli'], ['Cy', 'Fay'], ['Eli', 'Ana'], ['Ben', 'Eli'], ['Fay', 'Cy']]),
+      q: 'People are Person nodes with a name property. A FOLLOWS arrow points from the follower to the person they follow. Return the names of everyone {a} follows.',
+      task: 'Who does {a} follow? Return their names.',
+      answer: "MATCH (:Person {name: '{a}'})-[:FOLLOWS]->(p) RETURN p.name", alt: ["MATCH (a:Person {name: '{a}'})-[:FOLLOWS]->(b:Person) RETURN b.name AS name", "MATCH (p:Person)<-[:FOLLOWS]-(:Person {name: '{a}'}) RETURN p"],
+      hint: "MATCH (:Label {prop: 'x'})-[:TYPE]->(other) RETURN other.prop",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with MATCH ... RETURN.';
+        const got = rowsOf(r).map(x => nameOf(x[0])).sort().join(), want = v.want.split(',').sort().join();
+        if (got === want) return true;
+        const back = E.rels.filter(x => x.type === 'FOLLOWS' && E.nodes.find(n => n.id === x.to).props.name === v.a).map(x => E.nodes.find(n => n.id === x.from).props.name).sort().join();
+        if (got === back) return `Those are the people who follow ${v.a}. Point the arrow away from ${v.a}: (${v.a})-[:FOLLOWS]->(p).`;
+        return `That returned ${rowsOf(r).length} name${rowsOf(r).length === 1 ? '' : 's'}; ${v.a} follows ${v.want.split(',').length}.`;
+      },
+      why: 'The pattern is the query: start at {a} and follow the arrows out. The database hops along the stored relationships from one node, so the cost depends on {a}\'s links, not on how many people there are.' },
+    { id: 'dr-graphdb2', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ a: 'Ben', b: 'Cy' }, { a: 'Dee', b: 'Ana' }, { a: 'Fay', b: 'Eli' }],
+      seed: people([['Ana', 'Ben'], ['Cy', 'Ana'], ['Eli', 'Fay']]),
+      q: 'A nightly job records that {a} follows {b}. Jobs get retried, so running your line twice must still leave exactly one FOLLOWS arrow from {a} to {b}.',
+      task: 'Record {a} -> {b}, safe to run twice.',
+      answer: "MATCH (a:Person {name: '{a}'}), (b:Person {name: '{b}'}) MERGE (a)-[:FOLLOWS]->(b)",
+      alt: ["MATCH (x:Person {name: '{a}'}) MATCH (y:Person {name: '{b}'}) MERGE (x)-[r:FOLLOWS]->(y)"],
+      hint: "MATCH (a {..}), (b {..}) MERGE (a)-[:TYPE]->(b)",
+      check: (r, E, line, v) => {
+        if (E.nodes.length !== PEOPLE.length) return 'That made new Person nodes. MATCH the two people first, then connect them.';
+        const n = followsOf(E, v.a).filter(x => x === v.b).length;
+        if (n === 0) return `There is no FOLLOWS arrow from ${v.a} to ${v.b} yet.`;
+        if (n > 1) return 'Now there are two arrows. MERGE adds it only if it is missing.';
+        if (!/\bMERGE\b/i.test(line)) return 'That works once, but the retry would add a second arrow. Use MERGE, which creates it only if it is missing.';
+        return true;
+      },
+      why: 'MERGE is "match it, or create it if it isn\'t there", so a retried job is harmless. CREATE always adds, and duplicate arrows double-count every walk through them. MATCH the nodes first, or MERGE would make new people too.' }
+  ];
 })();
