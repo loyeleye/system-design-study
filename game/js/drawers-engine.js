@@ -21,6 +21,14 @@
   // ---------- Shared helpers ----------
   const fail = (err, extra) => Object.assign({ ok: false, out: '', err, touched: [] }, extra || {});
   const done = (out, extra) => Object.assign({ ok: true, out, err: null, touched: [] }, extra || {});
+  // A user's $regex, refused when a quantified group is quantified again ((a+)+, (a|aa)*, (.*)*), the shapes that
+  // backtrack exponentially. Real MongoDB would run them and stall; here the error says why.
+  const safeRe = (src, flags) => {
+    src = String(src); flags = String(flags || '').replace(/[^imsu]/g, '');
+    if (src.length > 200) throw new Error('MongoServerError: $regex is limited to 200 characters in this practice store');
+    if (/\((?:[^()\\]|\\.)*[+*}](?:[^()\\]|\\.)*\)[+*{]|\((?:[^()\\]|\\.)*\|(?:[^()\\]|\\.)*\)[+*{]/.test(src)) throw new Error('MongoServerError: that $regex repeats a repeated group, which can take forever to match (catastrophic backtracking). Simplify it.');
+    try { return new RegExp(src, flags); } catch (e) { throw new Error('MongoServerError: Regular expression is invalid: ' + e.message); }
+  };
   const globRe = p => new RegExp('^' + p.replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
   // Split a shell line into words, keeping quoted strings whole (quotes removed).
   function words(line) {
@@ -355,7 +363,7 @@
           case '$nin': return Array.isArray(x) && !flat.some(v => x.some(y => eq(v, y)));
           case '$exists': return x ? vals.length > 0 : vals.length === 0;
           case '$size': return vals.some(v => Array.isArray(v) && v.length === x);
-          case '$regex': { const re = new RegExp(x, cond.$options || ''); return flat.some(v => typeof v === 'string' && re.test(v)); }
+          case '$regex': { const re = safeRe(x, cond.$options); return flat.some(v => typeof v === 'string' && re.test(v)); }
           case '$options': return true;
           default: throw new Error(`MongoServerError: unknown operator: ${op}`);
         }
@@ -1343,8 +1351,21 @@
   D.make = function (kind) {
     const E = kind === 'kv' ? makeKV() : kind === 'doc' ? makeDoc() : kind === 'wide' ? makeWide() : kind === 'graph' ? makeGraph() : null;
     if (!E) throw new Error('unknown drawer ' + kind);
+    // Typed lines are data, never code: nothing here calls eval. These guards keep a line from reaching JavaScript's
+    // own object machinery (prototype pollution: "__proto__.x" as a field path would change every object in the
+    // game) or freezing the tab (a $regex with a nested quantifier backtracks forever, often called ReDoS).
+    const inner = E.run;
+    E.run = function (line) {
+      line = String(line == null ? '' : line);
+      const no = err => ({ ok: false, out: '', err, touched: [] });
+      if (line.length > MAX_LINE) return no(`That line is ${line.length} characters. The practice stores take up to ${MAX_LINE}.`);
+      if (RESERVED.test(line)) return no(`"${RESERVED.exec(line)[0]}" is a reserved name in these practice stores. Pick another name.`);
+      try { return inner.call(E, line); } catch (e) { return no(String(e && e.message || e)); }
+    };
     return E;
   };
+  const MAX_LINE = 50000;   // seeds are long; a player's line never is
+  const RESERVED = /__proto__|\bprototype\b|\bconstructor\b/;
   // The shell prompt each drawer shows.
   D.prompt = (E) => E.kind === 'kv' ? '127.0.0.1:6379>' : E.kind === 'doc' ? `${E.db}>` : E.kind === 'wide' ? `cqlsh${E.cur ? ':' + E.cur : ''}>` : 'neo4j@neo4j>';
 })();

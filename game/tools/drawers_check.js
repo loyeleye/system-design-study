@@ -97,6 +97,17 @@ const drillIds = new Set();
 });
 SD.drills.forEach(q => { if (SD.questions.some(x => x.id === q.id)) bad(q.id, 'drill id clashes with a question'); });
 
+// Hostile lines: none may reach Object.prototype, hang on a regex, or throw out of E.run.
+console.log('HOSTILE INPUT');
+const HOSTILE = { doc: ['db.u.insertOne({ a: 1 })', 'db.u.updateOne({ a: 1 }, { $set: { "__proto__.polluted": 1 } })', 'db.u.updateOne({ a: 1 }, { $set: { "constructor.prototype.polluted": 1 } })', 'db.u.insertOne({ "__proto__": { "polluted": 1 } })', 'db.u.insertOne({ a: "' + 'a'.repeat(40) + '!" })', 'db.u.find({ a: { $regex: "(a+)+$" } })', 'db.u.find({ a: { $regex: "(\\w+\\s?)+$" } })', 'db.u.find(' + '['.repeat(30000) + ')'],
+  graph: ["CREATE (n:P {__proto__: 'x'})", 'MATCH (n) SET n.__proto__ = 1', '('.repeat(30000)],
+  wide: ['CREATE TABLE __proto__ (a text PRIMARY KEY);', '('.repeat(30000)], kv: ['SET __proto__ x', 'HSET h __proto__ 1', 'GET constructor'] };
+Object.entries(HOSTILE).forEach(([k, lines]) => { const E = D.make(k); lines.forEach(l => {
+  const t = Date.now(); let r; try { r = E.run(l); } catch (e) { bad('hostile ' + k, `threw: ${e.message}`); }
+  if (Date.now() - t > 500) bad('hostile ' + k, `took ${Date.now() - t} ms: ${l.slice(0, 60)}`);
+  if (vm.runInContext('({}).polluted', ctx) !== undefined) bad('hostile ' + k, `polluted Object.prototype: ${l.slice(0, 60)}`);
+}); });
+
 // Multiple-choice questions added by the two quests.
 const mine = SD.questions.concat(I.chains.flatMap(c => c.steps.flatMap(s => s.do.filter(a => a.ask && typeof a.ask === 'object' && a.ask.type === 'mc').map(a => a.ask))));
 const quest1 = SD.quests.list.find(q => q.id === 'cabinet');
