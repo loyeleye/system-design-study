@@ -289,10 +289,12 @@
     const now = Date.now();
     return Object.keys(S.save.concepts).filter(id => S.reviewable(id) && S.save.concepts[id].seen && S.save.concepts[id].due <= now).length;
   };
-  S.pickQuestion = function (conceptId, avoid) {
+  S.pickQuestion = function (conceptId, avoid, opts) {
     // Typed answers (js/explain-data.js): about one time in three, once you've answered the concept right before,
     // explain it in your own words instead of picking an option. Menu > Typed answers turns them off.
-    const typed = (SD.explain || []).filter(q => q.c === conceptId && !(avoid || []).includes(q.id));
+    // opts.drills (town reviews, js/quiz.js Q.session): typed drills (SD.drills, js/drawers-quest.js) join that pool,
+    // where you type a command into a small live database. Timed fights and raids never get them.
+    const typed = (SD.explain || []).concat(opts && opts.drills ? SD.drills || [] : []).filter(q => q.c === conceptId && !(avoid || []).includes(q.id));
     const c = S.save.concepts[conceptId];
     if (typed.length && S.save.typed !== false && c && c.hist.some(h => h.ok) && Math.random() < 1 / 3) {
       return typed[Math.floor(Math.random() * typed.length)];

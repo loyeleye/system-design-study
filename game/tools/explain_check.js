@@ -11,7 +11,7 @@ const ctx = { SD: { concepts: {} }, console, Math, Date, RegExp, String };
 ctx.SD.ui = {}; ctx.window = ctx; vm.createContext(ctx);
 // Side quests that keep their typed answers with the quest push them into SD.explain before their quest code
 // (which returns early here, with no SD.quests), so they load too.
-const EXTRA = ['js/wen-quest.js', 'js/whitehat-quest.js', 'js/seymour-quest.js', 'js/cron-quest.js', 'js/manifest-quest.js'];
+const EXTRA = ['js/wen-quest.js', 'js/whitehat-quest.js', 'js/seymour-quest.js', 'js/cron-quest.js', 'js/manifest-quest.js', 'js/drawers-quest.js'];
 for (const f of ['js/embed.js', 'js/explain-data.js', ...EXTRA]) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
 // Q.rubric lives in quiz.js; pull just that part so this runs without a DOM.
 const quiz = fs.readFileSync(path.join(ROOT, 'js/quiz.js'), 'utf8');

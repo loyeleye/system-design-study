@@ -159,6 +159,8 @@
   const BAND_NAMES = ['Fast', 'Steady', 'Slow'];
   Q.ask = function (q, opts) {
     opts = opts || {};
+    // A typed drill (SD.drills, js/drawers-quest.js) runs on its own screen, js/drawers-bench.js D.drill.
+    if (q.type === 'drill' && SD.drawers && SD.drawers.drill) return SD.drawers.drill(q, opts).then(res => { if (SD.meta && SD.meta.emit) SD.meta.emit('answer', res, q); return res; });
     return new Promise(resolve => {
       const t0 = Date.now();
       // opts.tally (an expedition's questions, js/raid.js): each confidence button shows what it does to the
@@ -555,7 +557,7 @@
     const quit = opts.leave ? new Promise(res => { U.quitGame = () => res(LEFT); }) : null;
     try {
       for (let i = 0; i < picks.length; i++) {
-        const q = SD.state.pickQuestion(picks[i], used); used.push(q.id);
+        const q = SD.state.pickQuestion(picks[i], used, { drills: true }); used.push(q.id);
         SD.state.seeConcept(picks[i]);
         const ask = Q.ask(q, { title: opts.title, context: `${SD.concepts[q.c].name} · ${i + 1}/${picks.length}` });
         const r = await (quit ? Promise.race([ask, quit]) : ask);

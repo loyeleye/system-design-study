@@ -1,0 +1,704 @@
+// Part 1 of the NoSQL quests: "The Cabinet from the East" (Ladi, 2026-11-07). An optional Pingsby side quest from
+// chapter 1. Coo delivers a flat-pack Four-Drawer Cabinet to the Grand Library: Lexi mail-ordered it from a map shop
+// on an island nobody in Pingsby has visited, because four villagers brought her requests her catalogue "cannot bear".
+// You try one drawer with each of them on Minh's Workbench (js/drawers-bench.js), typing real commands:
+//   Wen    key-value (Redis): regulars' usual orders, today's special that expires at closing, a croissant counter
+//   Bru    document (MongoDB): adventurer cards with different fields per class
+//   Doug   wide-column (Cassandra): Kevin's quest-board refresh log, read back by bot and day
+//   Mio    graph (Neo4j): the Forge class buddy system, friends of friends
+// Each stop ends on something the store is bad at and a drawer card with the line to say in an interview. Lexi then
+// runs a mock interview (four typed answers) and a sort into the four drawers or Postgres. The reward: shards, the
+// card Lexi's Cabinet in your card pool, and a key labelled "K." that opens nothing yet. Part 2, "The Four Drawers"
+// on Cartographers' Isle (js/isles/drawers.js), continues the story with Minh and goes deep.
+// The four concepts (kvstore, docstore, widecol, graphdb) are created here and shared with Part 2.
+// Shared-file hook-ups: script tags in index.html, Lexi's Cabinet in js/run.js (Polyglot Persistence's bonus).
+
+// The typed answers sit outside the quest code so tools/explain_check.js can load this file without a DOM.
+SD.explain.push(
+  { id: 'x-nosql1', c: 'kvstore', type: 'explain', q: 'Redis answers in well under a millisecond. Why not make it your main database? What is it best at?',
+    points: [
+      { t: 'Every read is a lookup by a key you already know, served from RAM', keys: ['by (a |its |the )?(known )?key', 'key lookups?', 'look(ed|s)? up by (key|name)', 'from (ram|memory)', 'in (ram|memory)', 'sub.?millisecond', 'under a millisecond'], ex: ['you get a value by its key, from memory', 'lookups by key are very fast'] },
+      { t: 'Its types make atomic counters, leaderboards and rate limits easy', keys: ['incr', 'atomic', 'sorted sets?', 'leaderboards?', 'rate.?limit', 'counters?', 'zadd', 'hashes', 'pub.?sub'], ex: ['INCR is atomic', 'sorted sets make leaderboards easy'] },
+      { t: 'It cannot answer questions by value: no joins or ad hoc queries, so each question needs a planned key', keys: ['by value', 'no (joins?|queries|query language|secondary index)', 'ad.?hoc', 'plan(ned)? (a |the |your )?keys?', 'search (by|inside)', 'filter', 'every key'], ex: ['you cannot ask which users are in Lisbon', 'there are no joins'] },
+      { t: 'Everything must fit in RAM and durability is optional, so the main data lives elsewhere', keys: ['fit in (ram|memory)', 'bigger than (ram|memory)', '(ram|memory) is (costly|expensive|limited)', 'expensive', 'durab', 'aof', 'append.?only', 'snapshot', 'persist', 'main (data|database) (lives|stays|elsewhere)', 'beside', 'alongside'], ex: ['RAM is expensive', 'a crash can lose writes unless the append-only file is on'] }
+    ],
+    model: 'Redis is brilliant at one thing: fetching a value by a key you already know, straight from RAM, in well under a millisecond. Its built-in types make atomic counters (INCR), leaderboards (sorted sets) and rate limits a one-liner. But it cannot answer questions by value: there are no joins or ad hoc queries, so every question needs a key you planned in advance. Everything has to fit in RAM, which gets expensive, and durability is optional (the append-only file or snapshots), so I would keep the main data in a relational database and run Redis beside it for the hot, simple, key-shaped work.',
+    why: 'A favourite follow-up whenever Redis appears in a design: "why not just use Redis for everything?"' },
+  { id: 'x-nosql2', c: 'docstore', type: 'explain', q: 'A product catalogue has different fields per category: shoes have sizes, TVs have resolutions. Would you use a document store or a relational database, and why?',
+    points: [
+      { t: 'A document store lets each product carry its own fields, and a product page is one read', keys: ['(its|their) own (fields|shape|attributes|specs)', 'only the fields', 'different (fields|attributes|specs)', 'flexible schema', 'schema.?less', 'no (fixed )?schema', 'no migrations?', 'product page is one', 'one (read|query) per product', 'nested specs', 'new category'], ex: ['each product is one document with only the fields it needs', 'a new category needs no migration'] },
+      { t: 'Relational still works: shared columns plus a JSON column for the per-category ones', keys: ['json(b)? column', 'jsonb', 'postgres (can|also|handles|keeps)', 'relational (can|also|still)', 'attribute table', 'eav', 'shared (fields|columns) as'], ex: ['Postgres can keep the varying parts in a JSONB column', 'shared fields as normal columns'] },
+      { t: 'Decide on what else touches it: orders, stock and payments needing joins and transactions point to relational', keys: ['joins?', 'transactions?', 'orders?', 'inventory', 'stock', 'payments?', 'checkout'], ex: ['if orders and stock need transactions with it, stay relational', 'a checkout touches price and stock together'] }
+    ],
+    model: 'Both can work. A document store such as MongoDB fits naturally: each product is one document with only the fields its category needs, nested specs included, so a product page is one read and a new category needs no migration. But varying fields alone do not force NoSQL: in Postgres, name, price and stock become ordinary columns and the per-category specs go in a JSONB column with an index. If the catalogue sits next to orders, stock and payments that change together in transactions, I would keep it relational; if it is a read-heavy catalogue served on its own, the document store is simpler.',
+    why: 'Interviewers ask it to see whether "flexible schema" is your only reason for NoSQL.' },
+  { id: 'x-nosql3', c: 'widecol', type: 'explain', q: 'Design storage for a chat app\'s message history. Why might you choose Cassandra, and what is the partition key?',
+    points: [
+      { t: 'Huge write volume, appended and rarely updated: Cassandra\'s write path (LSM, any node takes writes) suits it', keys: ['write.?heavy', '(huge|high|massive|lots of|many) writes?', 'write (volume|throughput)', 'billions', 'append', 'lsm', 'scales? (out|horizontally)', 'any node', 'leaderless', 'no (single )?leader'], ex: ['billions of small writes a day', 'it scales writes by adding nodes'] },
+      { t: 'Partition by conversation (plus a time bucket so no partition grows forever)', keys: ['partition(ed)? (key )?(by|on|is) (the )?(conversation|chat|channel|room)', '(conversation|chat|channel|room)[ _]?id', 'bucket', 'per (conversation|chat|channel)', '\\(conversation', 'month', 'day'], ex: ['partition key is the conversation ID', 'add a month bucket so busy chats split'] },
+      { t: 'Cluster by time (or a message ID) so the latest messages are one sequential read', keys: ['cluster(ing)? (key|column|by|on)', 'sorted by (time|timestamp)', 'by time', 'timestamp', 'timeuuid', 'message[ _]?id', 'newest first', 'desc', 'latest (messages|page)', 'range (read|scan)', 'page'], ex: ['clustering key is the message time, newest first', 'reading the last 50 is one slice of one partition'] },
+      { t: 'The trade: no joins or ad hoc queries, so every other question needs its own table', keys: ['no joins?', 'ad.?hoc', 'one table per (query|question)', 'another table', 'second table', 'denormali', 'duplicat', 'allow filtering', 'only (query|read) by (the )?(key|partition)'], ex: ['search by user needs a second table', 'you design tables around queries'] }
+    ],
+    model: 'Chat history is a firehose of small writes that are almost never updated, read back as "the latest messages in this conversation". Cassandra fits: any node accepts writes, its log-structured storage turns them into fast sequential appends, and you scale by adding nodes. The partition key is the conversation ID, usually with a time bucket such as the month, so one busy chat doesn\'t grow a partition forever, and the clustering key is the message timestamp or a timeuuid, sorted newest first, so loading a page is one sequential read of one partition. The trade is that Cassandra has no joins and filters badly, so every other question, like a user\'s inbox, gets its own table written alongside.',
+    why: 'Message storage is the deep dive in "design WhatsApp" and "design Discord".' },
+  { id: 'x-nosql4', c: 'graphdb', type: 'explain', q: 'When would you reach for a graph database, and when would it be a mistake?',
+    points: [
+      { t: 'When the questions walk relationships several hops deep', keys: ['hops?', 'friends? of friends?', 'traverse', 'travers', 'walk', 'path', 'connections?', 'relationships?', 'recommend', 'fraud', 'social', 'network', 'many.?to.?many'], ex: ['friends of friends', 'finding fraud rings that share a phone and a card'] },
+      { t: 'Because each hop follows a stored link, a deep traversal avoids a join per level', keys: ['join (per|for each|at every) (hop|level)', 'no joins?', 'without joins?', 'stored (link|pointer|edge)', 'pointer', 'index.?free adjacency', 'each hop (is )?cheap', 'constant'], ex: ['in SQL every hop is another self join', 'it just follows the edges'] },
+      { t: 'A mistake for aggregates, reports and simple lookups, which a relational store does well', keys: ['aggregat', 'reports?', 'sums?', 'totals?', 'counts?', 'analytics', 'simple (lookups?|crud)', 'one hop', 'single hop', 'tabular'], ex: ['revenue per month is a sum, not a path', 'plain CRUD does not need it'] },
+      { t: 'Watch for supernodes and the difficulty of sharding a graph', keys: ['supernode', 'super node', 'celebrit', 'millions of (edges|links|followers)', 'high.?degree', 'shard', 'partition', 'split', 'scale out'], ex: ['a celebrity with millions of followers makes every hop through them huge', 'graphs are hard to split across machines'] }
+    ],
+    model: 'I reach for a graph database when the important questions walk relationships several hops deep: friends of friends, "people you may know", the shortest path between two accounts, or fraud rings that share phones, cards and addresses. A graph store keeps each relationship as a stored link, so a hop is cheap however big the data gets, where SQL needs another self join for every level. It is a mistake when the questions are aggregates and reports, like revenue per region per month, or simple lookups and CRUD: a relational database does those better. I would also watch for supernodes, like a celebrity with millions of followers, which make any walk through them explode, and remember that graphs are hard to shard across machines.',
+    why: 'Graph databases come up whenever a design has a social or fraud component.' },
+  // Part 2's last word (js/isles/drawers.js): Kaito wants everything in one database.
+  { id: 'x-nosql5', c: 'sqlnosql', type: 'explain', q: 'Kaito says: "Put everything in one database, to keep it simple." When is he right, and when would you add another store?',
+    points: [
+      { t: 'He is right to start with one: a relational database like Postgres covers most needs at first', keys: ['start (with|from) (one|a single|postgres|a relational)', 'one (relational )?database (is|covers|goes)', 'postgres (first|is (the|a) default|covers|handles)', 'default', 'most (systems|apps|products) start', 'simple(r)? to run', 'fewer moving parts', 'operational'], ex: ['most systems start with one Postgres', 'one store is simpler to run'] },
+      { t: 'Each store fits a different access pattern, so one store makes some questions slow', keys: ['access patterns?', 'different (questions|queries|workloads|jobs)', '(fits|suits|built for) (one|a different|a specific)', 'each (store|database) (is )?(good|best|built)', 'one size', 'trade.?offs?'], ex: ['each store is built for one kind of query', 'Postgres is bad at a billion writes a day'] },
+      { t: 'Add a specialist only when a real query or load needs it, with a concrete example', keys: ['only when', 'when (a|the) (real )?(query|load|workload|need)', 'measur', 'bottleneck', 'cache', 'redis', 'cassandra', 'search', 'elasticsearch', 'graph', 'neo4j', 'sessions?', 'leaderboard', 'write volume'], ex: ['add Redis when the session reads hurt', 'add Cassandra when the write volume outgrows one primary'] },
+      { t: 'Keep one source of truth and feed the others from it', keys: ['source of truth', 'derived', 'fed from', 'feed', 'change data capture', 'cdc', 'sync', 'in sync', 'one (place|copy) is (the )?(real|truth)', 'consisten'], ex: ['Postgres stays the source of truth and the cache is derived', 'stream changes to the other stores'] }
+    ],
+    model: 'Kaito is right that most systems should begin with a single relational database like Postgres: it handles transactions, flexible queries and a lot of scale, and every extra store is one more thing to run, monitor and back up. But each store is built for one access pattern, so one database eventually makes some question slow: sessions read on every request, a billion sensor writes a day, or friends-of-friends walks. I would add a specialist only when a real query or load needs it, like Redis when session reads hurt or Cassandra when writes outgrow one primary, and keep Postgres as the source of truth, feeding the others from it with change data capture.',
+    why: 'Interviewers push back on extra components. "Why not just Postgres?" deserves a real answer.' }
+);
+
+(function () {
+  const U = SD.ui, QS = SD.quests, S = SD.state;
+  if (!QS) return;
+
+  // ---------- Concepts (zone 98: review boxes only, like the other town side quests) ----------
+  Object.assign(SD.concepts, {
+    kvstore: {
+      name: 'Key-Value Stores (Redis)', zone: 98, tag: 'Storage',
+      gist: 'A key-value store does one thing: get and set a value by its key, very fast. Redis keeps everything in memory, so a lookup takes well under a millisecond, and adds types beyond strings: counters (INCR, atomic even with many clients), hashes (fields inside one key), sets and sorted sets (leaderboards). Every key can carry a TTL and expire on its own, which makes it the default home for caches, sessions, rate limits and counters. It cannot answer a question by value ("who ordered an oat latte?") unless you planned a key for that question; KEYS walks every key on Redis\'s single main thread and blocks everyone, so production code uses SCAN or, better, a set per question. Memory is costly and a crash loses recent writes unless persistence (an append-only file or snapshots) or replicas are on. Redis Cluster splits keys over 16,384 slots. DynamoDB is the same idea at cloud scale: a partition key, optionally a sort key.',
+      page: 'Wen keeps Seymour\'s usual in a box labelled usual:seymour. She cannot find "everyone who drinks oat lattes" without opening every box. She says Hiro would have kept a second box. Hiro kept a second box for everything. — U.'
+    },
+    docstore: {
+      name: 'Document Stores (MongoDB)', zone: 98, tag: 'Storage',
+      gist: 'A document store keeps each record as one self-contained document (JSON-like, with nested objects and arrays) inside a collection. Documents in one collection can have different fields, so new shapes need no migration (schema on read), and a whole record, such as a profile or a product with its specs, comes back in one read. You query by any field, including nested ones with dot notation (\'map.marks\'), update single fields in place with operators ($set, $inc, $push), and add secondary indexes; explain() shows whether a query used one (IXSCAN) or read every document (COLLSCAN). The weak spots are links between documents: joins exist ($lookup) but are costly, data copied into many documents goes stale, and arrays that grow without limit hit the 16 MB document cap. Embed what is small and read together; reference what grows or is shared. MongoDB shards a collection by a shard key you choose.',
+      page: 'Bru registered Kevin as an adventurer. His card has a "refreshRate" field and no sword. MongoDB did not complain. Bru complained. — U.'
+    },
+    widecol: {
+      name: 'Wide-Column Stores (Cassandra)', zone: 98, tag: 'Storage',
+      gist: 'A wide-column store such as Cassandra groups rows into partitions by a partition key, and sorts rows inside each partition by clustering keys. The partition key is hashed onto a ring of nodes, and each partition is copied to several of them (the replication factor). Any node takes writes, and writes are appended to memory and flushed as sorted files (an LSM tree), so it absorbs enormous write volumes: logs, messages, sensor readings, activity feeds. You design one table per query: a read must name the partition key, and then slicing a range of clustering keys is one sequential read. A query that doesn\'t name the partition is refused unless you add ALLOW FILTERING, which reads every partition on every node. There are no joins, every write is an upsert resolved by last-write-wins, a delete writes a tombstone that lingers until compaction, and consistency is tunable per query (ONE, QUORUM, ALL).',
+      page: 'Kevin refreshes the quest board ten thousand times a minute, and Cassandra writes down every one without blinking. Doug asked which page Kevin likes best. Cassandra blinked. — U.'
+    },
+    graphdb: {
+      name: 'Graph Databases (Neo4j)', zone: 98, tag: 'Storage',
+      gist: 'A graph database stores nodes (things, with labels and properties) and relationships (typed links between two nodes, which can carry properties too). Each relationship is stored as a direct link, so following one is cheap however large the graph, and queries that walk many hops read like the picture: in Cypher, (me)-[:KNOWS*2]-(fof) finds friends of friends, and shortestPath finds the chain between two people, where SQL would need a self join per hop. That makes graphs the fit for social networks, recommendations, fraud rings, access-control hierarchies and route finding. They gain nothing for aggregates and reports, which never walk a link; a supernode with millions of relationships (a celebrity) makes every walk through it explode; and a graph is hard to shard without cutting paths. New kinds of relationships need no schema change.',
+      page: 'Mio drew the Forge class as circles and arrows. Taro and Rio have a red arrow between them. It is labelled NEVER_PAIR, and also "buckets". — U.'
+    }
+  });
+  Object.assign(SD.huh, {
+    kvstore: 'In game terms: a wall of lockers with a name on each. You can open any locker instantly if you know its name, and some lockers empty themselves at a set time. You cannot ask the wall "which lockers hold an oat latte?" without opening every one.',
+    docstore: 'In game terms: a folder of character sheets. Every sheet holds a whole character, and a mage\'s sheet has mana while a smith\'s has anvils. Easy to read one sheet; awkward to work out who is in whose party.',
+    widecol: 'In game terms: a cabinet with one drawer per bot per day, each spread over several rooms in case one burns down. Dropping a slip in the right drawer is instant. Asking "which page got refreshed most, by anyone?" means opening every drawer in every room.',
+    graphdb: 'In game terms: the class drawn as circles and arrows. "Who are my friends\' friends?" is just following arrows two steps. "What is the average number of bucket swings?" doesn\'t use the arrows at all.'
+  });
+  SD.glossary.push(
+    ['Key-value store', /\bkey.value (stores?|databases?)\b/i, 'A database that gets and sets values by key and little else, very fast. Redis, Memcached and DynamoDB are examples.'],
+    ['Document store', /\bdocument (stores?|databases?)\b/i, 'A database of self-contained JSON-like documents, each with its own fields, queried by any field. MongoDB is the best known.'],
+    ['Wide-column store', /\bwide.column (stores?|databases?)\b/i, 'A database that groups rows into partitions by key and sorts them inside, built for huge write volumes. Cassandra, ScyllaDB and Bigtable.'],
+    ['Graph database', /\bgraph (databases?|stores?|dbs?)\b/i, 'A database of nodes and the relationships between them, built for queries that walk many hops. Neo4j is the best known.'],
+    ['Clustering key', /\bclustering (keys?|columns?)\b/i, 'In Cassandra, the part of the primary key that sorts rows inside a partition, so a range of them is one sequential read.'],
+    ['ALLOW FILTERING', /\bALLOW FILTERING\b/, 'Cassandra\'s warning label: the query doesn\'t name a partition, so it must read every partition on every node to find matches.'],
+    ['Supernode', /\bsuper.?nodes?\b/i, 'A graph node with a huge number of relationships, such as a celebrity. Any walk through it has to expand all of them.'],
+    ['Cypher', /\bCypher\b/, 'Neo4j\'s query language. Patterns are drawn in ASCII: (a:Person)-[:KNOWS]->(b:Person).']
+  );
+  SD.links.push(
+    { id: 'kvstore-cache', a: 'kvstore', b: 'cache', text: 'Most caches are key-value stores: the key is what was asked, the value is the answer, and a TTL lets it go stale on purpose.' },
+    { id: 'kvstore-ratelimit', a: 'kvstore', b: 'ratelimit', text: 'Rate limiters keep their counters in Redis: INCR is atomic, and a TTL resets the window.' },
+    { id: 'docstore-datamodels', a: 'docstore', b: 'datamodels', text: 'The document model in practice: embed what is read together, reference what is shared or grows without limit.' },
+    { id: 'docstore-indexes', a: 'docstore', b: 'indexes', text: 'A MongoDB secondary index is a B-tree, like Postgres\'s. explain() shows IXSCAN when it is used and COLLSCAN when every document is read.' },
+    { id: 'widecol-indexes', a: 'widecol', b: 'indexes', text: 'Cassandra\'s write speed comes from its LSM tree: writes land in memory and flush as sorted files, merged later by compaction.' },
+    { id: 'widecol-sharding', a: 'widecol', b: 'sharding', text: 'A partition key is a shard key: hashed onto a ring of nodes. Pick one that spreads load and keeps each query on one partition.' },
+    { id: 'widecol-consistency', a: 'widecol', b: 'consistency', text: 'Cassandra lets each query pick its consistency: QUORUM reads and writes overlap, so a read sees the latest write.' },
+    { id: 'graphdb-graphmodel', a: 'graphdb', b: 'graphmodel', text: 'The graph model on paper becomes Neo4j in practice: labelled nodes, typed relationships, and Cypher patterns that read like the drawing.' },
+    { id: 'graphdb-sqlnosql', a: 'graphdb', b: 'sqlnosql', text: 'Graph is the fourth NoSQL family, next to key-value, document and wide-column. It is the one built around relationships rather than records.' }
+  );
+  // The chapter 1 card named three NoSQL families; graph is the fourth.
+  if (SD.concepts.sqlnosql && !/graph/i.test(SD.concepts.sqlnosql.gist)) SD.concepts.sqlnosql.gist = SD.concepts.sqlnosql.gist.replace('NoSQL (key-value, wide-column, document)', 'NoSQL (key-value, document, wide-column, graph)');
+
+  // ---------- The card: Lexi's Cabinet, unlocked into your card pool ----------
+  // Absorbs load of any kind, and hits like a database card: EFFECTIVE when the incident is weak to a cache,
+  // wide-column or SQL card, which is the lesson (match the store to the load). Polyglot Persistence, Part 2's card,
+  // adds +2 to it (js/run.js).
+  SD.cards.lexicabinet = { name: 'Lexi\'s Cabinet', cost: 1, kind: 'action', abs: { any: 7 }, pow: 6, tags: ['nosql', 'cache', 'sql'], text: 'Absorb {any} load of any kind. Hits hard if the incident is weak to a cache, wide-column or SQL card: four drawers, one for each question.', art: 'aishelf', rarity: 'uncommon', concept: 'kvstore', flavor: 'The fifth lock is decorative, probably.' };
+
+  // ---------- The four stops ----------
+  const BENCH = {};
+  BENCH.wen = {
+    title: 'THE FIRST DRAWER · KEY-VALUE', who: 'wen', kind: 'kv', win: 'THE CAFÉ REMEMBERS!',
+    seed: ['SET usual:mio "hot cocoa"', 'SET usual:gary "croissant"', 'SET usual:kaito "oat latte"', 'SET usual:bru "coffee"'],
+    tour: [
+      'The first drawer is full of little boxes, dear, each with a name on the lid. Lexi says this one is called <b>Redis</b>.',
+      'You find a box by its name, its <b>key</b>, and whatever is inside is its <b>value</b>. That\'s all it does, but it does it in a blink, because it all lives in memory.',
+      'I\'ve put in a few regulars already. Now help me with Seymour.'
+    ],
+    beats: [
+      { say: 'Seymour\'s usual is an oat latte. Put it in a box with his name on: <b>usual:seymour</b>.', task: 'Store "oat latte" under the key usual:seymour.',
+        answer: 'SET usual:seymour "oat latte"', alt: ["set usual:seymour 'oat latte'"], hint: 'SET <key> "<value>"', chips: ['SET', 'usual:seymour', '"oat latte"'],
+        check: (r, E, line) => { const e = E.get('usual:seymour'); if (!e) return /oat\s+latte/i.test(line) && !/["']/.test(line) ? 'A value with a space in it needs quotes, or Redis reads "latte" as another word.' : 'Use the key usual:seymour, exactly.'; return /^oat latte$/i.test(e.v) ? true : 'The box is there, but it should say "oat latte".'; },
+        after: '<b>SET</b> wrote a string into a box. There was nothing to create first: no table, no columns. The key name <i>is</i> the design.' },
+      { say: 'Seymour\'s at the counter. What does he have?', task: 'Read Seymour\'s usual back.', answer: 'GET usual:seymour', hint: 'GET <key>', chips: ['GET', 'usual:seymour'],
+        check: r => r.read === 'usual:seymour' ? true : 'Ask for the box called usual:seymour.',
+        after: 'One key, one answer, straight from memory. That\'s why caches and sessions live in stores like this.' },
+      { say: 'Today\'s special is loop bread, and it must vanish when I close in 12 hours, or Gary will order it tomorrow. 12 hours is 43,200 seconds.', task: 'Store "loop bread" at special:today, expiring in 43200 seconds.',
+        answer: 'SET special:today "loop bread" EX 43200', hint: 'SET <key> "<value>" EX <seconds>', chips: ['SET', 'special:today', '"loop bread"', 'EX', '43200'],
+        check: (r, E) => { const e = E.get('special:today'); if (!e) return 'Use the key special:today.'; if (e.exp == null) return 'It\'s there, but it never expires. Add EX and the number of seconds.'; return /loop bread/i.test(e.v) ? true : 'The special is "loop bread".'; },
+        after: 'See the clock on the box? That\'s a <b>TTL</b>, time to live. When it reaches zero the key is gone, with no cleanup job. Sessions, passes and rate-limit windows all work like this.' },
+      { say: 'And I count every croissant I sell. Two of us at the till, mind, sometimes at the same moment.', task: 'Add one to the counter croissants:sold.',
+        answer: 'INCR croissants:sold', hint: 'INCR <key>', chips: ['INCR', 'croissants:sold', 'SET'],
+        check: (r, E) => r.cmd === 'INCR' && E.get('croissants:sold') ? true : r.cmd === 'SET' ? 'SET overwrites the count. If both tills read 5 and write 6, one sale vanishes. Use the command that adds one.' : 'Add one to croissants:sold.',
+        after: '<b>INCR</b> adds one inside Redis in a single step, so two tills can\'t both read 5 and both write 6. It even starts from 0 when the key is new.' },
+      { say: 'Now, dear, which of my regulars drink oat lattes? I want to warn them we\'re out.', task: 'Try to find who orders an oat latte. (KEYS lists every key that matches a pattern.)',
+        answer: 'KEYS usual:*', hint: 'KEYS <pattern>, where * matches anything', chips: ['KEYS', 'usual:*', 'GET'],
+        check: r => r.cmd === 'KEYS' ? true : r.cmd === 'GET' ? 'GET needs a name you already know. Try listing the names first.' : 'List the keys that start with usual:',
+        after: 'You get the <i>names</i>, not the answer: you would still have to GET every box and read it. A key-value store can\'t search by value. And KEYS walks every key while all other customers wait, which is fine for six regulars and a disaster for six million. You\'d keep a second key for that question, like a set called <b>drinks:oat-latte</b>.' }
+    ],
+    card: { name: 'Key-value (Redis)', shape: 'Boxes found by name. Values can be strings, counters, hashes, sets or sorted sets, and any box can expire.',
+      strong: ['Lookups by key, from memory, in well under a millisecond', 'Expiry built in: sessions, caches, rate limits', 'Atomic counters and leaderboards'], weak: ['Any question by value, unless you planned a key for it', 'Data bigger than memory', 'Losing recent writes on a crash, unless persistence is on'],
+      pitch: 'Redis for caches, sessions, counters and rate limits: lookups by key, in memory, with expiry. Not for querying by value.' }
+  };
+  BENCH.bru = {
+    title: 'THE SECOND DRAWER · DOCUMENTS', who: 'bru', kind: 'doc', win: 'EVERY CLASS HAS A CARD!',
+    seed: ['use guild', 'db.createCollection("adventurers")',
+      'db.adventurers.insertMany([{ name: "Bru", class: "guildmaster", rank: "A" }, { name: "Gary", class: "hero", rank: "C", croissants: 3 }, { name: "Ayo", class: "smith", forge: { anvils: 1, apprentices: 12 } }, { name: "Mio", class: "mage", mana: 12 }, { name: "Lexi", class: "mage", mana: 40, eyepatch: true }])',
+      'db.createCollection("parties")', 'db.parties.insertOne({ name: "Dawn Patrol", members: ["Gary", "Mio"] })', 'db.parties.insertOne({ name: "The Forge Four", members: ["Ayo", "Mio", "Bru"] })'],
+    tour: [
+      'The second drawer! It\'s a folder, which Lexi calls a <b>collection</b>, full of cards. Each card is a <b>document</b>: one adventurer, everything about them, in one place.',
+      'Look: Mio\'s card has <i>mana</i>, Ayo\'s has a whole <i>forge</i> tucked inside it. Nobody made me declare columns. Each card has whatever fields it needs.',
+      'This one\'s called <b>MongoDB</b>. Let\'s register somebody.'
+    ],
+    beats: [
+      { say: 'Doug insists Kevin is an adventurer now. Fine. Name "Kevin", class "bot", and a refreshRate of 10000. I have no column for refreshRate. Let\'s see if it cares.', task: 'Insert Kevin\'s card into db.adventurers.',
+        answer: 'db.adventurers.insertOne({ name: "Kevin", class: "bot", refreshRate: 10000 })', hint: 'db.adventurers.insertOne({ field: value, ... })', chips: ['db.adventurers.insertOne(', '{', 'name: "Kevin",', 'class: "bot",', 'refreshRate: 10000', '}', ')'],
+        check: (r, E) => { const d = (E.col('adventurers') || { docs: [] }).docs.find(x => x.name === 'Kevin'); return !d ? 'Insert a document with name: "Kevin".' : d.class !== 'bot' ? 'Kevin\'s class is "bot".' : true; },
+        after: 'It didn\'t care. A new field on one card needs no migration: that\'s <b>schema on read</b>. The app reading the cards has to cope with whatever shapes are in there.' },
+      { say: 'I need every mage for the library job.', task: 'Find the adventurers whose class is "mage".', answer: 'db.adventurers.find({ class: "mage" })', hint: 'db.adventurers.find({ field: value })', chips: ['db.adventurers.find(', '{ class: "mage" }', ')'],
+        check: r => r.col === 'adventurers' && r.docs && r.docs.length && r.docs.every(d => d.class === 'mage') && r.matched === r.docs.length ? true : 'Filter on class: "mage".',
+        after: 'You can query any field, even nested ones like <code>"forge.anvils"</code>. Each card came back whole, in one read.' },
+      { say: 'Gary\'s been promoted to S rank. Don\'t ask me how. Change just his rank, leave the croissant count alone.', task: 'Set Gary\'s rank to "S" with updateOne.',
+        answer: 'db.adventurers.updateOne({ name: "Gary" }, { $set: { rank: "S" } })', hint: 'db.adventurers.updateOne({ which }, { $set: { field: value } })', chips: ['db.adventurers.updateOne(', '{ name: "Gary" },', '{ $set: { rank: "S" } }', ')'],
+        check: (r, E) => { const d = E.col('adventurers').docs.find(x => x.name === 'Gary'); return d && d.rank === 'S' ? (d.croissants === 3 ? true : 'His croissant count went missing.') : 'Gary\'s rank should be "S".'; },
+        after: '<b>$set</b> changed one field inside one card; everything else stayed. Without an operator like $set, MongoDB refuses, so you can\'t wipe a card by accident.' },
+      { say: 'Last thing. Show me each party with everyone in it, ranks and all. The parties folder only lists names.', task: 'Join each party to its members\' cards with $lookup.',
+        answer: 'db.parties.aggregate([{ $lookup: { from: "adventurers", localField: "members", foreignField: "name", as: "people" } }])', hint: 'db.parties.aggregate([{ $lookup: { from, localField, foreignField, as } }])',
+        chips: ['db.parties.aggregate([', '{ $lookup: {', 'from: "adventurers",', 'localField: "members",', 'foreignField: "name",', 'as: "people"', '} }', '])'],
+        check: r => r.lookup ? true : 'This one needs a $lookup stage inside aggregate. Tap Show me if you like: the point is what it costs.',
+        after: 'It works, but look at the banner: for every party it searched the other folder. That\'s a <b>join</b>, done by hand. Copy the members into each party card instead and the copies go stale the moment someone leaves. Documents are great for one whole record; links between records are where they hurt.' }
+    ],
+    card: { name: 'Document (MongoDB)', shape: 'Folders of cards. Each card is a whole record with its own fields, nested objects and lists.',
+      strong: ['One read returns a whole record (a profile, a product)', 'Records with different fields, no migrations', 'Queries and indexes on any field, even nested ones'], weak: ['Joins and many-to-many links', 'Copied data that goes stale', 'Arrays that grow without limit (16 MB per document)'],
+      pitch: 'A document store when each record is read whole and records differ in shape, like profiles or catalogues. Weak at joins and many-to-many links.' }
+  };
+  const kev = (ts, page) => `INSERT INTO refreshes (bot, day, ts, page) VALUES ('kevin', '2026-11-07', '2026-11-07 ${ts}', '${page}');`;
+  BENCH.doug = {
+    title: 'THE THIRD DRAWER · WIDE-COLUMN', who: 'doug', kind: 'wide', win: 'KEVIN IS LOGGED!',
+    seed: ["CREATE KEYSPACE board WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3};", 'USE board;',
+      'CREATE TABLE refreshes (bot text, day date, ts timestamp, page text, PRIMARY KEY ((bot, day), ts)) WITH CLUSTERING ORDER BY (ts DESC);',
+      kev('05:59:58', 'board'), kev('05:59:59', 'board'), kev('06:00:00', 'quest-27b'),
+      "INSERT INTO refreshes (bot, day, ts, page) VALUES ('kevin', '2026-11-06', '2026-11-06 23:59:59', 'board');",
+      "INSERT INTO refreshes (bot, day, ts, page) VALUES ('scraper', '2026-11-07', '2026-11-07 06:00:00', 'cat-pictures');"],
+    tour: [
+      'O-okay. The third drawer is, um, six drawers. Six <b>nodes</b>. Lexi says it\'s <b>Cassandra</b>. I set the table up already, it was the only part I understood.',
+      'Every row has a <b>partition key</b>, here the bot and the day. That decides which drawer, um, partition, it goes in, and it\'s copied to three nodes in case one catches fire.',
+      'Inside a partition the rows are sorted by the <b>clustering key</b>, the time, newest first. Kevin writes ten thousand a minute and it doesn\'t even notice. Look at him go.'
+    ],
+    beats: [
+      { say: 'Kevin just refreshed the board again. Log it: bot \'kevin\', day \'2026-11-07\', the time right now, page \'board\'. Cassandra has <code>toTimestamp(now())</code> for "right now".', task: 'Insert one row into refreshes for kevin today.',
+        answer: "INSERT INTO refreshes (bot, day, ts, page) VALUES ('kevin', '2026-11-07', toTimestamp(now()), 'board');", hint: "INSERT INTO refreshes (bot, day, ts, page) VALUES ('...', '...', ..., '...');",
+        chips: ['INSERT INTO refreshes', '(bot, day, ts, page)', 'VALUES', "('kevin',", "'2026-11-07',", 'toTimestamp(now()),', "'board');"],
+        check: r => r.wrote === 'kevin:2026-11-07' ? true : r.wrote ? 'That landed in a different partition. Kevin, on 2026-11-07.' : 'Insert a row for kevin on 2026-11-07.',
+        after: 'The row went to three nodes at once, appended to the end of a log with nothing rewritten. That is why Cassandra takes huge write volumes.' },
+      { say: 'Can I see Kevin\'s last few refreshes today? Newest first?', task: "Read kevin's rows for 2026-11-07, at most 5.",
+        answer: "SELECT ts, page FROM refreshes WHERE bot = 'kevin' AND day = '2026-11-07' LIMIT 5;", hint: "SELECT <columns> FROM refreshes WHERE bot = '...' AND day = '...' LIMIT 5;",
+        chips: ['SELECT ts, page', 'FROM refreshes', 'WHERE', "bot = 'kevin'", 'AND', "day = '2026-11-07'", 'LIMIT 5;'],
+        check: r => r.rows && !r.scanAll && (r.touched || [])[0] === 'kevin:2026-11-07' ? true : r.rows ? 'Name both parts of the partition key: the bot and the day.' : 'Select from refreshes where bot and day are given.',
+        after: 'One partition, on one node, read from the top: already sorted newest first. That\'s the whole trick: <b>design the table for the question</b>, so every read is one short slice.' },
+      { say: 'Now, um. Which page gets refreshed most, across <i>all</i> bots? Kevin won\'t tell me.', task: "Ask for every row where page = 'board', any bot, any day.",
+        answer: "SELECT * FROM refreshes WHERE page = 'board';", hint: "SELECT * FROM refreshes WHERE page = 'board';", chips: ['SELECT *', 'FROM refreshes', 'WHERE', "page = 'board';"], err: /ALLOW FILTERING/,
+        after: 'Refused! The query doesn\'t name a partition, so Cassandra would have to open every partition on every node. It makes you type <b>ALLOW FILTERING</b> to prove you mean it. The real answer is a second table built for that question, keyed by page. No joins, no ad hoc questions: one table per query.' }
+    ],
+    card: { name: 'Wide-column (Cassandra)', shape: 'Rows grouped into partitions by a key, sorted inside by time or another clustering key, copied across a ring of nodes.',
+      strong: ['Huge write volume: logs, messages, sensor data', 'Reading a slice of one partition, in order', 'No single leader: any node takes writes'], weak: ['Any query that doesn\'t name the partition key', 'Joins and ad hoc questions', 'Deletes, which leave tombstones'],
+      pitch: 'Cassandra for huge write volume read back by a known key, like logs, messages and sensor data. Design one table per query. No joins.' }
+  };
+  BENCH.mio = {
+    title: 'THE FOURTH DRAWER · GRAPH', who: 'mio', kind: 'graph', win: 'NOBODY GETS BUCKETED!',
+    seed: ["CREATE (:Kid {name: 'Hana', swings: 3}), (:Kid {name: 'Rio', swings: 9}), (:Kid {name: 'Sora', swings: 1}), (:Kid {name: 'Taro', swings: 12}), (:Kid {name: 'Yui', swings: 2})",
+      "MATCH (a:Kid {name: 'Hana'}), (b:Kid {name: 'Rio'}) CREATE (a)-[:FRIENDS_WITH]->(b)", "MATCH (a:Kid {name: 'Rio'}), (b:Kid {name: 'Sora'}) CREATE (a)-[:FRIENDS_WITH]->(b)",
+      "MATCH (a:Kid {name: 'Sora'}), (b:Kid {name: 'Yui'}) CREATE (a)-[:FRIENDS_WITH]->(b)", "MATCH (a:Kid {name: 'Taro'}), (b:Kid {name: 'Yui'}) CREATE (a)-[:FRIENDS_WITH]->(b)",
+      "MATCH (a:Kid {name: 'Taro'}), (b:Kid {name: 'Rio'}) CREATE (a)-[:NEVER_PAIR]->(b)"],
+    tour: [
+      'The last drawer is MINE. Lexi says it\'s a <b>graph</b>, and the magic word is <b>Neo4j</b>. Everyone in my class is a circle. That\'s a <b>node</b>.',
+      'The lines are <b>relationships</b>. Hana is FRIENDS_WITH Rio. Taro and Rio have a NEVER_PAIR one, because of the buckets. It\'s a long story. It\'s not that long. Taro hit Rio with a bucket.',
+      'I\'m not in it yet! Put me in!'
+    ],
+    beats: [
+      { say: 'Make me a circle! I\'m a Kid, and my name is Mio. Cypher draws circles with round brackets.', task: "Create a node with the label Kid and name 'Mio'.",
+        answer: "CREATE (:Kid {name: 'Mio'})", hint: "CREATE (:Label {name: '...'})", chips: ['CREATE', '(:Kid', "{name: 'Mio'})"],
+        check: (r, E) => { const n = E.nodes.filter(x => x.labels.includes('Kid') && x.props.name === 'Mio'); return n.length === 1 ? true : n.length > 1 ? 'There are two Mios now! Graphs don\'t stop duplicates unless you add a constraint. (It still counts.)' : "Use the label Kid and name: 'Mio'."; },
+        after: 'A new circle. <code>(:Kid {name: \'Mio\'})</code> is a node with a label and one property. Everything in Cypher is drawn: round brackets for nodes.' },
+      { say: 'Now Hana is my friend. Find both of us, then draw the arrow: <code>(a)-[:FRIENDS_WITH]->(b)</code>.', task: 'Match Mio and Hana, then create a FRIENDS_WITH relationship from Mio to Hana.',
+        answer: "MATCH (a:Kid {name: 'Mio'}), (b:Kid {name: 'Hana'}) CREATE (a)-[:FRIENDS_WITH]->(b)", hint: "MATCH (a:Kid {name: '...'}), (b:Kid {name: '...'}) CREATE (a)-[:FRIENDS_WITH]->(b)",
+        chips: ['MATCH', "(a:Kid {name: 'Mio'}),", "(b:Kid {name: 'Hana'})", 'CREATE', '(a)-[:FRIENDS_WITH]->(b)'],
+        check: (r, E) => { const m = E.node('Kid', 'Mio'), h = E.node('Kid', 'Hana'); return m && h && E.rels.some(x => x.type === 'FRIENDS_WITH' && ((x.from === m.id && x.to === h.id) || (x.from === h.id && x.to === m.id))) ? true : 'Draw a FRIENDS_WITH arrow between Mio and Hana.'; },
+        after: 'Square brackets for relationships, an arrow for direction. The relationship is stored as a direct link between the two circles, so following it later costs almost nothing.' },
+      { say: 'Who could I make friends with next? Friends of my friends! Walk two FRIENDS_WITH steps out from me.', task: 'Return the names two FRIENDS_WITH hops away from Mio.',
+        answer: "MATCH (:Kid {name: 'Mio'})-[:FRIENDS_WITH*2]-(f) RETURN DISTINCT f.name", alt: ["MATCH (m:Kid {name: 'Mio'})-[:FRIENDS_WITH]-()-[:FRIENDS_WITH]-(f) RETURN DISTINCT f.name"],
+        hint: "MATCH (:Kid {name: 'Mio'})-[:FRIENDS_WITH*2]-(f) RETURN DISTINCT f.name", chips: ['MATCH', "(:Kid {name: 'Mio'})", '-[:FRIENDS_WITH*2]-', '(f)', 'RETURN DISTINCT', 'f.name'],
+        check: r => r.rows && r.rows.some(x => x[0] === 'Rio') ? true : r.rows ? 'Walk two FRIENDS_WITH hops out from Mio, and return the names.' : 'Match from Mio, two FRIENDS_WITH hops, and return f.name.',
+        after: 'Rio! <code>*2</code> means "exactly two hops", and the picture lit up the path. In SQL that\'s a friends table joined to itself once per hop; here it\'s just following arrows, however big the class gets.' },
+      { say: 'Ayo wants the average number of bucket swings per kid, for his report. Every kid has a <i>swings</i> property.', who: 'ayo', task: 'Return the average swings across all Kid nodes.',
+        answer: 'MATCH (k:Kid) RETURN avg(k.swings)', hint: 'MATCH (k:Kid) RETURN avg(k.swings)', chips: ['MATCH', '(k:Kid)', 'RETURN', 'avg(k.swings)'],
+        check: r => r.header && r.rows && r.rows.length === 1 && typeof r.rows[0][0] === 'number' ? true : 'Return avg(k.swings) over every Kid.',
+        after: 'You got a number, but look: not one arrow lit up. That was a sum over every circle, a report, and any relational database does that just as well. A graph earns its keep when the question walks the arrows.' }
+    ],
+    card: { name: 'Graph (Neo4j)', shape: 'Circles (nodes with labels and properties) joined by arrows (typed relationships). Queries are patterns you draw.',
+      strong: ['Questions many hops deep: friends of friends, paths, fraud rings', 'Adding new kinds of links with no migration', 'Each hop costs about the same, however big the graph'], weak: ['Totals and reports over everything', 'Supernodes with millions of links', 'Splitting one graph across many machines'],
+      pitch: 'A graph when the question is about connections many hops deep: social links, recommendations, fraud rings. Not for totals and reports.' }
+  };
+  SD.drawers.part1 = BENCH;   // tools/drawers_check.js runs every beat
+
+  // ---------- Lexi's trial: sort the workloads ----------
+  const TRIAL = {
+    title: 'THE TRIAL OF THE FOUR DRAWERS', who: 'lexi',
+    intro: 'Mortal. Six petitioners. Five places to put their troubles: the four drawers, or the Old Ledger, which is Postgres. Choose wisely, or be bound by the Index forever.',
+    bins: [
+      { id: 'kv', label: 'Key-value', sub: 'Redis' }, { id: 'doc', label: 'Document', sub: 'MongoDB' }, { id: 'wide', label: 'Wide-column', sub: 'Cassandra' },
+      { id: 'graph', label: 'Graph', sub: 'Neo4j' }, { id: 'sql', label: 'Relational', sub: 'Postgres' }
+    ],
+    items: [
+      { t: 'Login sessions, read on every request, gone after 30 minutes', bin: 'kv', why: 'Read by key on every request, with expiry built in: a key-value store\'s home turf.' },
+      { t: 'A rate limiter\'s request counts per user per minute', bin: 'kv', why: 'An atomic INCR on a key with a TTL is the standard rate-limit counter.' },
+      { t: 'Product listings where every category has different fields', bin: 'doc', why: 'Each listing is read whole and the shape varies by category: documents fit. (Postgres with a JSONB column also works.)' },
+      { t: 'Ten years of buoy readings, one every second, read by buoy and day', bin: 'wide', why: 'A firehose of writes, read back by a known key and a time range: partition by (buoy, day), cluster by time.' },
+      { t: '"People you may know": friends of friends, ranked', bin: 'graph', why: 'A walk two hops out through a social network is exactly what a graph is for.' },
+      { t: 'Moving money between two accounts, never half done', bin: 'sql', why: 'Multi-row transactions with strong consistency: the relational database. None of the four drawers does this as well.' }
+    ],
+    done: '<p>Each store makes one kind of question fast. <b>Key-value</b>: lookups by key, with expiry. <b>Document</b>: whole records with varying shapes. <b>Wide-column</b>: huge writes read back by key and range. <b>Graph</b>: walks across relationships. And when you need transactions and flexible queries, start with <b>Postgres</b>.</p>'
+  };
+
+  // ---------- The quest ----------
+  const award = () => {
+    const sv = S.save, pool = S.cardPool();
+    if (!pool.includes('lexicabinet')) { pool.push('lexicabinet'); U.system('CARD UNLOCKED', 'Lexi\'s Cabinet joins your card pool. It can now turn up as a reward after fights.', 'gold', 6000); }
+    sv.flags.drawerKey = true;   // the "K." key: Part 2 on Cartographers' Isle asks about it
+    S.persist();
+  };
+  const ex = id => (SD.explain || []).find(x => x.id === id);
+  const quest = {
+    id: 'cabinet', title: 'The Cabinet from the East', giver: 'lexi', unlock: 1,
+    shards: 150, xp: 110, concepts: ['kvstore', 'docstore', 'widecol', 'graphdb'],
+    blurb: 'A crate too big for the library door has arrived from an island nobody has heard of, and Lexi swears it is not a coffin.',
+    teaches: 'The four kinds of NoSQL database, hands on: key-value (Redis), document (MongoDB), wide-column (Cassandra) and graph (Neo4j). Real reads and writes in each, what each is bad at, and how to pitch each one in an interview',
+    payoff: 'The Four-Drawer Cabinet stands in the Grand Library, one drawer per kind of question. Lexi\'s Cabinet joins your card pool. You keep a fifth key labelled "K." It fits nothing in Pingsby.',
+    items: { booklet: 'The cabinet\'s booklet: "Four drawers, one question each. Minh, Cartographers\' Isle. What will you ask it?"' },
+    steps: [
+      { at: 'lexi', hint: 'Lexi has a crate at the Grand Library.', do: [
+        { say: [['coo', 'Coo. One crate, Grand Library, signed for in triplicate. It came by ferry from the east. Pingsby has no ferry. I have decided not to think about it.'],
+          ['lexi', 'AT LAST! Mortal, behold: the Four-Drawer Cabinet of the Eastern Isles. Assembly required. One Allen key included. I have sealed my eye to protect it from the instructions.', 'smug'],
+          ['lexi', 'The Forbidden Index has two columns, title and author. They are the strongest columns. But this week four petitioners came with questions the Index cannot bear.'],
+          ['lexi', 'Wen wants boxes that forget. Bru wants cards that each have different fields. Doug\'s bot writes ten thousand lines a minute. And Mio wants... a map of who may stand next to whom.', 'confused'],
+          ['pip', 'Four different problems. So four different kinds of database?'],
+          ['lexi', 'FOUR DRAWERS. One question each. So says the booklet. It is signed "Minh, Cartographers\' Isle", and there is a fifth key labelled "K." that fits nothing. I have tried it in every lock in the library. Twice.'],
+          ['lexi', 'Take the first drawer to Wen. You will type the true incantations, as the engineers do. The booklet calls it a "Workbench".']] },
+        { item: 'booklet' },
+        { teach: 'sqlnosql' }] },
+      { at: 'wen', hint: 'Try the first drawer with Wen at the Cache Café.', do: [
+        { say: [['wen', 'Lexi\'s drawer? Oh, how lovely, it\'s full of little labelled boxes. Hiro would have loved this. He labelled the labels.', 'happy']] },
+        { game: 'workbench', def: BENCH.wen },
+        { ask: { id: 'sq-cab1', c: 'kvstore', type: 'mc', q: 'A web app keeps login sessions in Redis with a 30-minute TTL. Redis restarts with persistence turned off. What happens?',
+          opts: ['Every user is logged out: the sessions lived only in memory', 'Sessions reload from the primary database on the next request', 'Each session restarts its 30-minute TTL from the restart', 'Redis replays the replica\'s log, so only the last second is lost'], a: 0,
+          no: [null, 'Nothing copies sessions back unless the app was written to keep them in the database too. A cache-aside design does that for data with a source of truth; sessions usually have none.', 'TTLs don\'t survive anything the data doesn\'t. With no persistence, there is nothing left to count down.', 'That needs a replica (and replicas copy asynchronously), which this setup doesn\'t have. Persistence or a replica is what you add to prevent this.'],
+          why: 'Redis is memory first. Without the append-only file, snapshots or a replica, a restart wipes everything, which for sessions means everyone signs in again. That\'s often acceptable for a cache, rarely for sessions or anything that is the only copy.' } }] },
+      { at: 'bru', hint: 'Take the second drawer to Bru at the Guild.', do: [
+        { say: [['bru', 'A folder where every card can be different? Do you know how many forms I could stop printing? Form 27B alone has nine versions.', 'happy']] },
+        { game: 'workbench', def: BENCH.bru },
+        { ask: { id: 'sq-cab2', c: 'docstore', type: 'mc', q: 'Each blog post is one MongoDB document with its comments embedded in an array. Popular posts now have 50,000 comments. What goes wrong first?',
+          opts: ['MongoDB cannot index any fields inside an embedded comments array', 'Two readers of the same post see the comments in different orders', 'Each view loads every comment, and the post nears the size cap', 'Each new comment needs a schema migration of the posts collection'], a: 2, no: ['It can: a multikey index covers array fields, so you can find posts by a comment\'s author. Size, not indexing, is the problem.', 'An array keeps its order, and both readers get the same document. Ordering trouble comes from replicas or concurrent writers, not from embedding.', null, 'Adding to an array needs no migration in a document store. Flexible shape is the point; unbounded growth is the trap.'], why: 'Embed children only when they are few and read together. An array that grows without limit makes every read heavier and runs into the 16 MB document cap. Keep comments as their own documents, indexed by post and time, and page through them.' } }] },
+      { at: 'doug', hint: 'Take the third drawer to Doug by the Pigeon Post.', do: [
+        { say: [['doug', 'For Kevin? A database that can keep up with Kevin? Nobody has ever kept up with Kevin.', 'happy']] },
+        { game: 'workbench', def: BENCH.doug },
+        { ask: { id: 'sq-cab3', c: 'widecol', type: 'mc', q: 'A Cassandra table of sensor readings uses PRIMARY KEY ((sensor_id, day), ts). Which query does it answer in one partition read?',
+          opts: ['One sensor\'s readings for one day, newest first', 'Every sensor\'s readings that are above 40 degrees', 'The latest reading from each sensor, across all days', 'Readings from every sensor for the last ten minutes'], a: 0,
+          no: [null, 'Filtering on a value column names no partition: Cassandra refuses without ALLOW FILTERING, and then reads everything. A second table keyed for that question is the fix.', 'That touches a partition per sensor per day. A separate "latest reading" table keyed by sensor, overwritten on each write, answers it in one read.', 'The partition key needs the sensor, so "every sensor" means every partition. Time-first questions want a table partitioned by a time bucket.'],
+          why: 'A read is cheap when it names the whole partition key, here a sensor and a day, and then slices by the clustering key, here the time. Every other question gets its own table, written alongside.' } }] },
+      { at: 'mio', hint: 'Take the fourth drawer to Mio at the Treehouse.', do: [
+        { say: [['mio', 'A drawer that\'s a DRAWING? Of my CLASS? Can I draw the buckets too?', 'happy'], ['ayo', 'No buckets in the database, Mio.'], ['mio', 'A bucket could be a node.', 'smug']] },
+        { game: 'workbench', def: BENCH.mio },
+        { ask: { id: 'sq-cab4', c: 'graphdb', type: 'mc', q: 'Which of these questions is a graph database the best fit for?',
+          opts: ['What were total sales per region per month over the last year?', 'Which accounts share a phone, card or address with a fraudster?', 'What is user 42\'s profile, which is fetched on every page load?', 'Which ten products were viewed the most often in the last hour?'], a: 1, no: ['That\'s an aggregate over every sale: no relationships are walked. A warehouse or Postgres does it better.', null, 'A single lookup by ID is a key-value or relational job, often cached. A graph adds nothing for one hop.', 'That\'s counting, usually with a sorted set or stream aggregation. No relationships are followed.'], why: 'Fraud rings are chains of shared things: account to phone to account to card. Following those links several hops out is what a graph makes cheap; aggregates and single lookups gain nothing.' } }] },
+      { at: 'lexi', hint: 'Report back to Lexi at the Grand Library.', do: [
+        { say: [['lexi', 'You have opened all four drawers and lived. Now face the TRIAL. I shall be the interviewer. I have read about interviewers. They are terrifying.', 'smug']] },
+        { game: 'sorter', def: TRIAL },
+        { say: [['lexi', 'Now speak as the engineers speak. Two or three sentences each. The Index is listening.']] },
+        { ask: ex('x-nosql1') }, { ask: ex('x-nosql2') }, { ask: ex('x-nosql3') }, { ask: ex('x-nosql4') },
+        { say: [['lexi', 'Impressive. Most impressive. The cabinet shall stand in the library, and one of its spells is yours to carry into battle.', 'happy'],
+          ['lexi', 'And this.' , 'smug'], ['pip', 'The "K." key? It doesn\'t open anything.'],
+          ['lexi', 'Not here. The booklet says the cabinet was made on Cartographers\' Isle. If you ever find a ferry, mortal, ask this Minh what the fifth lock is for.']] },
+        { fn: award }] }
+    ]
+  };
+  if (!QS.list.some(x => x.id === quest.id)) QS.list.push(quest);
+
+  Object.assign(SD.eli5, {
+    'sq-cab1': 'Like a whiteboard in a room with no windows: wipe it (restart) and everything on it is gone, unless someone took a photo (persistence).',
+    'sq-cab2': 'Like a notice board where every reply gets pinned under the post. Fine with five replies. With fifty thousand, the board falls off the wall.',
+    'sq-cab3': 'Like a filing cabinet with one drawer per sensor per day. Opening one drawer is quick. "Every hot reading" means opening every drawer.',
+    'sq-cab4': 'Like a detective\'s wall of photos and string. Following the string from one suspect to the next is the whole point.'
+  });
+
+  // ---------- Review questions (zone 98: town reviews ask them once you've met the concept) ----------
+  SD.questions.push(
+    { id: 'rv-kvstore1', c: 'kvstore', type: 'mc', q: 'Two app servers both run GET count, add one, and SET count at the same moment. The counter goes from 5 to 6 instead of 7. What is the Redis fix?', opts: ['Use INCR count, which adds one atomically inside Redis', 'Put a TTL on the key so stale values expire sooner', 'Read the value from a replica, which is always up to date', 'Store the counter as a hash field instead of a string'], a: 0, no: [null, 'Expiry doesn\'t stop two writers overwriting each other. TTLs suit caches and windows, not lost updates.', 'Replicas copy asynchronously, so they can be behind; and the race is in the read-then-write, wherever you read.', 'HINCRBY on a hash is atomic too, but the type change alone does nothing: GET then SET still races.'], why: 'Read, add, write from the app is a lost update. INCR (or INCRBY, HINCRBY) does the arithmetic inside Redis in one step, and Redis runs commands one at a time, so two INCRs always make 7.' },
+    { id: 'rv-kvstore2', c: 'kvstore', type: 'mc', q: 'A job runs KEYS session:* every minute on a Redis holding 20 million keys, and the whole site stutters each time. Why?', opts: ['KEYS forces a full snapshot to disk before it is allowed to return', 'KEYS evicts each key it lists to make room in memory for its reply', 'KEYS walks every key on Redis\'s main thread, blocking all clients', 'KEYS runs on a replica, and the replication lag stalls every write'], a: 2, no: ['Snapshots (BGSAVE) fork a child process and don\'t run because of KEYS. Persistence is a separate setting.', 'Eviction happens only when memory is full and a write needs room; reads don\'t evict.', null, 'KEYS runs wherever you send it, here the primary. Replication lag is about copies falling behind writes.'], why: 'Redis runs commands one at a time on one thread, so a command that walks 20 million keys makes everyone wait. Use SCAN, which walks a few keys per call, or better, keep a set of the keys you\'ll need to find.' },
+    { id: 'rv-docstore1', c: 'docstore', type: 'mc', q: 'A query on a large MongoDB collection is slow. explain("executionStats") shows COLLSCAN with 2 million documents examined to return 12. What does that tell you?', opts: ['The documents are too large and each one should be split up', 'No index covers the filter, so every document was read', 'The collection must be sharded before it can get any faster', 'The query is waiting on a lock held by a slow writer elsewhere'], a: 1, no: ['Size would show as slow reads, not as 2 million examined. The count of documents read is the clue.', null, 'Sharding spreads data but a missing index makes each shard scan too. Index first.', 'Lock waits don\'t change totalDocsExamined. The plan itself says it read everything.'], why: 'COLLSCAN means the query read the whole collection. Add an index on the filtered fields, run explain again, and look for IXSCAN with documents examined close to documents returned.' },
+    { id: 'rv-docstore2', c: 'docstore', type: 'mc', q: 'Three years in, a MongoDB users collection holds documents written by many app versions: some have "email", some "emailAddress". What is the usual way to handle it?', opts: ['Add a JSON schema validator so the old documents become invalid', 'Create a second collection for the documents with the old field', 'Index both fields so a query on either name finds every user', 'Code reads both shapes, and a backfill renames the old field'], a: 3, no: ['A validator checks writes from now on; it doesn\'t fix the old documents, which then fail on their next update.', 'Two collections means every query asks twice and the split never ends. Migrate the data instead.', 'Two indexes make two lookups fast, but every query still has to ask for both names.', null], why: 'Schema on read moves the migration into the code: readers must handle every shape still stored. The usual fix is to read both, write the new one, and run a backfill ($rename) so the old shape eventually disappears.' },
+    { id: 'rv-widecol1', c: 'widecol', type: 'mc', q: 'A Cassandra table is partitioned by date alone: PRIMARY KEY (day, ts). Writes slow down every morning. Why?', opts: ['Cassandra compacts the previous day\'s files every single morning', 'Clustering by ts makes each new insert re-sort the whole partition', 'Every write today lands in one partition, on the same few nodes', 'Date keys collide on the hash ring, so writes overwrite each other'], a: 2, no: ['Compaction runs in the background all the time, not on a daily schedule tied to your keys.', 'Rows are appended in memory and sorted when flushed; clustering costs nothing extra per insert.', null, 'Different keys never overwrite each other; they may land on the same node, which is fine.'], why: 'A partition lives on its replicas only, so one hot key means a few nodes take every write while the rest sit idle. Add something that spreads load, such as (sensor_id, day), or a bucket suffix.' },
+    { id: 'rv-widecol2', c: 'widecol', type: 'mc', q: 'A Cassandra query is refused with "use ALLOW FILTERING". Adding ALLOW FILTERING makes it run. Why is that usually the wrong fix?', opts: ['It reads every partition on every node to find the matches', 'It turns off replication for the query, so results may be stale', 'It skips the clustering order, so results come back unsorted', 'It holds a lock on the table while the filter runs'], a: 0, no: [null, 'Replication and consistency don\'t change; the query still asks the replicas its consistency level needs.', 'Results inside a partition keep their order; the cost is the number of partitions read.', 'Cassandra reads don\'t lock tables. The problem is work, not blocking.'], why: 'Without a partition key, Cassandra can\'t go to one place, so it scans. Fine on a tiny table, a disaster at scale. The fix is a second table keyed by what the query filters on.' },
+    { id: 'rv-graphdb1', c: 'graphdb', type: 'mc', q: 'In SQL, "friends of friends of friends" needs a friendships table joined to itself three times, and it gets slow. Why does a graph database handle it better?', opts: ['Graph databases keep the whole dataset in memory at all times', 'Each hop follows a stored link, not an index lookup across a table', 'Graph databases cache the result of every query they have run', 'Graph databases run each hop on a different machine in parallel'], a: 1, no: ['Many graph databases are disk-based with a cache, like most databases. Memory alone isn\'t the difference.', null, 'Caching helps repeated questions in any database; the graph wins on the first run too.', 'Splitting hops over machines would add network calls per hop. Graphs are actually hard to shard.'], why: 'A graph database stores each relationship as a link from one node to the next, so a hop costs the same however big the graph. A SQL self join looks up matching rows in an index at every level, and the work grows with the table.' },
+    { id: 'rv-graphdb2', c: 'graphdb', type: 'mc', q: 'In Neo4j, MATCH (g:Guest {name: \'Tomas\'}) DELETE g fails with "it still has relationships". What does the error protect against, and what is the usual fix?', opts: ['A unique constraint: drop the constraint first, then delete', 'A running transaction: retry once its lock has been released', 'A lagging replica: send the delete to the primary node instead', 'Dangling relationships: use DETACH DELETE to remove them too'], a: 3, no: ['Constraints stop duplicates on create, not deletes. Uniqueness has nothing to do with this error.', 'A lock would time out or wait; this error is immediate and names relationships.', 'Writes already go to the primary (the leader); replicas don\'t refuse deletes.', null], why: 'A relationship needs a node at each end. Neo4j won\'t leave arrows pointing at nothing, so DELETE refuses; DETACH DELETE removes the node and its relationships together.' }
+  );
+
+  // ---------- Typed drills (town reviews, js/quiz.js Q.session): a fresh small problem, typed into the real store ----------
+  // Each drill picks one of its cases (v), fills {name} slots in its text, seeds a small store, and runs the player's
+  // one line through js/drawers-engine.js. check(r, E, line, v) looks at what the store now holds or returned, so any
+  // command that does the job passes; a string back is coaching. The drill screen is SD.drawers.drill (js/drawers-bench.js).
+  // S.pickQuestion serves one about a third of the time in town reviews, once you've answered the concept right before.
+  // tools/drawers_check.js runs every case's answer and alt answers through its check.
+  const fill = (x, v) => typeof x === 'string' ? x.replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m)) : x;
+  SD.drawers.drillCase = function (q, i) {
+    const v = q.cases[i == null ? Math.floor(Math.random() * q.cases.length) : i];
+    return { v, kind: q.kind, q: fill(q.q, v), task: fill(q.task, v), answer: fill(q.answer, v), alt: (q.alt || []).map(a => fill(a, v)),
+      hint: fill(q.hint, v), why: fill(q.why, v), seed: (typeof q.seed === 'function' ? q.seed(v) : q.seed || []).map(l => fill(l, v)) };
+  };
+  const rowsOf = r => (r.rows || []).map(x => Array.isArray(x) ? x : [x]);
+  const nameOf = x => x && typeof x === 'object' ? (x.props ? x.props.name : x.name) : x;
+  const KS = ["CREATE KEYSPACE shop WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3};", 'USE shop;'];
+  const PEOPLE = ['Ana', 'Ben', 'Cy', 'Dee', 'Eli', 'Fay'];
+  const people = follows => ["CREATE " + PEOPLE.map(n => `(:Person {name: '${n}'})`).join(', ')]
+    .concat(follows.map(([a, b]) => `MATCH (a:Person {name: '${a}'}), (b:Person {name: '${b}'}) CREATE (a)-[:FOLLOWS]->(b)`));
+  const followsOf = (E, a) => { const n = E.nodes.find(x => x.props.name === a); return E.rels.filter(r => r.type === 'FOLLOWS' && r.from === n.id).map(r => E.nodes.find(x => x.id === r.to).props.name); };
+  SD.drills = [
+    { id: 'dr-kvstore1', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ u: '42', tok: 'tk-9f3a', min: 15, sec: 900 }, { u: '7', tok: 'tk-a11c', min: 30, sec: 1800 }, { u: '318', tok: 'tk-07be', min: 5, sec: 300 }],
+      q: 'A login session for user {u} has the token "{tok}". Store it under the key session:{u} so Redis throws it away by itself after {min} minutes.',
+      task: 'Store session:{u} with a {min}-minute expiry, in one command.',
+      answer: 'SET session:{u} "{tok}" EX {sec}', alt: ['SETEX session:{u} {sec} "{tok}"', 'SET session:{u} {tok} PX {sec}000'],
+      hint: 'SET key "value" EX seconds',
+      check: (r, E, line, v) => {
+        const e = E.get('session:' + v.u);
+        if (!e) return E.data.size ? `The key should be named session:${v.u}.` : 'Nothing was stored yet.';
+        if (e.t !== 'str' || e.v !== v.tok) return `session:${v.u} should hold the token ${v.tok}.`;
+        if (e.exp == null) return 'Stored, but it never expires: add EX and a number of seconds to the same SET.';
+        const left = Math.round(e.exp - E.now);
+        return left === v.sec ? true : `It expires in ${left} seconds. ${v.min} minutes is ${v.sec} seconds.`;
+      },
+      why: 'EX on the SET writes the value and its timer in one step, so there is no moment where the session exists with no expiry. Expiry is what makes Redis a good home for sessions and caches: stale entries clean themselves up.' },
+    { id: 'dr-kvstore2', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ g: 'chess', top: 'dee 410, ben 340, eli 200' }, { g: 'darts', top: 'cy 95, fay 81, ana 77' }],
+      seed: v => v.g === 'chess' ? ['ZADD board:chess 120 ana 340 ben 90 cy 410 dee 200 eli 150 fay'] : ['ZADD board:darts 77 ana 40 ben 95 cy 12 dee 60 eli 81 fay'],
+      q: 'The {g} leaderboard is a sorted set at board:{g}, score per player. Show the top 3 players with their scores, highest first.',
+      task: 'Read the top 3 of board:{g}, highest first, with scores.',
+      answer: 'ZREVRANGE board:{g} 0 2 WITHSCORES', alt: ['ZRANGE board:{g} 0 2 REV WITHSCORES'],
+      hint: 'ZREVRANGE key start stop WITHSCORES',
+      check: (r, E, line, v) => {
+        if (!/^Z(REV)?RANGE$/.test(r.cmd || '')) return 'Read it from the sorted set with a range command.';
+        const want = v.top.split(', ').map(x => x.split(' '));
+        const got = (r.out.match(/"[^"]*"/g) || []).map(x => x.slice(1, -1));
+        if (!/WITHSCORES/i.test(line)) return 'Those are the names, but the scores are missing: add WITHSCORES.';
+        const names = got.filter((x, i) => i % 2 === 0);
+        if (names.length !== 3) return `That returned ${names.length} players. Ranks are counted from 0, so the top 3 is 0 2.`;
+        if (names.join() !== want.map(x => x[0]).join()) return names[0] === want[0][0] ? 'Close, but not the top 3.' : 'ZRANGE reads lowest score first. Use ZREVRANGE (or REV) for highest first.';
+        return true;
+      },
+      why: 'A sorted set keeps members ordered by score as you write them, so the top N is a read of the first N ranks: no sort at query time, however many players there are. ZINCRBY updates a score in place.' },
+    { id: 'dr-docstore1', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ city: 'Lisbon' }, { city: 'Porto' }, { city: 'Braga' }],
+      seed: ['db.users.insertMany([{ name: "ana", address: { city: "Lisbon", zip: "1100" }, tags: ["new"] }, { name: "ben", address: { city: "Porto", zip: "4000" }, tags: [] }, { name: "cy", address: { city: "Lisbon", zip: "1200" }, tags: ["vip"] }, { name: "dee", address: { city: "Braga", zip: "4700" }, tags: [] }, { name: "eli", address: { city: "Porto", zip: "4100" }, tags: ["new"] }])'],
+      q: 'Each document in users has an address subdocument, like { address: { city: "Lisbon", zip: "1100" } }. Find every user whose city is {city}.',
+      task: 'Find the users in {city}.',
+      answer: 'db.users.find({ "address.city": "{city}" })', alt: ["db.users.find({'address.city': '{city}'})"],
+      hint: 'db.users.find({ "field.inside": "value" })',
+      check: (r, E, line, v) => {
+        if (!r.docs || r.col !== 'users') return 'Read from the users collection with find.';
+        const want = E.col('users').docs.filter(d => d.address.city === v.city).length;
+        if (r.docs.length === want && r.docs.every(d => d.address && d.address.city === v.city)) return true;
+        if (!r.docs.length && /address\s*:\s*\{/.test(line)) return 'Matching a whole subdocument needs every field to match, zip too. Reach inside with dot notation: "address.city".';
+        return `That found ${r.docs.length} of the ${want} users in ${v.city}.`;
+      },
+      why: 'Dot notation reaches into a nested field, and an index on "address.city" works the same way. Matching { address: { city: ... } } compares the whole subdocument, so the zip makes it miss.' },
+    { id: 'dr-docstore2', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ who: 'ana', tag: 'beta' }, { who: 'ben', tag: 'vip' }, { who: 'dee', tag: 'early' }],
+      seed: ['db.users.insertMany([{ name: "ana", plan: "pro", tags: ["new"] }, { name: "ben", plan: "free", tags: [] }, { name: "dee", plan: "pro", tags: ["new", "eu"] }])'],
+      q: 'Add the tag "{tag}" to {who}\'s tags array, keeping the tags already there and every other field.',
+      task: 'Add "{tag}" to {who}\'s tags, in place.',
+      answer: 'db.users.updateOne({ name: "{who}" }, { $push: { tags: "{tag}" } })', alt: ['db.users.updateOne({ name: "{who}" }, { $addToSet: { tags: "{tag}" } })'],
+      hint: 'db.users.updateOne({ filter }, { $push: { field: value } })',
+      check: (r, E, line, v) => {
+        const all = E.col('users').docs, d = all.find(x => x.name === v.who);
+        if (all.length !== 3) return 'This one changes an existing document; nothing should be added or removed.';
+        if (!d) return `${v.who} is missing now.`;
+        if (!d.plan) return 'The update replaced the whole document and lost plan. Use an operator like $push so only tags changes.';
+        if (!Array.isArray(d.tags) || !d.tags.includes(v.tag)) return all.some(x => x !== d && x.tags.includes(v.tag)) ? 'That tagged the wrong user: filter on the name.' : `${v.who}'s tags don't have "${v.tag}" yet.`;
+        if (/\$set/.test(line)) return 'That works, but $set rewrites the whole array from what the app read, so two writers can lose each other\'s tags. $push adds one item inside the database.';
+        if (all.some(x => x !== d && x.tags.includes(v.tag))) return 'Other users got the tag too. updateOne with a filter on the name changes one document.';
+        return true;
+      },
+      why: '$push (or $addToSet, which skips duplicates) changes one array inside the database, atomically, without the app reading and rewriting the document. A plain replacement document would wipe every other field.' },
+    { id: 'dr-widecol1', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ cu: 'c7' }, { cu: 'c2' }, { cu: 'c9' }],
+      seed: KS.concat(['CREATE TABLE orders_by_customer (customer text, placed timestamp, total int, PRIMARY KEY ((customer), placed)) WITH CLUSTERING ORDER BY (placed DESC);'],
+        ['c7', 'c2', 'c9', 'c4'].flatMap((c, k) => [1, 2, 3, 4, 5].map(d => `INSERT INTO orders_by_customer (customer, placed, total) VALUES ('${c}', '2026-11-0${d} 1${k}:00:00', ${(d * 7 + k * 11) % 60 + 5});`))),
+      q: 'orders_by_customer is partitioned by customer and clustered by placed, newest first. Get customer {cu}\'s 3 most recent orders, reading just one partition.',
+      task: 'The 3 newest orders for {cu}.',
+      answer: "SELECT * FROM orders_by_customer WHERE customer = '{cu}' LIMIT 3;", alt: ["SELECT placed, total FROM orders_by_customer WHERE customer = '{cu}' LIMIT 3;"],
+      hint: "SELECT * FROM table WHERE partition_key = 'value' LIMIT n;",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with SELECT.';
+        if (r.filtering || r.scanAll) return 'That read every partition on every node. Put the partition key, customer, in the WHERE.';
+        const ci = r.header.indexOf('customer');
+        if (ci >= 0 && rowsOf(r).some(x => x[ci] !== v.cu)) return `Those aren't all ${v.cu}'s orders.`;
+        if (rowsOf(r).length !== 3) return `That returned ${rowsOf(r).length} rows. LIMIT 3 keeps the first three.`;
+        return true;
+      },
+      why: 'One partition key means one partition on a few nodes. The clustering order already keeps rows newest first, so LIMIT 3 reads the first three off disk and stops: no sort, no scan.' },
+    { id: 'dr-widecol2', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ t: 'readings', e: 'sensor', val: 'temp double' }, { t: 'meter_reads', e: 'meter', val: 'kwh double' }, { t: 'heartbeats', e: 'device', val: 'battery int' }],
+      seed: KS,
+      q: 'Make a table {t} for {e} data with columns {e} text, day date, ts timestamp, {val}. The only query is "one {e}\'s rows for one day, newest first". A {e} reports every second for years, so a partition per {e} alone would grow forever.',
+      task: 'CREATE TABLE {t}: partition by {e} and day, cluster by ts, newest first.',
+      answer: 'CREATE TABLE {t} ({e} text, day date, ts timestamp, {val}, PRIMARY KEY (({e}, day), ts)) WITH CLUSTERING ORDER BY (ts DESC);',
+      alt: ['CREATE TABLE {t} (ts timestamp, {e} text, {val}, day date, PRIMARY KEY ((day, {e}), ts)) WITH CLUSTERING ORDER BY (ts DESC);'],
+      hint: 'CREATE TABLE t (cols..., PRIMARY KEY ((part1, part2), clust)) WITH CLUSTERING ORDER BY (clust DESC);',
+      check: (r, E, line, v) => {
+        const T = E.table(v.t);
+        if (!T) return Object.keys(E.tables).length ? `Name the table ${v.t}.` : 'Create the table with CREATE TABLE.';
+        const pk = T.pk.slice().sort().join();
+        if (pk === v.e) return `One partition per ${v.e} grows forever. Put day in the partition key too: PRIMARY KEY ((${v.e}, day), ts).`;
+        if (pk !== ['day', v.e].sort().join()) return `The partition key should be (${v.e}, day): it is (${T.pk.join(', ')}).`;
+        if (T.ck[0] !== 'ts') return 'Cluster by ts, so a day\'s rows sit in time order.';
+        if ((T.order || {}).ts !== 'DESC') return 'Rows sort oldest first. Add WITH CLUSTERING ORDER BY (ts DESC).';
+        return true;
+      },
+      why: 'Model the table from the query. ({e}, day) gives one bounded partition per {e} per day, which spreads the writes and caps the size; ts DESC stores each day newest first, so the query is a read from the top.' },
+    { id: 'dr-graphdb1', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ a: 'Ana', want: 'Ben,Dee' }, { a: 'Cy', want: 'Ana,Eli,Fay' }, { a: 'Eli', want: 'Ana' }],
+      seed: people([['Ana', 'Ben'], ['Ana', 'Dee'], ['Cy', 'Ana'], ['Cy', 'Eli'], ['Cy', 'Fay'], ['Eli', 'Ana'], ['Ben', 'Eli'], ['Fay', 'Cy']]),
+      q: 'People are Person nodes with a name property. A FOLLOWS arrow points from the follower to the person they follow. Return the names of everyone {a} follows.',
+      task: 'Who does {a} follow? Return their names.',
+      answer: "MATCH (:Person {name: '{a}'})-[:FOLLOWS]->(p) RETURN p.name", alt: ["MATCH (a:Person {name: '{a}'})-[:FOLLOWS]->(b:Person) RETURN b.name AS name", "MATCH (p:Person)<-[:FOLLOWS]-(:Person {name: '{a}'}) RETURN p"],
+      hint: "MATCH (:Label {prop: 'x'})-[:TYPE]->(other) RETURN other.prop",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with MATCH ... RETURN.';
+        const got = rowsOf(r).map(x => nameOf(x[0])).sort().join(), want = v.want.split(',').sort().join();
+        if (got === want) return true;
+        const back = E.rels.filter(x => x.type === 'FOLLOWS' && E.nodes.find(n => n.id === x.to).props.name === v.a).map(x => E.nodes.find(n => n.id === x.from).props.name).sort().join();
+        if (got === back) return `Those are the people who follow ${v.a}. Point the arrow away from ${v.a}: (${v.a})-[:FOLLOWS]->(p).`;
+        return `That returned ${rowsOf(r).length} name${rowsOf(r).length === 1 ? '' : 's'}; ${v.a} follows ${v.want.split(',').length}.`;
+      },
+      why: 'The pattern is the query: start at {a} and follow the arrows out. The database hops along the stored relationships from one node, so the cost depends on {a}\'s links, not on how many people there are.' },
+    { id: 'dr-graphdb2', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ a: 'Ben', b: 'Cy' }, { a: 'Dee', b: 'Ana' }, { a: 'Fay', b: 'Eli' }],
+      seed: people([['Ana', 'Ben'], ['Cy', 'Ana'], ['Eli', 'Fay']]),
+      q: 'A nightly job records that {a} follows {b}. Jobs get retried, so running your line twice must still leave exactly one FOLLOWS arrow from {a} to {b}.',
+      task: 'Record {a} -> {b}, safe to run twice.',
+      answer: "MATCH (a:Person {name: '{a}'}), (b:Person {name: '{b}'}) MERGE (a)-[:FOLLOWS]->(b)",
+      alt: ["MATCH (x:Person {name: '{a}'}) MATCH (y:Person {name: '{b}'}) MERGE (x)-[r:FOLLOWS]->(y)"],
+      hint: "MATCH (a {..}), (b {..}) MERGE (a)-[:TYPE]->(b)",
+      check: (r, E, line, v) => {
+        if (E.nodes.length !== PEOPLE.length) return 'That made new Person nodes. MATCH the two people first, then connect them.';
+        const n = followsOf(E, v.a).filter(x => x === v.b).length;
+        if (n === 0) return `There is no FOLLOWS arrow from ${v.a} to ${v.b} yet.`;
+        if (n > 1) return 'Now there are two arrows. MERGE adds it only if it is missing.';
+        if (!/\bMERGE\b/i.test(line)) return 'That works once, but the retry would add a second arrow. Use MERGE, which creates it only if it is missing.';
+        return true;
+      },
+      why: 'MERGE is "match it, or create it if it isn\'t there", so a retried job is harmless. CREATE always adds, and duplicate arrows double-count every walk through them. MATCH the nodes first, or MERGE would make new people too.' },
+
+    // ---- Three more per store (Ladi, 2026-11-08: five drills for each database) ----
+    { id: 'dr-kvstore3', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ p: 'home', n: 41, n1: 42 }, { p: 'pricing', n: 7, n1: 8 }, { p: 'blog', n: 199, n1: 200 }],
+      seed: ['SET views:{p} {n}'],
+      q: 'views:{p} holds the {p} page\'s view count, now {n}. Two hundred app servers count views at the same moment. Add one view in a single command that can never lose an update.',
+      task: 'Add one to views:{p}, atomically.',
+      answer: 'INCR views:{p}', alt: ['INCRBY views:{p} 1'],
+      hint: 'INCR key',
+      check: (r, E, line, v) => {
+        const e = E.get('views:' + v.p);
+        if (/^\s*(SET|GETSET)\b/i.test(line)) return `That writes a number the app worked out. Two servers can both read ${v.n} and both write ${v.n1}. INCR does the adding inside Redis.`;
+        if (!e || String(e.v) !== String(v.n1)) return e && String(e.v) === String(v.n) ? `views:${v.p} is still ${v.n}.` : `views:${v.p} is now ${e ? e.v : 'gone'}, not ${v.n1}.`;
+        return true;
+      },
+      why: 'Redis runs one command at a time, so INCR reads, adds and writes in one step that nothing can cut into. Reading in the app, adding one and writing back is the classic lost update: two servers both turn {n} into {n1}.' },
+    { id: 'dr-kvstore4', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ u: '7', name: 'ana', city: 'Lisbon' }, { u: '12', name: 'ben', city: 'Porto' }, { u: '30', name: 'cy', city: 'Braga' }],
+      q: 'Store user {u}\'s profile at user:{u} as a hash with two fields, name = {name} and city = {city}, in one command, so later you can read or change one field alone.',
+      task: 'A hash at user:{u} with name and city.',
+      answer: 'HSET user:{u} name {name} city {city}', alt: ['HSET user:{u} city "{city}" name "{name}"'],
+      hint: 'HSET key field value field value',
+      check: (r, E, line, v) => {
+        const e = E.get('user:' + v.u);
+        if (!e) return `Nothing is stored at user:${v.u} yet.`;
+        if (e.t !== 'hash') return 'That stored one string, so changing the city means rewriting the whole thing. A hash has named fields: HSET key field value field value.';
+        const f = e.v;
+        if (f.get('name') !== v.name || f.get('city') !== v.city) return `user:${v.u} needs name = ${v.name} and city = ${v.city}.`;
+        return true;
+      },
+      why: 'A hash is a small map under one key: HGET user:{u} city reads one field and HSET user:{u} city Faro changes one, with no read-modify-write of a JSON blob. It suits objects you touch a field at a time.' },
+    { id: 'dr-kvstore5', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ room: 'lobby', u: 'cy', yes: 1, members: 'ana ben cy dee eli' }, { room: 'arena', u: 'eli', yes: 0, members: 'ana ben fay gus' }, { room: 'shop', u: 'ben', yes: 1, members: 'ben dee hal' }],
+      seed: ['SADD online:{room} {members}'],
+      q: 'online:{room} is a set of the players in the {room} right now, often thousands. Ask Redis whether {u} is there, without sending the whole set back to the app.',
+      task: 'Is {u} in online:{room}?',
+      answer: 'SISMEMBER online:{room} {u}',
+      hint: 'SISMEMBER key member',
+      check: (r, E, line, v) => {
+        if (/^S(MEMBERS|SCAN)$/.test(r.cmd || '')) return 'That sent every member back to the app to search. SISMEMBER asks Redis one yes-or-no question.';
+        if (r.cmd !== 'SISMEMBER') return 'Ask the set directly: SISMEMBER key member.';
+        if (!new RegExp('\\b' + v.u + '\\b').test(line) || !new RegExp('online:' + v.room + '\\b').test(line)) return `Ask about ${v.u} in online:${v.room}.`;
+        return true;
+      },
+      why: 'A Redis set is a hash table, so SISMEMBER is a constant-time lookup whatever the size, and only a 1 or 0 crosses the network. SMEMBERS would ship thousands of names to answer one question.' },
+    { id: 'dr-docstore3', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ f: 'email' }, { f: 'username' }, { f: 'phone' }],
+      seed: ['db.users.insertMany([{ name: "ana", email: "ana@ex.com", username: "ana_m", phone: "555-0101" }, { name: "ben", email: "ben@ex.com", username: "benj", phone: "555-0102" }, { name: "cy", email: "cy@ex.com", username: "cy9", phone: "555-0103" }])'],
+      q: 'Login looks users up by {f} thousands of times a second, and explain() shows COLLSCAN: every document read each time. Add the index that makes it an IXSCAN.',
+      task: 'Index users on {f}.',
+      answer: 'db.users.createIndex({ {f}: 1 })', alt: ['db.users.createIndex({ {f}: 1 }, { unique: true })'],
+      hint: 'db.collection.createIndex({ field: 1 })',
+      check: (r, E, line, v) => {
+        const idx = E.col('users').idx.filter(i => i.name !== '_id_');
+        if (!idx.length) return 'There is no new index yet. createIndex adds one.';
+        if (!idx.some(i => Object.keys(i.key)[0] === v.f)) return `That index starts with ${Object.keys(idx[idx.length - 1].key)[0]}. The lookup filters on ${v.f}, so the index has to lead with it.`;
+        return true;
+      },
+      why: 'An index on {f} is a sorted list of {f} values pointing at documents, so the lookup jumps to the one match instead of reading every card. unique: true also stops two accounts sharing one {f}. Each index costs a little on every write.' },
+    { id: 'dr-docstore4', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ min: 50, k: 3 }, { min: 20, k: 2 }, { min: 100, k: 1 }],
+      seed: ['db.orders.insertMany([{ order: 1, total: 12 }, { order: 2, total: 140 }, { order: 3, total: 55 }, { order: 4, total: 90 }, { order: 5, total: 23 }, { order: 6, total: 70 }, { order: 7, total: 105 }, { order: 8, total: 48 }, { order: 9, total: 61 }])'],
+      q: 'Each order has a total. Orders over {min} qualify for free shipping. Show the {k} smallest qualifying orders, smallest first.',
+      task: 'Orders over {min}, smallest first, only {k}.',
+      answer: 'db.orders.find({ total: { $gt: {min} } }).sort({ total: 1 }).limit({k})', alt: ['db.orders.find({ total: { $gte: {min} } }, { total: 1 }).sort({ total: 1 }).limit({k})'],
+      hint: 'db.c.find({ field: { $gt: n } }).sort({ field: 1 }).limit(n)',
+      check: (r, E, line, v) => {
+        if (!r.docs || r.col !== 'orders') return 'Read from orders with find.';
+        const want = E.col('orders').docs.filter(d => d.total > v.min).map(d => d.total).sort((a, b) => a - b).slice(0, v.k), got = r.docs.map(d => d.total);
+        if (got.some(t => t <= v.min)) return `Some of those totals aren't over ${v.min}: filter with { total: { $gt: ${v.min} } }.`;
+        if (got.length > v.k) return `That's ${got.length} orders. Add .limit(${v.k}).`;
+        if (got.join() !== want.join()) return got.slice().sort((a, b) => a - b).join() === got.join() ? `${v.k === 1 ? 'That isn\'t the smallest one' : `Those aren't the ${v.k} smallest`}. Add .sort({ total: 1 }) so limit keeps the right ones.` : 'Smallest first means .sort({ total: 1 }); -1 is biggest first.';
+        return true;
+      },
+      why: '$gt filters, sort({ total: 1 }) orders smallest first (-1 is biggest first), and limit stops after {k}. MongoDB always sorts before it limits, whatever order you chain them in, and an index on total lets it read the first {k} in order without sorting everything.' },
+    { id: 'dr-docstore5', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ who: 'ana', n: 5, after: 17 }, { who: 'ben', n: 10, after: 10 }, { who: 'dee', n: 3, after: 43 }],
+      seed: ['db.players.insertMany([{ name: "ana", points: 12 }, { name: "ben", points: 0 }, { name: "dee", points: 40 }])'],
+      q: '{who} just earned {n} points. Many servers award points at once, so add {n} inside the database rather than reading the total, adding and writing it back.',
+      task: 'Add {n} to {who}\'s points, atomically.',
+      answer: 'db.players.updateOne({ name: "{who}" }, { $inc: { points: {n} } })', alt: ['db.players.updateOne({ name: "{who}" }, { $inc: { "points": {n} } })'],
+      hint: 'db.c.updateOne({ filter }, { $inc: { field: n } })',
+      check: (r, E, line, v) => {
+        const all = E.col('players').docs, d = all.find(x => x.name === v.who);
+        if (/\$set/.test(line)) return `That writes a total the app worked out. Two servers can both read the old total and one award vanishes. $inc adds ${v.n} inside the database.`;
+        if (!d || d.points !== v.after) return `${v.who} has ${d ? d.points : 'no'} point${d && d.points === 1 ? '' : 's'}; it should have ${v.after}.`;
+        if (all.filter(x => x !== d).some(x => ({ ana: 12, ben: 0, dee: 40 })[x.name] !== x.points)) return 'Other players changed too. Filter on the name and use updateOne.';
+        return true;
+      },
+      why: '$inc changes the number inside the database in one atomic step on the document, so concurrent awards all land. It is the document-store twin of Redis INCR.' },
+    { id: 'dr-widecol3', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ id: 's1', u: 'ana', h: 2, sec: 7200 }, { id: 's9', u: 'ben', h: 24, sec: 86400 }, { id: 's4', u: 'cy', h: 1, sec: 3600 }],
+      seed: KS.concat(['CREATE TABLE sessions (id text PRIMARY KEY, user text);']),
+      q: 'Insert session {id} for user {u} into sessions (id text PRIMARY KEY, user text) so that Cassandra deletes it by itself after {h} hours.',
+      task: 'Insert session {id} with a {h}-hour TTL.',
+      answer: "INSERT INTO sessions (id, user) VALUES ('{id}', '{u}') USING TTL {sec};", alt: ["INSERT INTO sessions (user, id) VALUES ('{u}', '{id}') USING TTL {sec};"],
+      hint: "INSERT INTO t (cols) VALUES (vals) USING TTL seconds;",
+      check: (r, E, line, v) => {
+        const T = E.table('sessions'), pt = T && [...T.parts.values()].find(x => x.key.id === v.id), row = pt && pt.rows[0], c = row && row.cells.user;
+        if (!c || !E.isLive(c)) return `There is no session ${v.id} for ${v.u} yet.`;
+        if (c.v !== v.u) return `Session ${v.id} should belong to ${v.u}.`;
+        if (c.exp == null) return 'Stored, but it never expires: add USING TTL and a number of seconds.';
+        const left = Math.round(c.exp - E.now);
+        return left === v.sec ? true : `It expires in ${left} seconds. ${v.h} hour${v.h > 1 ? 's' : ''} is ${v.sec} seconds.`;
+      },
+      why: 'USING TTL stamps an expiry on every cell the write touches. When it passes, reads skip the row and compaction later drops it as a tombstone. No cleanup job, and SELECT TTL(user) shows the seconds left.' },
+    { id: 'dr-widecol4', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ s: 's1', from: '09', to: '12' }, { s: 's2', from: '08', to: '10' }, { s: 's1', from: '11', to: '13' }],
+      seed: KS.concat(['CREATE TABLE readings (sensor text, day date, ts timestamp, temp double, PRIMARY KEY ((sensor, day), ts));'],
+        ['s1', 's2'].flatMap((x, k) => ['08', '09', '10', '11', '12', '13', '14'].map((h, i) => `INSERT INTO readings (sensor, day, ts, temp) VALUES ('${x}', '2026-11-07', '2026-11-07 ${h}:00:00', ${(14 + i * 1.5 + k * 3).toFixed(1)});`))),
+      q: 'readings has PRIMARY KEY ((sensor, day), ts). Get sensor {s}\'s readings on 2026-11-07 from {from}:00 up to, but not including, {to}:00.',
+      task: '{s} on 2026-11-07, {from}:00 to {to}:00.',
+      answer: "SELECT * FROM readings WHERE sensor = '{s}' AND day = '2026-11-07' AND ts >= '2026-11-07 {from}:00:00' AND ts < '2026-11-07 {to}:00:00';",
+      alt: ["SELECT ts, temp FROM readings WHERE day = '2026-11-07' AND sensor = '{s}' AND ts >= '2026-11-07 {from}:00:00' AND ts < '2026-11-07 {to}:00:00';"],
+      hint: "SELECT * FROM t WHERE pk1 = .. AND pk2 = .. AND ck >= .. AND ck < ..;",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with SELECT.';
+        if (r.filtering || r.scanAll) return 'That read every partition. Give both parts of the partition key: sensor and day.';
+        const want = +v.to - +v.from, n = rowsOf(r).length;
+        const ti = r.header.indexOf('ts'), hrs = ti >= 0 ? rowsOf(r).map(x => new Date(x[ti] * 1000).getUTCHours()) : [];
+        if (hrs.some(h => h < +v.from || h >= +v.to)) return `Some rows fall outside ${v.from}:00 to ${v.to}:00. Use ts >= the start and ts < the end.`;
+        if (n !== want) return `That returned ${n} rows; there are ${want} from ${v.from}:00 up to ${v.to}:00.`;
+        return true;
+      },
+      why: 'Inside one partition, rows are stored sorted by ts, so a range on the clustering column is one sequential read from the start time to the end. A range on anything that isn\'t a clustering column would need ALLOW FILTERING.' },
+    { id: 'dr-widecol5', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ ks: 'payments', rf: 3 }, { ks: 'metrics', rf: 2 }, { ks: 'audit', rf: 5 }],
+      q: 'Create a keyspace {ks} that keeps {rf} copies of every row. One data centre, so SimpleStrategy is fine.',
+      task: 'CREATE KEYSPACE {ks} with {rf} replicas.',
+      answer: "CREATE KEYSPACE {ks} WITH replication = {'class': 'SimpleStrategy', 'replication_factor': {rf}};",
+      alt: ["CREATE KEYSPACE {ks} WITH replication = {'class': 'NetworkTopologyStrategy', 'dc1': {rf}};"],
+      hint: "CREATE KEYSPACE name WITH replication = {'class': '...', 'replication_factor': n};",
+      check: (r, E, line, v) => {
+        const k = E.ks[v.ks];
+        if (!k) return Object.keys(E.ks).length ? `Name the keyspace ${v.ks}.` : 'Create it with CREATE KEYSPACE.';
+        return k.rf === v.rf ? true : `${v.ks} keeps ${k.rf} cop${k.rf === 1 ? 'y' : 'ies'}; it should keep ${v.rf}.`;
+      },
+      why: 'The replication factor is set per keyspace: each partition lives on {rf} nodes of the ring. With 3 copies, QUORUM reads and writes (2 of 3) still work with one node down. NetworkTopologyStrategy sets a count per data centre, which is what production uses.' },
+    { id: 'dr-graphdb3', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ a: 'Ana' }, { a: 'Cy' }, { a: 'Fay' }],
+      seed: people([['Ana', 'Ben'], ['Ana', 'Cy'], ['Ben', 'Dee'], ['Cy', 'Dee'], ['Cy', 'Eli'], ['Dee', 'Fay'], ['Fay', 'Ben'], ['Fay', 'Cy'], ['Eli', 'Fay']]),
+      q: 'Suggestions for {a}: return the names of people followed by the people {a} follows (two hops out), each name once.',
+      task: 'Two hops from {a}, each name once.',
+      answer: "MATCH (:Person {name: '{a}'})-[:FOLLOWS]->()-[:FOLLOWS]->(p) RETURN DISTINCT p.name", alt: ["MATCH (:Person {name: '{a}'})-[:FOLLOWS*2]->(p:Person) RETURN DISTINCT p.name"],
+      hint: "MATCH (a {..})-[:T]->()-[:T]->(p) RETURN DISTINCT p.prop",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with MATCH ... RETURN.';
+        const one = followsOf(E, v.a), want = [...new Set(one.flatMap(x => followsOf(E, x)))].sort();
+        const got = rowsOf(r).map(x => nameOf(x[0]));
+        if (got.slice().sort().join() === one.slice().sort().join()) return `Those are the people ${v.a} follows directly. Add a second hop: ()-[:FOLLOWS]->(p).`;
+        if ([...new Set(got)].sort().join() === want.join() && got.length > want.length) return 'Right people, but some names appear twice, once for each path to them. RETURN DISTINCT.';
+        if (got.slice().sort().join() !== want.join()) return `That returned ${got.join(', ') || 'nobody'}; two hops from ${v.a} reaches ${want.join(', ')}.`;
+        return true;
+      },
+      why: 'Each hop follows stored arrows from the nodes already reached, so the work grows with {a}\'s neighbourhood, not the whole graph. Two paths can reach the same person, so DISTINCT folds them into one row. In SQL this is a self-join per hop.' },
+    { id: 'dr-graphdb4', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ a: 'Ben' }, { a: 'Dee' }, { a: 'Fay' }],
+      seed: people([['Ana', 'Ben'], ['Ana', 'Cy'], ['Ben', 'Dee'], ['Cy', 'Dee'], ['Cy', 'Eli'], ['Dee', 'Fay'], ['Fay', 'Ben'], ['Eli', 'Fay']]),
+      q: 'How many followers does {a} have? Return one number.',
+      task: 'Count {a}\'s followers.',
+      answer: "MATCH (p:Person)-[:FOLLOWS]->(:Person {name: '{a}'}) RETURN count(p)", alt: ["MATCH (:Person {name: '{a}'})<-[:FOLLOWS]-(f) RETURN count(*) AS followers"],
+      hint: "MATCH (p)-[:T]->(:Label {..}) RETURN count(p)",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with MATCH ... RETURN count(...).';
+        const n = E.nodes.find(x => x.props.name === v.a), want = E.rels.filter(x => x.type === 'FOLLOWS' && x.to === n.id).length, out = followsOf(E, v.a).length;
+        const rows = rowsOf(r);
+        if (rows.length !== 1 || typeof rows[0][0] !== 'number') return rows.length > 1 ? `That listed ${rows.length} rows. Wrap it in count() to get one number.` : 'Return a single number with count().';
+        if (rows[0][0] === want) return true;
+        return rows[0][0] === out ? `That counted the people ${v.a} follows. Followers point at ${v.a}: (p)-[:FOLLOWS]->(${v.a}).` : `That counted ${rows[0][0]}; ${v.a} has ${want} followers.`;
+      },
+      why: 'Direction carries meaning: an arrow into {a} is a follower, an arrow out is someone {a} follows. Neo4j keeps each node\'s relationship counts by type and direction, so counting one node\'s followers doesn\'t walk the graph.' },
+    { id: 'dr-graphdb5', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ L: 'Person', p: 'name' }, { L: 'Account', p: 'email' }, { L: 'Product', p: 'sku' }],
+      seed: v => ['CREATE ' + ['a1', 'b2', 'c3'].map(x => `(:${v.L} {${v.p}: '${x}'})`).join(', ')],
+      q: 'Two {L} nodes with the same {p} slipped in when two jobs ran MERGE at the same moment. Make the database itself refuse a second {L} with a {p} that already exists.',
+      task: 'A uniqueness rule on {L}.{p}.',
+      answer: 'CREATE CONSTRAINT FOR (x:{L}) REQUIRE x.{p} IS UNIQUE', alt: ['CREATE CONSTRAINT {p}_unique FOR (n:{L}) REQUIRE n.{p} IS UNIQUE'],
+      hint: 'CREATE CONSTRAINT FOR (n:Label) REQUIRE n.prop IS UNIQUE',
+      check: (r, E, line, v) => {
+        if (!E.cons.length) return 'There is no constraint yet. CREATE CONSTRAINT adds one.';
+        return E.cons.some(c => c.label === v.L && c.prop === v.p) ? true : `That constraint is on ${E.cons[E.cons.length - 1].label}.${E.cons[E.cons.length - 1].prop}; it should be on ${v.L}.${v.p}.`;
+      },
+      why: 'MERGE checks, then creates, and two jobs can both pass the check. A uniqueness constraint makes the database refuse the second write, and it builds an index on {L}.{p}, so lookups by {p} get fast too.' }
+  ];
+})();
