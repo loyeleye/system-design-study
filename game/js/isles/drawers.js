@@ -50,7 +50,7 @@
   // ---------- Room 1: Leilani's boarding passes (key-value) ----------
   const ROOM = {};
   ROOM.leilani = {
-    title: 'THE FIRST DRAWER · KEY-VALUE, IN DEPTH', who: 'minh', kind: 'kv', win: 'THE FERRY BOARDS ON TIME!',
+    title: 'KEY-VALUE · LEILANI\'S PASSES', who: 'minh', kind: 'kv', win: 'THE FERRY BOARDS ON TIME!',
     tour: [
       'Boxes with a name on the lid. You can only find a box by its name. Everything else, you plan into the names.',
       'Strings, counters, hashes (pockets inside one box), sets, and sorted sets, which I draw as a ladder. Any box can carry a clock.',
@@ -146,7 +146,7 @@
     'db.letters.insertMany([{ from: "Leilani", island: "Landing", sentAt: ISODate("2026-10-20"), body: "The ferry is late. Eventually it will not be." }, { from: "Ruth", island: "Fish", sentAt: ISODate("2026-10-22"), body: "Counted every fish." }, { from: "Minh", island: "Carto", sentAt: ISODate("2026-09-14"), map: { coast: "north", marks: 6 } }, { from: "Kaito", island: "Carto", sentAt: ISODate("2026-10-28"), body: "Re: Kubernetes", draft: true }, { from: "Ha-eun", island: "Twins", sentAt: ISODate("2026-10-25"), map: { coast: "east", marks: 22 } }, { from: "Minh", island: "Carto", sentAt: ISODate("2026-10-30"), body: "Bring the drawers back." }])'
   ];
   ROOM.lucia = {
-    title: 'THE SECOND DRAWER · DOCUMENTS, IN DEPTH', who: 'minh', kind: 'doc', win: 'EVERY LETTER HAS A HOME!',
+    title: 'DOCUMENTS · LÚCIA\'S LETTERS', who: 'minh', kind: 'doc', win: 'EVERY LETTER HAS A HOME!',
     seed: ['use guild'],
     tour: [
       'A folder, the collection, of cards, the documents. Each card is a whole record with its own fields, nested trees and lists.',
@@ -249,7 +249,7 @@
     ['kwame', '06:02:00', 'tuna', 2], ['kwame', '06:03:30', 'mackerel', 3.1], ['ruth', '06:00:10', 'mackerel', 5], ['nok', '06:04:00', 'eel', 1.2], ['ploy', '06:05:00', 'mackerel', 2.4]
   ].map(([b, t, s, kg]) => `INSERT INTO catch_by_boat (boat, day, ts, species, kg) VALUES ('${b}', '2026-11-07', '2026-11-07 ${t}', '${s}', ${kg});`);
   ROOM.ruth = {
-    title: 'THE THIRD DRAWER · WIDE-COLUMN, IN DEPTH', who: 'minh', kind: 'wide', win: 'EVERY FISH IS COUNTED!',
+    title: 'WIDE-COLUMN · RUTH\'S FISH TAGS', who: 'minh', kind: 'wide', win: 'EVERY FISH IS COUNTED!',
     seed: board,
     tour: [
       'Six nodes in a ring. Each partition is a drawer on one node, copied to its neighbours. The partition key decides the drawer.',
@@ -361,7 +361,7 @@
   ].concat([['Ploy', 'Kai'], ['Ploy', 'Ruth'], ['Kai', 'Leilani'], ['Nok', 'Kwame'], ['Kwame', 'Leilani'], ['Leilani', 'Minh'], ['Ruth', 'Lucia'], ['Minh', 'Lucia']].map(([a, b]) => `MATCH (a:Guest {name: '${a}'}), (b:Guest {name: '${b}'}) CREATE (a)-[:KNOWS]->(b)`),
     [['Ha-eun', 'Ha-jin'], ['Nok', 'Ploy'], ['Ruth', 'Kai']].map(([a, b]) => `MATCH (a:Guest {name: '${a}'}), (b:Guest {name: '${b}'}) CREATE (a)-[:FEUDS_WITH]->(b)`));
   ROOM.twins = {
-    title: 'THE FOURTH DRAWER · GRAPH, IN DEPTH', who: 'minh', kind: 'graph', win: 'NOBODY SITS NEXT TO A RIVAL!',
+    title: 'GRAPH · THE FESTIVAL SEATING', who: 'minh', kind: 'graph', win: 'NOBODY SITS NEXT TO A RIVAL!',
     tour: [
       'Circles and arrows. A node has labels and properties; a relationship has a type, a direction, and properties too.',
       'Each arrow is stored as a direct link, so walking one costs the same however big the town gets. Cypher queries are drawn: (a)-[:KNOWS]->(b).',

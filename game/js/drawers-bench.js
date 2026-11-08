@@ -78,6 +78,7 @@
     const fmtCk = (T, row) => T.ck.map(k => { const v = row.ck[k]; return T.cols.find(c => c.n === k).type === 'timestamp' ? new Date(v * 1000).toISOString().slice(11, 19) : v; }).join(' · ');
     const cellTxt = (T, row) => T.cols.filter(c => !T.pk.includes(c.n) && !T.ck.includes(c.n)).map(c => row.cells[c.n] && E.isLive(row.cells[c.n]) ? cut(row.cells[c.n].v, 10) : '').filter(Boolean).join(' ');
     const perNode = [...Array(E.NODES)].map(() => []);
+    const narrow = typeof window !== 'undefined' && window.innerWidth < 520;   // phones: all six nodes in view
     tables.forEach(T => T.parts.forEach((pt, pk) => E.replicas(T.ks, pk).forEach((n, i) => perNode[n].push({ T, pt, pk, primary: i === 0 }))));
     const banner = r && r.filtering ? `<div class="dw-banner bad">ALLOW FILTERING: opened every partition on every node to look for matches.</div>` :
       r && r.scanAll && r.rows ? `<div class="dw-banner bad">No partition key, so the query read every partition on every node.</div>` :
@@ -85,14 +86,16 @@
       r && r.upsert ? `<div class="dw-banner">That row didn't exist, so UPDATE created it. In Cassandra every write is an upsert.</div>` : '';
     const ring = perNode.map((items, n) => {
       const down = E.down.has(n), hint = E.hints[n];
-      const drawers = items.slice(0, 3).map(({ T, pt, pk }) => {
-        const rows = pt.rows.slice(0, 4).map(row => { const dead = row.tomb || !E.rowLive(T, row); return `<i class="${dead ? 'dw-tomb' : ''}">${esc(fmtCk(T, row))} ${esc(cellTxt(T, row))}</i>`; }).join('');
-        return `<div class="dw-drawer${hot(touched.has(pk) || (r && r.scanAll && r.rows))}"><b>${tables.length > 1 ? esc(T.name) + ' ' : ''}(${esc(T.pk.map(k => pt.key[k]).join(', '))})</b>${rows}${pt.rows.length > 4 ? `<i>+${pt.rows.length - 4} rows</i>` : ''}</div>`;
-      }).join('') + (items.length > 3 ? `<div class="dw-drawer dw-more">+${items.length - 3} partitions</div>` : '');
+      items.sort((a, b) => touched.has(b.pk) - touched.has(a.pk));
+      const drawers = items.slice(0, narrow ? 1 : 3).map(({ T, pt, pk }) => {
+        const rows = pt.rows.slice(0, narrow ? 2 : 4).map(row => { const dead = row.tomb || !E.rowLive(T, row); return `<i class="${dead ? 'dw-tomb' : ''}">${esc(fmtCk(T, row))} ${esc(cellTxt(T, row))}</i>`; }).join('');
+        return `<div class="dw-drawer${hot(touched.has(pk) || (r && r.scanAll && r.rows))}">${tables.length > 1 ? `<s>${esc(T.name)}</s>` : ''}<b>(${esc(T.pk.map(k => pt.key[k]).join(', '))})</b>${rows}${pt.rows.length > (narrow ? 2 : 4) ? `<i>+${pt.rows.length - (narrow ? 2 : 4)} rows</i>` : ''}</div>`;
+      }).join('') + (items.length > (narrow ? 1 : 3) ? `<div class="dw-drawer dw-more">+${items.length - (narrow ? 1 : 3)} more</div>` : '');
       return `<div class="dw-node${down ? ' dw-down' : ''}${nodesHit.has(n) && !down ? ' dw-lit' : ''}"><div class="dw-nh">N${n + 1}${down ? ' · DOWN' : ''}${hint ? ` · ${hint} hint${hint > 1 ? 's' : ''}` : ''}</div>${drawers || '<span class="muted small">empty</span>'}</div>`;
     }).join('');
-    const ks = Object.entries(E.ks).map(([k, v]) => `${esc(k)}: ${v.rf} copies`).join(' · ');
-    return `${banner}<p class="dw-meta">${ks}${tables.length ? ' · ' + tables.map(T => `${esc(T.name)} key ((${T.pk.join(', ')})${T.ck.length ? ', ' + T.ck.join(', ') : ''})`).join(' · ') : ''} · consistency ${E.cl}</p><div class="dw-ring">${ring}</div>`;
+    const curT = tables.filter(T => !E.cur || T.ks === E.cur);
+    const ks = E.cur && E.ks[E.cur] ? `${esc(E.cur)}: ${E.ks[E.cur].rf} copies of each partition` : Object.entries(E.ks).map(([k, v]) => `${esc(k)}: ${v.rf} copies`).join(' · ');
+    return `${banner}<p class="dw-meta">${ks}${curT.length && !narrow ? ' · ' + curT.map(T => `${esc(T.name)} key ((${T.pk.join(', ')})${T.ck.length ? ', ' + T.ck.join(', ') : ''})`).join(' · ') : ''} · consistency ${E.cl}</p><div class="dw-ring">${ring}</div>`;
   };
 
   P.graph = function (E, r) {
@@ -137,14 +140,26 @@
           <div class="dw-ask" id="dw-ask"></div>
           <div class="dw-pic" id="dw-pic" aria-live="polite"></div>
           <div class="dw-task" id="dw-task"></div>
-          <pre class="dw-log" id="dw-log" aria-live="polite"></pre>
-          <div class="dw-in"><label class="dw-prompt" for="dw-line" id="dw-prompt"></label><input id="dw-line" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"></div>
-          <div class="dw-chips" id="dw-chips"></div>
+          <div class="dw-console" id="dw-console">
+            <pre class="dw-log" id="dw-log" aria-live="polite"></pre>
+            <div class="dw-fb" id="dw-fb" aria-live="polite" hidden></div>
+            <div class="dw-in"><label class="dw-prompt" for="dw-line" id="dw-prompt"></label><input id="dw-line" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Command"></div>
+            <div class="dw-chips" id="dw-chips"></div>
+          </div>
           <div class="row dw-btns"><button class="primary" id="dw-run">Run</button><button class="ghost" id="dw-hint">Hint</button><button class="ghost" id="dw-show">Show me</button><button class="primary" id="dw-next" hidden>Next</button></div>
         </div>`, { title: def.title, cls: 'wide dw-panel', noClose: true });
       const $ = id => b.querySelector('#' + id);
       const input = $('dw-line'), log = $('dw-log');
       const draw = r => { $('dw-pic').innerHTML = picture(E, r); };
+      // Phones: no keyboard until the player taps the line, so the picture stays in view. Chips type without one.
+      const touch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+      const focus = () => { if (!touch) try { input.focus({ preventScroll: true }); } catch (e) { /* old browsers */ } };
+      // Coaching and the "why it worked" line sit just above the input, where the player is looking.
+      const fb = (html, kind) => {
+        const el = $('dw-fb');
+        el.hidden = !html; el.className = 'dw-fb' + (kind ? ' dw-fb-' + kind : ''); el.innerHTML = html || '';
+        if (html) setTimeout(() => { try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* old browsers */ } }, 20);
+      };
       const print = (line, r) => {
         const out = r.ok ? r.out : r.err;
         log.insertAdjacentHTML('beforeend', `<span class="dw-cmd">${esc(D.prompt(E))} ${esc(line)}</span>\n${out ? `<span class="${r.ok ? 'dw-out' : 'dw-err'}">${esc(out)}</span>\n` : ''}`);
@@ -156,28 +171,32 @@
         hints = 0; shown = false; tries = 0;
         if (B.fx) { const r = B.fx(E); if (r && r.note) log.insertAdjacentHTML('beforeend', `<span class="dw-note">${esc(r.note)}</span>\n`); }
         $('dw-ask').innerHTML = say(B.who || def.who, B.say);
+        fb(B.recall ? 'From memory this time. Hint and Show me appear after your first try.' : '', B.recall ? 'note' : '');
         $('dw-task').innerHTML = `<span class="q-ctx">Step ${bi + 1} of ${def.beats.length}${B.recall ? ' · from memory' : ''}</span> ${esc(B.task)}`;
         $('dw-prompt').textContent = D.prompt(E);
         $('dw-chips').innerHTML = (B.chips || []).map(c => `<button class="il-chip dw-chip" data-c="${esc(c)}">${esc(c)}</button>`).join('');
         $('dw-chips').querySelectorAll('[data-c]').forEach(el => el.onclick = () => insert(el.dataset.c));
         $('dw-hint').hidden = !!B.recall; $('dw-show').hidden = !!B.recall;
         $('dw-run').hidden = false; $('dw-next').hidden = true; input.disabled = false;
+        b.querySelector('.dw-in').hidden = false; $('dw-chips').hidden = false;
         draw(last);
-        setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (e) { /* old browsers */ } }, 30);
+        setTimeout(focus, 30);
       };
       const insert = tok => {
         const s = input.selectionStart != null ? input.selectionStart : input.value.length, e = input.selectionEnd != null ? input.selectionEnd : s;
         const before = input.value.slice(0, s), after = input.value.slice(e);
         const pad = before && !/[\s({[.,:]$/.test(before) && !/^[)\]},.:;]/.test(tok) ? ' ' : '';
         input.value = before + pad + tok + after;
-        const at = (before + pad + tok).length; input.setSelectionRange(at, at); input.focus(); sfx('blip');
+        const at = (before + pad + tok).length; if (!touch) { input.setSelectionRange(at, at); input.focus(); } sfx('blip');
       };
       const win = (B) => {
         sfx('right');
         scores.push(shown ? 0.5 : hints ? 0.75 : 1);
-        $('dw-ask').innerHTML = say(B.who || def.who, `<b>${shown ? 'There it is.' : 'Yes.'}</b> ${B.after || ''}`);
+        fb(`<b>${shown ? 'There it is.' : 'Yes!'}</b> ${B.after || ''}`, 'ok');
         $('dw-run').hidden = true; $('dw-hint').hidden = true; $('dw-show').hidden = true; $('dw-next').hidden = false; input.disabled = true;
-        $('dw-next').focus();
+        // Done with typing for this step: fold the input away so Next sits right under the explanation.
+        b.querySelector('.dw-in').hidden = true; $('dw-chips').hidden = true;
+        if (!touch) $('dw-next').focus();
       };
       const run = () => {
         const line = input.value.trim(); if (!line) return;
@@ -189,7 +208,7 @@
           if (!r.ok && B.err.test(r.err)) return win(B);
           sfx('wrong');
           const msg = r.ok ? (B.check && typeof B.check(r, E, line) === 'string' ? B.check(r, E, line) : 'That ran. This step is about seeing the store refuse something: try exactly what was asked.') : 'Close, but that is a different error. Read it, or tap Hint.';
-          $('dw-ask').innerHTML = say(B.who || def.who, `${B.say}<br><span class="dw-coach">${msg}</span>`);
+          fb(msg, 'bad');
           return;
         }
         const ok = r.ok && B.check ? B.check(r, E, line) : r.ok;
@@ -197,7 +216,7 @@
         sfx('wrong');
         const coach = typeof ok === 'string' ? ok : !r.ok ? 'The store said no. Read the error in the console' + (B.recall && tries < 2 ? ', then try again.' : ', or tap Hint.') : 'That ran, but it doesn\'t do what was asked yet.';
         if (B.recall && tries >= 1) { $('dw-hint').hidden = false; $('dw-show').hidden = false; }
-        $('dw-ask').innerHTML = say(B.who || def.who, `${B.say}<br><span class="dw-coach">${coach}</span>`);
+        fb(coach, 'bad');
       };
       $('dw-run').onclick = run;
       input.addEventListener('keydown', e => {
@@ -205,8 +224,8 @@
         else if (e.key === 'ArrowUp' && hist.length) { e.preventDefault(); hi = Math.max(0, hi - 1); input.value = hist[hi] || ''; }
         else if (e.key === 'ArrowDown' && hist.length) { e.preventDefault(); hi = Math.min(hist.length, hi + 1); input.value = hist[hi] || ''; }
       });
-      $('dw-hint').onclick = () => { hints++; sfx('blip'); const B = beat(); $('dw-ask').innerHTML = say(B.who || def.who, `${B.say}<br><span class="dw-coach">Shape: <code>${esc(B.hint)}</code></span>`); input.focus(); };
-      $('dw-show').onclick = () => { shown = true; sfx('blip'); input.value = beat().answer; input.focus(); };
+      $('dw-hint').onclick = () => { hints++; sfx('blip'); fb(`Shape: <code>${esc(beat().hint)}</code>`, 'note'); focus(); };
+      $('dw-show').onclick = () => { shown = true; sfx('blip'); input.value = beat().answer; fb('Here it is. Read it, then tap Run.', 'note'); focus(); };
       $('dw-next').onclick = () => {
         sfx('ok'); bi++;
         if (bi < def.beats.length) return open();
@@ -227,11 +246,12 @@
         const step = () => {
           $('dw-ask').innerHTML = say(def.who, def.tour[ti]);
           $('dw-task').innerHTML = `<span class="q-ctx">The tour · ${ti + 1} of ${def.tour.length}</span>`;
+          $('dw-console').hidden = true;
           $('dw-run').hidden = true; $('dw-hint').hidden = true; $('dw-show').hidden = true; $('dw-next').hidden = false; input.disabled = true;
           draw(null);
         };
         const go = $('dw-next').onclick;
-        $('dw-next').onclick = () => { sfx('ok'); ti++; if (ti < def.tour.length) return step(); $('dw-next').onclick = go; open(); };
+        $('dw-next').onclick = () => { sfx('ok'); ti++; if (ti < def.tour.length) return step(); $('dw-next').onclick = go; $('dw-console').hidden = false; open(); };
         step();
       } else open();
     });
@@ -245,14 +265,18 @@
     .dw-task { font-size:.9rem; font-weight:700; }
     .dw-log { background:#1e1a2b; color:#e9e4f5; border-radius:8px; padding:6px 8px; margin:0; font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; max-height:22vh; min-height:3.2em; overflow:auto; white-space:pre-wrap; word-break:break-word; }
     .dw-cmd { color:#ffd56b; } .dw-err { color:#ff8f8f; } .dw-out { color:#d8f5d0; } .dw-note { color:#9fd3ff; font-style:italic; }
+    .dw-in[hidden], .dw-chips[hidden] { display:none; }
     .dw-in { display:flex; align-items:center; gap:6px; background:#1e1a2b; border-radius:8px; padding:4px 8px; }
     .dw-prompt { color:#ffd56b; font:12px ui-monospace,Menlo,Consolas,monospace; white-space:nowrap; }
     .dw-in input { flex:1; min-width:0; background:transparent; border:0; color:#fff; font:16px ui-monospace,Menlo,Consolas,monospace; outline:none; padding:6px 0; }
     .dw-chips { display:flex; flex-wrap:wrap; gap:5px; }
-    .dw-chip { font-family:ui-monospace,Menlo,Consolas,monospace; cursor:pointer; }
+    .dw-chip { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.78rem; text-align:left; cursor:pointer; min-height:34px; padding:4px 8px; max-width:100%; word-break:break-word; }
     .dw-btns { gap:6px; flex-wrap:wrap; }
-    .dw-coach { display:block; margin-top:4px; color:#8a3b12; font-weight:700; }
-    .dw-coach code, .lw-say code { background:#fff3c4; padding:0 3px; border-radius:3px; font-size:.85em; word-break:break-word; }
+    .dw-console { display:flex; flex-direction:column; gap:6px; } .dw-console[hidden] { display:none; }
+    .dw-log:empty { display:none; }
+    .dw-fb { border:2px solid var(--ink,#2b2340); border-radius:8px; padding:6px 8px; font-size:.88rem; line-height:1.35; background:#fff; }
+    .dw-fb-ok { background:#e5f4e4; border-color:#2f8a57; } .dw-fb-bad { background:#fdeee6; border-color:#c0562b; color:#6b2a0e; font-weight:700; } .dw-fb-note { background:#fff6d6; border-color:#c99a1c; }
+    .dw-fb code, .dw-coach code, .lw-say code { background:#fff3c4; padding:0 3px; border-radius:3px; font-size:.85em; word-break:break-word; }
     .dw-banner { background:#e7f1fb; border:2px solid #4a7fb5; border-radius:8px; padding:4px 8px; margin-bottom:6px; font-size:.82rem; font-weight:700; }
     .dw-banner.bad { background:#fbebeb; border-color:#c0392b; }
     .dw-meta { font-size:.75rem; margin:0 0 6px; color:#5a5068; }
@@ -270,12 +294,12 @@
     .dw-cards { display:flex; flex-wrap:wrap; gap:6px; }
     .dw-card { background:#fff; border:1.5px solid var(--ink,#2b2340); border-radius:6px; padding:3px 6px; font-size:.72rem; max-width:200px; font-family:ui-monospace,Menlo,Consolas,monospace; word-break:break-word; }
     .dw-card.dw-dim { opacity:.35; } .dw-nest { display:block; padding-left:8px; border-left:2px solid #d9c9a4; } .dw-size { color:#b5481b; font-weight:700; }
-    .dw-ring { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+    .dw-ring { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:6px; }
     .dw-node { background:#fff; border:2px solid var(--ink,#2b2340); border-radius:10px; padding:4px; font-size:.7rem; min-width:0; }
     .dw-node.dw-lit { border-color:#e0532b; } .dw-node.dw-down { background:#ddd; opacity:.6; border-style:dashed; }
     .dw-nh { font-weight:800; margin-bottom:3px; }
     .dw-drawer { border:1.5px solid #8a7f99; border-radius:5px; padding:2px 4px; margin-bottom:3px; background:#faf6ee; overflow:hidden; }
-    .dw-drawer b { display:block; font-size:.66rem; word-break:break-all; }
+    .dw-drawer b, .dw-drawer s { display:block; font-size:.66rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .dw-drawer s { text-decoration:none; font-weight:400; color:#5a5068; }
     .dw-drawer i { display:block; font-style:normal; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.62rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .dw-tomb { text-decoration:line-through; color:#a33; }
     .dw-graph { width:100%; max-height:34vh; display:block; }
@@ -287,7 +311,7 @@
     .dw-dcard { border:2px solid var(--ink,#2b2340); border-radius:10px; padding:8px; background:#fffaf0; margin:8px 0; }
     .dw-sw { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:.85rem; } .dw-sw ul { margin:4px 0; padding-left:18px; }
     .dw-pitch { font-size:.9rem; background:#e5f4e4; border-radius:8px; padding:6px 8px; }
-    @media (max-width:520px) { .dw-ring { grid-template-columns:repeat(2,1fr); } .dw-sw { grid-template-columns:1fr; } .dw-pic { max-height:32vh; } .dw-log { max-height:18vh; } }
+    @media (max-width:520px) { .dw-ring { grid-template-columns:repeat(3,1fr); gap:4px; } .dw-node { padding:3px; } .dw-drawer i { font-size:.58rem; } .dw-meta { font-size:.68rem; } .dw-sw { grid-template-columns:1fr; } .dw-pic { max-height:32vh; } .dw-log { max-height:18vh; } }
   `;
   document.head.appendChild(css);
 })();
