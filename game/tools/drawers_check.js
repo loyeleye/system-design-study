@@ -67,6 +67,18 @@ const WRONG = {
   'dr-widecol1': ['SELECT * FROM orders_by_customer LIMIT 3;', "SELECT * FROM orders_by_customer WHERE customer = '{cu}';"],
   'dr-widecol2': ['CREATE TABLE {t} ({e} text, day date, ts timestamp, {val}, PRIMARY KEY (({e}), day, ts));', 'CREATE TABLE {t} ({e} text, day date, ts timestamp, {val}, PRIMARY KEY (({e}, day), ts));'],
   'dr-graphdb1': ["MATCH (:Person {name: '{a}'})<-[:FOLLOWS]-(p) RETURN p.name"],
+  'dr-kvstore3': ['SET views:{p} {n1}', 'INCR views', 'INCRBY views:{p} 2'],
+  'dr-kvstore4': ['SET user:{u} "{name},{city}"', 'HSET user:{u} name {name}'],
+  'dr-kvstore5': ['SMEMBERS online:{room}', 'SISMEMBER online:{room} zed', 'SCARD online:{room}'],
+  'dr-docstore3': ['db.users.createIndex({ name: 1 })', 'db.users.find({ {f}: "x" })'],
+  'dr-docstore4': ['db.orders.find({ total: { $gt: {min} } }).limit({k})', 'db.orders.find({ total: { $gt: {min} } }).sort({ total: -1 }).limit({k})', 'db.orders.find({ total: { $gt: {min} } }).sort({ total: 1 })', 'db.orders.find().sort({ total: 1 }).limit({k})'],
+  'dr-docstore5': ['db.players.updateOne({ name: "{who}" }, { $set: { points: {after} } })', 'db.players.updateMany({}, { $inc: { points: {n} } })', 'db.players.updateOne({ name: "{who}" }, { $inc: { points: 1 } })'],
+  'dr-widecol3': ["INSERT INTO sessions (id, user) VALUES ('{id}', '{u}');", "INSERT INTO sessions (id, user) VALUES ('{id}', '{u}') USING TTL {h};"],
+  'dr-widecol4': ["SELECT * FROM readings WHERE sensor = '{s}' AND ts >= '2026-11-07 {from}:00:00' ALLOW FILTERING;", "SELECT * FROM readings WHERE sensor = '{s}' AND day = '2026-11-07' AND ts >= '2026-11-07 {from}:00:00' AND ts <= '2026-11-07 {to}:00:00';", "SELECT * FROM readings WHERE sensor = '{s}' AND day = '2026-11-07';"],
+  'dr-widecol5': ["CREATE KEYSPACE {ks} WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};", "CREATE KEYSPACE other WITH replication = {'class': 'SimpleStrategy', 'replication_factor': {rf}};"],
+  'dr-graphdb3': ["MATCH (:Person {name: '{a}'})-[:FOLLOWS]->(p) RETURN p.name", "MATCH (:Person {name: '{a}'})-[:FOLLOWS]->()-[:FOLLOWS]->(p) RETURN p.name"],
+  'dr-graphdb4': ["MATCH (:Person {name: '{a}'})-[:FOLLOWS]->(p) RETURN count(p)", "MATCH (p)-[:FOLLOWS]->(:Person {name: '{a}'}) RETURN p.name"],
+  'dr-graphdb5': ['CREATE CONSTRAINT FOR (x:Thing) REQUIRE x.{p} IS UNIQUE', "MERGE (:{L} {{p}: 'a1'})"],
   'dr-graphdb2': ["MATCH (a:Person {name: '{a}'}), (b:Person {name: '{b}'}) CREATE (a)-[:FOLLOWS]->(b)", "MERGE (:Person {name: '{a}'})-[:FOLLOWS]->(:Person {name: '{b}'})"],
 };
 console.log('TOWN DRILLS');

@@ -885,10 +885,13 @@
           out = [vals]; rows = rows.slice(0, 1);
         } else {
           if (limit) rows = rows.slice(0, limit);
-          const cols = sel[0].all ? [...T.pk, ...T.ck, ...T.cols.map(c => c.n).filter(n => !T.pk.includes(n) && !T.ck.includes(n)).sort()] : sel.map(s => s.c);
+          // TTL(col) and WRITETIME(col) read one cell's metadata, row by row.
+          sel.forEach(s => { if (s.fn && !['ttl', 'writetime'].includes(s.fn)) throw invalid(`Unknown function '${s.fn}'`); if (s.fn && (s.arg === '*' || T.pk.includes(s.arg) || T.ck.includes(s.arg))) throw invalid(`Cannot use selection function ${s.fn} on PRIMARY KEY part ${s.arg}`); });
+          const cols = sel[0].all ? [...T.pk, ...T.ck, ...T.cols.map(c => c.n).filter(n => !T.pk.includes(n) && !T.ck.includes(n)).sort()] : sel.map(s => s.c || `${s.fn}(${s.arg})`);
           header = sel[0].all ? cols : sel.map((s, i) => s.as || cols[i]);
-          out = rows.map(x => cols.map(c => rowVal(T, x.pt, x.r, c)));
-          out.types = cols.map(c => (T.cols.find(x => x.n === c) || {}).type);
+          const meta = (x, s) => { const c = x.r.cells[s.arg]; if (!live(c)) return null; return s.fn === 'ttl' ? (c.exp != null ? Math.ceil(c.exp - E.now) : null) : c.ts; };
+          out = rows.map(x => sel[0].all ? cols.map(c => rowVal(T, x.pt, x.r, c)) : sel.map(s => s.fn ? meta(x, s) : rowVal(T, x.pt, x.r, s.c)));
+          out.types = sel[0].all ? cols.map(c => (T.cols.find(x => x.n === c) || {}).type) : sel.map(s => s.fn ? (s.fn === 'ttl' ? 'int' : 'bigint') : (T.cols.find(x => x.n === s.c) || {}).type);
         }
         const types = out.types || header.map(() => '');
         const cells = out.map(r => r.map((v, i) => fmtVal(v, types[i])));

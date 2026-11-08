@@ -516,6 +516,189 @@ SD.explain.push(
         if (!/\bMERGE\b/i.test(line)) return 'That works once, but the retry would add a second arrow. Use MERGE, which creates it only if it is missing.';
         return true;
       },
-      why: 'MERGE is "match it, or create it if it isn\'t there", so a retried job is harmless. CREATE always adds, and duplicate arrows double-count every walk through them. MATCH the nodes first, or MERGE would make new people too.' }
+      why: 'MERGE is "match it, or create it if it isn\'t there", so a retried job is harmless. CREATE always adds, and duplicate arrows double-count every walk through them. MATCH the nodes first, or MERGE would make new people too.' },
+
+    // ---- Three more per store (Ladi, 2026-11-08: five drills for each database) ----
+    { id: 'dr-kvstore3', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ p: 'home', n: 41, n1: 42 }, { p: 'pricing', n: 7, n1: 8 }, { p: 'blog', n: 199, n1: 200 }],
+      seed: ['SET views:{p} {n}'],
+      q: 'views:{p} holds the {p} page\'s view count, now {n}. Two hundred app servers count views at the same moment. Add one view in a single command that can never lose an update.',
+      task: 'Add one to views:{p}, atomically.',
+      answer: 'INCR views:{p}', alt: ['INCRBY views:{p} 1'],
+      hint: 'INCR key',
+      check: (r, E, line, v) => {
+        const e = E.get('views:' + v.p);
+        if (/^\s*(SET|GETSET)\b/i.test(line)) return `That writes a number the app worked out. Two servers can both read ${v.n} and both write ${v.n1}. INCR does the adding inside Redis.`;
+        if (!e || String(e.v) !== String(v.n1)) return e && String(e.v) === String(v.n) ? `views:${v.p} is still ${v.n}.` : `views:${v.p} is now ${e ? e.v : 'gone'}, not ${v.n1}.`;
+        return true;
+      },
+      why: 'Redis runs one command at a time, so INCR reads, adds and writes in one step that nothing can cut into. Reading in the app, adding one and writing back is the classic lost update: two servers both turn {n} into {n1}.' },
+    { id: 'dr-kvstore4', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ u: '7', name: 'ana', city: 'Lisbon' }, { u: '12', name: 'ben', city: 'Porto' }, { u: '30', name: 'cy', city: 'Braga' }],
+      q: 'Store user {u}\'s profile at user:{u} as a hash with two fields, name = {name} and city = {city}, in one command, so later you can read or change one field alone.',
+      task: 'A hash at user:{u} with name and city.',
+      answer: 'HSET user:{u} name {name} city {city}', alt: ['HSET user:{u} city "{city}" name "{name}"'],
+      hint: 'HSET key field value field value',
+      check: (r, E, line, v) => {
+        const e = E.get('user:' + v.u);
+        if (!e) return `Nothing is stored at user:${v.u} yet.`;
+        if (e.t !== 'hash') return 'That stored one string, so changing the city means rewriting the whole thing. A hash has named fields: HSET key field value field value.';
+        const f = e.v;
+        if (f.get('name') !== v.name || f.get('city') !== v.city) return `user:${v.u} needs name = ${v.name} and city = ${v.city}.`;
+        return true;
+      },
+      why: 'A hash is a small map under one key: HGET user:{u} city reads one field and HSET user:{u} city Faro changes one, with no read-modify-write of a JSON blob. It suits objects you touch a field at a time.' },
+    { id: 'dr-kvstore5', c: 'kvstore', type: 'drill', kind: 'kv',
+      cases: [{ room: 'lobby', u: 'cy', yes: 1, members: 'ana ben cy dee eli' }, { room: 'arena', u: 'eli', yes: 0, members: 'ana ben fay gus' }, { room: 'shop', u: 'ben', yes: 1, members: 'ben dee hal' }],
+      seed: ['SADD online:{room} {members}'],
+      q: 'online:{room} is a set of the players in the {room} right now, often thousands. Ask Redis whether {u} is there, without sending the whole set back to the app.',
+      task: 'Is {u} in online:{room}?',
+      answer: 'SISMEMBER online:{room} {u}',
+      hint: 'SISMEMBER key member',
+      check: (r, E, line, v) => {
+        if (/^S(MEMBERS|SCAN)$/.test(r.cmd || '')) return 'That sent every member back to the app to search. SISMEMBER asks Redis one yes-or-no question.';
+        if (r.cmd !== 'SISMEMBER') return 'Ask the set directly: SISMEMBER key member.';
+        if (!new RegExp('\\b' + v.u + '\\b').test(line) || !new RegExp('online:' + v.room + '\\b').test(line)) return `Ask about ${v.u} in online:${v.room}.`;
+        return true;
+      },
+      why: 'A Redis set is a hash table, so SISMEMBER is a constant-time lookup whatever the size, and only a 1 or 0 crosses the network. SMEMBERS would ship thousands of names to answer one question.' },
+    { id: 'dr-docstore3', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ f: 'email' }, { f: 'username' }, { f: 'phone' }],
+      seed: ['db.users.insertMany([{ name: "ana", email: "ana@ex.com", username: "ana_m", phone: "555-0101" }, { name: "ben", email: "ben@ex.com", username: "benj", phone: "555-0102" }, { name: "cy", email: "cy@ex.com", username: "cy9", phone: "555-0103" }])'],
+      q: 'Login looks users up by {f} thousands of times a second, and explain() shows COLLSCAN: every document read each time. Add the index that makes it an IXSCAN.',
+      task: 'Index users on {f}.',
+      answer: 'db.users.createIndex({ {f}: 1 })', alt: ['db.users.createIndex({ {f}: 1 }, { unique: true })'],
+      hint: 'db.collection.createIndex({ field: 1 })',
+      check: (r, E, line, v) => {
+        const idx = E.col('users').idx.filter(i => i.name !== '_id_');
+        if (!idx.length) return 'There is no new index yet. createIndex adds one.';
+        if (!idx.some(i => Object.keys(i.key)[0] === v.f)) return `That index starts with ${Object.keys(idx[idx.length - 1].key)[0]}. The lookup filters on ${v.f}, so the index has to lead with it.`;
+        return true;
+      },
+      why: 'An index on {f} is a sorted list of {f} values pointing at documents, so the lookup jumps to the one match instead of reading every card. unique: true also stops two accounts sharing one {f}. Each index costs a little on every write.' },
+    { id: 'dr-docstore4', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ min: 50, k: 3 }, { min: 20, k: 2 }, { min: 100, k: 1 }],
+      seed: ['db.orders.insertMany([{ order: 1, total: 12 }, { order: 2, total: 140 }, { order: 3, total: 55 }, { order: 4, total: 90 }, { order: 5, total: 23 }, { order: 6, total: 70 }, { order: 7, total: 105 }, { order: 8, total: 48 }, { order: 9, total: 61 }])'],
+      q: 'Each order has a total. Orders over {min} qualify for free shipping. Show the {k} smallest qualifying orders, smallest first.',
+      task: 'Orders over {min}, smallest first, only {k}.',
+      answer: 'db.orders.find({ total: { $gt: {min} } }).sort({ total: 1 }).limit({k})', alt: ['db.orders.find({ total: { $gte: {min} } }, { total: 1 }).sort({ total: 1 }).limit({k})'],
+      hint: 'db.c.find({ field: { $gt: n } }).sort({ field: 1 }).limit(n)',
+      check: (r, E, line, v) => {
+        if (!r.docs || r.col !== 'orders') return 'Read from orders with find.';
+        const want = E.col('orders').docs.filter(d => d.total > v.min).map(d => d.total).sort((a, b) => a - b).slice(0, v.k), got = r.docs.map(d => d.total);
+        if (got.some(t => t <= v.min)) return `Some of those totals aren't over ${v.min}: filter with { total: { $gt: ${v.min} } }.`;
+        if (got.length > v.k) return `That's ${got.length} orders. Add .limit(${v.k}).`;
+        if (got.join() !== want.join()) return got.slice().sort((a, b) => a - b).join() === got.join() ? `${v.k === 1 ? 'That isn\'t the smallest one' : `Those aren't the ${v.k} smallest`}. Add .sort({ total: 1 }) so limit keeps the right ones.` : 'Smallest first means .sort({ total: 1 }); -1 is biggest first.';
+        return true;
+      },
+      why: '$gt filters, sort({ total: 1 }) orders smallest first (-1 is biggest first), and limit stops after {k}. MongoDB always sorts before it limits, whatever order you chain them in, and an index on total lets it read the first {k} in order without sorting everything.' },
+    { id: 'dr-docstore5', c: 'docstore', type: 'drill', kind: 'doc',
+      cases: [{ who: 'ana', n: 5, after: 17 }, { who: 'ben', n: 10, after: 10 }, { who: 'dee', n: 3, after: 43 }],
+      seed: ['db.players.insertMany([{ name: "ana", points: 12 }, { name: "ben", points: 0 }, { name: "dee", points: 40 }])'],
+      q: '{who} just earned {n} points. Many servers award points at once, so add {n} inside the database rather than reading the total, adding and writing it back.',
+      task: 'Add {n} to {who}\'s points, atomically.',
+      answer: 'db.players.updateOne({ name: "{who}" }, { $inc: { points: {n} } })', alt: ['db.players.updateOne({ name: "{who}" }, { $inc: { "points": {n} } })'],
+      hint: 'db.c.updateOne({ filter }, { $inc: { field: n } })',
+      check: (r, E, line, v) => {
+        const all = E.col('players').docs, d = all.find(x => x.name === v.who);
+        if (/\$set/.test(line)) return `That writes a total the app worked out. Two servers can both read the old total and one award vanishes. $inc adds ${v.n} inside the database.`;
+        if (!d || d.points !== v.after) return `${v.who} has ${d ? d.points : 'no'} point${d && d.points === 1 ? '' : 's'}; it should have ${v.after}.`;
+        if (all.filter(x => x !== d).some(x => ({ ana: 12, ben: 0, dee: 40 })[x.name] !== x.points)) return 'Other players changed too. Filter on the name and use updateOne.';
+        return true;
+      },
+      why: '$inc changes the number inside the database in one atomic step on the document, so concurrent awards all land. It is the document-store twin of Redis INCR.' },
+    { id: 'dr-widecol3', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ id: 's1', u: 'ana', h: 2, sec: 7200 }, { id: 's9', u: 'ben', h: 24, sec: 86400 }, { id: 's4', u: 'cy', h: 1, sec: 3600 }],
+      seed: KS.concat(['CREATE TABLE sessions (id text PRIMARY KEY, user text);']),
+      q: 'Insert session {id} for user {u} into sessions (id text PRIMARY KEY, user text) so that Cassandra deletes it by itself after {h} hours.',
+      task: 'Insert session {id} with a {h}-hour TTL.',
+      answer: "INSERT INTO sessions (id, user) VALUES ('{id}', '{u}') USING TTL {sec};", alt: ["INSERT INTO sessions (user, id) VALUES ('{u}', '{id}') USING TTL {sec};"],
+      hint: "INSERT INTO t (cols) VALUES (vals) USING TTL seconds;",
+      check: (r, E, line, v) => {
+        const T = E.table('sessions'), pt = T && [...T.parts.values()].find(x => x.key.id === v.id), row = pt && pt.rows[0], c = row && row.cells.user;
+        if (!c || !E.isLive(c)) return `There is no session ${v.id} for ${v.u} yet.`;
+        if (c.v !== v.u) return `Session ${v.id} should belong to ${v.u}.`;
+        if (c.exp == null) return 'Stored, but it never expires: add USING TTL and a number of seconds.';
+        const left = Math.round(c.exp - E.now);
+        return left === v.sec ? true : `It expires in ${left} seconds. ${v.h} hour${v.h > 1 ? 's' : ''} is ${v.sec} seconds.`;
+      },
+      why: 'USING TTL stamps an expiry on every cell the write touches. When it passes, reads skip the row and compaction later drops it as a tombstone. No cleanup job, and SELECT TTL(user) shows the seconds left.' },
+    { id: 'dr-widecol4', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ s: 's1', from: '09', to: '12' }, { s: 's2', from: '08', to: '10' }, { s: 's1', from: '11', to: '13' }],
+      seed: KS.concat(['CREATE TABLE readings (sensor text, day date, ts timestamp, temp double, PRIMARY KEY ((sensor, day), ts));'],
+        ['s1', 's2'].flatMap((x, k) => ['08', '09', '10', '11', '12', '13', '14'].map((h, i) => `INSERT INTO readings (sensor, day, ts, temp) VALUES ('${x}', '2026-11-07', '2026-11-07 ${h}:00:00', ${(14 + i * 1.5 + k * 3).toFixed(1)});`))),
+      q: 'readings has PRIMARY KEY ((sensor, day), ts). Get sensor {s}\'s readings on 2026-11-07 from {from}:00 up to, but not including, {to}:00.',
+      task: '{s} on 2026-11-07, {from}:00 to {to}:00.',
+      answer: "SELECT * FROM readings WHERE sensor = '{s}' AND day = '2026-11-07' AND ts >= '2026-11-07 {from}:00:00' AND ts < '2026-11-07 {to}:00:00';",
+      alt: ["SELECT ts, temp FROM readings WHERE day = '2026-11-07' AND sensor = '{s}' AND ts >= '2026-11-07 {from}:00:00' AND ts < '2026-11-07 {to}:00:00';"],
+      hint: "SELECT * FROM t WHERE pk1 = .. AND pk2 = .. AND ck >= .. AND ck < ..;",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with SELECT.';
+        if (r.filtering || r.scanAll) return 'That read every partition. Give both parts of the partition key: sensor and day.';
+        const want = +v.to - +v.from, n = rowsOf(r).length;
+        const ti = r.header.indexOf('ts'), hrs = ti >= 0 ? rowsOf(r).map(x => new Date(x[ti] * 1000).getUTCHours()) : [];
+        if (hrs.some(h => h < +v.from || h >= +v.to)) return `Some rows fall outside ${v.from}:00 to ${v.to}:00. Use ts >= the start and ts < the end.`;
+        if (n !== want) return `That returned ${n} rows; there are ${want} from ${v.from}:00 up to ${v.to}:00.`;
+        return true;
+      },
+      why: 'Inside one partition, rows are stored sorted by ts, so a range on the clustering column is one sequential read from the start time to the end. A range on anything that isn\'t a clustering column would need ALLOW FILTERING.' },
+    { id: 'dr-widecol5', c: 'widecol', type: 'drill', kind: 'wide',
+      cases: [{ ks: 'payments', rf: 3 }, { ks: 'metrics', rf: 2 }, { ks: 'audit', rf: 5 }],
+      q: 'Create a keyspace {ks} that keeps {rf} copies of every row. One data centre, so SimpleStrategy is fine.',
+      task: 'CREATE KEYSPACE {ks} with {rf} replicas.',
+      answer: "CREATE KEYSPACE {ks} WITH replication = {'class': 'SimpleStrategy', 'replication_factor': {rf}};",
+      alt: ["CREATE KEYSPACE {ks} WITH replication = {'class': 'NetworkTopologyStrategy', 'dc1': {rf}};"],
+      hint: "CREATE KEYSPACE name WITH replication = {'class': '...', 'replication_factor': n};",
+      check: (r, E, line, v) => {
+        const k = E.ks[v.ks];
+        if (!k) return Object.keys(E.ks).length ? `Name the keyspace ${v.ks}.` : 'Create it with CREATE KEYSPACE.';
+        return k.rf === v.rf ? true : `${v.ks} keeps ${k.rf} cop${k.rf === 1 ? 'y' : 'ies'}; it should keep ${v.rf}.`;
+      },
+      why: 'The replication factor is set per keyspace: each partition lives on {rf} nodes of the ring. With 3 copies, QUORUM reads and writes (2 of 3) still work with one node down. NetworkTopologyStrategy sets a count per data centre, which is what production uses.' },
+    { id: 'dr-graphdb3', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ a: 'Ana' }, { a: 'Cy' }, { a: 'Fay' }],
+      seed: people([['Ana', 'Ben'], ['Ana', 'Cy'], ['Ben', 'Dee'], ['Cy', 'Dee'], ['Cy', 'Eli'], ['Dee', 'Fay'], ['Fay', 'Ben'], ['Fay', 'Cy'], ['Eli', 'Fay']]),
+      q: 'Suggestions for {a}: return the names of people followed by the people {a} follows (two hops out), each name once.',
+      task: 'Two hops from {a}, each name once.',
+      answer: "MATCH (:Person {name: '{a}'})-[:FOLLOWS]->()-[:FOLLOWS]->(p) RETURN DISTINCT p.name", alt: ["MATCH (:Person {name: '{a}'})-[:FOLLOWS*2]->(p:Person) RETURN DISTINCT p.name"],
+      hint: "MATCH (a {..})-[:T]->()-[:T]->(p) RETURN DISTINCT p.prop",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with MATCH ... RETURN.';
+        const one = followsOf(E, v.a), want = [...new Set(one.flatMap(x => followsOf(E, x)))].sort();
+        const got = rowsOf(r).map(x => nameOf(x[0]));
+        if (got.slice().sort().join() === one.slice().sort().join()) return `Those are the people ${v.a} follows directly. Add a second hop: ()-[:FOLLOWS]->(p).`;
+        if ([...new Set(got)].sort().join() === want.join() && got.length > want.length) return 'Right people, but some names appear twice, once for each path to them. RETURN DISTINCT.';
+        if (got.slice().sort().join() !== want.join()) return `That returned ${got.join(', ') || 'nobody'}; two hops from ${v.a} reaches ${want.join(', ')}.`;
+        return true;
+      },
+      why: 'Each hop follows stored arrows from the nodes already reached, so the work grows with {a}\'s neighbourhood, not the whole graph. Two paths can reach the same person, so DISTINCT folds them into one row. In SQL this is a self-join per hop.' },
+    { id: 'dr-graphdb4', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ a: 'Ben' }, { a: 'Dee' }, { a: 'Fay' }],
+      seed: people([['Ana', 'Ben'], ['Ana', 'Cy'], ['Ben', 'Dee'], ['Cy', 'Dee'], ['Cy', 'Eli'], ['Dee', 'Fay'], ['Fay', 'Ben'], ['Eli', 'Fay']]),
+      q: 'How many followers does {a} have? Return one number.',
+      task: 'Count {a}\'s followers.',
+      answer: "MATCH (p:Person)-[:FOLLOWS]->(:Person {name: '{a}'}) RETURN count(p)", alt: ["MATCH (:Person {name: '{a}'})<-[:FOLLOWS]-(f) RETURN count(*) AS followers"],
+      hint: "MATCH (p)-[:T]->(:Label {..}) RETURN count(p)",
+      check: (r, E, line, v) => {
+        if (!r.header) return 'Read it with MATCH ... RETURN count(...).';
+        const n = E.nodes.find(x => x.props.name === v.a), want = E.rels.filter(x => x.type === 'FOLLOWS' && x.to === n.id).length, out = followsOf(E, v.a).length;
+        const rows = rowsOf(r);
+        if (rows.length !== 1 || typeof rows[0][0] !== 'number') return rows.length > 1 ? `That listed ${rows.length} rows. Wrap it in count() to get one number.` : 'Return a single number with count().';
+        if (rows[0][0] === want) return true;
+        return rows[0][0] === out ? `That counted the people ${v.a} follows. Followers point at ${v.a}: (p)-[:FOLLOWS]->(${v.a}).` : `That counted ${rows[0][0]}; ${v.a} has ${want} followers.`;
+      },
+      why: 'Direction carries meaning: an arrow into {a} is a follower, an arrow out is someone {a} follows. Neo4j keeps each node\'s relationship counts by type and direction, so counting one node\'s followers doesn\'t walk the graph.' },
+    { id: 'dr-graphdb5', c: 'graphdb', type: 'drill', kind: 'graph',
+      cases: [{ L: 'Person', p: 'name' }, { L: 'Account', p: 'email' }, { L: 'Product', p: 'sku' }],
+      seed: v => ['CREATE ' + ['a1', 'b2', 'c3'].map(x => `(:${v.L} {${v.p}: '${x}'})`).join(', ')],
+      q: 'Two {L} nodes with the same {p} slipped in when two jobs ran MERGE at the same moment. Make the database itself refuse a second {L} with a {p} that already exists.',
+      task: 'A uniqueness rule on {L}.{p}.',
+      answer: 'CREATE CONSTRAINT FOR (x:{L}) REQUIRE x.{p} IS UNIQUE', alt: ['CREATE CONSTRAINT {p}_unique FOR (n:{L}) REQUIRE n.{p} IS UNIQUE'],
+      hint: 'CREATE CONSTRAINT FOR (n:Label) REQUIRE n.prop IS UNIQUE',
+      check: (r, E, line, v) => {
+        if (!E.cons.length) return 'There is no constraint yet. CREATE CONSTRAINT adds one.';
+        return E.cons.some(c => c.label === v.L && c.prop === v.p) ? true : `That constraint is on ${E.cons[E.cons.length - 1].label}.${E.cons[E.cons.length - 1].prop}; it should be on ${v.L}.${v.p}.`;
+      },
+      why: 'MERGE checks, then creates, and two jobs can both pass the check. A uniqueness constraint makes the database refuse the second write, and it builds an index on {L}.{p}, so lookups by {p} get fast too.' }
   ];
 })();
